@@ -1,0 +1,24 @@
+# Private working notes and agent instructions
+/docs/
+/CLAUDE.md
+/CLAUDE.local.md
+/AGENTS.md
+/.claude/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Dependencies and build output
+node_modules/
+dist/
+target/
+
+# Tooling
+.DS_Store
+*.log
+.vscode/
+.idea/
