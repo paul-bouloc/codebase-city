@@ -4,6 +4,7 @@
 /CLAUDE.local.md
 /AGENTS.md
 /.claude/
+/spikes/
 
 # Environment and secrets
 .env
