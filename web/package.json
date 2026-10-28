@@ -12,7 +12,8 @@
     "preview": "vite preview",
     "typecheck": "tsc -p .",
     "lint": "biome check .",
-    "format": "biome check --write ."
+    "format": "biome check --write .",
+    "test": "vitest run"
   },
   "dependencies": {
     "react": "19.3.1",
@@ -24,6 +25,7 @@
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.1.2",
     "typescript": "7.0.2",
-    "vite": "8.3.5"
+    "vite": "8.3.5",
+    "vitest": "5.0.5"
   }
 }
