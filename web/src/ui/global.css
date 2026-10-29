@@ -1,0 +1,5 @@
+/* Global styles, imported once by each entry point. */
+@import "./fonts.css";
+@import "./tokens.css";
+@import "./base.css";
+@import "./typography.css";
