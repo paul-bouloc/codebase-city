@@ -1,0 +1,32 @@
+/* Base styles: page background, default text, visible focus. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg-page);
+  color: var(--color-text-primary);
+  font: var(--body-m);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The ring is a box-shadow; the transparent outline still shows in forced-colors mode. */
+:focus-visible {
+  outline: var(--border-width-focus) solid transparent;
+  box-shadow: var(--focus-ring);
+  transition: box-shadow var(--duration-fast) var(--easing-standard);
+}
+
+::selection {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-strong);
+}
