@@ -1,0 +1,231 @@
+/*
+ * Design tokens. One variable per token, named after it:
+ * `color.text.secondary` becomes `--color-text-secondary`.
+ * This is the only file allowed to hold raw color values.
+ */
+
+:root {
+  /* Backgrounds, surfaces, text, borders */
+  --color-bg-page: #fbf4e6;
+  --color-bg-sunken: #f3ead7;
+  --color-bg-sunken-hover: #f7efdf;
+  --color-surface-default: #fffaf0;
+  --color-surface-glass: rgba(255, 250, 240, 0.92);
+  --color-surface-inverse: #23313a;
+  --color-scrim: rgba(35, 49, 58, 0.4);
+  --color-text-primary: #23313a;
+  --color-text-body: #3c4a52;
+  --color-text-secondary: #56656b;
+  --color-text-disabled: #8c9598;
+  --color-text-inverse: #fffaf0;
+  --color-text-inverse-secondary: #d5dcdf;
+  --color-border-subtle: #eadfc8;
+  --color-border-default: #e2d2b6;
+  --color-border-strong: #c9b38d;
+  --color-border-field: #94826a;
+  --color-border-field-hover: #7d6c55;
+  --color-meter-empty: #e2d6be;
+  --color-skeleton: #efe5d1;
+  --color-skeleton-highlight: #f8f0e0;
+
+  /* Accent "Harbor" */
+  --color-accent: #1d6f78;
+  --color-accent-strong: #145a62;
+  --color-accent-soft: #e1f0ee;
+
+  /* Interaction states */
+  --state-hover: rgba(35, 49, 58, 0.06);
+  --state-pressed: rgba(35, 49, 58, 0.12);
+  --state-primary-hover: #33444f;
+  --state-primary-pressed: #172129;
+  --state-secondary-hover: #f6efe1;
+  --state-secondary-pressed: #ede4d2;
+  --state-ghost-hover: #f3ecdd;
+  --state-ghost-pressed: #eae1ce;
+  --state-danger-hover: #911f34;
+  --state-danger-pressed: #7a1a2c;
+  --state-selected: #e1f0ee;
+  --state-disabled-bg: #f1eadb;
+  --state-focus: #1d6f78;
+
+  /* GitHub brand, sign-in button only */
+  --brand-github-bg: #24292f;
+  --brand-github-hover: #32383f;
+  --brand-github-pressed: #1b1f24;
+  --brand-github-fg: #ffffff;
+
+  /* Feedback */
+  --feedback-success-fg: #2e6b45;
+  --feedback-success-bg: #e5f2e8;
+  --feedback-success-border: #b7d7c0;
+  --feedback-warning-fg: #8a5300;
+  --feedback-warning-bg: #fbebd0;
+  --feedback-warning-border: #efcb8e;
+  --feedback-error-fg: #a8283f;
+  --feedback-error-bg: #fbe4e6;
+  --feedback-error-border: #edb4bd;
+  --feedback-info-fg: #1f4e9e;
+  --feedback-info-bg: #e3ebf7;
+  --feedback-info-border: #b9cceb;
+  --feedback-success-on-inverse: #7fd1a0;
+  --feedback-error-on-inverse: #f59aa9;
+  --feedback-info-on-inverse: #9cc0f5;
+
+  /* Meaning, shared with the city. Base colors are graphic only: use `-text` for text. */
+  --meaning-outgoing: #1f4e9e;
+  --meaning-incoming: #e3872d;
+  --meaning-incoming-text: #a85a12;
+  --meaning-incoming-soft: #fff4e6;
+  --meaning-incoming-border: #f1d3ae;
+  --meaning-upward: #d1435b;
+  --meaning-upward-text: #a8283f;
+  --meaning-guide: #1f9e77;
+  --meaning-guide-text: #167a5c;
+  --meaning-guide-soft: #e5f2e8;
+  --meaning-guide-strong: #145a48;
+  --meaning-guide-subtle: #f4faf5;
+  --meaning-guide-border: #cfe3d7;
+  --meaning-guide-track: #d6e7dd;
+
+  /* City reference, never for interface chrome */
+  --city-sea: #86c8c5;
+  --city-sand: #f2e2be;
+  --city-meadow: #c5dfa4;
+
+  /* Languages, always shown next to their name */
+  --lang-typescript: #5a8edb;
+  --lang-javascript: #e2b23a;
+  --lang-css: #b57bd0;
+  --lang-other: #b9ae9c;
+  --lang-test: #cfc7b8;
+
+  /* Panels over the city */
+  --glass-bg: rgba(255, 250, 240, 0.92);
+  --glass-blur: blur(14px) saturate(1.2);
+  --glass-bg-fallback: rgba(255, 250, 240, 0.97);
+  --glass-border: 1px solid rgba(226, 210, 182, 0.9);
+  --glass-shadow: var(--shadow-lg);
+  --glass-text: var(--color-text-primary);
+  --glass-text-secondary: var(--color-text-secondary);
+
+  /* Radii */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 999px;
+
+  /* Borders */
+  --border-width-default: 1px;
+  --border-width-strong: 1.5px;
+  --border-width-focus: 2px;
+  --border-width-marker: 2px;
+  --focus-ring:
+    0 0 0 var(--border-width-focus) var(--color-surface-default),
+    0 0 0 calc(2 * var(--border-width-focus)) var(--state-focus);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(40, 60, 60, 0.08);
+  --shadow-md: 0 4px 12px rgba(40, 60, 60, 0.12);
+  --shadow-lg: 0 12px 32px rgba(40, 60, 60, 0.18);
+  --shadow-xl: 0 24px 64px rgba(35, 49, 58, 0.24);
+
+  /* Spacing, 4px base */
+  --space-0-5: 2px;
+  --space-1: 4px;
+  --space-1-5: 6px;
+  --space-2: 8px;
+  --space-2-5: 10px;
+  --space-3: 12px;
+  --space-3-5: 14px;
+  --space-4: 16px;
+  --space-4-5: 18px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Motion */
+  --duration-instant: 80ms;
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 280ms;
+  --duration-toast-in: 240ms;
+  --duration-toast-out: 160ms;
+  --duration-toast-dwell: 5000ms;
+  --easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --easing-enter: cubic-bezier(0.16, 1, 0.3, 1);
+  --easing-exit: cubic-bezier(0.4, 0, 1, 1);
+
+  /* Type families */
+  --font-family-sans: "Space Grotesk", system-ui, sans-serif;
+  --font-family-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Type scale: `font` shorthand plus letter spacing */
+  --display-xl: 600 64px / 68px var(--font-family-sans);
+  --display-xl-tracking: -0.03em;
+  --display-l: 600 48px / 52px var(--font-family-sans);
+  --display-l-tracking: -0.02em;
+  --heading-1: 600 32px / 38px var(--font-family-sans);
+  --heading-1-tracking: -0.015em;
+  --heading-2: 600 24px / 30px var(--font-family-sans);
+  --heading-2-tracking: -0.01em;
+  --heading-3: 600 18px / 24px var(--font-family-sans);
+  --heading-3-tracking: 0;
+  --body-l: 400 17px / 26px var(--font-family-sans);
+  --body-l-tracking: 0;
+  --body-m: 400 15px / 22px var(--font-family-sans);
+  --body-m-tracking: 0;
+  --body-s: 400 13px / 18px var(--font-family-sans);
+  --body-s-tracking: 0;
+  --label: 500 14px / 20px var(--font-family-sans);
+  --label-tracking: 0;
+  --caption: 400 12px / 16px var(--font-family-sans);
+  --caption-tracking: 0;
+  --eyebrow-mono: 500 11px / 14px var(--font-family-mono);
+  --eyebrow-mono-tracking: 0.1em;
+  --code-m: 400 13px / 18px var(--font-family-mono);
+  --code-m-tracking: 0;
+  --code-s: 400 12px / 16px var(--font-family-mono);
+  --code-s-tracking: 0;
+  --metric: 600 20px / 24px var(--font-family-sans);
+  --metric-tracking: -0.01em;
+}
+
+/* Below 640px, display sizes step down one level. Values are repeated, not referenced:
+ * both variables change in the same rule. */
+@media (max-width: 639.98px) {
+  :root {
+    --display-xl: 600 48px / 52px var(--font-family-sans);
+    --display-xl-tracking: -0.02em;
+    --display-l: 600 32px / 38px var(--font-family-sans);
+    --display-l-tracking: -0.015em;
+  }
+}
+
+/* Without backdrop-filter, or when the user asks for less transparency, glass turns opaque. */
+@supports not (backdrop-filter: blur(1px)) {
+  :root {
+    --glass-bg: var(--glass-bg-fallback);
+    --glass-blur: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --glass-bg: var(--glass-bg-fallback);
+    --glass-blur: none;
+  }
+}
+
+/* Reduced motion: every transition becomes a short fade. Components drop their movement. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-base: var(--duration-fast);
+    --duration-slow: var(--duration-fast);
+    --duration-toast-in: var(--duration-fast);
+    --duration-toast-out: var(--duration-fast);
+  }
+}
