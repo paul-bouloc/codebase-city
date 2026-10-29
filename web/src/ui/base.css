@@ -19,6 +19,15 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Form controls do not inherit the page font by default. */
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
 /* The ring is a box-shadow; the transparent outline still shows in forced-colors mode. */
 :focus-visible {
   outline: var(--border-width-focus) solid transparent;
