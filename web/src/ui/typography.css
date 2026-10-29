@@ -1,0 +1,78 @@
+/* One class per step of the type scale. */
+
+.display-xl {
+  font: var(--display-xl);
+  letter-spacing: var(--display-xl-tracking);
+}
+
+.display-l {
+  font: var(--display-l);
+  letter-spacing: var(--display-l-tracking);
+}
+
+.heading-1 {
+  font: var(--heading-1);
+  letter-spacing: var(--heading-1-tracking);
+}
+
+.heading-2 {
+  font: var(--heading-2);
+  letter-spacing: var(--heading-2-tracking);
+}
+
+.heading-3 {
+  font: var(--heading-3);
+  letter-spacing: var(--heading-3-tracking);
+}
+
+.body-l {
+  font: var(--body-l);
+  letter-spacing: var(--body-l-tracking);
+}
+
+.body-m {
+  font: var(--body-m);
+  letter-spacing: var(--body-m-tracking);
+}
+
+.body-s {
+  font: var(--body-s);
+  letter-spacing: var(--body-s-tracking);
+}
+
+.label {
+  font: var(--label);
+  letter-spacing: var(--label-tracking);
+}
+
+.caption {
+  font: var(--caption);
+  letter-spacing: var(--caption-tracking);
+}
+
+.eyebrow-mono {
+  font: var(--eyebrow-mono);
+  letter-spacing: var(--eyebrow-mono-tracking);
+  text-transform: uppercase;
+}
+
+.code-m {
+  font: var(--code-m);
+  letter-spacing: var(--code-m-tracking);
+}
+
+.code-s {
+  font: var(--code-s);
+  letter-spacing: var(--code-s-tracking);
+}
+
+.metric {
+  font: var(--metric);
+  letter-spacing: var(--metric-tracking);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Any number that changes or gets compared. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
