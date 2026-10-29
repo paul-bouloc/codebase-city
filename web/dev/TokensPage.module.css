@@ -1,0 +1,155 @@
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-16) var(--space-6);
+  display: grid;
+  gap: var(--space-12);
+}
+
+.section {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.secondary {
+  color: var(--color-text-secondary);
+}
+
+.typeScale {
+  margin: 0;
+  display: grid;
+  gap: var(--space-5);
+}
+
+.typeRow {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  align-items: baseline;
+  gap: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: var(--border-width-default) solid var(--color-border-subtle);
+}
+
+.typeRow dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.group {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.group h3 {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.swatches,
+.boxes,
+.spacing {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-4);
+}
+
+.swatch {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.chip {
+  height: 56px;
+  border-radius: var(--radius-sm);
+  border: var(--border-width-default) solid var(--color-border-subtle);
+}
+
+.glassScene {
+  padding: var(--space-12) var(--space-6);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(
+    120deg,
+    var(--city-sea) 0 45%,
+    var(--city-sand) 45% 60%,
+    var(--city-meadow) 60% 75%,
+    var(--meaning-outgoing) 75% 80%,
+    var(--city-sand) 80%
+  );
+}
+
+.glassPanel {
+  max-width: 360px;
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  border: var(--glass-border);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow);
+  color: var(--glass-text);
+}
+
+.glassPanel p {
+  margin: 0;
+}
+
+.glassSecondary {
+  margin-top: var(--space-2);
+  color: var(--glass-text-secondary);
+}
+
+.boxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.boxItem {
+  display: grid;
+  gap: var(--space-1);
+  justify-items: start;
+}
+
+.box {
+  width: 96px;
+  height: 72px;
+  background: var(--color-surface-default);
+  border: var(--border-width-default) solid var(--color-border-default);
+}
+
+.spacing {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.spaceRow {
+  display: grid;
+  grid-template-columns: 140px auto 1fr;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.spaceBar {
+  height: var(--space-3);
+  background: var(--color-accent);
+  border-radius: var(--radius-xs);
+}
+
+.focusButton {
+  justify-self: start;
+  height: 40px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  border: var(--border-width-default) solid var(--color-border-default);
+  background: var(--color-surface-default);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
