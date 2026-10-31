@@ -11,6 +11,12 @@ export const LOGO_COLORS = {
   soleil: '#E3872D',
 } as const
 
+// The empty-state island adds a tree and a Harbor flag to the logo's palette.
+export const ISLAND_COLORS = {
+  tree: '#7BB06A',
+  flag: '#1D6F78',
+} as const
+
 export interface Shape {
   d: string
   fill: string
