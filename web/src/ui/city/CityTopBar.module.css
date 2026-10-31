@@ -1,0 +1,137 @@
+.bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: 60px;
+  padding: 0 var(--space-2-5) 0 var(--space-3);
+}
+
+.home {
+  display: inline-flex;
+  flex: none;
+  border-radius: var(--radius-full);
+}
+
+.home:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
+.rule {
+  flex: none;
+  width: var(--border-width-default);
+  height: 28px;
+  background: var(--color-border-default);
+}
+
+/* Repository button */
+
+.repo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  max-width: 330px;
+  height: 44px;
+  padding: 0 var(--space-2);
+  border: var(--border-width-default) solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--easing-standard);
+}
+
+.repo:hover {
+  background: var(--state-hover);
+}
+
+.repo:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
+.repo[aria-expanded="true"] {
+  border-color: var(--color-border-default);
+  background: var(--color-surface-default);
+}
+
+.repoText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.repoName,
+.repoMeta {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* The board says mono 14/18: brought back to code.m. */
+.repoName {
+  font: var(--code-m);
+  letter-spacing: var(--code-m-tracking);
+}
+
+.owner {
+  color: var(--color-text-secondary);
+}
+
+.repoName strong {
+  font-weight: 700;
+}
+
+.repoMeta {
+  color: var(--color-text-secondary);
+  font: var(--caption);
+  letter-spacing: var(--caption-tracking);
+}
+
+.commit {
+  font-family: var(--font-family-mono);
+}
+
+.chevron {
+  flex: none;
+  color: var(--color-text-secondary);
+  transition: transform var(--duration-fast) var(--easing-standard);
+}
+
+[aria-expanded="true"] > .chevron {
+  transform: rotate(180deg);
+}
+
+/* GitHub link */
+
+.github {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+}
+
+.github:hover {
+  background: var(--state-hover);
+}
+
+.github:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
+/* The search sits in the middle of the free space. */
+.search {
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  min-width: 0;
+  margin-right: var(--space-3);
+}
+
+.share[aria-expanded="true"] {
+  border-color: var(--color-border-strong);
+  background: var(--color-bg-sunken);
+}
