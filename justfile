@@ -30,6 +30,22 @@ fmt:
     cargo fmt --all
     cd web && pnpm run format
 
+# Regenerate the TypeScript types and the sample result from crates/model
+gen-types:
+    rm -rf web/src/data/generated
+    cargo test -p model --locked
+
+# Fail when the generated files differ from what is committed (run by CI)
+check-generated: gen-types
+    #!/usr/bin/env bash
+    set -euo pipefail
+    changes=$(git status --porcelain -- web/src/data/generated)
+    if [ -n "$changes" ]; then
+        echo "$changes"
+        echo "web/src/data/generated is out of date: run 'just gen-types' and commit the result." >&2
+        exit 1
+    fi
+
 # Run the tests, Rust and web
 test: db-up
     cargo test --workspace --locked

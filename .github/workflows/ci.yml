@@ -37,6 +37,10 @@ jobs:
       - name: Check
         run: just check-rust
 
+      # The tests regenerate the TypeScript types; they must match what is committed
+      - name: Check generated files
+        run: just check-generated
+
   web:
     name: Web
     runs-on: ubuntu-24.04
