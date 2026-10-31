@@ -1,0 +1,64 @@
+.anchor {
+  position: relative;
+  display: inline-flex;
+}
+
+.hint {
+  position: absolute;
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  height: 30px;
+  padding: 0 var(--space-2-5);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-inverse);
+  color: var(--color-text-inverse);
+  font: var(--body-s);
+  letter-spacing: var(--body-s-tracking);
+  white-space: nowrap;
+  pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    opacity var(--duration-fast) var(--easing-standard),
+    visibility var(--duration-fast);
+}
+
+.left {
+  top: 50%;
+  right: calc(100% + var(--space-2));
+  transform: translateY(-50%);
+}
+
+.bottom {
+  top: calc(100% + var(--space-2));
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* On hover with a mouse, and on keyboard focus only: a click does not leave it behind. */
+@media (hover: hover) {
+  .anchor:hover > .hint {
+    visibility: visible;
+    opacity: 1;
+  }
+}
+
+.anchor:has(:focus-visible) > .hint {
+  visibility: visible;
+  opacity: 1;
+}
+
+.shortcut {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+}
+
+/* Keys mean nothing on a touch screen. */
+@media (pointer: coarse) {
+  .shortcut {
+    display: none;
+  }
+}
