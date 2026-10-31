@@ -24,6 +24,7 @@ import {
   Vector4,
   WebGLRenderer,
 } from 'three'
+import { createBuildings } from './buildings'
 import type { CityLayout } from './layout'
 import { SUN_DIRECTION } from './light'
 import { createPlateaux } from './plateaux'
@@ -116,7 +117,7 @@ export class CityEngine {
       this.scene.remove(this.city)
       disposeObject(this.city)
     }
-    this.city = new Group().add(createSea(layout), createPlateaux(layout))
+    this.city = new Group().add(createSea(layout), createPlateaux(layout), createBuildings(layout))
     this.scene.add(this.city)
 
     const { bounds } = layout
