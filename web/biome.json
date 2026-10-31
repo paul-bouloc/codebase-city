@@ -7,7 +7,7 @@
     "root": ".."
   },
   "files": {
-    "includes": ["**", "!!**/dist", "!pnpm-lock.yaml"]
+    "includes": ["**", "!!**/dist", "!pnpm-lock.yaml", "!src/data/generated"]
   },
   "formatter": {
     "enabled": true,
