@@ -1,0 +1,27 @@
+.bar {
+  display: flex;
+  gap: var(--space-0-5);
+  height: 10px;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  background: var(--color-meter-empty);
+}
+
+/* A sliver stays visible however small its share. */
+.segment {
+  flex: var(--share) 0 0;
+  min-width: 3px;
+  background: var(--lang-other);
+}
+
+.segment[data-language="typescript"] {
+  background: var(--lang-typescript);
+}
+
+.segment[data-language="javascript"] {
+  background: var(--lang-javascript);
+}
+
+.segment[data-language="css"] {
+  background: var(--lang-css);
+}
