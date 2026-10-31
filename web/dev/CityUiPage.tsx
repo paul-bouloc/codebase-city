@@ -24,6 +24,8 @@ import {
 
 const TEXT = {
   tools: 'States',
+  samples:
+    'Samples: the engine does not pick buildings or project roofs yet, so the card is always the same one and the markers stay put on the screen.',
   signedIn: 'Signed in',
   aboutOpen: 'About open',
   shareOpen: 'Share open',
@@ -109,7 +111,14 @@ export function CityUiPage() {
     <>
       <section
         className={styles.stage}
-        onPointerMove={(event) => setPointer({ x: event.clientX, y: event.clientY })}
+        // Over the city only, as the screen will do: never over the interface.
+        onPointerMove={(event) =>
+          setPointer(
+            event.target instanceof HTMLCanvasElement
+              ? { x: event.clientX, y: event.clientY }
+              : null,
+          )
+        }
         onPointerLeave={() => setPointer(null)}
       >
         <CityView layout={layout} />
@@ -170,8 +179,9 @@ export function CityUiPage() {
           </Glass>
         )}
 
-        <Glass className={styles.tools} onPointerMove={(event) => event.stopPropagation()}>
+        <Glass className={styles.tools}>
           <h2 className="eyebrow-mono">{TEXT.tools}</h2>
+          <p className={styles.note}>{TEXT.samples}</p>
           <Toggle label={TEXT.signedIn} checked={signedIn} onChange={setSignedIn} />
           <Toggle label={TEXT.aboutOpen} checked={aboutOpen} onChange={setAboutOpen} />
           <Toggle label={TEXT.shareOpen} checked={shareOpen} onChange={setShareOpen} />

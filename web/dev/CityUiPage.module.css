@@ -57,6 +57,12 @@
   font: var(--body-s);
 }
 
+.note {
+  margin: 0 0 var(--space-1);
+  color: var(--color-text-secondary);
+  font: var(--caption);
+}
+
 .toggle {
   display: flex;
   align-items: center;
