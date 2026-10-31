@@ -36,19 +36,43 @@ export function seaField(layout: CityLayout, maxTexels = 512): SeaField {
   const wobble = noise2d('sea')
   const plateaux = layout.islands.map((island) => island.plateau)
 
-  const data = new Uint8Array(columns * rows)
+  // Each plateau only reaches the texels within `margin` of it: further out, the field saturates.
+  const distances = new Float32Array(columns * rows).fill(Number.POSITIVE_INFINITY)
+  for (const plateau of plateaux) {
+    const firstColumn = Math.max(0, Math.floor((plateau.x - margin - originX) / texel))
+    const lastColumn = Math.min(
+      columns - 1,
+      Math.ceil((plateau.x + plateau.width + margin - originX) / texel),
+    )
+    const firstRow = Math.max(0, Math.floor((plateau.y - margin - originY) / texel))
+    const lastRow = Math.min(
+      rows - 1,
+      Math.ceil((plateau.y + plateau.height + margin - originY) / texel),
+    )
+    for (let row = firstRow; row <= lastRow; row++) {
+      const y = originY + (row + 0.5) * texel
+      for (let column = firstColumn; column <= lastColumn; column++) {
+        const x = originX + (column + 0.5) * texel
+        const index = row * columns + column
+        distances[index] = Math.min(distances[index] ?? 0, distanceToRect(x, y, plateau))
+      }
+    }
+  }
+
+  const data = new Uint8Array(columns * rows).fill(255)
   for (let row = 0; row < rows; row++) {
     const y = originY + (row + 0.5) * texel
     for (let column = 0; column < columns; column++) {
-      const x = originX + (column + 0.5) * texel
-      let distance = Number.POSITIVE_INFINITY
-      for (const plateau of plateaux) {
-        distance = Math.min(distance, distanceToRect(x, y, plateau))
+      const index = row * columns + column
+      const distance = distances[index] ?? Number.POSITIVE_INFINITY
+      if (distance >= margin) {
+        continue
       }
+      const x = originX + (column + 0.5) * texel
       // No wobble on the shore itself: the first band always starts at the plateau.
       const wobbled = distance + BAND_NOISE * wobble(x, y) * Math.min(distance / BAND_NOISE, 1)
       const clamped = Math.min(Math.max(wobbled, 0), SEA_FIELD_RANGE)
-      data[row * columns + column] = Math.round((clamped / SEA_FIELD_RANGE) * 255)
+      data[index] = Math.round((clamped / SEA_FIELD_RANGE) * 255)
     }
   }
   return { data, columns, rows, originX, originY, texel }

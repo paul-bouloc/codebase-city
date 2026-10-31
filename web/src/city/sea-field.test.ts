@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { CityLayout } from './layout'
+import { type CityLayout, distanceToRect } from './layout'
 import { SEA_FIELD_RANGE, type SeaField, seaField } from './sea-field'
 import { syntheticCity } from './synthetic'
 
@@ -51,6 +51,26 @@ describe('seaField', () => {
     expect(big.columns).toBeLessThanOrEqual(256)
     expect(big.rows).toBeLessThanOrEqual(256)
     expect(big.texel).toBeGreaterThan(1)
+  })
+
+  it('matches the nearest plateau computed texel by texel', () => {
+    const city = syntheticCity({ islands: 9, files: 900 })
+    const sparse = seaField(city, 128)
+    for (let row = 0; row < sparse.rows; row += 3) {
+      for (let column = 0; column < sparse.columns; column += 3) {
+        const x = sparse.originX + (column + 0.5) * sparse.texel
+        const y = sparse.originY + (row + 0.5) * sparse.texel
+        const nearest = Math.min(
+          ...city.islands.map((island) => distanceToRect(x, y, island.plateau)),
+        )
+        const stored = ((sparse.data[row * sparse.columns + column] ?? 0) / 255) * SEA_FIELD_RANGE
+        if (nearest > SEA_FIELD_RANGE + 3) {
+          expect(stored).toBe(SEA_FIELD_RANGE)
+        } else {
+          expect(Math.abs(stored - nearest)).toBeLessThanOrEqual(3 + 0.2)
+        }
+      }
+    }
   })
 
   it('is the same for the same city', () => {
