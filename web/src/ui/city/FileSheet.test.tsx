@@ -74,6 +74,14 @@ describe('FileSheet', () => {
     expect(html).toContain('PowerShell isn’t analyzed yet.')
     expect(html).toContain('Not analyzed')
     expect(html).toContain('8.4 KB')
+    const tiny = render({
+      ...FILE,
+      analyzed: false,
+      languageName: 'Batch',
+      language: 'other',
+      sizeBytes: 40,
+    })
+    expect(tiny).toContain('40 B')
     expect(html).not.toContain('<footer')
     expect(html).not.toContain('Imported by')
   })

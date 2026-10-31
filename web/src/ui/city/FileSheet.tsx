@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Badge } from '../Badge'
 import { Button } from '../Button'
+import { fileSize } from '../count-format'
 import { Icon } from '../Icon'
 import { LinkButton } from '../LinkButton'
 import { type TabItem, Tabs } from '../Tabs'
@@ -18,7 +19,6 @@ import type { FileSheetData } from './sheet-data'
 import { splitPath } from './shorten-folder'
 
 const numbers = new Intl.NumberFormat('en-US')
-const sizes = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 })
 
 const TEXT = {
   github: 'Open on GitHub',
@@ -268,7 +268,7 @@ function fileTabs(file: FileSheetData): (TabItem & { id: FileTab })[] {
 function fileMetrics(file: FileSheetData) {
   const lines = { label: TEXT.lines, value: numbers.format(file.lines) }
   if (!file.analyzed) {
-    const size = file.sizeBytes === undefined ? '—' : `${sizes.format(file.sizeBytes / 1000)} KB`
+    const size = file.sizeBytes === undefined ? '—' : fileSize(file.sizeBytes)
     return [lines, { label: TEXT.size, value: size }]
   }
   const { complexityTop: top, complexityRank: rank, repoFiles: of } = file
