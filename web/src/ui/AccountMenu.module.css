@@ -105,8 +105,9 @@
   cursor: pointer;
 }
 
+/* Opened with the mouse, the first item gets the focus too: only keyboard focus is shown. */
 .item:hover,
-.item:focus {
+.item:focus-visible {
   background: var(--state-hover);
 }
 
