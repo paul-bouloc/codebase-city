@@ -82,6 +82,8 @@ export class CityEngine {
   private readonly timer = new Timer()
   private readonly continuous: boolean
   private city: Group | null = null
+  // The radius the camera frames the city with, once a city is loaded.
+  private framingRadius: number | null = null
   private needsRender = true
   private framesSince = 0
   private statsSince = 0
@@ -136,7 +138,8 @@ export class CityEngine {
     this.camera.far = seaSize(layout)
     this.camera.updateProjectionMatrix()
     const framing = new Sphere(centre, Math.max(radius, MIN_DISTANCE))
-    this.controls.maxDistance = MAX_FRAMING * this.controls.getDistanceToFitSphere(framing.radius)
+    this.framingRadius = framing.radius
+    this.fitMaxDistance()
     // The target stays on the sea plane: zooming to the cursor would otherwise drag it, and the
     // camera with it, under the water.
     const box = new Box3(
@@ -157,7 +160,16 @@ export class CityEngine {
     this.renderer.setSize(width, height)
     this.camera.aspect = width / height
     this.camera.updateProjectionMatrix()
+    // A portrait window needs more room to see the whole city than the one it loaded in.
+    this.fitMaxDistance()
     this.needsRender = true
+  }
+
+  private fitMaxDistance(): void {
+    if (this.framingRadius !== null) {
+      this.controls.maxDistance =
+        MAX_FRAMING * this.controls.getDistanceToFitSphere(this.framingRadius)
+    }
   }
 
   getStats(): FrameStats {
