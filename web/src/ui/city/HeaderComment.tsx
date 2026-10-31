@@ -8,7 +8,7 @@ const TEXT = {
 }
 
 // Lines shown while folded.
-export const FOLDED_LINES = 12
+const FOLDED_LINES = 12
 
 interface HeaderCommentProps {
   // The file's first comment, verbatim: never reformatted, never interpreted.

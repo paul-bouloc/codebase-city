@@ -2,20 +2,11 @@ import { useId } from 'react'
 import type { FileRole } from '../Badge'
 import { Icon } from '../Icon'
 import styles from './RoleBadge.module.css'
+import { ROLE_NAMES } from './role-names'
 
 const TEXT = {
   likely: '· likely',
   why: 'Measured from imports. “Likely” because roles are inferred, not declared.',
-}
-
-export const ROLE_NAMES: Record<FileRole, string> = {
-  'entry-point': 'Entry point',
-  foundation: 'Foundation',
-  conductor: 'Conductor',
-  facade: 'Facade',
-  test: 'Test',
-  config: 'Config',
-  generated: 'Generated',
 }
 
 interface RoleBadgeProps {
