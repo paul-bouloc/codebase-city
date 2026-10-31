@@ -93,6 +93,9 @@ export class CityEngine {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     this.renderer.shadowMap.enabled = true
     this.renderer.shadowMap.type = PCFShadowMap
+    // The sun is fixed and the city does not move: the shadow map is drawn once per city
+    // (load), not on every frame the camera moves.
+    this.renderer.shadowMap.autoUpdate = false
     container.append(this.renderer.domElement)
 
     this.scene.background = new Color(OPEN_SEA)
@@ -143,6 +146,7 @@ export class CityEngine {
     this.controls.setBoundary(box)
     void this.controls.rotateTo(START_AZIMUTH, START_POLAR_ANGLE, false)
     void this.controls.fitToSphere(framing, false)
+    this.renderer.shadowMap.needsUpdate = true
     this.needsRender = true
   }
 
