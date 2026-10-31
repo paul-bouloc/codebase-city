@@ -69,7 +69,7 @@ export function Button({
       className={classes}
       aria-label={iconOnly ? label : undefined}
       aria-busy={loading || undefined}
-      aria-disabled={blocked || undefined}
+      aria-disabled={inert || undefined}
       onClick={handleClick}
       {...rest}
     >

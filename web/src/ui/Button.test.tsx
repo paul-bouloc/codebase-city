@@ -23,6 +23,7 @@ describe('Button', () => {
       </Button>,
     )
     expect(html).toContain('aria-busy="true"')
+    expect(html).toContain('aria-disabled="true"')
     expect(html).toContain('Build the city')
     expect(html).toContain('Starting…')
     expect(html).not.toContain('disabled=""')
