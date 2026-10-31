@@ -16,6 +16,7 @@ import {
   Clock,
   Code,
   Cookie,
+  Copy,
   ExternalLink,
   File,
   FileCog,
@@ -79,6 +80,7 @@ export const LUCIDE_ICONS = {
   // Actions
   share: Share,
   link: Link,
+  copy: Copy,
   settings: SlidersHorizontal,
   admin: ShieldCheck,
   'sign-out': LogOut,
