@@ -1,8 +1,6 @@
 import type { ReactNode } from 'react'
 import styles from './QuotaIndicator.module.css'
-
-const SEGMENTS = 10
-const LOW_FROM = 2
+import { filledSegments, QUOTA_SEGMENTS, quotaTone } from './quota'
 
 const TEXT = {
   cardTitle: (left: number, limit: number) => `${left} of ${limit} analyses left today`,
@@ -10,23 +8,6 @@ const TEXT = {
   none: 'No analyses left today',
   meter: 'Analyses left today',
   states: { available: 'Available', low: 'Low', exhausted: 'Exhausted' },
-}
-
-type QuotaTone = 'available' | 'low' | 'exhausted'
-
-export function quotaTone(left: number): QuotaTone {
-  if (left <= 0) {
-    return 'exhausted'
-  }
-  return left <= LOW_FROM ? 'low' : 'available'
-}
-
-// The gauge always has ten segments, whatever the daily limit; any analysis left shows at least one.
-export function filledSegments(left: number, limit: number): number {
-  if (left <= 0 || limit <= 0) {
-    return 0
-  }
-  return Math.min(SEGMENTS, Math.max(1, Math.round((left / limit) * SEGMENTS)))
 }
 
 interface QuotaIndicatorProps {
@@ -41,7 +22,7 @@ interface QuotaIndicatorProps {
 export function QuotaIndicator({ left, limit, variant = 'card', note }: QuotaIndicatorProps) {
   const tone = quotaTone(left)
   const filled = filledSegments(left, limit)
-  const segments = Array.from({ length: SEGMENTS }, (_, index) => (
+  const segments = Array.from({ length: QUOTA_SEGMENTS }, (_, index) => (
     // biome-ignore lint/suspicious/noArrayIndexKey: the segments never move
     <span key={index} className={index < filled ? styles.filled : styles.empty} />
   ))
