@@ -1,0 +1,30 @@
+.logo {
+  display: inline-flex;
+  align-items: center;
+  /* Gap between mark and wordmark: a quarter of the mark height. */
+  gap: calc(var(--logo-mark) / 4);
+  color: var(--color-text-primary);
+}
+
+.mark {
+  display: block;
+  flex: none;
+}
+
+.wordmark {
+  font-family: var(--font-family-sans);
+  font-size: var(--logo-font);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.display .wordmark {
+  letter-spacing: -0.03em;
+}
+
+.compact .wordmark {
+  display: flex;
+  flex-direction: column;
+}
