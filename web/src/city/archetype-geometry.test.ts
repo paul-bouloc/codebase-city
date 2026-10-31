@@ -92,6 +92,55 @@ describe('archetypeGeometry', () => {
     expect(roof?.[0].normal[1]).toBe(1)
   })
 
+  it.each(ARCHETYPES)('starts every line of %s on a vertex and ends it on another', (archetype) => {
+    for (const triangle of archetypeGeometry(archetype)) {
+      triangle.forEach((vertex, k) => {
+        expect(vertex.edge[k]).toBe(1)
+      })
+      for (const j of [0, 1, 2]) {
+        const others = triangle.filter((_, k) => k !== j).map((vertex) => vertex.edge[j])
+        // Either a line along the side (0 at both ends) or no line at all (1 everywhere).
+        expect(others[0]).toBe(others[1])
+      }
+      expect(triangle.some((vertex) => vertex.edge.includes(0))).toBe(true)
+    }
+  })
+
+  it.each(ARCHETYPES)('draws no line between coplanar triangles of %s', (archetype) => {
+    const building = largest(archetype)
+    const key = (point: Vec3) => point.map((value) => value.toFixed(5)).join(',')
+    const sides = new Map<string, { normal: Vec3; line: boolean }[]>()
+    for (const triangle of archetypeGeometry(archetype)) {
+      const points = triangle.map((vertex) => key(stretched(vertex, building)))
+      for (const j of [0, 1, 2]) {
+        const side = points
+          .filter((_, k) => k !== j)
+          .sort()
+          .join('|')
+        const entry = { normal: triangle[0].normal, line: triangle[(j + 1) % 3]?.edge[j] === 0 }
+        sides.set(side, [...(sides.get(side) ?? []), entry])
+      }
+    }
+    for (const shared of sides.values()) {
+      const [a, b] = shared
+      if (a && b && key(a.normal) === key(b.normal)) {
+        expect(a.line || b.line).toBe(false)
+      }
+    }
+  })
+
+  it('outlines a flat roof with its four sides only', () => {
+    const building: Building = { archetype: 'smallBlock', side: 1, height: 2, split: 0 }
+    const roof = archetypeGeometry('smallBlock').filter((triangle) =>
+      triangle.every((vertex) => stretched(vertex, building)[1] === 2),
+    )
+    const lines = roof.flatMap((triangle) =>
+      [0, 1, 2].filter((j) => triangle[(j + 1) % 3]?.edge[j] === 0),
+    )
+    expect(roof).toHaveLength(2)
+    expect(lines).toHaveLength(4)
+  })
+
   it('keeps the crown and antenna of a tower at their size in u', () => {
     const tower = (side: number, height: number) =>
       top('towerOnPodium', { archetype: 'towerOnPodium', side, height, split: 0 }) - height

@@ -357,9 +357,27 @@ export interface Vertex {
   normal: Vec3
   /** rgb and amount: the vertex colour is `mix(language, rgb, amount)`. */
   paint: [number, number, number, number]
+  /**
+   * Barycentric: component j falls to 0 on the side facing vertex j. A side that cuts across
+   * its face (a diagonal of the fan) keeps 1 at every vertex, so it never draws a line.
+   */
+  edge: Vec3
 }
 
 export type Triangle = [Vertex, Vertex, Vertex]
+
+type Corner = Omit<Vertex, 'edge'>
+
+/** `outline[j]`: the side facing vertex j lies on the face's outline. */
+function withEdges(
+  corners: [Corner, Corner, Corner],
+  outline: [boolean, boolean, boolean],
+): Triangle {
+  return corners.map((corner, k) => ({
+    ...corner,
+    edge: outline.map((onOutline, j) => (j === k || !onOutline ? 1 : 0)) as Vec3,
+  })) as Triangle
+}
 
 const TYPICAL: Building = { archetype: 'smallBlock', side: 1.4, height: 3, split: 2 }
 
@@ -384,7 +402,7 @@ function windingNormal(points: Vec3[]): Vec3 {
   return [normal[0] / size, normal[1] / size, normal[2] / size]
 }
 
-function vertex([x, y, z]: Point, normal: Vec3, paint: Paint): Vertex {
+function vertex([x, y, z]: Point, normal: Vec3, paint: Paint): Corner {
   if (x[2] !== 0 || x[3] !== 0 || y[2] !== 0 || y[3] !== 0) {
     throw new Error('A footprint cannot follow the height')
   }
@@ -423,11 +441,14 @@ export function archetypeGeometry(archetype: Archetype): Triangle[] {
       rest.forEach((point, i) => {
         const next = rest[i + 1]
         if (next) {
-          triangles.push([
-            apex,
-            vertex(point, normal, face.paint),
-            vertex(next, normal, face.paint),
-          ])
+          // A fan from the apex: the far side is always outline, the sides from the apex only
+          // for the first and last triangles.
+          triangles.push(
+            withEdges(
+              [apex, vertex(point, normal, face.paint), vertex(next, normal, face.paint)],
+              [true, i + 2 === rest.length, i === 0],
+            ),
+          )
         }
       })
     }
