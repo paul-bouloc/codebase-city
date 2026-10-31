@@ -23,7 +23,8 @@
 .label {
   display: inline-flex;
   align-items: center;
-  padding: 5px var(--space-2-5);
+  /* With the 1.5 px border, about the 5/10 of the board. */
+  padding: var(--space-1) var(--space-2);
   border: var(--border-width-strong) solid transparent;
   border-radius: var(--radius-md);
   font: var(--code-s);
