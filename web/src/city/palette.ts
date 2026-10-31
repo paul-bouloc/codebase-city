@@ -1,3 +1,5 @@
+import { mixSrgb } from './units'
+
 // Colours of the places between the buildings, from the art direction. The legend draws its
 // samples with them, so a sample is exactly what the city shows.
 
@@ -11,12 +13,10 @@ export const CANAL_WATER = '#79BFC0'
 export const TEST_PARK = '#B3D58B'
 export const TEST_PARK_EDGE = '#93BC6E'
 
-// Mixes two `#RRGGBB` colours in sRGB, as the art direction writes `mix(a, b, amount)`.
+// `mixSrgb`, written back as `#RRGGBB` for the interface (the legend's samples).
 export function mixHex(a: string, b: string, amount: number): string {
-  const channel = (hex: string, index: number) =>
-    Number.parseInt(hex.slice(1 + 2 * index, 3 + 2 * index), 16)
-  const mixed = [0, 1, 2].map((index) =>
-    Math.round(channel(a, index) * (1 - amount) + channel(b, index) * amount)
+  const mixed = mixSrgb(a, b, amount).map((channel) =>
+    Math.round(channel * 255)
       .toString(16)
       .padStart(2, '0'),
   )

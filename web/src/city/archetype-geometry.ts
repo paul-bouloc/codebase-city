@@ -1,5 +1,5 @@
 import type { Archetype, Building } from './archetypes'
-import { srgb, type Vec3 } from './units'
+import { mixSrgb, srgb, type Vec3 } from './units'
 
 // Every archetype is one geometry shared by all its instances. A vertex coordinate is a length
 // `fixed + side × s + height × h + split × k`, where s, h and k come from the instance: what
@@ -40,16 +40,6 @@ const WALL: Paint = { colour: WHITE, amount: 0.58 }
 const ROOF: Paint = { colour: WHITE, amount: 0 }
 const TRIM: Paint = { colour: WHITE, amount: 0.35 }
 const fixedPaint = (colour: Vec3): Paint => ({ colour, amount: 1 })
-
-function mixSrgb(a: string, b: string, amount: number): Vec3 {
-  const from = srgb(a)
-  const to = srgb(b)
-  return [
-    from[0] + (to[0] - from[0]) * amount,
-    from[1] + (to[1] - from[1]) * amount,
-    from[2] + (to[2] - from[2]) * amount,
-  ]
-}
 
 const INK = fixedPaint(srgb('#23313A'))
 const WOOD = '#B98B5E'

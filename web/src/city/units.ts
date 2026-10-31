@@ -29,3 +29,14 @@ export function srgb(hex: string): Vec3 {
   const value = Number.parseInt(match[1], 16)
   return [(value >> 16) / 255, ((value >> 8) & 0xff) / 255, (value & 0xff) / 255]
 }
+
+// Mixes two `#rrggbb` colours in sRGB, as the art direction writes `mix(a, b, amount)`.
+export function mixSrgb(a: string, b: string, amount: number): Vec3 {
+  const from = srgb(a)
+  const to = srgb(b)
+  return [
+    from[0] + (to[0] - from[0]) * amount,
+    from[1] + (to[1] - from[1]) * amount,
+    from[2] + (to[2] - from[2]) * amount,
+  ]
+}
