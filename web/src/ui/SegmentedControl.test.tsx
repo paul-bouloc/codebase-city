@@ -35,6 +35,19 @@ describe('SegmentedControl', () => {
     expect(html).toMatch(/checked="" value="realistic"/)
   })
 
+  it('checks nothing for an unknown value', () => {
+    const html = renderToStaticMarkup(
+      <SegmentedControl
+        label="Building style"
+        options={MODES}
+        // A value outside the options, as a stale prop could pass.
+        value={'satellite' as 'simplified'}
+        onChange={() => {}}
+      />,
+    )
+    expect(html).not.toContain('checked=""')
+  })
+
   it('disables every option while the city is building', () => {
     const html = render(true)
     expect(html).toContain('aria-disabled="true"')

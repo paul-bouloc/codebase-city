@@ -27,15 +27,13 @@ export function SegmentedControl<T extends string>({
   disabled = false,
 }: SegmentedControlProps<T>) {
   const name = useId()
-  const checkedIndex = Math.max(
-    0,
-    options.findIndex((option) => option.value === value),
-  )
+  // An unknown value checks nothing, so any option can still be picked.
+  const checkedIndex = options.findIndex((option) => option.value === value)
 
   // The thumb slides under the checked option; options share the width equally.
   const thumbPosition = {
     '--segment-count': options.length,
-    '--segment-index': checkedIndex,
+    '--segment-index': Math.max(0, checkedIndex),
   } as CSSProperties
 
   return (
@@ -46,7 +44,7 @@ export function SegmentedControl<T extends string>({
       className={styles.rail}
       style={thumbPosition}
     >
-      <span className={styles.thumb} aria-hidden="true" />
+      {checkedIndex !== -1 && <span className={styles.thumb} aria-hidden="true" />}
       {options.map((option, index) => (
         <label key={option.value} className={styles.option}>
           <input
