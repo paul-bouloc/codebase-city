@@ -8,6 +8,26 @@
   border: var(--border-width-default) solid var(--alert-border);
   border-radius: var(--radius-md);
   background: var(--alert-bg);
+  animation: alert-in var(--duration-base) var(--easing-enter);
+}
+
+@keyframes alert-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--space-1)));
+  }
+}
+
+@keyframes alert-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .alert {
+    animation-name: alert-fade-in;
+  }
 }
 
 .info {
