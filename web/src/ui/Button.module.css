@@ -25,6 +25,8 @@
   color: var(--button-fg);
   box-shadow: var(--button-shadow);
   white-space: nowrap;
+  /* Also drawn on links (LinkButton). */
+  text-decoration: none;
   cursor: pointer;
   transition:
     background-color var(--duration-fast) var(--easing-standard),
