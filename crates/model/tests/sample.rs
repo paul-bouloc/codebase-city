@@ -1,0 +1,163 @@
+//! A small, made-up analysis result, written to
+//! `web/src/data/generated/sample-result.json` on every test run.
+//!
+//! The web app decodes it in its own tests and can render it before the
+//! analyzer exists. CI fails if the committed file is out of date.
+
+#![allow(clippy::unwrap_used)]
+
+use std::path::PathBuf;
+
+use model::{
+    AnalysisResult, Confidence, Dirs, EdgeKind, Edges, FORMAT_VERSION, Files, Ignored, Repo, Stats,
+};
+
+const DIRS: &[(Option<u32>, &str)] = &[
+    (None, ""),
+    (Some(0), "src"),
+    (Some(1), "core"),
+    (Some(1), "ui"),
+    (Some(1), "api"),
+    (Some(1), "generated"),
+    (Some(0), "tests"),
+    (Some(0), "scripts"),
+];
+
+const LANGUAGES: &[&str] = &["TypeScript", "CSS", "JSON", "Shell"];
+
+/// Folder, name, language, lines, complexity, generated.
+type FileRow = (u32, &'static str, u32, u32, Option<u32>, bool);
+
+const FILES: &[FileRow] = &[
+    (0, "package.json", 2, 30, None, false),
+    (0, "tsconfig.json", 2, 20, None, false),
+    (1, "main.ts", 0, 60, Some(8), false),
+    (1, "app.ts", 0, 220, Some(24), false),
+    (2, "index.ts", 0, 12, Some(1), false),
+    (2, "store.ts", 0, 340, Some(41), false),
+    (2, "events.ts", 0, 150, Some(18), false),
+    (2, "types.ts", 0, 90, Some(1), false),
+    (2, "utils.ts", 0, 120, Some(15), false),
+    (3, "view.ts", 0, 280, Some(33), false),
+    (3, "button.ts", 0, 85, Some(9), false),
+    (3, "theme.css", 1, 140, Some(4), false),
+    (3, "panel.ts", 0, 160, Some(19), false),
+    (3, "legacy.ts", 0, 410, Some(52), false),
+    (4, "client.ts", 0, 210, Some(27), false),
+    (4, "routes.ts", 0, 75, Some(6), false),
+    (5, "schema.ts", 0, 1200, Some(3), true),
+    (6, "store.test.ts", 0, 130, Some(7), false),
+    (6, "view.test.ts", 0, 95, Some(5), false),
+    (7, "release.sh", 3, 45, None, false),
+];
+
+/// Importing file, imported file, kind, confidence. `store.ts` and
+/// `events.ts` form a cycle, so do `view.ts` and `panel.ts`.
+const EDGES: &[(u32, u32, EdgeKind, Confidence)] = &[
+    (2, 3, EdgeKind::Import, Confidence::Exact),
+    (3, 4, EdgeKind::Import, Confidence::Exact),
+    (3, 9, EdgeKind::Import, Confidence::Exact),
+    (3, 14, EdgeKind::Lazy, Confidence::Exact),
+    (4, 5, EdgeKind::Reexport, Confidence::Exact),
+    (4, 6, EdgeKind::Reexport, Confidence::Exact),
+    (4, 7, EdgeKind::Reexport, Confidence::Exact),
+    (5, 6, EdgeKind::Import, Confidence::Exact),
+    (5, 7, EdgeKind::Type, Confidence::Exact),
+    (5, 8, EdgeKind::Import, Confidence::Exact),
+    (6, 5, EdgeKind::Import, Confidence::Exact),
+    (6, 7, EdgeKind::Type, Confidence::Exact),
+    (9, 4, EdgeKind::Import, Confidence::Exact),
+    (9, 10, EdgeKind::Import, Confidence::Exact),
+    (9, 12, EdgeKind::Import, Confidence::Exact),
+    (9, 11, EdgeKind::Import, Confidence::Exact),
+    (12, 9, EdgeKind::Import, Confidence::Exact),
+    (12, 8, EdgeKind::Import, Confidence::Exact),
+    (10, 8, EdgeKind::Import, Confidence::Exact),
+    (13, 9, EdgeKind::Dynamic, Confidence::Likely),
+    (14, 15, EdgeKind::Import, Confidence::Exact),
+    (14, 16, EdgeKind::Import, Confidence::Exact),
+    (14, 7, EdgeKind::Type, Confidence::Exact),
+    (15, 8, EdgeKind::Import, Confidence::Likely),
+    (17, 5, EdgeKind::Import, Confidence::Exact),
+    (18, 9, EdgeKind::Import, Confidence::Exact),
+];
+
+/// Imports that point outside the repository or could not be resolved.
+const UNRESOLVED_IMPORTS: u32 = 5;
+
+fn strings(values: impl IntoIterator<Item = &'static str>) -> Vec<String> {
+    values.into_iter().map(str::to_owned).collect()
+}
+
+fn sample() -> AnalysisResult {
+    let imports_resolved = u32::try_from(EDGES.len()).unwrap();
+    AnalysisResult {
+        format_version: FORMAT_VERSION,
+        analyzer_version: "0.1.0".to_owned(),
+        repo: Repo {
+            owner: "acme".to_owned(),
+            name: "harbor".to_owned(),
+        },
+        sha: "3f2c9a1e8b7d6c5f4a3b2c1d0e9f8a7b6c5d4e3f".to_owned(),
+        dirs: Dirs {
+            parent: DIRS.iter().map(|dir| dir.0).collect(),
+            name: strings(DIRS.iter().map(|dir| dir.1)),
+        },
+        languages: strings(LANGUAGES.iter().copied()),
+        files: Files {
+            dir: FILES.iter().map(|file| file.0).collect(),
+            name: strings(FILES.iter().map(|file| file.1)),
+            language: FILES.iter().map(|file| file.2).collect(),
+            lines: FILES.iter().map(|file| file.3).collect(),
+            complexity: FILES.iter().map(|file| file.4).collect(),
+            generated: FILES.iter().map(|file| file.5).collect(),
+        },
+        edges: Edges {
+            from: EDGES.iter().map(|edge| edge.0).collect(),
+            to: EDGES.iter().map(|edge| edge.1).collect(),
+            kind: EDGES.iter().map(|edge| edge.2).collect(),
+            confidence: EDGES.iter().map(|edge| edge.3).collect(),
+        },
+        stats: Stats {
+            ignored: Ignored {
+                vendored: 3,
+                minified: 1,
+                binary: 2,
+            },
+            imports_total: imports_resolved + UNRESOLVED_IMPORTS,
+            imports_resolved,
+        },
+    }
+}
+
+#[test]
+fn the_sample_is_valid() {
+    assert_eq!(sample().validate(), Ok(()));
+}
+
+#[test]
+fn a_result_survives_a_json_round_trip() {
+    let json = serde_json::to_string(&sample()).unwrap();
+    let decoded: AnalysisResult = serde_json::from_str(&json).unwrap();
+    assert_eq!(decoded, sample());
+}
+
+#[test]
+fn json_uses_the_names_of_the_generated_types() {
+    let json = serde_json::to_value(sample()).unwrap();
+    assert_eq!(json["formatVersion"], FORMAT_VERSION);
+    assert_eq!(json["stats"]["importsResolved"], 26);
+    assert_eq!(json["edges"]["kind"][3], "lazy");
+    assert_eq!(json["edges"]["confidence"][19], "likely");
+    assert!(json["files"]["complexity"][0].is_null());
+}
+
+#[test]
+fn export_sample() {
+    let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../web/src/data/generated");
+    // ts-rs may not have created the folder yet: tests run in parallel
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut json = serde_json::to_string_pretty(&sample()).unwrap();
+    json.push('\n');
+    std::fs::write(dir.join("sample-result.json"), json).unwrap();
+}
