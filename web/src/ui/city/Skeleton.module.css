@@ -1,0 +1,30 @@
+.skeleton {
+  display: block;
+  flex: none;
+  border-radius: var(--radius-xs);
+  background:
+    linear-gradient(90deg, transparent, var(--color-skeleton-highlight), transparent) 0 0 / 200%
+    100% no-repeat,
+    var(--color-skeleton);
+  animation: shimmer 1.4s linear infinite;
+}
+
+@keyframes shimmer {
+  from {
+    background-position:
+      150% 0,
+      0 0;
+  }
+
+  to {
+    background-position:
+      -50% 0,
+      0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
