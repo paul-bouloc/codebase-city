@@ -1,14 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
+import { exactCount } from '../count-format'
 import { Icon } from '../Icon'
 import { FOLDED_ROWS } from './ranked-files'
 import styles from './SymbolList.module.css'
 import type { FileSymbol } from './sheet-data'
 
-const numbers = new Intl.NumberFormat('en-US')
-
 const TEXT = {
-  line: (line: number) => `L${numbers.format(line)}`,
-  showAll: (count: number) => `Show all (${numbers.format(count)})`,
+  line: (line: number) => `L${exactCount(line)}`,
+  showAll: (count: number) => `Show all (${exactCount(count)})`,
 }
 
 const GROUPS = [

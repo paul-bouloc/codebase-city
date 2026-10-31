@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Badge } from '../Badge'
 import { Button } from '../Button'
-import { fileSize } from '../count-format'
+import { exactCount, fileSize } from '../count-format'
 import { Icon } from '../Icon'
 import { LinkButton } from '../LinkButton'
 import { LiveRegion } from '../LiveRegion'
@@ -21,8 +21,6 @@ import type { FileSheetData } from './sheet-data'
 import { splitPath } from './shorten-folder'
 import { UnanalyzedNote } from './UnanalyzedNote'
 
-const numbers = new Intl.NumberFormat('en-US')
-
 const TEXT = {
   github: 'Open on GitHub',
   copyPath: 'Copy path',
@@ -31,16 +29,16 @@ const TEXT = {
   complexity: 'Complexity',
   size: 'Size',
   rank: (top: number, rank: number, of: number) =>
-    `top ${top}% · rank ${numbers.format(rank)} of ${numbers.format(of)}`,
+    `top ${top}% · rank ${exactCount(rank)} of ${exactCount(of)}`,
   importedBy: 'Imported by',
   filesDirectly: (count: number) => ` ${count === 1 ? 'file' : 'files'} directly · `,
   inTotal: ' in total',
   showing: (shown: number, of: number) =>
-    `Showing ${numbers.format(shown)} of ${numbers.format(of)} importers; the rest are grouped by island`,
+    `Showing ${exactCount(shown)} of ${exactCount(of)} importers; the rest are grouped by island`,
   imports: 'Imports',
   filesSuffix: (count: number) => ` ${count === 1 ? 'file' : 'files'}`,
   layer: (index: number, of: number) => `Layer ${index} of ${of} · `,
-  cycle: (files: number) => `Part of a cycle of ${numbers.format(files)} files · `,
+  cycle: (files: number) => `Part of a cycle of ${exactCount(files)} files · `,
   showCycle: 'show it',
   tabs: 'File details',
   tabImports: 'Imports',
@@ -274,7 +272,7 @@ function fileTabs(file: FileSheetData): (TabItem & { id: FileTab })[] {
 }
 
 function fileMetrics(file: FileSheetData) {
-  const lines = { label: TEXT.lines, value: numbers.format(file.lines) }
+  const lines = { label: TEXT.lines, value: exactCount(file.lines) }
   if (!file.analyzed) {
     const size = file.sizeBytes === undefined ? '—' : fileSize(file.sizeBytes)
     return [lines, { label: TEXT.size, value: size }]
@@ -284,7 +282,7 @@ function fileMetrics(file: FileSheetData) {
     lines,
     {
       label: TEXT.complexity,
-      value: file.complexity === undefined ? '—' : numbers.format(file.complexity),
+      value: file.complexity === undefined ? '—' : exactCount(file.complexity),
       note:
         top !== undefined && rank !== undefined && of !== undefined
           ? TEXT.rank(top, rank, of)
@@ -319,9 +317,9 @@ function FileFacts({
       <li className={styles.fact}>
         <span className={`${styles.trait} ${styles.incoming}`} />
         <span>
-          {TEXT.importedBy} <strong>{numbers.format(file.importers)}</strong>
+          {TEXT.importedBy} <strong>{exactCount(file.importers)}</strong>
           {TEXT.filesDirectly(file.importers)}
-          <strong>{numbers.format(file.dependents)}</strong>
+          <strong>{exactCount(file.dependents)}</strong>
           {TEXT.inTotal}
           {file.shownImporters !== undefined && (
             <span className={styles.subFact}>
@@ -333,7 +331,7 @@ function FileFacts({
       <li className={styles.fact}>
         <span className={`${styles.trait} ${styles.outgoing}`} />
         <span>
-          {TEXT.imports} <strong>{numbers.format(file.imports)}</strong>
+          {TEXT.imports} <strong>{exactCount(file.imports)}</strong>
           {TEXT.filesSuffix(file.imports)}
         </span>
       </li>

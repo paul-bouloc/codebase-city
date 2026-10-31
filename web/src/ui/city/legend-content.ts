@@ -1,4 +1,5 @@
 import type { Language } from '../Badge'
+import { percent } from '../count-format'
 
 // Language names in the city's own lists. Unanalyzed files are "Other" here; a badge on a single
 // file says "Not analyzed".
@@ -55,7 +56,7 @@ export function legendContent(repo: RepoContents): LegendContent {
   const rank = (language: Language) => (language === 'other' ? 1 : 0)
   const languages = [...present]
     .sort((a, b) => rank(a.language) - rank(b.language) || b.files - a.files)
-    .map(({ language, files }) => ({ language, share: formatShare(files / total) }))
+    .map(({ language, files }) => ({ language, share: percent(files / total) }))
 
   return {
     languages,
@@ -63,10 +64,4 @@ export function legendContent(repo: RepoContents): LegendContent {
     places: LEGEND_PLACES.filter((place) => repo.places.has(place)),
     landmarks: LANDMARKS.filter((landmark) => repo.landmarks.has(landmark)),
   }
-}
-
-// "94%", or "<1%" for a share too small to round to 1.
-export function formatShare(share: number): string {
-  const percent = Math.round(share * 100)
-  return percent === 0 ? '<1%' : `${percent}%`
 }

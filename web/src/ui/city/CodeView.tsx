@@ -1,5 +1,6 @@
 import { type CSSProperties, useEffect, useRef } from 'react'
 import { Button } from '../Button'
+import { exactCount } from '../count-format'
 import { ExternalLink } from '../ExternalLink'
 import { InlineAlert } from '../InlineAlert'
 import { LinkButton } from '../LinkButton'
@@ -9,13 +10,11 @@ import { safeGithubHref } from './github-links'
 import { Skeleton } from './Skeleton'
 import type { CodeState } from './sheet-data'
 
-const numbers = new Intl.NumberFormat('en-US')
-
 const TEXT = {
   label: 'Code',
   partial: (shown: number, total: number) =>
-    `Showing lines 1–${numbers.format(shown)} of ${numbers.format(total)}.`,
-  all: (total: number) => `All ${numbers.format(total)} ${total === 1 ? 'line' : 'lines'}.`,
+    `Showing lines 1–${exactCount(shown)} of ${exactCount(total)}.`,
+  all: (total: number) => `All ${exactCount(total)} ${total === 1 ? 'line' : 'lines'}.`,
   openFull: 'Open the full file on GitHub',
   errorTitle: 'The code couldn’t be loaded from GitHub.',
   errorCause: {
@@ -23,8 +22,8 @@ const TEXT = {
       'GitHub didn’t answer in time. Everything else on this sheet comes from the analysis and is still accurate.',
     gone: 'This file isn’t on GitHub at the analyzed commit anymore. Everything else on this sheet comes from the analysis and is still accurate.',
   },
-  beyond: (line: number) => `Line ${numbers.format(line)} is past the lines shown here.`,
-  openLine: (line: number) => `Open line ${numbers.format(line)} on GitHub`,
+  beyond: (line: number) => `Line ${exactCount(line)} is past the lines shown here.`,
+  openLine: (line: number) => `Open line ${exactCount(line)} on GitHub`,
   retry: 'Try again',
   github: 'Open on GitHub',
 }

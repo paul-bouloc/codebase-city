@@ -1,12 +1,13 @@
 import type { CSSProperties } from 'react'
 import type { Language } from '../Badge'
+import { percent } from '../count-format'
 import styles from './LanguageBar.module.css'
-import { formatShare, LANGUAGE_NAMES } from './legend-content'
+import { LANGUAGE_NAMES } from './legend-content'
 
 const TEXT = {
-  // Read aloud, "<1%" becomes words.
+  // Read aloud, "<1%" and ">99%" become words.
   share: (name: string, share: number) =>
-    `${name} ${share > 0 && share < 0.005 ? 'under 1%' : formatShare(share)}`,
+    `${name} ${percent(share).replace('<', 'under ').replace('>', 'over ')}`,
 }
 
 interface LanguageBarProps {

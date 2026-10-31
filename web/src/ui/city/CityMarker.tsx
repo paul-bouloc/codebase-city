@@ -1,11 +1,10 @@
+import { exactCount } from '../count-format'
 import styles from './CityMarker.module.css'
 
-const numbers = new Intl.NumberFormat('en-US')
-
 const TEXT = {
-  cycle: (files: number) => `Cycle · ${numbers.format(files)} ${files === 1 ? 'file' : 'files'}`,
+  cycle: (files: number) => `Cycle · ${exactCount(files)} ${files === 1 ? 'file' : 'files'}`,
   impact: (name: string, dependents: number) =>
-    `${name} · ${numbers.format(dependents)} ${dependents === 1 ? 'dependent' : 'dependents'}`,
+    `${name} · ${exactCount(dependents)} ${dependents === 1 ? 'dependent' : 'dependents'}`,
   guide: (name: string, note: string) => `${name} · ${note}`,
 }
 

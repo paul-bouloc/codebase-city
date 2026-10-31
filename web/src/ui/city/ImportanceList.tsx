@@ -1,15 +1,14 @@
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
+import { exactCount } from '../count-format'
 import styles from './ImportanceList.module.css'
 import { FOLDED_ROWS, rankedRows } from './ranked-files'
 import type { RankedFile } from './sheet-data'
 import { splitPath } from './shorten-folder'
 
-const numbers = new Intl.NumberFormat('en-US')
-
 const TEXT = {
-  usedBy: (count: number) => `used by ${numbers.format(count)}`,
-  importedBy: (count: number) => `imported by ${numbers.format(count)}`,
-  showAll: (count: number) => `Show all (${numbers.format(count)})`,
+  usedBy: (count: number) => `used by ${exactCount(count)}`,
+  importedBy: (count: number) => `imported by ${exactCount(count)}`,
+  showAll: (count: number) => `Show all (${exactCount(count)})`,
   note: 'Sorted by importance: how many files depend on each one.',
   root: '(root)',
 }

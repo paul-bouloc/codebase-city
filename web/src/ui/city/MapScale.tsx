@@ -1,11 +1,10 @@
+import { exactCount } from '../count-format'
 import styles from './MapScale.module.css'
 
-const numbers = new Intl.NumberFormat('en-US')
-
 const TEXT = {
-  value: (files: number) => `≈ ${numbers.format(files)} ${files === 1 ? 'file' : 'files'}`,
+  value: (files: number) => `≈ ${exactCount(files)} ${files === 1 ? 'file' : 'files'}`,
   label: (files: number) =>
-    `Scale: this bar spans about ${numbers.format(files)} ${files === 1 ? 'file' : 'files'}`,
+    `Scale: this bar spans about ${exactCount(files)} ${files === 1 ? 'file' : 'files'}`,
 }
 
 const CELLS = 4

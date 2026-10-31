@@ -1,4 +1,5 @@
 import { Badge, type FileRole, type Language } from '../Badge'
+import { exactCount } from '../count-format'
 import { LANGUAGE_LABELS } from '../language-labels'
 import styles from './CityTooltip.module.css'
 import { Glass } from './Glass'
@@ -7,15 +8,13 @@ import { shortenFolder, splitPath } from './shorten-folder'
 import type { Point, Rect } from './tooltip-placement'
 import { useTooltipPlacement } from './use-tooltip-placement'
 
-const numbers = new Intl.NumberFormat('en-US')
-
 const TEXT = {
-  lines: (count: number) => `${numbers.format(count)} ${count === 1 ? 'line' : 'lines'}`,
-  complexity: (value: number) => `complexity ${numbers.format(value)}`,
+  lines: (count: number) => `${exactCount(count)} ${count === 1 ? 'line' : 'lines'}`,
+  complexity: (value: number) => `complexity ${exactCount(value)}`,
   top: (percent: number) => `(top ${percent}%)`,
   importedBy: (count: number) =>
-    `Imported by ${numbers.format(count)} ${count === 1 ? 'file' : 'files'}`,
-  imports: (count: number) => `imports ${numbers.format(count)}`,
+    `Imported by ${exactCount(count)} ${count === 1 ? 'file' : 'files'}`,
+  imports: (count: number) => `imports ${exactCount(count)}`,
 }
 
 // Characters of the path line: 380 px wide, 16 px padding each side, mono 12 at 7.2 px.

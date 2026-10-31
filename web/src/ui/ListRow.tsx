@@ -1,16 +1,15 @@
 import type { ComponentPropsWithRef } from 'react'
 import { Badge, type FileRole } from './Badge'
+import { exactCount } from './count-format'
 import { Icon } from './Icon'
 import styles from './ListRow.module.css'
 import { useTruncatedPath } from './use-truncated-path'
 
-const numbers = new Intl.NumberFormat('en-US')
-
 const TEXT = {
-  lines: (count: number) => `${numbers.format(count)} ${count === 1 ? 'line' : 'lines'}`,
+  lines: (count: number) => `${exactCount(count)} ${count === 1 ? 'line' : 'lines'}`,
   importedBy: (count: number) =>
-    `Imported by ${numbers.format(count)} ${count === 1 ? 'file' : 'files'}`,
-  imports: (count: number) => `imports ${numbers.format(count)}`,
+    `Imported by ${exactCount(count)} ${count === 1 ? 'file' : 'files'}`,
+  imports: (count: number) => `imports ${exactCount(count)}`,
 }
 
 type NativeProps = Omit<ComponentPropsWithRef<'div'>, 'children' | 'role'>
@@ -57,11 +56,11 @@ export function ListRow({
       <span className={styles.metrics}>
         <span>{TEXT.lines(lines)}</span>
         <span className={styles.incoming}>
-          <span aria-hidden="true">↙ {numbers.format(incoming)}</span>
+          <span aria-hidden="true">↙ {exactCount(incoming)}</span>
           <span className="visually-hidden">{TEXT.importedBy(incoming)}</span>
         </span>
         <span className={styles.outgoing}>
-          <span aria-hidden="true">↗ {numbers.format(outgoing)}</span>
+          <span aria-hidden="true">↗ {exactCount(outgoing)}</span>
           <span className="visually-hidden">{TEXT.imports(outgoing)}</span>
         </span>
       </span>

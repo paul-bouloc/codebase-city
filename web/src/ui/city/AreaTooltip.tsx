@@ -1,13 +1,12 @@
+import { exactCount } from '../count-format'
 import styles from './CityTooltip.module.css'
 import { Glass } from './Glass'
 import { shortenFolder, splitPath } from './shorten-folder'
 import type { Point, Rect } from './tooltip-placement'
 import { useTooltipPlacement } from './use-tooltip-placement'
 
-const numbers = new Intl.NumberFormat('en-US')
-
 const TEXT = {
-  files: (count: number) => `${numbers.format(count)} ${count === 1 ? 'file' : 'files'}`,
+  files: (count: number) => `${exactCount(count)} ${count === 1 ? 'file' : 'files'}`,
   inIsland: (island: string, layer: number) => `in ${island}, layer ${layer}`,
   layer: (layer: number) => `layer ${layer}`,
 }

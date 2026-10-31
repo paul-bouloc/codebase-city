@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Button } from '../Button'
+import { exactCount, percent } from '../count-format'
 import { ExternalLink } from '../ExternalLink'
 import { Icon } from '../Icon'
 import { LinkButton } from '../LinkButton'
@@ -10,7 +11,7 @@ import { safeGithubHref } from './github-links'
 import { orderedLinks } from './island-links'
 import { LanguageBar } from './LanguageBar'
 import { LanguageDot } from './LanguageDot'
-import { formatShare, LANGUAGE_NAMES } from './legend-content'
+import { LANGUAGE_NAMES } from './legend-content'
 import { MetricPairs } from './MetricPairs'
 import { SheetFrame } from './SheetFrame'
 import { SheetSection } from './SheetSection'
@@ -19,7 +20,6 @@ import type { FolderSheetData, IslandLink, KeyFile } from './sheet-data'
 import { splitPath } from './shorten-folder'
 import { UnanalyzedNote } from './UnanalyzedNote'
 
-const numbers = new Intl.NumberFormat('en-US')
 const compact = new Intl.NumberFormat('en-US', { notation: 'compact', maximumSignificantDigits: 3 })
 
 const TEXT = {
@@ -37,12 +37,12 @@ const TEXT = {
   readme: 'From its README',
   readMore: 'Read the whole README on GitHub',
   likely: '· likely',
-  mostImported: (count: number) => `most imported here · ${numbers.format(count)}`,
-  mostComplex: (value: number) => `most complex here · ${numbers.format(value)}`,
+  mostImported: (count: number) => `most imported here · ${exactCount(count)}`,
+  mostComplex: (value: number) => `most complex here · ${exactCount(value)}`,
   importsFrom: 'imports from',
   importedBy: 'imported by',
   upward: '· upward',
-  imports: (count: number) => `${numbers.format(count)} ${count === 1 ? 'import' : 'imports'}`,
+  imports: (count: number) => `${exactCount(count)} ${count === 1 ? 'import' : 'imports'}`,
   loading: 'Loading folder details',
   unanalyzedTitle: 'Nothing in this folder is analyzed yet.',
   unanalyzedBody:
@@ -121,9 +121,9 @@ export function FolderSheet({
           <MetricPairs
             columns={3}
             metrics={[
-              { label: TEXT.files, value: numbers.format(folder.files) },
+              { label: TEXT.files, value: exactCount(folder.files) },
               { label: TEXT.lines, value: compact.format(folder.lines).toLowerCase() },
-              { label: TEXT.subFolders, value: numbers.format(folder.subFolders) },
+              { label: TEXT.subFolders, value: exactCount(folder.subFolders) },
             ]}
           />
 
@@ -135,7 +135,7 @@ export function FolderSheet({
                   <li key={language} className={styles.inlineItem}>
                     <LanguageDot language={language} size={8} />
                     {LANGUAGE_NAMES[language]}
-                    <span className={styles.secondary}>{formatShare(share)}</span>
+                    <span className={styles.secondary}>{percent(share)}</span>
                   </li>
                 ))}
               </ul>

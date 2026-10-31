@@ -1,6 +1,6 @@
 import { type KeyboardEvent, useEffect, useId } from 'react'
 import { Button } from '../Button'
-import { percent } from '../count-format'
+import { exactCount, percent } from '../count-format'
 import { ExternalLink } from '../ExternalLink'
 import { Icon } from '../Icon'
 import { InlineAlert } from '../InlineAlert'
@@ -11,12 +11,10 @@ import { Glass } from './Glass'
 import { safeGithubHref } from './github-links'
 import { LanguageBar } from './LanguageBar'
 import { LanguageDot } from './LanguageDot'
-import { formatShare, LANGUAGE_NAMES } from './legend-content'
+import { LANGUAGE_NAMES } from './legend-content'
 import { SheetSection } from './SheetSection'
 import type { AboutData } from './sheet-data'
 import { usePanelFocus } from './use-panel-focus'
-
-const numbers = new Intl.NumberFormat('en-US')
 
 const TEXT = {
   title: 'About this repository',
@@ -25,11 +23,10 @@ const TEXT = {
   analyzed: (count: number) => (count === 1 ? 'file analyzed' : 'files analyzed'),
   skipped: (count: number) => (count === 1 ? 'file skipped' : 'files skipped'),
   generated: (count: number) =>
-    `${numbers.format(count)} generated ${count === 1 ? 'file' : 'files'}, shown but left out of the tour`,
-  whySkipped: (count: number) =>
-    `Why ${numbers.format(count)} ${count === 1 ? 'was' : 'were'} skipped`,
+    `${exactCount(count)} generated ${count === 1 ? 'file' : 'files'}, shown but left out of the tour`,
+  whySkipped: (count: number) => `Why ${exactCount(count)} ${count === 1 ? 'was' : 'were'} skipped`,
   languages: 'Languages',
-  files: (count: number) => `${numbers.format(count)} ${count === 1 ? 'file' : 'files'}`,
+  files: (count: number) => `${exactCount(count)} ${count === 1 ? 'file' : 'files'}`,
   imports: 'Imports',
   // Never "100%" while one import is left unresolved.
   resolved: (share: number) => percent(share),
@@ -37,7 +34,7 @@ const TEXT = {
   noFlows:
     'No language in this repository is analyzed yet, so the city draws no flows between files.',
   unanalyzed: (name: string, count: number) =>
-    `${numbers.format(count)} ${name} ${count === 1 ? 'file' : 'files'}`,
+    `${exactCount(count)} ${name} ${count === 1 ? 'file' : 'files'}`,
   unanalyzedRest: ' shown without dependencies',
   unanalyzedWhy: (name: string) => ` · ${name} imports aren’t resolved yet`,
   commit: 'Commit',
@@ -46,7 +43,7 @@ const TEXT = {
   newer: (commits: number | null) =>
     commits === null
       ? 'The repository has changed since.'
-      : `The repository has ${numbers.format(commits)} new ${commits === 1 ? 'commit' : 'commits'}.`,
+      : `The repository has ${exactCount(commits)} new ${commits === 1 ? 'commit' : 'commits'}.`,
   rebuild: 'Rebuild with the latest commit',
   signInNote: 'Rebuilding uses 1 analysis and needs a GitHub sign-in.',
   signIn: 'Sign in with GitHub to rebuild',
@@ -145,11 +142,11 @@ export function AboutPanel({ id, open, about, newer, onClose }: AboutPanelProps)
 
         <div className={styles.tiles}>
           <p className={`${styles.tile} ${styles.analyzedTile}`}>
-            <span className={styles.tileValue}>{numbers.format(about.analyzedFiles)}</span>
+            <span className={styles.tileValue}>{exactCount(about.analyzedFiles)}</span>
             {TEXT.analyzed(about.analyzedFiles)}
           </p>
           <p className={`${styles.tile} ${styles.skippedTile}`}>
-            <span className={styles.tileValue}>{numbers.format(skipped)}</span>
+            <span className={styles.tileValue}>{exactCount(skipped)}</span>
             {TEXT.skipped(skipped)}
           </p>
         </div>
@@ -164,7 +161,7 @@ export function AboutPanel({ id, open, about, newer, onClose }: AboutPanelProps)
               {about.skipped.map(({ reason, files }) => (
                 <div key={reason} className={styles.reason}>
                   <dt>{reason}</dt>
-                  <dd>{numbers.format(files)}</dd>
+                  <dd>{exactCount(files)}</dd>
                 </div>
               ))}
             </dl>
@@ -182,7 +179,7 @@ export function AboutPanel({ id, open, about, newer, onClose }: AboutPanelProps)
                     {LANGUAGE_NAMES[language]}{' '}
                     <span className={styles.secondary}>· {TEXT.files(files)}</span>
                   </span>
-                  <span className={styles.share}>{formatShare(share)}</span>
+                  <span className={styles.share}>{percent(share)}</span>
                 </li>
               ))}
             </ul>
