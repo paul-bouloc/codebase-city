@@ -1,0 +1,120 @@
+.block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 4px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2-5);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-1) var(--space-1-5);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.row:hover {
+  background: var(--state-hover);
+}
+
+/* A 4 × 24 track, filled in proportion to the most depended-on row. */
+.bar {
+  position: relative;
+  height: 24px;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  background: var(--color-meter-empty);
+}
+
+.bar::after {
+  position: absolute;
+  inset: auto 0 0;
+  height: calc(max(var(--fill), 0.12) * 100%);
+  border-radius: inherit;
+  background: var(--bar-colour);
+  content: "";
+}
+
+.imports {
+  --bar-colour: var(--meaning-outgoing);
+}
+
+.importedBy {
+  --bar-colour: var(--meaning-incoming);
+}
+
+.names {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.name,
+.folder {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.name {
+  font: var(--code-m);
+  font-weight: 700;
+  letter-spacing: var(--code-m-tracking);
+}
+
+.folder {
+  color: var(--color-text-secondary);
+  font: var(--eyebrow-mono);
+  font-weight: 400;
+}
+
+.meta {
+  color: var(--color-text-secondary);
+  font: var(--caption);
+  letter-spacing: var(--caption-tracking);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.showAll {
+  height: 36px;
+  padding: 0 var(--space-1-5);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-accent-strong);
+  font: var(--label);
+  letter-spacing: var(--label-tracking);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.showAll:hover {
+  background: var(--state-hover);
+}
+
+.note {
+  margin: 0;
+  padding: 0 var(--space-1-5);
+  color: var(--color-text-secondary);
+  font: var(--caption);
+  letter-spacing: var(--caption-tracking);
+}
