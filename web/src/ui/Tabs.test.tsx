@@ -49,4 +49,24 @@ describe('Tabs', () => {
   it('disables a tab natively', () => {
     expect(render()).toMatch(/disabled=""[^>]*>History/)
   })
+
+  it('shortens large counts in compact tabs but reads them in full', () => {
+    const html = renderToStaticMarkup(
+      <Tabs
+        label="File details"
+        compact
+        tabs={[
+          { id: 'a', label: 'Imported by', count: 12_345 },
+          { id: 'b', label: 'Imports', count: 38 },
+        ]}
+        selected="a"
+        onSelect={() => {}}
+      >
+        Panel
+      </Tabs>,
+    )
+    expect(html).toMatch(/title="12,345" aria-hidden="true">12k</)
+    expect(html).toContain('<span class="visually-hidden">12,345</span>')
+    expect(html).toMatch(/>38</)
+  })
 })

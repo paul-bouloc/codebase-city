@@ -1,4 +1,5 @@
 import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef } from 'react'
+import { exactCount, shortCount } from './count-format'
 import { rovingIndex } from './roving-index'
 import styles from './Tabs.module.css'
 
@@ -20,8 +21,6 @@ interface TabsProps {
   // Tighter tabs with plain mono counts, to fit four in a 400 px sheet.
   compact?: boolean
 }
-
-const COUNT_FORMAT = new Intl.NumberFormat('en-US')
 
 // Arrows, Home and End move between tabs and select them on the way.
 export function Tabs({ label, tabs, selected, onSelect, children, compact = false }: TabsProps) {
@@ -98,9 +97,18 @@ export function Tabs({ label, tabs, selected, onSelect, children, compact = fals
               onClick={() => onSelect(tab.id)}
             >
               {tab.label}
-              {tab.count !== undefined && (
-                <span className={styles.count}>{COUNT_FORMAT.format(tab.count)}</span>
-              )}
+              {tab.count !== undefined &&
+                (compact && tab.count >= 1000 ? (
+                  // Four characters at most, so the tabs fit whatever the counts; read in full.
+                  <>
+                    <span className={styles.count} title={exactCount(tab.count)} aria-hidden="true">
+                      {shortCount(tab.count)}
+                    </span>
+                    <span className="visually-hidden">{exactCount(tab.count)}</span>
+                  </>
+                ) : (
+                  <span className={styles.count}>{exactCount(tab.count)}</span>
+                ))}
             </button>
           )
         })}

@@ -76,9 +76,10 @@
   gap: 0;
 }
 
+/* Sized for four tabs in a 400 px sheet with four-character counts at most (shortCount). */
 .compact .tab {
-  gap: var(--space-1-5);
-  padding: 0 var(--space-2-5);
+  gap: var(--space-1);
+  padding: 0 var(--space-2);
 }
 
 .compact .count {
