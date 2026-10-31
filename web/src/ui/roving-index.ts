@@ -1,11 +1,12 @@
-// The item a key moves to in a horizontal group with one tab stop (tabs): Left and Right step
-// over disabled items and wrap around, Home and End go to the first and last enabled item.
-// Null when the key is not a navigation key or no item is enabled. Up and Down are left to
-// page scrolling.
+// The item a key moves to in a group with one tab stop: Left and Right in a horizontal group
+// (tabs), Up and Down in a vertical one (menus), step over disabled items and wrap around; Home
+// and End go to the first and last enabled item. Null when the key is not a navigation key or
+// no item is enabled. The other arrows are left to page scrolling.
 export function rovingIndex(
   key: string,
   current: number,
   disabled: readonly boolean[],
+  orientation: 'horizontal' | 'vertical' = 'horizontal',
 ): number | null {
   const count = disabled.length
 
@@ -21,10 +22,13 @@ export function rovingIndex(
 
   const found = (index: number): number | null => (index === -1 ? null : index)
 
+  const [next, previous] =
+    orientation === 'horizontal' ? ['ArrowRight', 'ArrowLeft'] : ['ArrowDown', 'ArrowUp']
+
   switch (key) {
-    case 'ArrowRight':
+    case next:
       return step(1)
-    case 'ArrowLeft':
+    case previous:
       return step(-1)
     case 'Home':
       return found(disabled.indexOf(false))

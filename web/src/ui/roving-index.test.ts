@@ -39,4 +39,10 @@ describe('rovingIndex', () => {
     expect(rovingIndex('Home', 0, [true, true])).toBeNull()
     expect(rovingIndex('ArrowRight', 0, [])).toBeNull()
   })
+
+  it('moves with Up and Down in a vertical group, and ignores Left and Right', () => {
+    expect(rovingIndex('ArrowDown', 0, NONE_DISABLED, 'vertical')).toBe(1)
+    expect(rovingIndex('ArrowUp', 0, NONE_DISABLED, 'vertical')).toBe(NONE_DISABLED.length - 1)
+    expect(rovingIndex('ArrowRight', 0, NONE_DISABLED, 'vertical')).toBeNull()
+  })
 })
