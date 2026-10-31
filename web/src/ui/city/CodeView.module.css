@@ -7,6 +7,7 @@
 }
 
 .scroll {
+  position: relative;
   display: flex;
   overflow-x: auto;
   border-top: var(--border-width-default) solid var(--color-border-subtle);
@@ -19,12 +20,23 @@
   margin: 0;
   padding: var(--space-2-5) 0;
   font: var(--code-s);
-  line-height: 19px;
+  line-height: var(--line-height);
   white-space: pre;
+}
+
+/* The symbol's line, across the whole width, under the text. */
+.highlight {
+  position: absolute;
+  top: calc(var(--space-2-5) + var(--line-index) * var(--line-height));
+  right: 0;
+  left: 0;
+  height: var(--line-height);
+  background: var(--color-accent-soft);
 }
 
 /* The numbers stay in view while the code scrolls sideways. */
 .gutter {
+  z-index: 1;
   position: sticky;
   left: 0;
   flex: none;
@@ -37,6 +49,7 @@
 }
 
 .text {
+  position: relative;
   padding-right: var(--space-4);
   color: var(--color-text-body);
 }

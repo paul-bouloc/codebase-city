@@ -1,3 +1,4 @@
+import { type CSSProperties, useEffect, useRef } from 'react'
 import { Button } from '../Button'
 import { InlineAlert } from '../InlineAlert'
 import { LinkButton } from '../LinkButton'
@@ -20,9 +21,14 @@ const TEXT = {
       'GitHub didn’t answer in time. Everything else on this sheet comes from the analysis and is still accurate.',
     gone: 'This file isn’t on GitHub at the analyzed commit anymore. Everything else on this sheet comes from the analysis and is still accurate.',
   },
+  beyond: (line: number) => `Line ${numbers.format(line)} is past the lines shown here.`,
+  openLine: (line: number) => `Open line ${numbers.format(line)} on GitHub`,
   retry: 'Try again',
   github: 'Open on GitHub',
 }
+
+// Line height of the code, in px: the CSS draws it and the highlight lines up with it.
+const LINE_HEIGHT = 19
 
 const SKELETON_LINES = ['70%', '45%', '85%', '60%', '30%', '75%']
 
@@ -30,11 +36,39 @@ interface CodeViewProps {
   code: CodeState
   githubUrl: string
   onRetry: () => void
+  // A symbol's line: scrolled to and highlighted.
+  line?: number
 }
 
 // The start of the file, read from GitHub at the analyzed commit, up to the limit (2,000 lines
 // or 200 KB); beyond it, a link. Line numbers are left out of what screen readers read.
-export function CodeView({ code, githubUrl, onRetry }: CodeViewProps) {
+export function CodeView({ code, githubUrl, onRetry, line }: CodeViewProps) {
+  const textRef = useRef<HTMLPreElement>(null)
+  const shownLines = code.status === 'ready' ? code.lines.length : 0
+  const target = line !== undefined && line <= shownLines ? line : undefined
+
+  // Brings the line into the sheet's view, a few lines from the top.
+  useEffect(() => {
+    const text = textRef.current
+    // The first ancestor that really scrolls up and down: the code itself only scrolls sideways
+    // (its `overflow-y` computes to `auto` all the same).
+    let scroller = text?.parentElement ?? null
+    while (
+      scroller &&
+      !(
+        getComputedStyle(scroller).overflowY === 'auto' &&
+        scroller.scrollHeight > scroller.clientHeight
+      )
+    ) {
+      scroller = scroller.parentElement
+    }
+    if (target === undefined || !text || !scroller) {
+      return
+    }
+    const textTop = text.getBoundingClientRect().top - scroller.getBoundingClientRect().top
+    scroller.scrollTop += textTop + (target - 3) * LINE_HEIGHT
+  }, [target])
+
   if (code.status === 'loading') {
     return (
       <div className={styles.loading} role="status">
@@ -73,14 +107,33 @@ export function CodeView({ code, githubUrl, onRetry }: CodeViewProps) {
   const shown = code.lines.length
   return (
     <div className={styles.code}>
-      {/* Focusable, so the keyboard can scroll it sideways. */}
-      {/* biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region must take the focus */}
-      <section className={styles.scroll} aria-label={TEXT.label} tabIndex={0}>
+      <section
+        className={styles.scroll}
+        aria-label={TEXT.label}
+        // Focusable, so the keyboard can scroll it sideways.
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region must take the focus
+        tabIndex={0}
+        style={{ '--line-height': `${LINE_HEIGHT}px` } as CSSProperties}
+      >
+        {target !== undefined && (
+          <span
+            className={styles.highlight}
+            style={{ '--line-index': target - 1 } as CSSProperties}
+            aria-hidden="true"
+          />
+        )}
         <pre className={styles.gutter} aria-hidden="true">
           {code.lines.map((_, index) => index + 1).join('\n')}
         </pre>
-        <pre className={styles.text}>{code.lines.join('\n')}</pre>
+        <pre ref={textRef} className={styles.text}>
+          {code.lines.join('\n')}
+        </pre>
       </section>
+      {line !== undefined && target === undefined && (
+        <p className={styles.footer}>
+          {TEXT.beyond(line)} <a href={`${githubUrl}#L${line}`}>{TEXT.openLine(line)}</a>
+        </p>
+      )}
       <p className={styles.footer}>
         {shown < code.totalLines ? (
           <>

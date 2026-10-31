@@ -31,4 +31,26 @@ describe('CodeView', () => {
     expect(gone).toContain('isn’t on GitHub at the analyzed commit anymore')
     expect(gone).toContain('Try again')
   })
+
+  it('highlights a shown line, and links to GitHub for a line past them', () => {
+    const shown = renderToStaticMarkup(
+      <CodeView
+        code={{ status: 'ready', lines: ['a', 'b', 'c'], totalLines: 9 }}
+        githubUrl="https://github.com/x"
+        onRetry={() => {}}
+        line={2}
+      />,
+    )
+    expect(shown).toContain('--line-index:1')
+    const past = renderToStaticMarkup(
+      <CodeView
+        code={{ status: 'ready', lines: ['a'], totalLines: 9 }}
+        githubUrl="https://github.com/x"
+        onRetry={() => {}}
+        line={2196}
+      />,
+    )
+    expect(past).toContain('Line 2,196 is past the lines shown here.')
+    expect(past).toContain('href="https://github.com/x#L2196"')
+  })
 })

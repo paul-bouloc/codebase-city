@@ -93,6 +93,7 @@ export function FileSheet({
   const folders = folder.split('/').filter(Boolean)
   const tabs = fileTabs(file)
   const [tab, setTab] = useState<FileTab>(defaultTab ?? tabs[0]?.id ?? 'code')
+  const [codeLine, setCodeLine] = useState<number>()
   const shownTab = tabs.some(({ id }) => id === tab) ? tab : 'code'
 
   const actions = (
@@ -174,7 +175,10 @@ export function FileSheet({
               compact
               tabs={tabs}
               selected={shownTab}
-              onSelect={(id) => setTab(id as FileTab)}
+              onSelect={(id) => {
+                setCodeLine(undefined)
+                setTab(id as FileTab)
+              }}
             >
               {shownTab === 'imports' && (
                 <ImportanceList
@@ -195,12 +199,20 @@ export function FileSheet({
               {shownTab === 'symbols' && (
                 <SymbolList
                   symbols={file.symbols}
-                  onOpenLine={() => setTab('code')}
+                  onOpenLine={(line) => {
+                    setCodeLine(line)
+                    setTab('code')
+                  }}
                   defaultExpanded={defaultExpanded}
                 />
               )}
               {shownTab === 'code' && (
-                <CodeView code={file.code} githubUrl={file.githubUrl} onRetry={onRetryCode} />
+                <CodeView
+                  code={file.code}
+                  githubUrl={file.githubUrl}
+                  onRetry={onRetryCode}
+                  line={codeLine}
+                />
               )}
             </Tabs>
           </div>
