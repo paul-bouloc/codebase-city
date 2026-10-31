@@ -11,6 +11,8 @@ export interface ToastData {
   title: string
   body?: string
   action?: ToastAction
+  // Pushed out by a newer toast: it stays in the queue until its exit animation is over.
+  leaving?: boolean
 }
 
 export const MAX_TOASTS = 3
@@ -23,12 +25,15 @@ export function toastDwell(tone: ToastTone): number | null {
   return tone === 'error' ? null : DWELL_MS
 }
 
-// Newest last. Past the limit, the oldest toast goes, unless it is an error and another is not.
+// Newest last. Past the limit, the oldest toast leaves, unless it is an error and another is
+// not. Leaving toasts no longer count.
 export function pushToast(queue: readonly ToastData[], toast: ToastData): ToastData[] {
-  const next = [...queue, toast]
-  while (next.length > MAX_TOASTS) {
-    const dropped = next.findIndex((item) => item.tone !== 'error')
-    next.splice(dropped === -1 ? 0 : dropped, 1)
+  let next = [...queue, toast]
+  let shown = next.filter((item) => !item.leaving)
+  while (shown.length > MAX_TOASTS) {
+    const dropped = shown.find((item) => item.tone !== 'error') ?? shown[0]
+    next = next.map((item) => (item === dropped ? { ...item, leaving: true } : item))
+    shown = next.filter((item) => !item.leaving)
   }
   return next
 }

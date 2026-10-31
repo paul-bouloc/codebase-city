@@ -21,24 +21,60 @@
   }
 }
 
-/* The spacing lives on the slot, not as a gap of the host, so it folds away with the toast. */
+/*
+ * The spacing lives on the slot, not as a gap of the host, so it opens and folds with the toast.
+ * On entry the slot grows from nothing: the toasts above slide up instead of jumping. The toast
+ * sits at the bottom of its slot, which is clipped while it grows (wide enough for the shadow).
+ * The fold has no padding, so the slot can really reach 0: the toast's own padding would keep
+ * 28 px, and the others would jump by that much when it is removed.
+ */
 .slot {
   display: grid;
   grid-template-rows: 1fr;
+  /* As a flex item of the host, it would not shrink below its content otherwise. */
+  min-height: 0;
   max-width: 100%;
+  animation: slot-in var(--duration-toast-in) var(--easing-enter);
+}
+
+@keyframes slot-in {
+  from {
+    grid-template-rows: 0fr;
+    margin-top: 0;
+    clip-path: inset(0 -48px);
+  }
+
+  to {
+    clip-path: inset(-48px);
+  }
 }
 
 .slot + .slot {
   margin-top: var(--space-2);
 }
 
-.slot > .toast {
+/* The toast overflows upwards, its bottom pinned to the bottom of the slot. */
+.fold {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
   min-height: 0;
+}
+
+.fold > .toast {
+  flex: none;
 }
 
 .leaving {
   overflow: hidden;
   animation: toast-out var(--duration-toast-out) var(--easing-exit) forwards;
+}
+
+/* Pushed out by a newer toast: it folds at the pace the newcomer opens, so the toasts above
+ * stay still. */
+.pushed {
+  animation-duration: var(--duration-toast-in);
+  animation-timing-function: var(--easing-enter);
 }
 
 @keyframes toast-out {
@@ -65,6 +101,11 @@
 @media (prefers-reduced-motion: reduce) {
   .toast {
     animation-name: toast-fade-in;
+  }
+
+  /* Before `.leaving`, which must win over it. */
+  .slot {
+    animation-name: none;
   }
 
   .leaving {

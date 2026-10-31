@@ -3,6 +3,8 @@ import { pushToast, removeToast, type ToastData, type ToastTone, toastDwell } fr
 
 const toast = (id: number, tone: ToastTone = 'info'): ToastData => ({ id, tone, title: `#${id}` })
 const ids = (queue: ToastData[]) => queue.map((item) => item.id)
+// The toasts still on screen for good, without those fading out.
+const shown = (queue: ToastData[]) => ids(queue.filter((item) => !item.leaving))
 
 describe('pushToast', () => {
   it('puts the newest toast last', () => {
@@ -11,17 +13,28 @@ describe('pushToast', () => {
 
   it('keeps three toasts at most, dropping the oldest', () => {
     const queue = [toast(1), toast(2), toast(3)]
-    expect(ids(pushToast(queue, toast(4)))).toEqual([2, 3, 4])
+    expect(shown(pushToast(queue, toast(4)))).toEqual([2, 3, 4])
+  })
+
+  it('lets the dropped toast leave instead of removing it', () => {
+    const queue = pushToast([toast(1), toast(2), toast(3)], toast(4))
+    expect(ids(queue)).toEqual([1, 2, 3, 4])
+    expect(queue[0]?.leaving).toBe(true)
+  })
+
+  it('does not count leaving toasts', () => {
+    const queue = pushToast([toast(1), toast(2), toast(3)], toast(4))
+    expect(shown(pushToast(queue, toast(5)))).toEqual([3, 4, 5])
   })
 
   it('drops an older success or info before an error', () => {
     const queue = [toast(1, 'error'), toast(2, 'success'), toast(3)]
-    expect(ids(pushToast(queue, toast(4)))).toEqual([1, 3, 4])
+    expect(shown(pushToast(queue, toast(4)))).toEqual([1, 3, 4])
   })
 
   it('drops the oldest error when only errors are left', () => {
     const queue = [toast(1, 'error'), toast(2, 'error'), toast(3, 'error')]
-    expect(ids(pushToast(queue, toast(4, 'error')))).toEqual([2, 3, 4])
+    expect(shown(pushToast(queue, toast(4, 'error')))).toEqual([2, 3, 4])
   })
 
   it('does not change the queue it was given', () => {

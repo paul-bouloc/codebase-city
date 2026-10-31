@@ -21,10 +21,12 @@ interface ToastProps {
 
 export function Toast({ toast, onDismiss }: ToastProps) {
   const [paused, setPaused] = useState(false)
-  // Fading out: the toast leaves the queue once its exit animation is over.
-  const [leaving, setLeaving] = useState(false)
+  // Fading out, dismissed here or pushed out by a newer toast: the toast leaves the queue once
+  // its exit animation is over.
+  const [dismissed, setDismissed] = useState(false)
+  const leaving = dismissed || toast.leaving === true
   const remaining = useRef(toastDwell(toast.tone))
-  const leave = () => setLeaving(true)
+  const leave = () => setDismissed(true)
 
   // The dwell time runs only while the toast is neither hovered nor focused, and resumes where
   // it stopped.
@@ -34,7 +36,7 @@ export function Toast({ toast, onDismiss }: ToastProps) {
       return
     }
     const start = Date.now()
-    const timer = setTimeout(() => setLeaving(true), left)
+    const timer = setTimeout(() => setDismissed(true), left)
     return () => {
       clearTimeout(timer)
       remaining.current = left - (Date.now() - start)
@@ -54,44 +56,55 @@ export function Toast({ toast, onDismiss }: ToastProps) {
     }
   }
 
+  const slotClasses = [
+    styles.slot,
+    leaving && styles.leaving,
+    toast.leaving && !dismissed && styles.pushed,
+  ]
+    .filter(Boolean)
+    .join(' ')
+
   return (
     // The slot folds its height away on exit, so the other toasts slide instead of jumping.
     // Inert meanwhile: a second Enter on the action must not run it again.
-    <div
-      className={leaving ? `${styles.slot} ${styles.leaving}` : styles.slot}
-      inert={leaving}
-      onAnimationEnd={handleExitEnd}
-    >
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: hover and focus only pause the timer */}
-      <div
-        className={`${styles.toast} ${styles[toast.tone]}`}
-        onMouseEnter={() => setPaused(true)}
-        onMouseLeave={() => setPaused(false)}
-        onFocus={() => setPaused(true)}
-        onBlur={handleBlur}
-      >
-        <Icon name={ICONS[toast.tone]} size={20} className={styles.icon} />
-        <div className={styles.text}>
-          <span className={styles.title}>{toast.title}</span>
-          {toast.body && <span className={styles.body}>{toast.body}</span>}
-        </div>
-        {toast.action ? (
+    <div className={slotClasses} inert={leaving} onAnimationEnd={handleExitEnd}>
+      <div className={styles.fold}>
+        {/* biome-ignore lint/a11y/noStaticElementInteractions: hover and focus only pause the timer */}
+        <div
+          className={`${styles.toast} ${styles[toast.tone]}`}
+          onMouseEnter={() => setPaused(true)}
+          onMouseLeave={() => setPaused(false)}
+          onFocus={() => setPaused(true)}
+          onBlur={handleBlur}
+        >
+          <Icon name={ICONS[toast.tone]} size={20} className={styles.icon} />
+          <div className={styles.text}>
+            <span className={styles.title}>{toast.title}</span>
+            {toast.body && <span className={styles.body}>{toast.body}</span>}
+          </div>
+          {toast.action ? (
+            <button
+              type="button"
+              className={styles.action}
+              onClick={() => {
+                toast.action?.onClick()
+                leave()
+              }}
+            >
+              {toast.action.label}
+            </button>
+          ) : (
+            <span />
+          )}
           <button
             type="button"
-            className={styles.action}
-            onClick={() => {
-              toast.action?.onClick()
-              leave()
-            }}
+            className={styles.dismiss}
+            aria-label={TEXT.dismiss}
+            onClick={leave}
           >
-            {toast.action.label}
+            <Icon name="close" size={16} />
           </button>
-        ) : (
-          <span />
-        )}
-        <button type="button" className={styles.dismiss} aria-label={TEXT.dismiss} onClick={leave}>
-          <Icon name="close" size={16} />
-        </button>
+        </div>
       </div>
     </div>
   )
