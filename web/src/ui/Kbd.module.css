@@ -1,0 +1,16 @@
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border: var(--border-width-default) solid var(--color-border-default);
+  border-bottom-width: var(--border-width-marker);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface-default);
+  color: var(--color-text-primary);
+  /* Same size as the mono eyebrow, regular weight, no tracking or capitals. */
+  font: var(--eyebrow-mono);
+  font-weight: 400;
+}
