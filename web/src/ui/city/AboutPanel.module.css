@@ -1,0 +1,239 @@
+/* Hangs under the repository button; the screen places it. Fades in while dropping 4 px. */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3-5);
+  width: 420px;
+  max-height: 100%;
+  padding: var(--space-4);
+  overflow-y: auto;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(calc(-1 * var(--space-1)));
+  transition:
+    opacity var(--duration-fast) var(--easing-exit),
+    transform var(--duration-fast) var(--easing-exit),
+    visibility var(--duration-fast);
+}
+
+.open {
+  visibility: visible;
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--duration-base) var(--easing-enter),
+    transform var(--duration-base) var(--easing-enter),
+    visibility 0s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    transform: none;
+  }
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: calc(-1 * var(--space-1)) calc(-1 * var(--space-1)) calc(-1 * var(--space-1)) 0;
+}
+
+/* The board says 16/22: brought back to heading.3 (A-c8). */
+.title {
+  margin: 0;
+  font: var(--heading-3);
+  letter-spacing: var(--heading-3-tracking);
+}
+
+.title:focus-visible {
+  border-radius: var(--radius-xs);
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2-5);
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  font: var(--body-s);
+  letter-spacing: var(--body-s-tracking);
+}
+
+/* The board says 24/28: brought back to metric (A-c8). */
+.tileValue {
+  font: var(--metric);
+  letter-spacing: var(--metric-tracking);
+  font-variant-numeric: tabular-nums;
+}
+
+.analyzedTile {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-strong);
+}
+
+.skippedTile {
+  background: var(--color-bg-sunken);
+  color: var(--color-text-primary);
+}
+
+.note {
+  margin: calc(-1 * var(--space-1-5)) 0 0;
+  color: var(--color-text-secondary);
+  font: var(--caption);
+  letter-spacing: var(--caption-tracking);
+}
+
+.details {
+  font: var(--body-s);
+  letter-spacing: var(--body-s-tracking);
+}
+
+.summary {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  border-radius: var(--radius-xs);
+  color: var(--color-accent-strong);
+  cursor: pointer;
+}
+
+.reasons {
+  margin: 0;
+}
+
+.reason {
+  display: flex;
+  justify-content: space-between;
+  min-height: 22px;
+}
+
+.reason dd {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font: var(--eyebrow-mono);
+  letter-spacing: var(--eyebrow-mono-tracking);
+  text-transform: uppercase;
+}
+
+.languages,
+.facts {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.language {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) 40px;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 24px;
+  font: var(--body-s);
+  letter-spacing: var(--body-s-tracking);
+}
+
+.share {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.secondary {
+  color: var(--color-text-secondary);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--lang-other);
+}
+
+.dot[data-language="typescript"] {
+  background: var(--lang-typescript);
+}
+
+.dot[data-language="javascript"] {
+  background: var(--lang-javascript);
+}
+
+.dot[data-language="css"] {
+  background: var(--lang-css);
+}
+
+.facts {
+  gap: var(--space-1-5);
+}
+
+.fact {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: var(--space-2);
+  color: var(--color-text-body);
+  font: var(--body-s);
+  letter-spacing: var(--body-s-tracking);
+}
+
+.fact strong {
+  color: var(--color-text-primary);
+}
+
+.checkIcon {
+  margin-top: 1px;
+  color: var(--feedback-success-fg);
+}
+
+.infoIcon {
+  margin-top: 1px;
+  color: var(--color-text-secondary);
+}
+
+/* Technical card */
+
+.card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-1-5) var(--space-4);
+  margin: 0;
+  padding-top: var(--space-3);
+  border-top: var(--border-width-default) solid var(--color-border-subtle);
+  font: var(--body-s);
+  letter-spacing: var(--body-s-tracking);
+}
+
+.card dt {
+  color: var(--color-text-secondary);
+}
+
+.card dd {
+  margin: 0;
+}
+
+.commit {
+  color: var(--color-accent-strong);
+  font: var(--code-s);
+}
+
+.mono {
+  font-family: var(--font-family-mono);
+}
