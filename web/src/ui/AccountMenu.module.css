@@ -51,9 +51,8 @@
   animation: popup-in var(--duration-base) var(--easing-enter);
 }
 
-/* The focus is already back on the trigger: the fading menu only needs to stay out of the way. */
+/* Inert while it fades: the focus is already back on the trigger. */
 .closing {
-  pointer-events: none;
   animation: popup-out var(--duration-fast) var(--easing-exit) forwards;
 }
 

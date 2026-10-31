@@ -100,6 +100,7 @@ export function AccountMenu({ login, avatarSrc, quota, accountHref, onSignOut }:
         <div
           className={open ? styles.popup : `${styles.popup} ${styles.closing}`}
           tabIndex={-1}
+          inert={!open}
           onAnimationEnd={(event) => {
             if (!open && event.target === event.currentTarget) {
               setClosing(false)
