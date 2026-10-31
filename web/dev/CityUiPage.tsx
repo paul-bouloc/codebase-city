@@ -180,11 +180,11 @@ export function CityUiPage() {
     return () => window.removeEventListener('keydown', handleKey)
   }, [sheet, aboutOpen, selection])
 
-  // The sheet, as the CSS places it: 400 px on the right, under the top bar.
+  // The sheet, as the CSS places it: 420 px on the right, under the top bar.
   const obstacles = useMemo<Rect[]>(
     () =>
       sheet
-        ? [{ x: window.innerWidth - 412, y: 84, width: 400, height: window.innerHeight - 96 }]
+        ? [{ x: window.innerWidth - 432, y: 84, width: 420, height: window.innerHeight - 96 }]
         : [],
     [sheet],
   )
