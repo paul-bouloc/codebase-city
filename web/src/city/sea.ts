@@ -70,7 +70,7 @@ void main() {
   vec2 lines = 1.0 - clamp(toLine / perPixel, 0.0, 1.0);
   float grid = max(lines.x, lines.y)
     * (1.0 - smoothstep(gridFade.x, gridFade.y, distance(vBoard, cityCentre)))
-    * (1.0 - smoothstep(${(GRID_SPACING / 8).toFixed(2)}, ${(GRID_SPACING / 4).toFixed(2)},
+    * (1.0 - smoothstep(${(GRID_SPACING / 12).toFixed(2)}, ${(GRID_SPACING / 6).toFixed(2)},
       max(perPixel.x, perPixel.y)));
   color = mix(color, vec3(1.0), ${GRID_OPACITY.toFixed(2)} * grid);
 
