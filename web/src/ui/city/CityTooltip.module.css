@@ -1,0 +1,117 @@
+/* The cards shown over the city while the pointer rests on a building, a parcel or an island. */
+
+.tooltip {
+  position: fixed;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  pointer-events: none;
+  animation: tooltip-in var(--duration-fast) var(--easing-standard);
+}
+
+@keyframes tooltip-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.file {
+  gap: var(--space-2);
+  min-width: 300px;
+  max-width: 380px;
+  padding: var(--space-3-5) var(--space-4);
+}
+
+.area {
+  gap: var(--space-0-5);
+  padding: var(--space-2-5) var(--space-3-5);
+  border-radius: var(--radius-md);
+}
+
+.path {
+  display: flex;
+  max-width: 100%;
+  color: var(--color-text-secondary);
+  font: var(--code-s);
+  letter-spacing: var(--code-s-tracking);
+  white-space: nowrap;
+}
+
+.areaPath {
+  font: var(--code-m);
+  letter-spacing: var(--code-m-tracking);
+}
+
+/* The name never shrinks below 24 characters; beyond, it ends in an ellipsis. */
+.name {
+  min-width: min(24ch, 100%);
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font-weight: 700;
+  text-overflow: ellipsis;
+}
+
+.folder {
+  flex: none;
+}
+
+.facts,
+.relations,
+.summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font: var(--body-s);
+  letter-spacing: var(--body-s-tracking);
+  font-variant-numeric: tabular-nums;
+}
+
+.relations {
+  gap: var(--space-4);
+}
+
+.relation {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+}
+
+.secondary {
+  color: var(--color-text-secondary);
+}
+
+.dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  background: var(--lang-other);
+}
+
+.dot[data-language="typescript"] {
+  background: var(--lang-typescript);
+}
+
+.dot[data-language="javascript"] {
+  background: var(--lang-javascript);
+}
+
+.dot[data-language="css"] {
+  background: var(--lang-css);
+}
+
+/* The same strokes as the flows in the city. */
+.trait {
+  width: 14px;
+  height: 3px;
+  border-radius: var(--radius-full);
+}
+
+.incoming {
+  background: var(--meaning-incoming);
+}
+
+.outgoing {
+  background: var(--meaning-outgoing);
+}

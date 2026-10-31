@@ -26,7 +26,7 @@ const ROLE_LABELS: Record<FileRole, string> = {
   generated: 'Generated',
 }
 
-const LANGUAGE_LABELS: Record<Language, string> = {
+export const LANGUAGE_LABELS: Record<Language, string> = {
   typescript: 'TypeScript',
   javascript: 'JavaScript',
   css: 'CSS',
