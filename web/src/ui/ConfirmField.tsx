@@ -1,5 +1,6 @@
 import { type Ref, useId } from 'react'
 import styles from './ConfirmField.module.css'
+import { confirmationMatches } from './confirmation'
 import { Icon } from './Icon'
 
 const TEXT = {
@@ -11,11 +12,6 @@ const TEXT = {
   empty: 'The delete button unlocks when the login matches.',
   mismatch: 'Keep typing: it must match your login exactly.',
   match: 'Login matches.',
-}
-
-// Case-sensitive; spaces around the value are forgiven.
-export function confirmationMatches(value: string, expected: string): boolean {
-  return value.trim() === expected
 }
 
 interface ConfirmFieldProps {

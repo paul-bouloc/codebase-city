@@ -1,17 +1,8 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import { ConfirmField, confirmationMatches } from './ConfirmField'
+import { ConfirmField } from './ConfirmField'
 
 const noop = () => {}
-
-describe('confirmationMatches', () => {
-  it('is case-sensitive and forgives surrounding spaces', () => {
-    expect(confirmationMatches('lena-okafor', 'lena-okafor')).toBe(true)
-    expect(confirmationMatches('  lena-okafor ', 'lena-okafor')).toBe(true)
-    expect(confirmationMatches('Lena-Okafor', 'lena-okafor')).toBe(false)
-    expect(confirmationMatches('lena-okafo', 'lena-okafor')).toBe(false)
-  })
-})
 
 describe('ConfirmField', () => {
   it('says why the button is still blocked', () => {
