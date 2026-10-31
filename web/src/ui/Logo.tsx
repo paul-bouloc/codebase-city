@@ -8,7 +8,7 @@ const TEXT = {
   second: 'City',
 }
 
-// Wordmark size relative to the mark, as drawn on the logo board.
+// Wordmark size relative to the mark height.
 const WORDMARK_RATIO = { full: 13 / 24, compact: 11 / 28 }
 // Tracking tightens further from this font size up.
 const DISPLAY_FONT_SIZE = 32
