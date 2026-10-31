@@ -8,7 +8,8 @@ const numbers = new Intl.NumberFormat('en-US')
 
 const TEXT = {
   lines: (count: number) => `${numbers.format(count)} ${count === 1 ? 'line' : 'lines'}`,
-  importedBy: (count: number) => `Imported by ${numbers.format(count)}`,
+  importedBy: (count: number) =>
+    `Imported by ${numbers.format(count)} ${count === 1 ? 'file' : 'files'}`,
   imports: (count: number) => `imports ${numbers.format(count)}`,
 }
 

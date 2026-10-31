@@ -12,4 +12,12 @@ describe('ListRow', () => {
     expect(html).toContain(`<span class="visually-hidden">${PATH}</span>`)
     expect(html).toMatch(/title="[^"]+" aria-hidden="true"/)
   })
+
+  it('words the imports like the file tooltip', () => {
+    const html = renderToStaticMarkup(
+      <ListRow name="index.js" path="index.js" lines={11} incoming={1} outgoing={1204} />,
+    )
+    expect(html).toContain('Imported by 1 file')
+    expect(html).toContain('imports 1,204')
+  })
 })
