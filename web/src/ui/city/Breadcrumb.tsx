@@ -5,9 +5,9 @@ const TEXT = {
   label: 'Path',
 }
 
-// Characters that fit beside the close button: 400 px sheet, 16 + 12 px padding, 40 px button
-// and 10 px gap leave 322 px, mono 12 at 7.2 px.
-const MAX_CHARS = 44
+// Characters that fit beside the close button: 420 px sheet, 16 + 12 px padding, 40 px button
+// and 10 px gap leave 342 px, mono 12 at 7.2 px.
+const MAX_CHARS = 47
 
 interface BreadcrumbProps {
   // The folders above the selection, from the root.

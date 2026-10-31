@@ -23,6 +23,6 @@ describe('Breadcrumb', () => {
     const shown = segments(html)
     expect(shown.at(-1)).toBe('shell')
     expect(shown[0]).not.toBe('src')
-    expect(shown.join(' / ').length + 4).toBeLessThanOrEqual(44)
+    expect(shown.join(' / ').length + 4).toBeLessThanOrEqual(47)
   })
 })
