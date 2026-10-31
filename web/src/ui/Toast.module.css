@@ -21,6 +21,61 @@
   }
 }
 
+/* The spacing lives on the slot, not as a gap of the host, so it folds away with the toast. */
+.slot {
+  display: grid;
+  grid-template-rows: 1fr;
+  max-width: 100%;
+}
+
+.slot + .slot {
+  margin-top: var(--space-2);
+}
+
+.slot > .toast {
+  min-height: 0;
+}
+
+.leaving {
+  overflow: hidden;
+  animation: toast-out var(--duration-toast-out) var(--easing-exit) forwards;
+}
+
+.leaving > .toast {
+  pointer-events: none;
+}
+
+@keyframes toast-out {
+  to {
+    grid-template-rows: 0fr;
+    margin-top: 0;
+    opacity: 0;
+  }
+}
+
+/* Reduced motion: a plain fade both ways; the other toasts move at once. */
+@keyframes toast-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes toast-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation-name: toast-fade-in;
+  }
+
+  .leaving {
+    animation-name: toast-fade-out;
+  }
+}
+
 .success {
   --toast-icon: var(--feedback-success-on-inverse);
 }
