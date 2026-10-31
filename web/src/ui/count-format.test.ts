@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { exactCount, shortCount } from './count-format'
+import { exactCount, fileSize, percent, shortCount } from './count-format'
 
 describe('shortCount', () => {
   it('writes small counts in full', () => {
@@ -19,5 +19,23 @@ describe('shortCount', () => {
 describe('exactCount', () => {
   it('groups thousands', () => {
     expect(exactCount(1_204)).toBe('1,204')
+  })
+})
+
+describe('percent', () => {
+  it('never rounds a part to nothing or to everything', () => {
+    expect(percent(0.004)).toBe('<1%')
+    expect(percent(0.996)).toBe('>99%')
+    expect(percent(0.92)).toBe('92%')
+    expect(percent(0)).toBe('0%')
+    expect(percent(1)).toBe('100%')
+  })
+})
+
+describe('fileSize', () => {
+  it('writes bytes, kilobytes or megabytes', () => {
+    expect(fileSize(40)).toBe('40 B')
+    expect(fileSize(8400)).toBe('8.4 KB')
+    expect(fileSize(2_350_000)).toBe('2.4 MB')
   })
 })
