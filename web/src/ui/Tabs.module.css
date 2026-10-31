@@ -5,6 +5,7 @@
 
 /* Inside a panel, tabs scroll sideways rather than wrap. */
 .list {
+  position: relative;
   display: flex;
   gap: var(--space-1);
   overflow-x: auto;
@@ -69,6 +70,22 @@
   font: var(--caption);
   letter-spacing: var(--caption-tracking);
   font-variant-numeric: tabular-nums;
+}
+
+.compact .list {
+  gap: 0;
+}
+
+.compact .tab {
+  gap: var(--space-1-5);
+  padding: 0 var(--space-2-5);
+}
+
+.compact .count {
+  padding: 0;
+  background: transparent;
+  font: var(--eyebrow-mono);
+  font-weight: 400;
 }
 
 .panel:focus-visible {

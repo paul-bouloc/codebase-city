@@ -1,4 +1,4 @@
-import { type KeyboardEvent, type ReactNode, useId, useRef } from 'react'
+import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef } from 'react'
 import { rovingIndex } from './roving-index'
 import styles from './Tabs.module.css'
 
@@ -17,14 +17,17 @@ interface TabsProps {
   onSelect: (id: string) => void
   // The selected tab's panel.
   children: ReactNode
+  // Tighter tabs with plain mono counts, to fit four in a 400 px sheet.
+  compact?: boolean
 }
 
 const COUNT_FORMAT = new Intl.NumberFormat('en-US')
 
 // Arrows, Home and End move between tabs and select them on the way.
-export function Tabs({ label, tabs, selected, onSelect, children }: TabsProps) {
+export function Tabs({ label, tabs, selected, onSelect, children, compact = false }: TabsProps) {
   const baseId = useId()
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
+  const listRef = useRef<HTMLDivElement>(null)
   const selectedIndex = tabs.findIndex((tab) => tab.id === selected)
   // The list keeps a tab stop even when the selected tab is unknown or disabled.
   const tabStop =
@@ -34,6 +37,21 @@ export function Tabs({ label, tabs, selected, onSelect, children }: TabsProps) {
   // Indexes, not caller ids, so any id makes a valid IDREF.
   const tabId = (index: number) => `${baseId}-tab-${index}`
   const panelId = `${baseId}-panel`
+
+  // The list scrolls sideways when tabs overflow: keep the selected one in view, without
+  // scrolling anything else.
+  useEffect(() => {
+    const list = listRef.current
+    const tab = tabRefs.current[selectedIndex]
+    if (!list || !tab) {
+      return
+    }
+    if (tab.offsetLeft < list.scrollLeft) {
+      list.scrollLeft = tab.offsetLeft
+    } else if (tab.offsetLeft + tab.offsetWidth > list.scrollLeft + list.clientWidth) {
+      list.scrollLeft = tab.offsetLeft + tab.offsetWidth - list.clientWidth
+    }
+  }, [selectedIndex])
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     // From the focused tab: the parent may not follow every selection.
@@ -53,8 +71,14 @@ export function Tabs({ label, tabs, selected, onSelect, children }: TabsProps) {
   }
 
   return (
-    <div className={styles.tabs}>
-      <div role="tablist" aria-label={label} className={styles.list} onKeyDown={handleKeyDown}>
+    <div className={compact ? `${styles.tabs} ${styles.compact}` : styles.tabs}>
+      <div
+        ref={listRef}
+        role="tablist"
+        aria-label={label}
+        className={styles.list}
+        onKeyDown={handleKeyDown}
+      >
         {tabs.map((tab, index) => {
           const isSelected = index === selectedIndex
           return (
