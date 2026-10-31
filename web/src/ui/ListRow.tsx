@@ -47,9 +47,11 @@ export function ListRow({
       <Icon name="file" size={20} className={styles.icon} />
       <span className={styles.names}>
         <span className={styles.name}>{name}</span>
-        <span ref={ref} className={styles.path} title={path}>
+        {/* Screen readers get the whole path, not its shortened picture. */}
+        <span ref={ref} className={styles.path} title={path} aria-hidden="true">
           {text}
         </span>
+        <span className="visually-hidden">{path}</span>
       </span>
       <span className={styles.metrics}>
         <span>{TEXT.lines(lines)}</span>
