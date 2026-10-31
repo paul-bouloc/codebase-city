@@ -80,6 +80,19 @@ impl Language {
     }
 }
 
+/// A file of the repository, as the analyzer receives it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SourceFile {
+    /// Path from the repository root, with `/` separators.
+    pub path: String,
+    pub language: Language,
+    pub lines: u32,
+    pub generated: bool,
+    /// The bytes, only when [`keeps_content`] says the analyzer needs them
+    /// and the file is not too large.
+    pub content: Option<Vec<u8>>,
+}
+
 /// Why a file is left out of the city.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Skip {
