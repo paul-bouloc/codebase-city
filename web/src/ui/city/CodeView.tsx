@@ -90,7 +90,7 @@ export function CodeView({ code, githubUrl, onRetry, line }: CodeViewProps) {
 
   if (code.status === 'error') {
     return (
-      <div role="alert" className={styles.error}>
+      <div role="alert">
         <InlineAlert
           tone="error"
           title={TEXT.errorTitle}
