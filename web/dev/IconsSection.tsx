@@ -1,5 +1,5 @@
 import { Icon, type IconSize } from '../src/ui/Icon'
-import { ICON_NAMES } from '../src/ui/icon-paths'
+import { ICON_NAMES } from '../src/ui/icons'
 import styles from './IconsSection.module.css'
 
 const TEXT = {
