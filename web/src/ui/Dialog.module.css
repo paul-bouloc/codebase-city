@@ -9,6 +9,60 @@
   color: var(--color-text-primary);
 }
 
+/*
+ * The box rises into place and the scrim fades in. On close, `overlay` and `display` stay
+ * discrete until the end, so the dialog keeps the top layer while it fades out.
+ * The transition of the state being entered applies: `[open]` holds the entry timing.
+ */
+.dialog,
+.dialog::backdrop {
+  opacity: 0;
+  transition:
+    opacity var(--duration-base) var(--easing-exit),
+    transform var(--duration-base) var(--easing-exit),
+    overlay var(--duration-base) allow-discrete,
+    display var(--duration-base) allow-discrete;
+}
+
+.dialog {
+  transform: translateY(var(--space-2)) scale(0.98);
+}
+
+.dialog[open],
+.dialog[open]::backdrop {
+  opacity: 1;
+  transition-duration: var(--duration-slow);
+  transition-timing-function: var(--easing-enter);
+}
+
+.dialog[open] {
+  transform: none;
+}
+
+@starting-style {
+  .dialog[open],
+  .dialog[open]::backdrop {
+    opacity: 0;
+  }
+
+  .dialog[open] {
+    transform: translateY(var(--space-2)) scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog,
+  .dialog[open] {
+    transform: none;
+  }
+
+  @starting-style {
+    .dialog[open] {
+      transform: none;
+    }
+  }
+}
+
 .dialog::backdrop {
   background: var(--color-scrim);
 }
