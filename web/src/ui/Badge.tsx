@@ -1,6 +1,7 @@
 import styles from './Badge.module.css'
 import { Icon } from './Icon'
 import type { IconName } from './icons'
+import { LANGUAGE_LABELS } from './language-labels'
 import { Spinner } from './Spinner'
 
 export type FileRole =
@@ -24,13 +25,6 @@ const ROLE_LABELS: Record<FileRole, string> = {
   test: 'Test',
   config: 'Config',
   generated: 'Generated',
-}
-
-export const LANGUAGE_LABELS: Record<Language, string> = {
-  typescript: 'TypeScript',
-  javascript: 'JavaScript',
-  css: 'CSS',
-  other: 'Not analyzed',
 }
 
 const STATUS_LABELS: Record<AnalysisStatus, string> = {

@@ -1,4 +1,5 @@
-import { Badge, type FileRole, LANGUAGE_LABELS, type Language } from '../Badge'
+import { Badge, type FileRole, type Language } from '../Badge'
+import { LANGUAGE_LABELS } from '../language-labels'
 import styles from './CityTooltip.module.css'
 import { Glass } from './Glass'
 import { shortenFolder, splitPath } from './shorten-folder'
