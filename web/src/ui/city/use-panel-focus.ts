@@ -5,6 +5,7 @@ import { useEffect, useRef } from 'react'
 // counts: a panel mounted open (a demonstration board) leaves the focus alone. When its content
 // changes while open (`contentKey`: another file), a focus lost with the old content goes to
 // the title; the opener stays the one to return to.
+// The title takes the focus without scrolling: a sheet is still sliding in, off screen.
 export function usePanelFocus<P extends HTMLElement, T extends HTMLElement>(
   open: boolean,
   contentKey?: string,
@@ -21,7 +22,7 @@ export function usePanelFocus<P extends HTMLElement, T extends HTMLElement>(
     wasOpen.current = open
     if (open) {
       opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
-      titleRef.current?.focus()
+      titleRef.current?.focus({ preventScroll: true })
       return
     }
     const active = document.activeElement
@@ -40,7 +41,7 @@ export function usePanelFocus<P extends HTMLElement, T extends HTMLElement>(
     shownKey.current = contentKey
     const active = document.activeElement
     if (open && (active === null || active === document.body)) {
-      titleRef.current?.focus()
+      titleRef.current?.focus({ preventScroll: true })
     }
   }, [open, contentKey])
 
