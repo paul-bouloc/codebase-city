@@ -29,6 +29,9 @@ interface SheetFrameProps {
   footer?: ReactNode
   // While the details load: the header is real, the rest is a skeleton.
   busy?: boolean
+  // What the sheet shows (a path): when it changes, a focus lost with the old content goes to
+  // the title.
+  contentKey?: string
   children: ReactNode
 }
 
@@ -47,10 +50,11 @@ export function SheetFrame({
   actions,
   footer,
   busy = false,
+  contentKey,
   children,
 }: SheetFrameProps) {
   const titleId = useId()
-  const { panelRef, titleRef } = usePanelFocus<HTMLDivElement, HTMLHeadingElement>(open)
+  const { panelRef, titleRef } = usePanelFocus<HTMLDivElement, HTMLHeadingElement>(open, contentKey)
 
   const handleEscape = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key === 'Escape') {

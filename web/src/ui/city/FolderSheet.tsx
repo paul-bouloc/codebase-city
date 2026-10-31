@@ -94,6 +94,7 @@ export function FolderSheet({
       subtitle={subtitle(folder.kind)}
       actions={actions}
       busy={loading}
+      contentKey={folder.path}
     >
       {loading ? (
         <div className={styles.loading} role="status">
