@@ -1,6 +1,8 @@
+/* Its own height even in a stretching flex row: the menu hangs from the trigger. */
 .wrapper {
   position: relative;
-  display: inline-block;
+  display: inline-flex;
+  height: max-content;
 }
 
 .trigger {
