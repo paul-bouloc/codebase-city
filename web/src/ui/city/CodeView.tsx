@@ -120,25 +120,27 @@ export function CodeView({ code, githubUrl, onRetry, line }: CodeViewProps) {
         ref={regionRef}
         as="section"
         className={styles.frame}
-        viewportClassName={styles.scroll}
         aria-label={TEXT.label}
         // Focusable, so the keyboard can scroll it sideways.
         tabIndex={0}
         style={{ '--line-height': `${LINE_HEIGHT}px` } as CSSProperties}
       >
-        {target !== undefined && (
-          <span
-            className={styles.highlight}
-            style={{ '--line-index': target - 1 } as CSSProperties}
-            aria-hidden="true"
-          />
-        )}
-        <pre className={styles.gutter} aria-hidden="true">
-          {code.lines.map((_, index) => index + 1).join('\n')}
-        </pre>
-        <pre ref={textRef} className={styles.text}>
-          {code.lines.join('\n')}
-        </pre>
+        {/* As wide as the longest line, so the highlight spans it whatever the scroll. */}
+        <div className={styles.lines}>
+          {target !== undefined && (
+            <span
+              className={styles.highlight}
+              style={{ '--line-index': target - 1 } as CSSProperties}
+              aria-hidden="true"
+            />
+          )}
+          <pre className={styles.gutter} aria-hidden="true">
+            {code.lines.map((_, index) => index + 1).join('\n')}
+          </pre>
+          <pre ref={textRef} className={styles.text}>
+            {code.lines.join('\n')}
+          </pre>
+        </div>
       </ScrollArea>
       {line !== undefined && target === undefined && (
         <p className={styles.footer}>

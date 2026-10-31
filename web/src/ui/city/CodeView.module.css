@@ -13,9 +13,11 @@
 }
 
 /* What scrolls sideways; the highlight and the sticky numbers move with it. */
-.scroll {
+.lines {
   position: relative;
   display: flex;
+  width: max-content;
+  min-width: 100%;
 }
 
 .gutter,
