@@ -50,13 +50,13 @@
   transition: transform var(--duration-slow) var(--easing-enter);
 }
 
-/* Where the sheets stand; they slide in by themselves (SheetFrame). */
+/* Where the sheets stand; they slide in by themselves (SheetFrame). Not raised: the top bar's
+ * hints and menu hang over them. */
 .sheet {
   position: absolute;
   top: 84px;
   right: var(--space-3);
   bottom: var(--space-3);
-  z-index: var(--layer-raised);
 }
 
 /* Under the repository button. */
