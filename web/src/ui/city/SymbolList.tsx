@@ -1,0 +1,73 @@
+import { useState } from 'react'
+import { Icon } from '../Icon'
+import { FOLDED_ROWS } from './ranked-files'
+import styles from './SymbolList.module.css'
+import type { FileSymbol } from './sheet-data'
+
+const numbers = new Intl.NumberFormat('en-US')
+
+const TEXT = {
+  line: (line: number) => `L${numbers.format(line)}`,
+  showAll: (count: number) => `Show all (${numbers.format(count)})`,
+}
+
+const GROUPS = [
+  { title: 'Classes', kinds: ['class'] },
+  { title: 'Functions', kinds: ['function'] },
+  { title: 'Types', kinds: ['interface', 'type', 'enum'] },
+] as const satisfies readonly { title: string; kinds: readonly FileSymbol['kind'][] }[]
+
+interface SymbolListProps {
+  // Exported symbols only.
+  symbols: readonly FileSymbol[]
+  // Opens the code at that line.
+  onOpenLine: (line: number) => void
+  defaultExpanded?: boolean
+}
+
+// Exported symbols grouped by kind, in file order within a group; 8 rows until expanded.
+export function SymbolList({ symbols, onOpenLine, defaultExpanded = false }: SymbolListProps) {
+  const [expanded, setExpanded] = useState(defaultExpanded)
+  let budget = expanded ? Number.POSITIVE_INFINITY : FOLDED_ROWS
+
+  const groups = GROUPS.map(({ title, kinds }) => {
+    const all = symbols
+      .filter((symbol) => (kinds as readonly string[]).includes(symbol.kind))
+      .sort((a, b) => a.line - b.line)
+    const shown = all.slice(0, budget)
+    budget -= shown.length
+    return { title, shown }
+  }).filter(({ shown }) => shown.length > 0)
+
+  return (
+    <div className={styles.block}>
+      {groups.map(({ title, shown }) => (
+        <div key={title} className={styles.group}>
+          <h4 className={styles.title}>{title}</h4>
+          <ul className={styles.list}>
+            {shown.map((symbol) => (
+              <li key={`${symbol.name}-${symbol.line}`}>
+                <button
+                  type="button"
+                  className={styles.row}
+                  onClick={() => onOpenLine(symbol.line)}
+                >
+                  <Icon name="symbol" size={18} className={styles.icon} />
+                  <span className={styles.name}>
+                    {symbol.name} <span className={styles.kind}>{symbol.kind}</span>
+                  </span>
+                  <span className={styles.line}>{TEXT.line(symbol.line)}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+      {!expanded && symbols.length > FOLDED_ROWS && (
+        <button type="button" className={styles.showAll} onClick={() => setExpanded(true)}>
+          {TEXT.showAll(symbols.length)}
+        </button>
+      )}
+    </div>
+  )
+}

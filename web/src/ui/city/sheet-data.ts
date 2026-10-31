@@ -18,7 +18,7 @@ export interface RankedFile {
 
 export interface FileSymbol {
   name: string
-  kind: 'class' | 'function' | 'interface' | 'type' | 'enum' | 'const'
+  kind: 'class' | 'function' | 'interface' | 'type' | 'enum'
   line: number
 }
 
