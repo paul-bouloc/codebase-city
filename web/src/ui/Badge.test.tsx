@@ -31,3 +31,11 @@ describe('Badge', () => {
     }
   })
 })
+
+describe('Badge, language name', () => {
+  it('writes a given name in place of the language label', () => {
+    const html = renderToStaticMarkup(<Badge kind="language" language="other" name="PowerShell" />)
+    expect(html).toContain('PowerShell')
+    expect(html).not.toContain('Not analyzed')
+  })
+})

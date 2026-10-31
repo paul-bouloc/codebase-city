@@ -56,7 +56,8 @@ const TEXT = {
 export type BadgeProps =
   // A role found by a heuristic rather than a measure is shown as "likely", with a dashed border.
   | { kind: 'role'; fileRole: FileRole; likely?: boolean }
-  | { kind: 'language'; language: Language }
+  // `name` writes a language without an analyzer ("PowerShell"), drawn in the `other` colour.
+  | { kind: 'language'; language: Language; name?: string }
   | { kind: 'status'; status: AnalysisStatus }
 
 export function Badge(props: BadgeProps) {
@@ -77,7 +78,7 @@ export function Badge(props: BadgeProps) {
     return (
       <span className={`${styles.badge} ${styles.language}`} data-language={props.language}>
         <span className={styles.dot} />
-        {LANGUAGE_LABELS[props.language]}
+        {props.name ?? LANGUAGE_LABELS[props.language]}
       </span>
     )
   }
