@@ -130,20 +130,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.eyebrow {
-  margin: 0;
-  color: var(--color-text-secondary);
-  font: var(--eyebrow-mono);
-  letter-spacing: var(--eyebrow-mono-tracking);
-  text-transform: uppercase;
-}
-
 .languages,
 .facts {
   display: flex;

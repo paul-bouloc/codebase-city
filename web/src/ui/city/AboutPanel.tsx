@@ -1,4 +1,4 @@
-import { type KeyboardEvent, type ReactNode, useEffect, useId } from 'react'
+import { type KeyboardEvent, useEffect, useId } from 'react'
 import { Button } from '../Button'
 import { percent } from '../count-format'
 import { Icon } from '../Icon'
@@ -9,6 +9,7 @@ import { ControlHint } from './ControlHint'
 import { Glass } from './Glass'
 import { LanguageBar } from './LanguageBar'
 import { formatShare, LANGUAGE_NAMES } from './legend-content'
+import { SheetSection } from './SheetSection'
 import type { AboutData } from './sheet-data'
 import { usePanelFocus } from './use-panel-focus'
 
@@ -167,7 +168,7 @@ export function AboutPanel({ id, open, about, newer, onClose }: AboutPanelProps)
         )}
 
         {languages.length > 0 && (
-          <Section title={TEXT.languages}>
+          <SheetSection title={TEXT.languages}>
             <LanguageBar languages={languages} />
             <ul className={styles.languages}>
               {languages.map(({ language, files, share }) => (
@@ -181,10 +182,10 @@ export function AboutPanel({ id, open, about, newer, onClose }: AboutPanelProps)
                 </li>
               ))}
             </ul>
-          </Section>
+          </SheetSection>
         )}
 
-        <Section title={TEXT.imports}>
+        <SheetSection title={TEXT.imports}>
           <ul className={styles.facts}>
             {about.resolvedImports === undefined ? (
               <li className={styles.fact}>
@@ -211,7 +212,7 @@ export function AboutPanel({ id, open, about, newer, onClose }: AboutPanelProps)
               </li>
             ))}
           </ul>
-        </Section>
+        </SheetSection>
 
         <dl className={styles.card}>
           <dt>{TEXT.commit}</dt>
@@ -252,14 +253,5 @@ function NewerLine({ newer }: { newer: NewerVersion }) {
     >
       {newer.signedIn ? newer.quotaNote : TEXT.signInNote}
     </InlineAlert>
-  )
-}
-
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className={styles.section} aria-label={title}>
-      <h3 className={styles.eyebrow}>{title}</h3>
-      {children}
-    </section>
   )
 }

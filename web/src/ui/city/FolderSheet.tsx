@@ -10,6 +10,7 @@ import { formatShare, LANGUAGE_NAMES } from './legend-content'
 import { MetricPairs } from './MetricPairs'
 import { ROLE_NAMES } from './role-names'
 import { SheetFrame } from './SheetFrame'
+import { SheetSection } from './SheetSection'
 import { Skeleton } from './Skeleton'
 import type { FolderSheetData, IslandLink, KeyFile } from './sheet-data'
 import { splitPath } from './shorten-folder'
@@ -125,7 +126,7 @@ export function FolderSheet({
           />
 
           {folder.languages.length > 0 && (
-            <Section title={TEXT.languages}>
+            <SheetSection title={TEXT.languages}>
               <LanguageBar languages={folder.languages} />
               <ul className={styles.inline}>
                 {folder.languages.map(({ language, share }) => (
@@ -136,11 +137,11 @@ export function FolderSheet({
                   </li>
                 ))}
               </ul>
-            </Section>
+            </SheetSection>
           )}
 
           {folder.analyzed && folder.keyFiles.length > 0 && (
-            <Section title={TEXT.keyFiles}>
+            <SheetSection title={TEXT.keyFiles}>
               <ul className={styles.list}>
                 {folder.keyFiles.map((file) => (
                   <li key={file.path}>
@@ -152,11 +153,11 @@ export function FolderSheet({
                   </li>
                 ))}
               </ul>
-            </Section>
+            </SheetSection>
           )}
 
           {folder.analyzed && folder.links.length > 0 && (
-            <Section title={TEXT.links}>
+            <SheetSection title={TEXT.links}>
               <ul className={styles.list}>
                 {orderedLinks(folder.links).map((link) => (
                   <li
@@ -179,16 +180,16 @@ export function FolderSheet({
                   </li>
                 ))}
               </ul>
-            </Section>
+            </SheetSection>
           )}
 
           {folder.readme && (
-            <Section title={TEXT.readme}>
+            <SheetSection title={TEXT.readme}>
               <p className={styles.readme}>{folder.readme.text}</p>
               <a className={styles.readMore} href={folder.readme.url}>
                 {TEXT.readMore}
               </a>
-            </Section>
+            </SheetSection>
           )}
         </>
       )}
@@ -247,14 +248,5 @@ function KeyFileRow({
       </span>
       <span className={styles.reason}>{reason}</span>
     </button>
-  )
-}
-
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className={styles.section} aria-label={title}>
-      <h3 className={styles.eyebrow}>{title}</h3>
-      {children}
-    </section>
   )
 }
