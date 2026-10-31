@@ -8,11 +8,15 @@ import {
   TEST_PARK,
   TEST_PARK_EDGE,
 } from '../../city/palette'
-import type { Language } from '../Badge'
 import { Icon } from '../Icon'
 import styles from './CityLegend.module.css'
 import { Glass } from './Glass'
-import type { Landmark, LegendContent, LegendPlace } from './legend-content'
+import {
+  LANGUAGE_NAMES,
+  type Landmark,
+  type LegendContent,
+  type LegendPlace,
+} from './legend-content'
 
 const TEXT = {
   title: 'Legend',
@@ -21,13 +25,6 @@ const TEXT = {
   landmarks: 'Landmarks',
   tests: 'Tests',
   footer: 'Height · complexity. Footprint · lines of code.',
-}
-
-const LANGUAGE_NAMES: Record<Language, string> = {
-  typescript: 'TypeScript',
-  javascript: 'JavaScript',
-  css: 'CSS',
-  other: 'Other',
 }
 
 const PLACE_NAMES: Record<LegendPlace, string> = {

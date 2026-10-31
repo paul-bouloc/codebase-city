@@ -1,5 +1,14 @@
 import type { Language } from '../Badge'
 
+// Language names in the city's own lists. Unanalyzed files are "Other" here; a badge on a single
+// file says "Not analyzed".
+export const LANGUAGE_NAMES: Record<Language, string> = {
+  typescript: 'TypeScript',
+  javascript: 'JavaScript',
+  css: 'CSS',
+  other: 'Other',
+}
+
 // Ways files link up and places of the city, in the legend's order.
 export const LEGEND_PLACES = [
   'bridge',
@@ -56,7 +65,8 @@ export function legendContent(repo: RepoContents): LegendContent {
   }
 }
 
-function formatShare(share: number): string {
+// "94%", or "<1%" for a share too small to round to 1.
+export function formatShare(share: number): string {
   const percent = Math.round(share * 100)
   return percent === 0 ? '<1%' : `${percent}%`
 }
