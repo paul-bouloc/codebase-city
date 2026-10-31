@@ -35,6 +35,13 @@ describe('Tabs', () => {
     expect(html.match(/tabindex="-1"/g)).toHaveLength(3)
   })
 
+  it('keeps a tab stop when the selected tab is unknown or disabled', () => {
+    for (const selected of ['missing', 'history']) {
+      const firstTab = render(selected).match(/<button[^>]*>Overview/)?.[0] ?? ''
+      expect(firstTab).toContain('tabindex="0"')
+    }
+  })
+
   it('formats counts with thousands separators', () => {
     expect(render()).toContain('1,204')
   })

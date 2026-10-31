@@ -26,13 +26,21 @@ export function Tabs({ label, tabs, selected, onSelect, children }: TabsProps) {
   const baseId = useId()
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
   const selectedIndex = tabs.findIndex((tab) => tab.id === selected)
-  const tabId = (id: string) => `${baseId}-tab-${id}`
+  // The list keeps a tab stop even when the selected tab is unknown or disabled.
+  const tabStop =
+    selectedIndex !== -1 && !tabs[selectedIndex]?.disabled
+      ? selectedIndex
+      : tabs.findIndex((tab) => !tab.disabled)
+  // Indexes, not caller ids, so any id makes a valid IDREF.
+  const tabId = (index: number) => `${baseId}-tab-${index}`
   const panelId = `${baseId}-panel`
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    // From the focused tab: the parent may not follow every selection.
+    const focused = tabRefs.current.indexOf(event.target as HTMLButtonElement)
     const next = rovingIndex(
       event.key,
-      Math.max(0, selectedIndex),
+      focused === -1 ? Math.max(0, tabStop) : focused,
       tabs.map((tab) => tab.disabled === true),
     )
     const tab = next === null ? undefined : tabs[next]
@@ -55,12 +63,12 @@ export function Tabs({ label, tabs, selected, onSelect, children }: TabsProps) {
               ref={(element) => {
                 tabRefs.current[index] = element
               }}
-              id={tabId(tab.id)}
+              id={tabId(index)}
               type="button"
               role="tab"
               aria-selected={isSelected}
               aria-controls={isSelected ? panelId : undefined}
-              tabIndex={isSelected ? 0 : -1}
+              tabIndex={index === tabStop ? 0 : -1}
               disabled={tab.disabled}
               className={styles.tab}
               onClick={() => onSelect(tab.id)}
@@ -76,7 +84,7 @@ export function Tabs({ label, tabs, selected, onSelect, children }: TabsProps) {
       <div
         id={panelId}
         role="tabpanel"
-        aria-labelledby={selectedIndex === -1 ? undefined : tabId(selected)}
+        aria-labelledby={selectedIndex === -1 ? undefined : tabId(selectedIndex)}
         // biome-ignore lint/a11y/noNoninteractiveTabindex: the APG tabs pattern makes the panel a tab stop
         tabIndex={0}
         className={styles.panel}
