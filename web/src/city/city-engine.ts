@@ -4,6 +4,7 @@ import {
   Color,
   DirectionalLight,
   Group,
+  InstancedMesh,
   MathUtils,
   Matrix4,
   Mesh,
@@ -220,7 +221,12 @@ function disposeObject(root: Object3D): void {
       return
     }
     object.geometry.dispose()
-    const materials = Array.isArray(object.material) ? object.material : [object.material]
+    if (object instanceof InstancedMesh) {
+      object.dispose()
+    }
+    const materials = [object.material, object.customDepthMaterial]
+      .flat()
+      .filter((material) => material !== undefined)
     for (const material of materials) {
       if (material instanceof ShaderMaterial) {
         for (const uniform of Object.values(material.uniforms)) {
