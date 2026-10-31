@@ -49,6 +49,7 @@ uniform vec3 shadowColor;
 uniform float shadowOpacity;
 varying vec3 vWorldNormal;
 
+// The same formula as lightFactor() in light.ts, which the tests check: change both together.
 vec3 shade(vec3 color, vec3 normal) {
   float nDotL = dot(normal, sunDirection);
   vec3 lit = color * (${glslFloat(AMBIENT)} + ${glslFloat(DIFFUSE)} * max(nDotL, 0.0))

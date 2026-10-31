@@ -13,7 +13,10 @@ export const AMBIENT = 0.7
 export const DIFFUSE = 0.3
 export const NORMALIZER = 0.93
 
-/** How much a face's colour is scaled, from the cosine between its normal and the sun. */
+/**
+ * How much a face's colour is scaled, from the cosine between its normal and the sun. The
+ * reference copy of `shade()` in shading.ts, for tests and figures: change both together.
+ */
 export function lightFactor(nDotL: number): number {
   return (AMBIENT + DIFFUSE * Math.max(0, nDotL)) / NORMALIZER
 }
