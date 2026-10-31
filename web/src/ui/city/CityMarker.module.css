@@ -1,0 +1,53 @@
+.step {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: var(--border-width-marker) solid var(--color-text-inverse);
+  border-radius: var(--radius-full);
+  color: var(--color-text-inverse);
+  font: var(--body-s);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  box-shadow: var(--shadow-sm);
+}
+
+.end {
+  background: var(--color-surface-inverse);
+}
+
+.middle {
+  background: var(--meaning-outgoing);
+}
+
+.label {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px var(--space-2-5);
+  border: var(--border-width-strong) solid transparent;
+  border-radius: var(--radius-md);
+  font: var(--code-s);
+  font-weight: 700;
+  letter-spacing: var(--code-s-tracking);
+  white-space: nowrap;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Red stays for cycles and upward imports only. */
+.cycle {
+  border-color: var(--meaning-upward);
+  background: var(--color-surface-default);
+  color: var(--meaning-upward-text);
+}
+
+.impact {
+  border-color: var(--color-surface-inverse);
+  background: var(--color-surface-inverse);
+  color: var(--color-text-inverse);
+}
+
+.guide {
+  border-color: var(--meaning-guide);
+  background: var(--color-surface-default);
+  color: var(--meaning-guide-text);
+}
