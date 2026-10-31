@@ -1,4 +1,4 @@
-import { type CSSProperties, useEffect, useRef, useState } from 'react'
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
 import styles from './ImportanceList.module.css'
 import { FOLDED_ROWS, rankedRows } from './ranked-files'
 import type { RankedFile } from './sheet-data'
@@ -34,7 +34,8 @@ export function ImportanceList({
   const [expanded, setExpanded] = useState(defaultExpanded)
   const firstAdded = useRef<HTMLButtonElement>(null)
   const moveFocus = useRef(false)
-  const { shown, total, max } = rankedRows(rows, expanded)
+  // Sorting 1,204 importers is not free: once per list and fold, not on every render.
+  const { shown, total, max } = useMemo(() => rankedRows(rows, expanded), [rows, expanded])
 
   useEffect(() => {
     if (expanded && moveFocus.current) {
