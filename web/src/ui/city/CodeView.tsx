@@ -45,6 +45,7 @@ interface CodeViewProps {
 // or 200 KB); beyond it, a link. Line numbers are left out of what screen readers read.
 export function CodeView({ code, githubUrl, onRetry, line }: CodeViewProps) {
   const textRef = useRef<HTMLPreElement>(null)
+  const regionRef = useRef<HTMLDivElement>(null)
   const shownLines = code.status === 'ready' ? code.lines.length : 0
   const target = line !== undefined && line <= shownLines ? line : undefined
 
@@ -69,6 +70,13 @@ export function CodeView({ code, githubUrl, onRetry, line }: CodeViewProps) {
     const textTop = text.getBoundingClientRect().top - scroller.getBoundingClientRect().top
     scroller.scrollTop += textTop + (target - 3) * LINE_HEIGHT
   }, [target])
+
+  // A symbol was chosen: its button is gone with the Symbols tab, the focus goes to the code.
+  useEffect(() => {
+    if (line !== undefined) {
+      regionRef.current?.focus({ preventScroll: true })
+    }
+  }, [line])
 
   if (code.status === 'loading') {
     return (
@@ -109,6 +117,7 @@ export function CodeView({ code, githubUrl, onRetry, line }: CodeViewProps) {
   return (
     <div className={styles.code}>
       <ScrollArea
+        ref={regionRef}
         as="section"
         className={styles.frame}
         viewportClassName={styles.scroll}
