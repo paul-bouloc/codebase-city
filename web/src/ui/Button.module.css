@@ -32,24 +32,43 @@
     box-shadow var(--duration-fast) var(--easing-standard);
 }
 
+/* The label leaves upwards while the progress rises from below, and back. `visibility` keeps
+ * the hidden one out of the accessibility tree; it switches at the end of a fade out. */
 .content,
 .progress {
   grid-area: stack;
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
+  transition:
+    opacity var(--duration-base) var(--easing-standard),
+    transform var(--duration-base) var(--easing-standard),
+    visibility var(--duration-base);
 }
 
 .progress {
   visibility: hidden;
+  opacity: 0;
+  transform: translateY(var(--space-1));
 }
 
 .loading .content {
   visibility: hidden;
+  opacity: 0;
+  transform: translateY(calc(-1 * var(--space-1)));
 }
 
 .loading .progress {
   visibility: visible;
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress,
+  .loading .content {
+    transform: none;
+  }
 }
 
 /* Sizes */
