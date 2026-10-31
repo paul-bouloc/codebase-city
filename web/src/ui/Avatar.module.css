@@ -1,0 +1,35 @@
+.avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  border-radius: var(--radius-full);
+  object-fit: cover;
+  /* A hairline keeps light avatars off the cream background. */
+  outline: var(--border-width-default) solid var(--state-pressed);
+  outline-offset: calc(-1 * var(--border-width-default));
+}
+
+.size32 {
+  --avatar-size: 32px;
+  font: var(--body-s);
+}
+
+.size40 {
+  --avatar-size: 40px;
+  font: var(--label);
+}
+
+.size72 {
+  --avatar-size: 72px;
+  font: var(--heading-2);
+}
+
+.fallback {
+  outline: none;
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
+  font-weight: 600;
+}
