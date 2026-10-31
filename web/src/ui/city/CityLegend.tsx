@@ -1,4 +1,4 @@
-import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react'
+import { type KeyboardEvent, type ReactNode, useId, useRef } from 'react'
 import {
   BRIDGE_RAIL,
   BRIDGE_STONE,
@@ -9,7 +9,6 @@ import {
   TEST_PARK_EDGE,
 } from '../../city/palette'
 import type { Language } from '../Badge'
-import { Button } from '../Button'
 import { Icon } from '../Icon'
 import styles from './CityLegend.module.css'
 import { Glass } from './Glass'
@@ -17,8 +16,6 @@ import type { Landmark, LegendContent, LegendPlace } from './legend-content'
 
 const TEXT = {
   title: 'Legend',
-  expand: 'Legend',
-  collapse: 'Collapse legend',
   languages: 'Languages in this repo',
   places: 'Imports and places',
   landmarks: 'Landmarks',
@@ -51,7 +48,7 @@ const LANDMARK_NAMES: Record<Landmark, string> = {
   config: 'Kiosk · config',
 }
 
-// The pill shows the colours of the first languages.
+// The folded legend shows the colours of the first languages.
 const PILL_DOTS = 3
 
 interface CityLegendProps {
@@ -61,141 +58,104 @@ interface CityLegendProps {
 }
 
 export function CityLegend({ content, expanded, onExpandedChange }: CityLegendProps) {
-  const panelId = useId()
+  const bodyId = useId()
   const titleId = useId()
-  const pillRef = useRef<HTMLButtonElement>(null)
-  const collapseRef = useRef<HTMLButtonElement>(null)
-  // Only a toggle from inside the legend moves the focus, not the first render.
-  const moveFocus = useRef(false)
-  // The panel stays drawn while it fades out; the pill comes back once it has left.
-  const [panelDrawn, setPanelDrawn] = useState(expanded)
-  if (expanded && !panelDrawn) {
-    setPanelDrawn(true)
-  }
-  const closing = panelDrawn && !expanded
+  const toggleRef = useRef<HTMLButtonElement>(null)
 
-  useEffect(() => {
-    if (moveFocus.current) {
-      moveFocus.current = false
-      ;(panelDrawn ? collapseRef : pillRef).current?.focus()
-    }
-  }, [panelDrawn])
-
-  const toggle = (next: boolean) => {
-    moveFocus.current = true
-    onExpandedChange(next)
-  }
-
+  // Esc folds the legend from anywhere inside it and leaves the focus on its header.
   const handleEscape = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.key === 'Escape') {
+    if (expanded && event.key === 'Escape') {
       event.stopPropagation()
-      toggle(false)
+      onExpandedChange(false)
+      toggleRef.current?.focus()
     }
   }
 
+  // One glass block: the pill is its header, and it grows into the panel.
   return (
-    <>
-      <Glass className={styles.pill} hidden={panelDrawn}>
+    <Glass
+      as="section"
+      aria-labelledby={titleId}
+      className={expanded ? `${styles.legend} ${styles.expanded}` : styles.legend}
+      onKeyDown={handleEscape}
+    >
+      <h2 className={styles.heading}>
         <button
-          ref={pillRef}
+          ref={toggleRef}
+          id={titleId}
           type="button"
-          className={styles.pillButton}
-          aria-expanded={false}
-          aria-controls={panelId}
-          onClick={() => toggle(true)}
+          className={styles.toggle}
+          aria-expanded={expanded}
+          aria-controls={bodyId}
+          onClick={() => onExpandedChange(!expanded)}
         >
           <span className={styles.dots} aria-hidden="true">
             {content.languages.slice(0, PILL_DOTS).map(({ language }) => (
               <span key={language} className={styles.dot} data-language={language} />
             ))}
           </span>
-          {TEXT.expand}
-          <Icon name="chevron-down" size={16} />
+          <span className={styles.title}>{TEXT.title}</span>
+          <Icon name="chevron-down" size={16} className={styles.chevron} />
         </button>
-      </Glass>
+      </h2>
 
-      <Glass
-        as="section"
-        id={panelId}
-        aria-labelledby={titleId}
-        className={closing ? `${styles.panel} ${styles.closing}` : styles.panel}
-        hidden={!panelDrawn}
-        inert={closing}
-        onKeyDown={handleEscape}
-        onAnimationEnd={(event) => {
-          if (closing && event.target === event.currentTarget) {
-            setPanelDrawn(false)
-          }
-        }}
-      >
-        <div className={styles.header}>
-          <h2 id={titleId} className={styles.title}>
-            {TEXT.title}
-          </h2>
-          <Button
-            ref={collapseRef}
-            variant="ghost"
-            iconOnly
-            icon="chevron-down"
-            label={TEXT.collapse}
-            className={styles.collapse}
-            aria-expanded={true}
-            aria-controls={panelId}
-            onClick={() => toggle(false)}
-          />
-        </div>
-
-        {(content.languages.length > 0 || content.tests) && (
-          <Group title={TEXT.languages} columns>
-            {content.languages.map(({ language, share }) => (
-              <li key={language} className={styles.row}>
-                <span className={styles.swatch}>
-                  <span className={styles.dot} data-language={language} />
-                </span>
-                {LANGUAGE_NAMES[language]}
-                <span className={styles.share}>{share}</span>
-              </li>
-            ))}
-            {content.tests && (
-              <li className={styles.row}>
-                <span className={styles.swatch}>
-                  <span className={styles.dot} data-language="test" />
-                </span>
-                {TEXT.tests}
-              </li>
+      {/* Always in the page, so `aria-controls` points at it; inert while folded. */}
+      <div id={bodyId} className={styles.body} inert={!expanded}>
+        <div className={styles.clip}>
+          <div className={styles.content}>
+            {(content.languages.length > 0 || content.tests) && (
+              <Group title={TEXT.languages} columns>
+                {content.languages.map(({ language, share }) => (
+                  <li key={language} className={styles.row}>
+                    <span className={styles.swatch}>
+                      <span className={styles.dot} data-language={language} />
+                    </span>
+                    {LANGUAGE_NAMES[language]}
+                    <span className={styles.share}>{share}</span>
+                  </li>
+                ))}
+                {content.tests && (
+                  <li className={styles.row}>
+                    <span className={styles.swatch}>
+                      <span className={styles.dot} data-language="test" />
+                    </span>
+                    {TEXT.tests}
+                  </li>
+                )}
+              </Group>
             )}
-          </Group>
-        )}
 
-        {content.places.length > 0 && (
-          <Group title={TEXT.places}>
-            {content.places.map((place) => (
-              <li key={place} className={styles.row}>
-                <span className={styles.swatch}>
-                  <PlaceSample place={place} />
-                </span>
-                {PLACE_NAMES[place]}
-              </li>
-            ))}
-          </Group>
-        )}
+            {content.places.length > 0 && (
+              <Group title={TEXT.places}>
+                {content.places.map((place) => (
+                  <li key={place} className={styles.row}>
+                    <span className={styles.swatch}>
+                      <PlaceSample place={place} />
+                    </span>
+                    {PLACE_NAMES[place]}
+                  </li>
+                ))}
+              </Group>
+            )}
 
-        {content.landmarks.length > 0 && (
-          <Group title={TEXT.landmarks}>
-            {content.landmarks.map((landmark) => (
-              <li key={landmark} className={styles.row}>
-                <span className={styles.swatch}>
-                  <Icon name={landmark} size={18} />
-                </span>
-                {LANDMARK_NAMES[landmark]}
-              </li>
-            ))}
-          </Group>
-        )}
+            {content.landmarks.length > 0 && (
+              <Group title={TEXT.landmarks}>
+                {content.landmarks.map((landmark) => (
+                  <li key={landmark} className={styles.row}>
+                    <span className={styles.swatch}>
+                      <Icon name={landmark} size={18} />
+                    </span>
+                    {LANDMARK_NAMES[landmark]}
+                  </li>
+                ))}
+              </Group>
+            )}
 
-        <p className={styles.footer}>{TEXT.footer}</p>
-      </Glass>
-    </>
+            <p className={styles.footer}>{TEXT.footer}</p>
+          </div>
+        </div>
+      </div>
+    </Glass>
   )
 }
 

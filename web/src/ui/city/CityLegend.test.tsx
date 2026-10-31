@@ -22,30 +22,30 @@ const render = (expanded: boolean, content = CONTENT) =>
 
 describe('CityLegend', () => {
   // A-c14: the board pointed `aria-controls` at an element that did not exist.
-  it('points both toggles at the panel, which is always in the page', () => {
+  it('has one toggle, pointing at a body that is always in the page', () => {
     for (const expanded of [false, true]) {
       const html = render(expanded)
-      const panelId = html.match(/<section [^>]*id="([^"]+)"/)?.[1]
-      expect(panelId).toBeDefined()
-      expect(html.match(new RegExp(`aria-controls="${panelId}"`, 'g'))).toHaveLength(2)
+      const controls = [...html.matchAll(/aria-controls="([^"]+)"/g)].map((match) => match[1])
+      expect(controls).toHaveLength(1)
+      expect(html).toContain(`id="${controls[0]}"`)
+      expect(html).toContain(`aria-expanded="${expanded}"`)
     }
   })
 
-  it('hides the pill or the panel, never both', () => {
-    expect(render(false)).toMatch(/<section [^>]*hidden=""/)
-    expect(render(true)).not.toMatch(/<section [^>]*hidden=""/)
-    expect(render(true)).toMatch(/<div [^>]*hidden=""/)
+  it('makes the folded body inert', () => {
+    expect(render(false)).toMatch(/<div id="[^"]+" class="[^"]+" inert=""/)
+    expect(render(true)).not.toContain('inert')
   })
 
-  it('shows three language dots on the pill', () => {
-    const pill = render(false).split('<section')[0] ?? ''
-    expect(pill.match(/data-language=/g)).toHaveLength(3)
+  it('shows three language dots in the header', () => {
+    const header = render(false).split('</h2>')[0] ?? ''
+    expect(header.match(/data-language=/g)).toHaveLength(3)
   })
 
-  it('names the panel after its title', () => {
+  it('names the legend after its header', () => {
     const html = render(true)
-    const titleId = html.match(/<h2 id="([^"]+)"/)?.[1]
-    expect(html).toContain(`aria-labelledby="${titleId}"`)
+    const titleId = html.match(/<button [^>]*id="([^"]+)"/)?.[1]
+    expect(html).toMatch(new RegExp(`^<section [^>]*aria-labelledby="${titleId}"`))
   })
 
   it('leaves out the groups this city has nothing for', () => {
