@@ -1,0 +1,115 @@
+.wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  height: 40px;
+  padding: 0 var(--space-2) 0 var(--space-1);
+  border: var(--border-width-default) solid transparent;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--easing-standard);
+}
+
+.trigger:hover {
+  background: var(--state-hover);
+}
+
+.trigger[aria-expanded="true"] {
+  border-color: var(--color-border-default);
+  background: var(--color-surface-default);
+}
+
+.chevron {
+  transition: transform var(--duration-fast) var(--easing-standard);
+}
+
+[aria-expanded="true"] .chevron {
+  transform: rotate(180deg);
+}
+
+/* Below the trigger, aligned right. */
+.popup {
+  position: absolute;
+  top: calc(100% + var(--space-1-5));
+  right: 0;
+  z-index: 50;
+  width: min(360px, calc(100vw - 2 * var(--space-4)));
+  padding: var(--space-1-5);
+  border: var(--border-width-default) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-default);
+  box-shadow: var(--shadow-md);
+}
+
+.popup:focus-visible {
+  box-shadow: var(--shadow-md);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2-5);
+  margin-bottom: var(--space-1-5);
+  padding: var(--space-2-5) var(--space-2-5) var(--space-3);
+  border-bottom: var(--border-width-default) solid var(--color-border-subtle);
+}
+
+.who {
+  display: grid;
+  min-width: 0;
+}
+
+.login {
+  overflow: hidden;
+  font: var(--label);
+  font-family: var(--font-family-mono);
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quota {
+  color: var(--color-text-secondary);
+  font: var(--caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.menu {
+  display: grid;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2-5);
+  width: 100%;
+  height: 40px;
+  padding: 0 var(--space-2-5);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-primary);
+  font: var(--label);
+  font-weight: 400;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.item:hover,
+.item:focus {
+  background: var(--state-hover);
+}
+
+@media (pointer: coarse) {
+  .item {
+    height: 44px;
+  }
+}
