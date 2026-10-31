@@ -23,31 +23,31 @@
   position: absolute;
   right: var(--space-3);
   bottom: var(--space-3);
-  transition: transform var(--duration-slow) var(--easing-standard);
-}
-
-/* 424 px from the right edge: the 400 px sheet, its 12 px margin and 12 px more. */
-.besideSheet {
-  transform: translateX(-412px);
 }
 
 .scale {
   position: absolute;
   right: 88px;
   bottom: var(--space-4);
-  transition:
-    opacity var(--duration-base) var(--easing-standard),
-    visibility var(--duration-base);
 }
 
-/* Close up on a file, the scale fades out. */
-.gone {
-  visibility: hidden;
-  opacity: 0;
+/*
+ * The camera, the scale and the sheet move as one, on the floating panel's clock: in with
+ * `slow` and `enter`, out with `base` and `exit`. Each state carries the timing of the move
+ * that leads to it.
+ */
+.camera,
+.scale {
+  transition: transform var(--duration-base) var(--easing-exit);
 }
 
-/* The floating panel's motion (fondations): slides 16 px in from the right while fading in,
- * leaves faster. Each state carries the timing of the move that leads to it. */
+/* 424 px from the right edge: the 400 px sheet, its 12 px margin and 12 px more. */
+.besideSheet {
+  transform: translateX(-412px);
+  transition: transform var(--duration-slow) var(--easing-enter);
+}
+
+/* The floating panel's motion (fondations): slides 16 px in from the right while fading in. */
 .sheet {
   position: absolute;
   top: 84px;

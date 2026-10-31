@@ -157,7 +157,7 @@ export function CityUiPage() {
             onExpandedChange={setLegendExpanded}
           />
         </div>
-        {/* With the file sheet open, the camera slides left of it and the scale goes. */}
+        {/* With the file sheet open, the camera and the scale slide left of it. */}
         <div className={sheet ? `${styles.camera} ${styles.besideSheet}` : styles.camera}>
           <CameraControls
             bearing={bearing}
@@ -171,8 +171,8 @@ export function CityUiPage() {
             }}
           />
         </div>
-        {/* Both stay in the page so they can animate out. */}
-        <div className={sheet ? `${styles.scale} ${styles.gone}` : styles.scale} inert={sheet}>
+        {/* The sheet stays in the page so it can animate out. */}
+        <div className={sheet ? `${styles.scale} ${styles.besideSheet}` : styles.scale}>
           <MapScale files={500} />
         </div>
         <Glass
