@@ -2,6 +2,7 @@ import {
   type ComponentPropsWithRef,
   type CSSProperties,
   type PointerEvent,
+  type UIEvent,
   useCallback,
   useEffect,
   useRef,
@@ -32,6 +33,7 @@ export function ScrollArea({
   as: Viewport = 'div',
   children,
   ref,
+  onScroll,
   ...viewportProps
 }: ScrollAreaProps) {
   const viewportRef = useRef<HTMLElement | null>(null)
@@ -90,7 +92,8 @@ export function ScrollArea({
     }
   }, [measure])
 
-  const handleScroll = () => {
+  const handleScroll = (event: UIEvent<HTMLDivElement>) => {
+    onScroll?.(event)
     measure()
     setScrolling(true)
     clearTimeout(linger.current)
@@ -192,8 +195,8 @@ export function ScrollArea({
           }
         }}
         className={viewportClasses}
-        onScroll={handleScroll}
         {...viewportProps}
+        onScroll={handleScroll}
       >
         {children}
       </Viewport>
