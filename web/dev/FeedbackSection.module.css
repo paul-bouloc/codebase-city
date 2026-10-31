@@ -1,0 +1,55 @@
+.section {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.secondary {
+  color: var(--color-text-secondary);
+}
+
+.block {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.block h3,
+.block h4,
+.block p {
+  margin: 0;
+}
+
+.block h4 {
+  color: var(--color-text-secondary);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.alerts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr));
+  align-items: start;
+  gap: var(--space-4);
+  max-width: 900px;
+}
+
+.confirms {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  gap: var(--space-6);
+  max-width: 1040px;
+}
+
+/* On the right like in the site header, with room for the open menu below. */
+.menuRow {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-8);
+  max-width: 760px;
+  min-height: 220px;
+}
