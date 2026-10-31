@@ -1,0 +1,113 @@
+.toast {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto 32px;
+  align-items: start;
+  gap: var(--space-3);
+  width: 360px;
+  max-width: 100%;
+  padding: var(--space-3-5) var(--space-2) var(--space-3-5) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-inverse);
+  box-shadow: var(--shadow-lg);
+  color: var(--color-text-inverse);
+  pointer-events: auto;
+  animation: toast-in var(--duration-toast-in) var(--easing-enter);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-2));
+  }
+}
+
+.success {
+  --toast-icon: var(--feedback-success-on-inverse);
+}
+
+.error {
+  --toast-icon: var(--feedback-error-on-inverse);
+}
+
+.info {
+  --toast-icon: var(--feedback-info-on-inverse);
+}
+
+.icon {
+  margin-top: 1px;
+  color: var(--toast-icon);
+}
+
+.text {
+  display: grid;
+  gap: var(--space-0-5);
+  min-width: 0;
+  /* Lines up with the 32 px buttons when there is no body. */
+  padding-top: var(--space-0-5);
+}
+
+.title {
+  font: var(--label);
+  font-weight: 600;
+}
+
+.body {
+  color: var(--color-text-inverse-secondary);
+  font: var(--body-s);
+}
+
+.action,
+.dismiss {
+  position: relative;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+}
+
+.action {
+  padding: 0 var(--space-2-5);
+  border: var(--border-width-default) solid var(--color-text-secondary);
+  color: var(--color-text-inverse);
+  font: var(--body-s);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  padding: 0;
+  border: 0;
+  color: var(--color-text-inverse-secondary);
+}
+
+.action:hover,
+.dismiss:hover {
+  background: var(--state-primary-hover);
+}
+
+.action:active,
+.dismiss:active {
+  background: var(--state-primary-pressed);
+}
+
+/* The ring's inner gap takes the ink colour on the ink surface. */
+.action:focus-visible,
+.dismiss:focus-visible {
+  box-shadow:
+    0 0 0 var(--border-width-focus) var(--color-surface-inverse),
+    0 0 0 calc(2 * var(--border-width-focus)) var(--color-text-inverse);
+}
+
+/* 44 px targets on touch screens, for the same 32 px look. */
+@media (pointer: coarse) {
+  .action::after,
+  .dismiss::after {
+    position: absolute;
+    inset: -6px;
+    content: "";
+  }
+}
