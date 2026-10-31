@@ -37,6 +37,11 @@
   transform: translateX(-50%);
 }
 
+.bottomEnd {
+  top: calc(100% + var(--space-2));
+  right: 0;
+}
+
 /* On hover with a mouse, and on keyboard focus only: a click does not leave it behind. */
 @media (hover: hover) {
   .anchor:hover > .hint {
