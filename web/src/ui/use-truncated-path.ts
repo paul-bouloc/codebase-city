@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState } from 'react'
 import { truncatePath } from './truncate-path'
 
 let canvas: HTMLCanvasElement | undefined
+const widths = new Map<string, number>()
 
 type FontStyle = Pick<CSSStyleDeclaration, 'fontStyle' | 'fontWeight' | 'fontSize' | 'fontFamily'>
 
@@ -18,15 +19,25 @@ export function maxCharsFor(width: number, charWidth: number): number {
   return charWidth > 0 ? Math.floor(width / charWidth + 1e-6) : Number.POSITIVE_INFINITY
 }
 
-// Paths are set in a monospace font, so one character's width gives the budget.
+// Paths are set in a monospace font, so one character's width gives the budget. Widths are kept
+// once the web fonts are in: before that, the fallback font is being measured.
 function charWidth(element: HTMLElement): number {
+  const font = canvasFont(getComputedStyle(element))
+  const known = widths.get(font)
+  if (known !== undefined) {
+    return known
+  }
   canvas ??= document.createElement('canvas')
   const context = canvas.getContext('2d')
   if (!context) {
     return 0
   }
-  context.font = canvasFont(getComputedStyle(element))
-  return context.measureText('0').width
+  context.font = font
+  const width = context.measureText('0').width
+  if (document.fonts.status === 'loaded') {
+    widths.set(font, width)
+  }
+  return width
 }
 
 // Fits `path` into the width of the returned element, which must not grow with its text
@@ -40,13 +51,18 @@ export function useTruncatedPath<T extends HTMLElement>(path: string) {
     if (!element) {
       return
     }
-    const fit = () => {
-      setMaxChars(maxCharsFor(element.getBoundingClientRect().width, charWidth(element)))
+    // The style is read once, not on every resize of a long list.
+    let width = charWidth(element)
+    const refit = () => {
+      setMaxChars(maxCharsFor(element.getBoundingClientRect().width, width))
     }
-    const observer = new ResizeObserver(fit)
+    const observer = new ResizeObserver(refit)
     observer.observe(element)
     // The web font changes the character width without resizing anything.
-    document.fonts.ready.then(fit)
+    document.fonts.ready.then(() => {
+      width = charWidth(element)
+      refit()
+    })
     return () => observer.disconnect()
   }, [])
 
