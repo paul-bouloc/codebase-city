@@ -224,8 +224,12 @@ async fn every_limit_stops_the_ingestion() {
 
 #[tokio::test]
 async fn a_download_that_drags_on_is_stopped() {
-    let content = "export const a = 1\n".repeat(200);
+    let content: String = (0..2000)
+        .map(|i| format!("export const v{i} = {}\n", i * 7919 % 10007))
+        .collect();
     let archive = tarball(&[("src/a.ts", content.as_bytes())]);
+    // 64-byte chunks, 30 ms apart: far more than the 100 ms allowed.
+    assert!(archive.len() > 64 * 20, "{} bytes", archive.len());
     let limits = Limits {
         download: Duration::from_millis(100),
         ..Limits::default()
