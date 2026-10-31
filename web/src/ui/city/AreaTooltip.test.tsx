@@ -14,6 +14,7 @@ describe('AreaTooltip', () => {
       />,
     )
     expect(html).toContain('>src/vs/editor/</span>')
+    expect(html).toContain('<span class="visually-hidden">src/vs/editor/common</span>')
     expect(html).toContain('>common</span>')
     expect(html).toContain('612 files · in editor, layer 3')
   })
@@ -23,5 +24,16 @@ describe('AreaTooltip', () => {
       <AreaTooltip path="src" files={15212} layer={1} pointer={{ x: 0, y: 0 }} />,
     )
     expect(html).toContain('15,212 files · layer 1')
+  })
+
+  it('shortens a deep folder from its start, the name kept whole', () => {
+    const path = 'packages/platform/services/workspace/internal/indexing/backends/sqlite/schema'
+    const html = renderToStaticMarkup(
+      <AreaTooltip path={path} files={3} layer={2} island="platform" pointer={{ x: 0, y: 0 }} />,
+    )
+    const folder = html.match(/aria-hidden="true">(…\/[^<]*)<\/span>/)?.[1] ?? ''
+    expect(folder.startsWith('…/')).toBe(true)
+    expect(folder.length + 'schema'.length).toBeLessThanOrEqual(45)
+    expect(html).toContain('>schema</span>')
   })
 })

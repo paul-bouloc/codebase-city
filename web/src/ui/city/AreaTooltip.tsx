@@ -1,6 +1,6 @@
 import styles from './CityTooltip.module.css'
 import { Glass } from './Glass'
-import { splitPath } from './shorten-folder'
+import { shortenFolder, splitPath } from './shorten-folder'
 import type { Point, Rect } from './tooltip-placement'
 import { useTooltipPlacement } from './use-tooltip-placement'
 
@@ -11,6 +11,9 @@ const TEXT = {
   inIsland: (island: string, layer: number) => `in ${island}, layer ${layer}`,
   layer: (layer: number) => `layer ${layer}`,
 }
+
+// Characters of the path line: 380 px wide, 14 px padding each side, mono 13 at 7.8 px.
+const PATH_CHARS = 45
 
 interface AreaTooltipProps {
   // Folder path from the repository root, without a trailing slash.
@@ -27,13 +30,20 @@ interface AreaTooltipProps {
 export function AreaTooltip({ path, files, layer, island, pointer, obstacles }: AreaTooltipProps) {
   const { ref, style } = useTooltipPlacement<HTMLDivElement>(pointer, obstacles)
   const { folder, name } = splitPath(path)
+  // The folder gives way first, from its start, as on a file's card.
+  const shortFolder = shortenFolder(folder, PATH_CHARS - name.length)
   const where = island ? TEXT.inIsland(island, layer) : TEXT.layer(layer)
 
   return (
     <Glass ref={ref} role="tooltip" className={`${styles.tooltip} ${styles.area}`} style={style}>
       <p className={`${styles.path} ${styles.areaPath}`}>
-        <span className={styles.folder}>{folder}</span>
-        <span className={styles.name}>{name}</span>
+        <span className="visually-hidden">{path}</span>
+        <span className={styles.folder} aria-hidden="true">
+          {shortFolder}
+        </span>
+        <span className={styles.name} aria-hidden="true">
+          {name}
+        </span>
       </p>
       <p className={styles.summary}>{`${TEXT.files(files)} · ${where}`}</p>
     </Glass>

@@ -25,6 +25,7 @@
 
 .area {
   gap: var(--space-0-5);
+  max-width: 380px;
   padding: var(--space-2-5) var(--space-3-5);
   border-radius: var(--radius-md);
 }
