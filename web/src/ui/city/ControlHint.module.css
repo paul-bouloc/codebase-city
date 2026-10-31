@@ -17,12 +17,18 @@
   font: var(--body-s);
   letter-spacing: var(--body-s-tracking);
   white-space: nowrap;
-  pointer-events: none;
   visibility: hidden;
   opacity: 0;
   transition:
     opacity var(--duration-fast) var(--easing-standard),
     visibility var(--duration-fast);
+}
+
+/* Bridges the gap to the control, so the pointer can move onto the hint without losing it. */
+.hint::before {
+  position: absolute;
+  inset: calc(-1 * var(--space-2));
+  content: "";
 }
 
 .left {
@@ -53,6 +59,12 @@
 .anchor:has(:focus-visible) > .hint {
   visibility: visible;
   opacity: 1;
+}
+
+/* Esc hides it until the pointer or the focus leaves. */
+.anchor[data-dismissed] > .hint {
+  visibility: hidden;
+  opacity: 0;
 }
 
 .shortcut {

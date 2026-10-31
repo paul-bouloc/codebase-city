@@ -25,4 +25,19 @@ describe('ControlHint', () => {
     expect(render('F')).toMatch(/<kbd [^>]*>F<\/kbd>/)
     expect(render()).not.toContain('<kbd')
   })
+
+  it('stays visual when it only repeats the control', () => {
+    const html = renderToStaticMarkup(
+      <ControlHint text="Zoom in" shortcut="+" describes={false}>
+        {(hintId) => (
+          <button type="button" aria-describedby={hintId}>
+            +
+          </button>
+        )}
+      </ControlHint>,
+    )
+    expect(html).not.toContain('aria-describedby')
+    expect(html).not.toContain('role="tooltip"')
+    expect(html).toContain('aria-hidden="true"')
+  })
 })
