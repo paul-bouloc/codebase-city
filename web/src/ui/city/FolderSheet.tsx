@@ -160,7 +160,7 @@ export function FolderSheet({
               <ul className={styles.list}>
                 {orderedLinks(folder.links).map((link) => (
                   <li
-                    key={`${link.direction}-${link.island}-${link.upward}`}
+                    key={`${link.direction}-${link.islandPath}-${link.upward}`}
                     className={link.upward ? `${styles.link} ${styles.upward}` : styles.link}
                   >
                     <span className={`${styles.trait} ${styles[traitClass(link)]}`} />
