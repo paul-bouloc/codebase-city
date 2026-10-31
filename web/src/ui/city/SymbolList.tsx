@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../Icon'
 import { FOLDED_ROWS } from './ranked-files'
 import styles from './SymbolList.module.css'
@@ -28,6 +28,17 @@ interface SymbolListProps {
 // Exported symbols grouped by kind, in file order within a group; 8 rows until expanded.
 export function SymbolList({ symbols, onOpenLine, defaultExpanded = false }: SymbolListProps) {
   const [expanded, setExpanded] = useState(defaultExpanded)
+  const firstAdded = useRef<HTMLButtonElement>(null)
+  const moveFocus = useRef(false)
+
+  // "Show all" goes away: the focus moves to the first symbol it adds.
+  useEffect(() => {
+    if (expanded && moveFocus.current) {
+      moveFocus.current = false
+      firstAdded.current?.focus()
+    }
+  }, [expanded])
+
   let budget = expanded ? Number.POSITIVE_INFINITY : FOLDED_ROWS
 
   const groups = GROUPS.map(({ title, kinds }) => {
@@ -38,6 +49,8 @@ export function SymbolList({ symbols, onOpenLine, defaultExpanded = false }: Sym
     budget -= shown.length
     return { title, shown }
   }).filter(({ shown }) => shown.length > 0)
+  // Rows in reading order across the groups: the 9th is the first one "Show all" adds.
+  let row = 0
 
   return (
     <div className={styles.block}>
@@ -48,6 +61,7 @@ export function SymbolList({ symbols, onOpenLine, defaultExpanded = false }: Sym
             {shown.map((symbol) => (
               <li key={`${symbol.name}-${symbol.line}`}>
                 <button
+                  ref={row++ === FOLDED_ROWS ? firstAdded : undefined}
                   type="button"
                   className={styles.row}
                   onClick={() => onOpenLine(symbol.line)}
@@ -64,7 +78,14 @@ export function SymbolList({ symbols, onOpenLine, defaultExpanded = false }: Sym
         </div>
       ))}
       {!expanded && symbols.length > FOLDED_ROWS && (
-        <button type="button" className={styles.showAll} onClick={() => setExpanded(true)}>
+        <button
+          type="button"
+          className={styles.showAll}
+          onClick={() => {
+            moveFocus.current = true
+            setExpanded(true)
+          }}
+        >
           {TEXT.showAll(symbols.length)}
         </button>
       )}
