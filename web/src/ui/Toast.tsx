@@ -1,4 +1,11 @@
-import { type AnimationEvent, type FocusEvent, useEffect, useRef, useState } from 'react'
+import {
+  type AnimationEvent,
+  type FocusEvent,
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useState,
+} from 'react'
 import { Icon } from './Icon'
 import type { IconName } from './icons'
 import styles from './Toast.module.css'
@@ -16,17 +23,19 @@ const ICONS: Record<ToastTone, IconName> = {
 
 interface ToastProps {
   toast: ToastData
-  onDismiss: () => void
+  // Closed by hand or at the end of its dwell time: the exit starts.
+  onLeave: () => void
+  // The exit animation is over: the toast can leave the queue.
+  onLeft: () => void
 }
 
-export function Toast({ toast, onDismiss }: ToastProps) {
+export function Toast({ toast, onLeave, onLeft }: ToastProps) {
   const [paused, setPaused] = useState(false)
-  // Fading out, dismissed here or pushed out by a newer toast: the toast leaves the queue once
-  // its exit animation is over.
-  const [dismissed, setDismissed] = useState(false)
-  const leaving = dismissed || toast.leaving === true
+  // Marked in the queue, so a newer toast does not count this one while it fades out.
+  const leaving = toast.leaving !== undefined
   const remaining = useRef(toastDwell(toast.tone))
-  const leave = () => setDismissed(true)
+  // The timer below calls the latest callback without restarting.
+  const leaveAfterDwell = useEffectEvent(onLeave)
 
   // The dwell time runs only while the toast is neither hovered nor focused, and resumes where
   // it stopped.
@@ -36,7 +45,7 @@ export function Toast({ toast, onDismiss }: ToastProps) {
       return
     }
     const start = Date.now()
-    const timer = setTimeout(() => setDismissed(true), left)
+    const timer = setTimeout(leaveAfterDwell, left)
     return () => {
       clearTimeout(timer)
       remaining.current = left - (Date.now() - start)
@@ -52,14 +61,14 @@ export function Toast({ toast, onDismiss }: ToastProps) {
   // The slot's own exit, not the toast's entry bubbling up.
   const handleExitEnd = (event: AnimationEvent<HTMLDivElement>) => {
     if (leaving && event.target === event.currentTarget) {
-      onDismiss()
+      onLeft()
     }
   }
 
   const slotClasses = [
     styles.slot,
     leaving && styles.leaving,
-    toast.leaving && !dismissed && styles.pushed,
+    toast.leaving === 'pushed' && styles.pushed,
   ]
     .filter(Boolean)
     .join(' ')
@@ -88,7 +97,7 @@ export function Toast({ toast, onDismiss }: ToastProps) {
               className={styles.action}
               onClick={() => {
                 toast.action?.onClick()
-                leave()
+                onLeave()
               }}
             >
               {toast.action.label}
@@ -100,7 +109,7 @@ export function Toast({ toast, onDismiss }: ToastProps) {
             type="button"
             className={styles.dismiss}
             aria-label={TEXT.dismiss}
-            onClick={leave}
+            onClick={onLeave}
           >
             <Icon name="close" size={16} />
           </button>

@@ -2,7 +2,7 @@ import { type ReactNode, useCallback, useMemo, useRef, useState } from 'react'
 import { Toast } from './Toast'
 import styles from './ToastProvider.module.css'
 import { ToastContext, type ToastInput } from './toast-context'
-import { pushToast, removeToast, type ToastData } from './toast-queue'
+import { leaveToast, pushToast, removeToast, type ToastData } from './toast-queue'
 
 const TEXT = {
   region: 'Notifications',
@@ -31,7 +31,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <Toast
             key={toast.id}
             toast={toast}
-            onDismiss={() => setQueue((current) => removeToast(current, toast.id))}
+            onLeave={() => setQueue((current) => leaveToast(current, toast.id))}
+            onLeft={() => setQueue((current) => removeToast(current, toast.id))}
           />
         ))}
       </section>
