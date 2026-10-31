@@ -35,6 +35,8 @@ just db-up    # start Postgres on localhost:55432
 just dev      # start the server and the web dev server (http://localhost:5173)
 ```
 
+The TypeScript types in `web/src/data/generated/` come from `crates/model`: after changing it, run `just gen-types` and commit the result (CI checks they match).
+
 The server reads its configuration from the environment (see `.env.example`) and refuses to start when a required variable is missing.
 
 Run `just` to list every recipe.
