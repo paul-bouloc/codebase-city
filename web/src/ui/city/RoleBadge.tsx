@@ -1,8 +1,8 @@
 import { useId } from 'react'
 import type { FileRole } from '../Badge'
 import { Icon } from '../Icon'
+import { ROLE_NAMES } from '../role-names'
 import styles from './RoleBadge.module.css'
-import { ROLE_NAMES } from './role-names'
 
 const TEXT = {
   likely: '· likely',

@@ -2,6 +2,7 @@ import styles from './Badge.module.css'
 import { Icon } from './Icon'
 import type { IconName } from './icons'
 import { LANGUAGE_LABELS } from './language-labels'
+import { ROLE_NAMES } from './role-names'
 import { Spinner } from './Spinner'
 
 export type FileRole =
@@ -16,16 +17,6 @@ export type FileRole =
 export type Language = 'typescript' | 'javascript' | 'css' | 'other'
 
 export type AnalysisStatus = 'queued' | 'building' | 'done' | 'failed' | 'cancelled'
-
-const ROLE_LABELS: Record<FileRole, string> = {
-  'entry-point': 'Entry point',
-  foundation: 'Foundation',
-  conductor: 'Conductor',
-  facade: 'Facade',
-  test: 'Test',
-  config: 'Config',
-  generated: 'Generated',
-}
 
 const STATUS_LABELS: Record<AnalysisStatus, string> = {
   queued: 'Queued',
@@ -62,7 +53,7 @@ export function Badge(props: BadgeProps) {
     return (
       <span className={classes}>
         <Icon name={props.fileRole} size={14} />
-        {ROLE_LABELS[props.fileRole]}
+        {ROLE_NAMES[props.fileRole]}
         {props.likely && ` · ${TEXT.likely}`}
       </span>
     )
