@@ -1,14 +1,19 @@
-import { type ReactNode, useMemo, useState } from 'react'
+import { type ReactNode, useEffect, useMemo, useState } from 'react'
 import { CityView } from '../src/app/CityView'
 import { syntheticCity } from '../src/city/synthetic'
+import { AboutPanel } from '../src/ui/city/AboutPanel'
 import { AreaTooltip } from '../src/ui/city/AreaTooltip'
 import { CameraControls } from '../src/ui/city/CameraControls'
 import { CityLegend } from '../src/ui/city/CityLegend'
 import { CityMarker } from '../src/ui/city/CityMarker'
 import { type BuildingMode, CityTopBar } from '../src/ui/city/CityTopBar'
+import { escapeTarget } from '../src/ui/city/city-escape'
+import { FileSheet } from '../src/ui/city/FileSheet'
 import { FileTooltip } from '../src/ui/city/FileTooltip'
+import { FolderSheet } from '../src/ui/city/FolderSheet'
 import { Glass } from '../src/ui/city/Glass'
 import { MapScale } from '../src/ui/city/MapScale'
+import type { FileSheetData, FolderSheetData } from '../src/ui/city/sheet-data'
 import type { Point, Rect } from '../src/ui/city/tooltip-placement'
 import styles from './CityUiPage.module.css'
 import {
@@ -21,15 +26,45 @@ import {
   REPO,
   SMALL_LEGEND,
 } from './city-ui-samples'
+import { SheetsBoard } from './SheetsBoard'
+import {
+  ABOUT,
+  FILE_CODE_GONE,
+  FILE_CODE_TIMEOUT,
+  FILE_CYCLES,
+  FOLDER,
+  FOLDER_NO_README,
+  FILE as SHEET_FILE,
+  TEST_PARK,
+  UNANALYZED_FILE,
+  UNANALYZED_FOLDER,
+} from './sheet-samples'
 
 const TEXT = {
   tools: 'States',
   samples:
-    'Samples: the engine does not pick buildings or project roofs yet, so the card is always the same one and the markers stay put on the screen.',
+    'Samples: the engine does not pick buildings or project roofs yet, so the card is always the same one and the markers stay put on the screen. Pick a selection to open its sheet; Esc closes it, a second Esc clears the selection.',
   signedIn: 'Signed in',
   aboutOpen: 'About open',
   shareOpen: 'Share open',
-  sheet: 'File sheet open (the tooltip keeps off it)',
+  selection: 'Selection (opens its sheet)',
+  selectionOptions: {
+    none: 'None',
+    file: 'File: textModel.ts',
+    'file-cycles': 'File in three cycles',
+    'file-loading': 'File, loading',
+    'file-unanalyzed': 'File, not analyzed',
+    'file-timeout': 'File, code timed out',
+    'file-gone': 'File, code gone from GitHub',
+    folder: 'Island: editor',
+    'folder-no-readme': 'Island without README',
+    'folder-unanalyzed': 'Folder, not analyzed',
+    'folder-tests': 'Test park',
+    'folder-loading': 'Island, loading',
+  },
+  selected: (label: string, open: boolean) =>
+    `Selected: ${label} · sheet ${open ? 'open' : 'closed'}`,
+  newer: 'Newer version (About)',
   showMarkers: 'Markers',
   bearing: 'Camera bearing',
   hover: 'Tooltip under the pointer',
@@ -40,7 +75,6 @@ const TEXT = {
     parcel: 'Parcel',
     island: 'Island',
   },
-  sheetLabel: 'Stand-in for the file sheet',
   boardTitle: 'City UI components',
   boardIntro:
     'Development page. Compare with the “DS · Components 9”, “City UI · City idle” and “City UI · Hover” boards. Press Tab to see the focus rings and the control tooltips.',
@@ -66,6 +100,26 @@ const TEXT = {
 }
 
 type Hover = keyof typeof TEXT.hoverOptions
+type Selection = Exclude<keyof typeof TEXT.selectionOptions, 'none'>
+
+const SELECTIONS: Record<
+  Selection,
+  { file: FileSheetData; loading?: boolean } | { folder: FolderSheetData; loading?: boolean }
+> = {
+  file: { file: SHEET_FILE },
+  'file-cycles': { file: FILE_CYCLES },
+  'file-loading': { file: SHEET_FILE, loading: true },
+  'file-unanalyzed': { file: UNANALYZED_FILE },
+  'file-timeout': { file: FILE_CODE_TIMEOUT },
+  'file-gone': { file: FILE_CODE_GONE },
+  folder: { folder: FOLDER },
+  'folder-no-readme': { folder: FOLDER_NO_README },
+  'folder-unanalyzed': { folder: UNANALYZED_FOLDER },
+  'folder-tests': { folder: TEST_PARK },
+  'folder-loading': { folder: FOLDER, loading: true },
+}
+
+const ABOUT_ID = 'about-panel'
 
 // A city of about the boards' size behind the interface.
 const CITY = { islands: 6, files: 1_500 }
@@ -94,11 +148,39 @@ export function CityUiPage() {
   const [topView, setTopView] = useState(false)
   const [bearing, setBearing] = useState(0)
   const [markers, setMarkers] = useState(false)
+  const [selection, setSelection] = useState<Selection | null>(null)
   const [sheet, setSheet] = useState(false)
+  const [newer, setNewer] = useState(false)
   const [hover, setHover] = useState<Hover>('file')
   const [pointer, setPointer] = useState<Point | null>(null)
 
-  // The stand-in sheet, as the CSS draws it: 400 px on the right, under the top bar.
+  const select = (next: Selection | null) => {
+    setSelection(next)
+    setSheet(next !== null)
+  }
+
+  // Esc that no panel took: the open panel first, then the selection.
+  useEffect(() => {
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) {
+        return
+      }
+      const target = escapeTarget({
+        panelOpen: sheet || aboutOpen,
+        hasSelection: selection !== null,
+      })
+      if (target === 'panel') {
+        setSheet(false)
+        setAboutOpen(false)
+      } else if (target === 'selection') {
+        setSelection(null)
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [sheet, aboutOpen, selection])
+
+  // The sheet, as the CSS places it: 400 px on the right, under the top bar.
   const obstacles = useMemo<Rect[]>(
     () =>
       sheet
@@ -140,6 +222,7 @@ export function CityUiPage() {
             homeHref="#"
             aboutOpen={aboutOpen}
             onAboutToggle={() => setAboutOpen(!aboutOpen)}
+            aboutPanelId={ABOUT_ID}
             searchValue={search}
             onSearchChange={setSearch}
             mode={mode}
@@ -175,14 +258,36 @@ export function CityUiPage() {
         <div className={sheet ? `${styles.scale} ${styles.besideSheet}` : styles.scale}>
           <MapScale files={500} />
         </div>
-        <Glass
-          className={sheet ? `${styles.sheet} ${styles.sheetOpen}` : styles.sheet}
-          inert={!sheet}
-        >
-          <p className="body-s">{TEXT.sheetLabel}</p>
-        </Glass>
+        <div className={styles.sheet}>
+          <StageSheet
+            selection={selection}
+            open={sheet}
+            onClose={() => setSheet(false)}
+            onSelectFile={() => select('file')}
+            onOpenFolder={() => select('folder')}
+          />
+        </div>
+        <div className={styles.about}>
+          <AboutPanel
+            id={ABOUT_ID}
+            open={aboutOpen}
+            about={ABOUT}
+            newer={
+              newer
+                ? {
+                    commits: 48,
+                    signedIn,
+                    quotaNote: 'Rebuilding uses 1 analysis · 7 left today.',
+                    onRebuild: () => {},
+                    onSignIn: () => setSignedIn(true),
+                  }
+                : undefined
+            }
+            onClose={() => setAboutOpen(false)}
+          />
+        </div>
 
-        {/* Folds away, so it never hides the stand-in sheet. */}
+        {/* Folds away, so it never hides the legend. */}
         <Glass className={styles.tools}>
           <details open className={styles.toolsBody}>
             <summary className="eyebrow-mono">{TEXT.tools}</summary>
@@ -191,7 +296,27 @@ export function CityUiPage() {
             <Toggle label={TEXT.aboutOpen} checked={aboutOpen} onChange={setAboutOpen} />
             <Toggle label={TEXT.shareOpen} checked={shareOpen} onChange={setShareOpen} />
             <Toggle label={TEXT.showMarkers} checked={markers} onChange={setMarkers} />
-            <Toggle label={TEXT.sheet} checked={sheet} onChange={setSheet} />
+            <Toggle label={TEXT.newer} checked={newer} onChange={setNewer} />
+            <label className={styles.field}>
+              {TEXT.selection}
+              <select
+                value={selection ?? 'none'}
+                onChange={(event) =>
+                  select(event.target.value === 'none' ? null : (event.target.value as Selection))
+                }
+              >
+                {Object.entries(TEXT.selectionOptions).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {selection && (
+              <p className={styles.note} role="status">
+                {TEXT.selected(TEXT.selectionOptions[selection], sheet)}
+              </p>
+            )}
             <label className={styles.field}>
               {TEXT.bearing}
               <input
@@ -221,7 +346,55 @@ export function CityUiPage() {
       </section>
 
       <Board />
+      <SheetsBoard />
     </>
+  )
+}
+
+function StageSheet({
+  selection,
+  open,
+  onClose,
+  onSelectFile,
+  onOpenFolder,
+}: {
+  selection: Selection | null
+  open: boolean
+  onClose: () => void
+  onSelectFile: () => void
+  onOpenFolder: () => void
+}) {
+  // Nothing selected yet: a closed sheet waits off screen.
+  const shown = SELECTIONS[selection ?? 'file']
+  const noop = () => {}
+  if ('file' in shown) {
+    return (
+      <FileSheet
+        open={open && selection !== null}
+        file={shown.file}
+        loading={shown.loading}
+        onClose={onClose}
+        onOpenFolder={onOpenFolder}
+        onSelectFile={onSelectFile}
+        onShowCycle={noop}
+        onCopyPath={noop}
+        onCopyLink={noop}
+        onRetryCode={noop}
+        onShowImpact={noop}
+        onFindPath={noop}
+      />
+    )
+  }
+  return (
+    <FolderSheet
+      open={open && selection !== null}
+      folder={shown.folder}
+      loading={shown.loading}
+      onClose={onClose}
+      onOpenFolder={onOpenFolder}
+      onSelectFile={onSelectFile}
+      onCopyLink={noop}
+    />
   )
 }
 

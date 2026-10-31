@@ -50,37 +50,34 @@
   transition: transform var(--duration-slow) var(--easing-enter);
 }
 
-/* Off screen when closed, by the same distance the camera and the scale travel, so all three
- * edges stay locked together while they move. */
+/* Where the sheets stand; they slide in by themselves (SheetFrame). */
 .sheet {
   position: absolute;
   top: 84px;
   right: var(--space-3);
   bottom: var(--space-3);
-  width: 400px;
-  padding: var(--space-5);
-  visibility: hidden;
-  transform: translateX(var(--sheet-travel));
-  transition:
-    transform var(--duration-base) var(--easing-exit),
-    visibility var(--duration-base);
+  z-index: var(--layer-raised);
 }
 
-.sheetOpen {
-  visibility: visible;
-  transform: none;
-  transition:
-    transform var(--duration-slow) var(--easing-enter),
-    visibility 0s;
+/* Under the repository button. */
+.about {
+  position: absolute;
+  top: 80px;
+  left: 56px;
+  bottom: var(--space-3);
+  z-index: var(--layer-menu);
+  pointer-events: none;
 }
 
-/* Reduced motion: everything jumps into place. */
+.about > * {
+  pointer-events: auto;
+}
+
+/* Reduced motion: the camera and the scale jump into place. */
 @media (prefers-reduced-motion: reduce) {
   .camera,
   .scale,
-  .besideSheet,
-  .sheet,
-  .sheetOpen {
+  .besideSheet {
     transition: none;
   }
 }
@@ -90,11 +87,11 @@
   transform: translate(-50%, -100%);
 }
 
-/* Clear of the expanded legend and of the camera. */
+/* Where the guide will live; it folds away. */
 .tools {
   position: absolute;
-  top: 84px;
-  right: var(--space-3);
+  bottom: var(--space-3);
+  left: var(--space-3);
   width: 280px;
   padding: var(--space-3) var(--space-4);
   font: var(--body-s);

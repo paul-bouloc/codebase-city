@@ -1,0 +1,49 @@
+.board {
+  display: grid;
+  gap: var(--space-12);
+  padding: 0 var(--space-6) var(--space-16);
+  background: var(--color-bg-page);
+}
+
+.header {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 720px;
+}
+
+.header > *,
+.group > h2 {
+  margin: 0;
+}
+
+.group {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.cases {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-6);
+}
+
+.case {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+/* The height a sheet gets on a 900 px screen, under the top bar. */
+.sea {
+  height: 804px;
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  background: var(--city-sea);
+  box-sizing: content-box;
+}
+
+.short {
+  height: auto;
+}
