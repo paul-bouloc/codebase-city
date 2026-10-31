@@ -1,0 +1,148 @@
+/*
+ * Closed, the sheet waits off screen by its own width plus its margin: the camera and the scale
+ * travel the same distance on the same clock, so their edges stay together (decision of the
+ * T013 test). In with `slow` and `enter`, out with `base` and `exit`.
+ */
+.sheet {
+  --sheet-travel: calc(100% + var(--space-3));
+
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: 400px;
+  height: 100%;
+  overflow: hidden;
+  visibility: hidden;
+  transform: translateX(var(--sheet-travel));
+  transition:
+    transform var(--duration-base) var(--easing-exit),
+    visibility var(--duration-base);
+}
+
+.open {
+  visibility: visible;
+  transform: none;
+  transition:
+    transform var(--duration-slow) var(--easing-enter),
+    visibility 0s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet,
+  .open {
+    transition: none;
+  }
+}
+
+/* Header */
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2-5);
+  padding: var(--space-3) var(--space-3) var(--space-3-5) var(--space-4);
+  border-bottom: var(--border-width-default) solid var(--color-border-subtle);
+}
+
+.topRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2-5);
+  margin: calc(-1 * var(--space-1)) 0;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.tile {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+}
+
+.accent {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-strong);
+}
+
+.neutral {
+  background: var(--color-bg-sunken);
+  color: var(--color-text-primary);
+}
+
+.titleText {
+  min-width: 0;
+}
+
+/* The board says mono 19/24: brought back to heading.3 (A-c8), set in mono. */
+.title {
+  margin: 0;
+  overflow: hidden;
+  font: var(--heading-3);
+  font-family: var(--font-family-mono);
+  font-weight: 700;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.title:focus-visible {
+  border-radius: var(--radius-xs);
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font: var(--caption);
+  letter-spacing: var(--caption-tracking);
+}
+
+.badges,
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Body: scrolls on its own, with a 40 px fade at the bottom while there is more to see. The fade
+ * follows the scroll position, so a body that does not scroll is never faded. */
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3-5);
+  padding: var(--space-3-5) var(--space-4) var(--space-4);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  animation: body-fade linear both;
+  animation-timeline: scroll(self);
+}
+
+@keyframes body-fade {
+  0%,
+  99% {
+    mask-image: linear-gradient(to bottom, black calc(100% - 40px), transparent);
+  }
+
+  100% {
+    mask-image: none;
+  }
+}
+
+/* Footer */
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-top: var(--border-width-default) solid var(--color-border-subtle);
+  background: var(--glass-bg);
+}
