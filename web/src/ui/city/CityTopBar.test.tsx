@@ -62,4 +62,9 @@ describe('CityTopBar', () => {
     expect(render()).toContain('aria-label="Building style"')
     expect(render({ showMode: false })).not.toContain('Building style')
   })
+
+  it('disables the search until its index arrives', () => {
+    expect(render()).not.toMatch(/role="combobox"[^>]*disabled=""/)
+    expect(render({ searchDisabled: true })).toMatch(/role="combobox"[^>]*disabled=""/)
+  })
 })

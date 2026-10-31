@@ -60,6 +60,8 @@ interface CityTopBarProps {
   searchExpanded?: boolean
   searchListboxId?: string
   searchInputRef?: Ref<HTMLInputElement>
+  // Until the search index has arrived.
+  searchDisabled?: boolean
   mode: BuildingMode
   onModeChange: (mode: BuildingMode) => void
   // While the city is building.
@@ -86,6 +88,7 @@ export function CityTopBar({
   searchExpanded,
   searchListboxId,
   searchInputRef,
+  searchDisabled = false,
   mode,
   onModeChange,
   modeDisabled = false,
@@ -151,6 +154,7 @@ export function CityTopBar({
           expanded={searchExpanded}
           listboxId={searchListboxId}
           inputRef={searchInputRef}
+          disabled={searchDisabled}
         />
       </span>
 
