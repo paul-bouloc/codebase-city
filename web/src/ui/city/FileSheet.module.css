@@ -1,0 +1,115 @@
+.loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.unanalyzed {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: var(--space-2-5);
+  margin: 0;
+  padding: var(--space-3) var(--space-3-5);
+  border: var(--border-width-default) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-sunken);
+  color: var(--color-text-body);
+  font: var(--body-s);
+  letter-spacing: var(--body-s-tracking);
+}
+
+.unanalyzed strong {
+  color: var(--color-text-primary);
+}
+
+.unanalyzedIcon {
+  color: var(--color-text-secondary);
+}
+
+.facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fact {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--space-2);
+  color: var(--color-text-body);
+  font: var(--body-s);
+  letter-spacing: var(--body-s-tracking);
+  font-variant-numeric: tabular-nums;
+}
+
+.fact strong {
+  color: var(--color-text-primary);
+}
+
+/* The same strokes as the flows in the city, centred on the first line. */
+.trait {
+  align-self: start;
+  width: 14px;
+  height: 3px;
+  margin-top: 7.5px;
+  border-radius: var(--radius-full);
+}
+
+.incoming {
+  background: var(--meaning-incoming);
+}
+
+.outgoing {
+  background: var(--meaning-outgoing);
+}
+
+.factIcon {
+  align-self: start;
+  margin-top: 1px;
+  color: var(--color-text-secondary);
+}
+
+.subFact {
+  display: block;
+  color: var(--color-text-secondary);
+}
+
+/* Red stays for cycles and upward imports. */
+.cycle,
+.cycle .factIcon,
+.cycle strong {
+  color: var(--meaning-upward-text);
+}
+
+.link {
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.mono {
+  font-family: var(--font-family-mono);
+}
+
+/* Flush with the sheet's edges, as the board draws them. */
+.tabs {
+  margin: 0 calc(-1 * var(--space-4));
+}
+
+.tabs [role="tablist"] {
+  padding: 0 var(--space-2-5);
+}
+
+.tabs [role="tabpanel"] {
+  padding: var(--space-3) var(--space-4) 0;
+}

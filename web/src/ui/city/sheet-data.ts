@@ -48,7 +48,7 @@ export interface FileSheetData {
   // Set when the city groups the arcs: "Showing 20 of 1,204 importers".
   shownImporters?: number
   imports: number
-  layer?: { index: number; of: number; island: string }
+  layer?: { index: number; of: number; island: string; islandPath: string }
   // One entry per cycle the file belongs to, by size.
   cycles: readonly number[]
   headerComment?: string
