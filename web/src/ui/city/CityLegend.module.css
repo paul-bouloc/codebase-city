@@ -176,34 +176,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.dot {
-  width: 10px;
-  height: 10px;
-  border-radius: var(--radius-full);
-  background: var(--lang-other);
-}
-
-.dot[data-language="typescript"] {
-  background: var(--lang-typescript);
-}
-
-.dot[data-language="javascript"] {
-  background: var(--lang-javascript);
-}
-
-.dot[data-language="css"] {
-  background: var(--lang-css);
-}
-
-.dot[data-language="test"] {
-  background: var(--lang-test);
-}
-
-.dots .dot {
-  width: 8px;
-  height: 8px;
-}
-
 .water {
   fill: var(--city-sea);
 }

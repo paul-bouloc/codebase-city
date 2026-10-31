@@ -2,6 +2,7 @@ import { Badge, type FileRole, type Language } from '../Badge'
 import { LANGUAGE_LABELS } from '../language-labels'
 import styles from './CityTooltip.module.css'
 import { Glass } from './Glass'
+import { LanguageDot } from './LanguageDot'
 import { shortenFolder, splitPath } from './shorten-folder'
 import type { Point, Rect } from './tooltip-placement'
 import { useTooltipPlacement } from './use-tooltip-placement'
@@ -74,7 +75,7 @@ export function FileTooltip({
         </span>
       </p>
       <p className={styles.facts}>
-        <span className={styles.dot} data-language={language} />
+        <LanguageDot language={language} size={10} />
         <span>
           {facts.join(' · ')}
           {complexityTop !== undefined && (

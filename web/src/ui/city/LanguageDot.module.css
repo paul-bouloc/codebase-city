@@ -1,0 +1,31 @@
+.dot {
+  flex: none;
+  border-radius: var(--radius-full);
+  background: var(--lang-other);
+}
+
+.small {
+  width: 8px;
+  height: 8px;
+}
+
+.large {
+  width: 10px;
+  height: 10px;
+}
+
+.dot[data-language="typescript"] {
+  background: var(--lang-typescript);
+}
+
+.dot[data-language="javascript"] {
+  background: var(--lang-javascript);
+}
+
+.dot[data-language="css"] {
+  background: var(--lang-css);
+}
+
+.dot[data-language="test"] {
+  background: var(--lang-test);
+}

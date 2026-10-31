@@ -10,6 +10,7 @@ import { ControlHint } from './ControlHint'
 import { Glass } from './Glass'
 import { safeGithubHref } from './github-links'
 import { LanguageBar } from './LanguageBar'
+import { LanguageDot } from './LanguageDot'
 import { formatShare, LANGUAGE_NAMES } from './legend-content'
 import { SheetSection } from './SheetSection'
 import type { AboutData } from './sheet-data'
@@ -176,7 +177,7 @@ export function AboutPanel({ id, open, about, newer, onClose }: AboutPanelProps)
             <ul className={styles.languages}>
               {languages.map(({ language, files, share }) => (
                 <li key={language} className={styles.language}>
-                  <span className={styles.dot} data-language={language} />
+                  <LanguageDot language={language} size={8} />
                   <span>
                     {LANGUAGE_NAMES[language]}{' '}
                     <span className={styles.secondary}>· {TEXT.files(files)}</span>

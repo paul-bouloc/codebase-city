@@ -89,26 +89,6 @@
   color: var(--color-text-secondary);
 }
 
-.dot {
-  flex: none;
-  width: 10px;
-  height: 10px;
-  border-radius: var(--radius-full);
-  background: var(--lang-other);
-}
-
-.dot[data-language="typescript"] {
-  background: var(--lang-typescript);
-}
-
-.dot[data-language="javascript"] {
-  background: var(--lang-javascript);
-}
-
-.dot[data-language="css"] {
-  background: var(--lang-css);
-}
-
 /* The same strokes as the flows in the city. */
 .trait {
   width: 14px;

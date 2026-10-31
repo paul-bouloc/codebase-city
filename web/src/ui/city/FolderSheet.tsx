@@ -8,6 +8,7 @@ import styles from './FolderSheet.module.css'
 import { safeGithubHref } from './github-links'
 import { orderedLinks } from './island-links'
 import { LanguageBar } from './LanguageBar'
+import { LanguageDot } from './LanguageDot'
 import { formatShare, LANGUAGE_NAMES } from './legend-content'
 import { MetricPairs } from './MetricPairs'
 import { ROLE_NAMES } from './role-names'
@@ -137,7 +138,7 @@ export function FolderSheet({
               <ul className={styles.inline}>
                 {folder.languages.map(({ language, share }) => (
                   <li key={language} className={styles.inlineItem}>
-                    <span className={styles.dot} data-language={language} />
+                    <LanguageDot language={language} size={8} />
                     {LANGUAGE_NAMES[language]}
                     <span className={styles.secondary}>{formatShare(share)}</span>
                   </li>

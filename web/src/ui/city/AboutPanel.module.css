@@ -158,25 +158,6 @@
   color: var(--color-text-secondary);
 }
 
-.dot {
-  width: 8px;
-  height: 8px;
-  border-radius: var(--radius-full);
-  background: var(--lang-other);
-}
-
-.dot[data-language="typescript"] {
-  background: var(--lang-typescript);
-}
-
-.dot[data-language="javascript"] {
-  background: var(--lang-javascript);
-}
-
-.dot[data-language="css"] {
-  background: var(--lang-css);
-}
-
 .facts {
   gap: var(--space-1-5);
 }

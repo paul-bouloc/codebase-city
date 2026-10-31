@@ -11,6 +11,7 @@ import {
 import { Icon } from '../Icon'
 import styles from './CityLegend.module.css'
 import { Glass } from './Glass'
+import { LanguageDot } from './LanguageDot'
 import {
   LANGUAGE_NAMES,
   type Landmark,
@@ -88,7 +89,7 @@ export function CityLegend({ content, expanded, onExpandedChange }: CityLegendPr
         >
           <span className={styles.dots} aria-hidden="true">
             {content.languages.slice(0, PILL_DOTS).map(({ language }) => (
-              <span key={language} className={styles.dot} data-language={language} />
+              <LanguageDot key={language} language={language} size={8} />
             ))}
           </span>
           <span className={styles.title}>{TEXT.title}</span>
@@ -105,7 +106,7 @@ export function CityLegend({ content, expanded, onExpandedChange }: CityLegendPr
                 {content.languages.map(({ language, share }) => (
                   <li key={language} className={styles.row}>
                     <span className={styles.swatch}>
-                      <span className={styles.dot} data-language={language} />
+                      <LanguageDot language={language} size={10} />
                     </span>
                     {LANGUAGE_NAMES[language]}
                     <span className={styles.share}>{share}</span>
@@ -114,7 +115,7 @@ export function CityLegend({ content, expanded, onExpandedChange }: CityLegendPr
                 {content.tests && (
                   <li className={styles.row}>
                     <span className={styles.swatch}>
-                      <span className={styles.dot} data-language="test" />
+                      <LanguageDot language="test" size={10} />
                     </span>
                     {TEXT.tests}
                   </li>
