@@ -67,6 +67,7 @@ export interface KeyFile {
 
 export interface IslandLink {
   island: string
+  islandPath: string
   direction: 'imports' | 'importedBy'
   // An import that goes up the layers.
   upward: boolean
@@ -84,7 +85,8 @@ export interface FolderSheetData {
   languages: readonly { language: Language; share: number }[]
   keyFiles: readonly KeyFile[]
   links: readonly IslandLink[]
-  readme?: string
+  // The README's first paragraph as plain text, and where to read the rest.
+  readme?: { text: string; url: string }
   githubUrl: string
 }
 

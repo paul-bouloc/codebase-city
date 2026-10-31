@@ -1,0 +1,226 @@
+.loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.unanalyzed {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: var(--space-2-5);
+  margin: 0;
+  padding: var(--space-3) var(--space-3-5);
+  border: var(--border-width-default) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-sunken);
+  color: var(--color-text-body);
+  font: var(--body-s);
+  letter-spacing: var(--body-s-tracking);
+}
+
+.unanalyzed strong {
+  color: var(--color-text-primary);
+}
+
+.unanalyzedIcon {
+  color: var(--color-text-secondary);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font: var(--eyebrow-mono);
+  letter-spacing: var(--eyebrow-mono-tracking);
+  text-transform: uppercase;
+}
+
+.inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.inlineItem {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  font: var(--caption);
+  letter-spacing: var(--caption-tracking);
+}
+
+.secondary {
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--lang-other);
+}
+
+.dot[data-language="typescript"] {
+  background: var(--lang-typescript);
+}
+
+.dot[data-language="javascript"] {
+  background: var(--lang-javascript);
+}
+
+.dot[data-language="css"] {
+  background: var(--lang-css);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Key files */
+
+.keyFile {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2-5);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-1) var(--space-1-5);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.keyFile:hover {
+  background: var(--state-hover);
+}
+
+.names {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.name,
+.folder {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.name {
+  font: var(--code-m);
+  font-weight: 700;
+  letter-spacing: var(--code-m-tracking);
+}
+
+.folder {
+  color: var(--color-text-secondary);
+  font: var(--eyebrow-mono);
+  font-weight: 400;
+}
+
+.reason {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-text-body);
+  font: var(--caption);
+  letter-spacing: var(--caption-tracking);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Links with other islands */
+
+.link {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2-5);
+  min-height: 32px;
+  padding: 0 var(--space-1-5);
+  color: var(--color-text-body);
+  font: var(--body-s);
+  letter-spacing: var(--body-s-tracking);
+}
+
+.trait {
+  height: 3px;
+  border-radius: var(--radius-full);
+}
+
+.outgoing {
+  background: var(--meaning-outgoing);
+}
+
+.incoming {
+  background: var(--meaning-incoming);
+}
+
+/* Red stays for upward imports and cycles: a dashed stroke, as in the city. */
+.upwardTrait {
+  background: repeating-linear-gradient(90deg, var(--meaning-upward) 0 6px, transparent 6px 11px);
+}
+
+.island {
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--color-text-primary);
+  font: var(--code-s);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: var(--color-border-strong);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.upward .linkText,
+.upward .island {
+  color: var(--meaning-upward-text);
+}
+
+.count {
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* README */
+
+.readme {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--color-text-body);
+  font: var(--body-s);
+  line-height: 19px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+}
+
+.readMore {
+  align-self: flex-start;
+  color: var(--color-accent-strong);
+  font: var(--body-s);
+  text-underline-offset: 3px;
+}
