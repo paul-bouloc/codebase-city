@@ -51,12 +51,15 @@ export function AccountMenu({ login, avatarSrc, quota, accountHref, onSignOut }:
     }
   }
 
-  const handleMenuKey = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Escape') {
+  // On the whole widget, so Esc works wherever the focus is while open.
+  const handleEscape = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (open && event.key === 'Escape') {
       event.preventDefault()
       close(true)
-      return
     }
+  }
+
+  const handleMenuKey = (event: KeyboardEvent<HTMLDivElement>) => {
     const next = rovingIndex(event.key, focused ?? 0, NONE_DISABLED, 'vertical')
     if (next !== null) {
       event.preventDefault()
@@ -72,8 +75,8 @@ export function AccountMenu({ login, avatarSrc, quota, accountHref, onSignOut }:
   }
 
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: the focus leaving the widget closes it
-    <div className={styles.wrapper} onBlur={handleBlur}>
+    // biome-ignore lint/a11y/noStaticElementInteractions: Esc and the focus leaving close the menu
+    <div className={styles.wrapper} onBlur={handleBlur} onKeyDown={handleEscape}>
       <button
         ref={triggerRef}
         type="button"
