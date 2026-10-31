@@ -118,14 +118,13 @@ export function AboutPanel({ id, open, about, newer, onClose }: AboutPanelProps)
         <h2 ref={titleRef} id={titleId} className={styles.title} tabIndex={-1}>
           {TEXT.title}
         </h2>
-        <ControlHint text={TEXT.close} shortcut={TEXT.closeKey} side="bottom-end">
-          {(hintId) => (
+        <ControlHint text={TEXT.close} shortcut={TEXT.closeKey} side="bottom-end" describes={false}>
+          {() => (
             <Button
               variant="ghost"
               iconOnly
               icon="close"
               label={TEXT.close}
-              aria-describedby={hintId}
               aria-keyshortcuts="Escape"
               onClick={onClose}
             />

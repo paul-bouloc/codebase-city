@@ -15,13 +15,12 @@ describe('CameraControls', () => {
     expect(html.match(/tabindex="0"/g)).toHaveLength(1)
   })
 
-  it('points every button at its own tooltip', () => {
+  // The hints only repeat the names; the shortcuts are given by aria-keyshortcuts.
+  it('names each button once, with its shortcut, and keeps the hints visual', () => {
     const html = render(false)
-    const ids = [...html.matchAll(/aria-describedby="([^"]+)"/g)].map((match) => match[1])
-    expect(ids).toHaveLength(5)
-    for (const id of ids) {
-      expect(html).toContain(`id="${id}" role="tooltip"`)
-    }
+    expect(html).not.toContain('aria-describedby')
+    expect(html).not.toContain('role="tooltip"')
+    expect(html.match(/aria-keyshortcuts=/g)).toHaveLength(4)
   })
 
   it('presses the top view button only when the top view is on', () => {

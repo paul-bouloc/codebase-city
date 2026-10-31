@@ -16,6 +16,8 @@ interface SegmentedControlProps<T extends string> {
   onChange: (value: T) => void
   // While the city is building.
   disabled?: boolean
+  // A tooltip that adds to the label, such as the shortcut that switches it.
+  describedBy?: string
 }
 
 // Native radio buttons under the pill: the browser gives the single tab stop and the arrow keys.
@@ -25,6 +27,7 @@ export function SegmentedControl<T extends string>({
   value,
   onChange,
   disabled = false,
+  describedBy,
 }: SegmentedControlProps<T>) {
   const name = useId()
   // An unknown value checks nothing, so any option can still be picked.
@@ -40,6 +43,7 @@ export function SegmentedControl<T extends string>({
     <div
       role="radiogroup"
       aria-label={label}
+      aria-describedby={describedBy}
       aria-disabled={disabled || undefined}
       className={styles.rail}
       style={thumbPosition}

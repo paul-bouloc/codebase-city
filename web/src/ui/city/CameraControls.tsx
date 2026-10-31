@@ -87,15 +87,20 @@ export function CameraControls({ bearing, topView, onAction }: CameraControlsPro
   const group = (items: CameraButton[]) => (
     <div className={styles.group}>
       {items.map((item) => (
-        <ControlHint key={item.action} text={item.hint} shortcut={item.shortcut} side="left">
-          {(hintId) => (
+        <ControlHint
+          key={item.action}
+          text={item.hint}
+          shortcut={item.shortcut}
+          side="left"
+          describes={false}
+        >
+          {() => (
             <Button
               variant="ghost"
               iconOnly
               icon={item.icon}
               label={item.label}
               className={styles.button}
-              aria-describedby={hintId}
               aria-keyshortcuts={KEY_NAMES[item.shortcut]}
               aria-pressed={item.action === 'top-view' ? topView : undefined}
               {...control(item.action)}
@@ -114,13 +119,12 @@ export function CameraControls({ bearing, topView, onAction }: CameraControlsPro
       className={styles.toolbar}
       onKeyDown={handleKey}
     >
-      <ControlHint text={TEXT.north} side="left">
-        {(hintId) => (
+      <ControlHint text={TEXT.north} side="left" describes={false}>
+        {() => (
           <button
             type="button"
             className={styles.compass}
             aria-label={TEXT.north}
-            aria-describedby={hintId}
             {...control('north')}
           >
             <Rose bearing={bearing} />

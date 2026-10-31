@@ -67,4 +67,10 @@ describe('CityTopBar', () => {
     expect(render()).not.toMatch(/role="combobox"[^>]*disabled=""/)
     expect(render({ searchDisabled: true })).toMatch(/role="combobox"[^>]*disabled=""/)
   })
+
+  it('ties the mode hint to the building style', () => {
+    const html = render()
+    const hintId = html.match(/role="radiogroup"[^>]*aria-describedby="([^"]+)"/)?.[1]
+    expect(html).toContain(`id="${hintId}" role="tooltip"`)
+  })
 })

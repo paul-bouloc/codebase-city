@@ -134,13 +134,12 @@ export function CityTopBar({
         )}
       </ControlHint>
 
-      <ControlHint text={TEXT.github}>
-        {(hintId) => (
+      <ControlHint text={TEXT.github} describes={false}>
+        {() => (
           <a
             href={repo.githubUrl}
             className={styles.github}
             aria-label={TEXT.githubLabel(fullName, repo.commit)}
-            aria-describedby={hintId}
           >
             <Icon name="external" size={18} />
           </a>
@@ -160,9 +159,10 @@ export function CityTopBar({
 
       {showMode && (
         <ControlHint text={TEXT.modeHint} shortcut={TEXT.modeShortcut}>
-          {() => (
+          {(hintId) => (
             <SegmentedControl
               label={TEXT.mode}
+              describedBy={hintId}
               options={MODES}
               value={mode}
               onChange={onModeChange}
