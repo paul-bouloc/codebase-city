@@ -1,0 +1,46 @@
+.breadcrumb {
+  min-width: 0;
+}
+
+.list {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  list-style: none;
+  font: var(--code-s);
+  letter-spacing: var(--code-s-tracking);
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+/* The separator belongs to the item after it, so a dropped folder takes its slash along. */
+.item + .item::before {
+  padding: 0 0.6ch;
+  color: var(--color-text-disabled);
+  content: "/";
+}
+
+.segment {
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--color-text-body);
+  font: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--color-border-strong);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.segment:hover {
+  color: var(--color-text-primary);
+  text-decoration-color: currentColor;
+}
+
+.ellipsis {
+  color: var(--color-text-secondary);
+}
