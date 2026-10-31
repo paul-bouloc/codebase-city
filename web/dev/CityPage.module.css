@@ -1,0 +1,10 @@
+.page {
+  position: fixed;
+  inset: 0;
+}
+
+.tools {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+}
