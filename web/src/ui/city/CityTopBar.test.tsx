@@ -33,7 +33,10 @@ describe('CityTopBar', () => {
   it('names the home link and the GitHub link', () => {
     const html = render()
     expect(html).toContain('aria-label="Codebase City, home"')
-    expect(html).toContain('aria-label="Open microsoft/vscode at a1b2c3d on GitHub"')
+    expect(html).toContain(
+      'aria-label="Open microsoft/vscode at a1b2c3d on GitHub (opens in a new tab)"',
+    )
+    expect(html).toContain('target="_blank" rel="noopener noreferrer"')
     expect(html).toContain('href="https://github.com/microsoft/vscode/tree/a1b2c3d"')
   })
 
@@ -72,5 +75,11 @@ describe('CityTopBar', () => {
     const html = render()
     const hintId = html.match(/role="radiogroup"[^>]*aria-describedby="([^"]+)"/)?.[1]
     expect(html).toContain(`id="${hintId}" role="tooltip"`)
+  })
+
+  it('draws no GitHub link for an address that is not on github.com', () => {
+    const html = render({ repo: { ...PROPS.repo, githubUrl: 'javascript:alert(1)' } })
+    expect(html).not.toContain('javascript:')
+    expect(html).not.toContain('on GitHub')
   })
 })

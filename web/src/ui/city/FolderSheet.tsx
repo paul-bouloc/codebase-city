@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react'
 import { Button } from '../Button'
+import { ExternalLink } from '../ExternalLink'
 import { Icon } from '../Icon'
 import { LinkButton } from '../LinkButton'
 import { Breadcrumb } from './Breadcrumb'
 import styles from './FolderSheet.module.css'
+import { safeGithubHref } from './github-links'
 import { orderedLinks } from './island-links'
 import { LanguageBar } from './LanguageBar'
 import { formatShare, LANGUAGE_NAMES } from './legend-content'
@@ -68,12 +70,16 @@ export function FolderSheet({
 }: FolderSheetProps) {
   const { folder: parent, name } = splitPath(folder.path)
   const parents = parent.split('/').filter(Boolean)
+  const githubHref = safeGithubHref(folder.githubUrl)
+  const readmeHref = safeGithubHref(folder.readme?.url)
 
   const actions = (
     <>
-      <LinkButton href={folder.githubUrl} icon="external">
-        {TEXT.github}
-      </LinkButton>
+      {githubHref && (
+        <LinkButton href={githubHref} icon="external" newTab>
+          {TEXT.github}
+        </LinkButton>
+      )}
       <Button
         iconOnly
         icon="link"
@@ -186,9 +192,11 @@ export function FolderSheet({
           {folder.readme && (
             <SheetSection title={TEXT.readme}>
               <p className={styles.readme}>{folder.readme.text}</p>
-              <a className={styles.readMore} href={folder.readme.url}>
-                {TEXT.readMore}
-              </a>
+              {readmeHref && (
+                <ExternalLink className={styles.readMore} href={readmeHref}>
+                  {TEXT.readMore}
+                </ExternalLink>
+              )}
             </SheetSection>
           )}
         </>

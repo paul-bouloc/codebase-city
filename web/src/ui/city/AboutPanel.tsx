@@ -1,12 +1,14 @@
 import { type KeyboardEvent, useEffect, useId } from 'react'
 import { Button } from '../Button'
 import { percent } from '../count-format'
+import { ExternalLink } from '../ExternalLink'
 import { Icon } from '../Icon'
 import { InlineAlert } from '../InlineAlert'
 import { ScrollArea } from '../ScrollArea'
 import styles from './AboutPanel.module.css'
 import { ControlHint } from './ControlHint'
 import { Glass } from './Glass'
+import { safeGithubHref } from './github-links'
 import { LanguageBar } from './LanguageBar'
 import { formatShare, LANGUAGE_NAMES } from './legend-content'
 import { SheetSection } from './SheetSection'
@@ -99,6 +101,7 @@ export function AboutPanel({ id, open, about, newer, onClose }: AboutPanelProps)
     }
   }
 
+  const commitHref = safeGithubHref(about.commitUrl)
   const skipped = about.skipped.reduce((sum, { files }) => sum + files, 0)
   const languageFiles = about.languages.reduce((sum, { files }) => sum + files, 0)
   const languages = [...about.languages]
@@ -217,9 +220,13 @@ export function AboutPanel({ id, open, about, newer, onClose }: AboutPanelProps)
         <dl className={styles.card}>
           <dt>{TEXT.commit}</dt>
           <dd>
-            <a className={styles.commit} href={about.commitUrl}>
-              {about.commit}
-            </a>{' '}
+            {commitHref ? (
+              <ExternalLink className={styles.commit} href={commitHref}>
+                {about.commit}
+              </ExternalLink>
+            ) : (
+              <span className={styles.commit}>{about.commit}</span>
+            )}{' '}
             · {about.branch}
           </dd>
           <dt>{TEXT.analyzedAt}</dt>

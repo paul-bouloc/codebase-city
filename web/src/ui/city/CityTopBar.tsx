@@ -8,13 +8,15 @@ import { CitySearchField } from './CitySearchField'
 import styles from './CityTopBar.module.css'
 import { ControlHint } from './ControlHint'
 import { Glass } from './Glass'
+import { safeGithubHref } from './github-links'
 
 const TEXT = {
   home: 'Codebase City, home',
   about: 'About this repository',
   analyzed: (when: string) => ` · analyzed ${when}`,
   github: 'Open on GitHub',
-  githubLabel: (repo: string, commit: string) => `Open ${repo} at ${commit} on GitHub`,
+  githubLabel: (repo: string, commit: string) =>
+    `Open ${repo} at ${commit} on GitHub (opens in a new tab)`,
   mode: 'Building style',
   modeHint: 'Switch mode',
   modeShortcut: 'M',
@@ -100,6 +102,7 @@ export function CityTopBar({
   onSignIn,
 }: CityTopBarProps) {
   const fullName = `${repo.owner}/${repo.name}`
+  const githubHref = safeGithubHref(repo.githubUrl)
 
   return (
     <Glass as="header" className={styles.bar}>
@@ -134,17 +137,21 @@ export function CityTopBar({
         )}
       </ControlHint>
 
-      <ControlHint text={TEXT.github} describes={false}>
-        {() => (
-          <a
-            href={repo.githubUrl}
-            className={styles.github}
-            aria-label={TEXT.githubLabel(fullName, repo.commit)}
-          >
-            <Icon name="external" size={18} />
-          </a>
-        )}
-      </ControlHint>
+      {githubHref && (
+        <ControlHint text={TEXT.github} describes={false}>
+          {() => (
+            <a
+              href={githubHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.github}
+              aria-label={TEXT.githubLabel(fullName, repo.commit)}
+            >
+              <Icon name="external" size={18} />
+            </a>
+          )}
+        </ControlHint>
+      )}
 
       <span className={styles.search}>
         <CitySearchField

@@ -1,9 +1,11 @@
 import { type CSSProperties, useEffect, useRef } from 'react'
 import { Button } from '../Button'
+import { ExternalLink } from '../ExternalLink'
 import { InlineAlert } from '../InlineAlert'
 import { LinkButton } from '../LinkButton'
 import { ScrollArea } from '../ScrollArea'
 import styles from './CodeView.module.css'
+import { safeGithubHref } from './github-links'
 import { Skeleton } from './Skeleton'
 import type { CodeState } from './sheet-data'
 
@@ -43,6 +45,7 @@ interface CodeViewProps {
 // The start of the file, read from GitHub at the analyzed commit, up to the limit (2,000 lines
 // or 200 KB); beyond it, a link. Line numbers are left out of what screen readers read.
 export function CodeView({ code, githubUrl, onRetry, line }: CodeViewProps) {
+  const githubHref = safeGithubHref(githubUrl)
   const textRef = useRef<HTMLPreElement>(null)
   const regionRef = useRef<HTMLDivElement>(null)
   const shownLines = code.status === 'ready' ? code.lines.length : 0
@@ -99,9 +102,11 @@ export function CodeView({ code, githubUrl, onRetry, line }: CodeViewProps) {
               <Button variant="secondary" icon="refresh" onClick={onRetry}>
                 {TEXT.retry}
               </Button>
-              <LinkButton href={githubUrl} icon="external">
-                {TEXT.github}
-              </LinkButton>
+              {githubHref && (
+                <LinkButton href={githubHref} icon="external" newTab>
+                  {TEXT.github}
+                </LinkButton>
+              )}
             </span>
           }
         >
@@ -142,13 +147,19 @@ export function CodeView({ code, githubUrl, onRetry, line }: CodeViewProps) {
       </ScrollArea>
       {line !== undefined && target === undefined && (
         <p className={styles.footer}>
-          {TEXT.beyond(line)} <a href={`${githubUrl}#L${line}`}>{TEXT.openLine(line)}</a>
+          {TEXT.beyond(line)}{' '}
+          {githubHref && (
+            <ExternalLink href={`${githubHref}#L${Math.trunc(line)}`}>
+              {TEXT.openLine(line)}
+            </ExternalLink>
+          )}
         </p>
       )}
       <p className={styles.footer}>
         {shown < code.totalLines ? (
           <>
-            {TEXT.partial(shown, code.totalLines)} <a href={githubUrl}>{TEXT.openFull}</a>
+            {TEXT.partial(shown, code.totalLines)}{' '}
+            {githubHref && <ExternalLink href={githubHref}>{TEXT.openFull}</ExternalLink>}
           </>
         ) : (
           TEXT.all(code.totalLines)

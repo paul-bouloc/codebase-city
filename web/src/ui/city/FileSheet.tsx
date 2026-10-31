@@ -9,6 +9,7 @@ import { type TabItem, Tabs } from '../Tabs'
 import { Breadcrumb } from './Breadcrumb'
 import { CodeView } from './CodeView'
 import styles from './FileSheet.module.css'
+import { safeGithubHref } from './github-links'
 import { HeaderComment } from './HeaderComment'
 import { ImportanceList } from './ImportanceList'
 import { MetricPairs } from './MetricPairs'
@@ -93,12 +94,15 @@ export function FileSheet({
 }: FileSheetProps) {
   const { folder, name } = splitPath(file.path)
   const folders = folder.split('/').filter(Boolean)
+  const githubHref = safeGithubHref(file.githubUrl)
 
   const actions = (
     <>
-      <LinkButton href={file.githubUrl} icon="external">
-        {TEXT.github}
-      </LinkButton>
+      {githubHref && (
+        <LinkButton href={githubHref} icon="external" newTab>
+          {TEXT.github}
+        </LinkButton>
+      )}
       <Button
         iconOnly
         icon="copy"

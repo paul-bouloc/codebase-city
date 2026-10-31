@@ -77,4 +77,11 @@ describe('FolderSheet', () => {
   it('says when a folder is the test park', () => {
     expect(render({ ...FOLDER, kind: 'tests' })).toContain('Tests · park')
   })
+
+  it('opens GitHub in a new tab and drops a README link that is not on github.com', () => {
+    expect(render(FOLDER)).toContain('target="_blank"')
+    const html = render({ ...FOLDER, readme: { text: 'Hi', url: 'https://evil.example/x' } })
+    expect(html).toContain('Hi')
+    expect(html).not.toContain('evil.example')
+  })
 })
