@@ -91,10 +91,6 @@ export function FileSheet({
 }: FileSheetProps) {
   const { folder, name } = splitPath(file.path)
   const folders = folder.split('/').filter(Boolean)
-  const tabs = fileTabs(file)
-  const [tab, setTab] = useState<FileTab>(defaultTab ?? tabs[0]?.id ?? 'code')
-  const [codeLine, setCodeLine] = useState<number>()
-  const shownTab = tabs.some(({ id }) => id === tab) ? tab : 'code'
 
   const actions = (
     <>
@@ -138,6 +134,7 @@ export function FileSheet({
       actions={actions}
       footer={footer}
       busy={loading}
+      contentKey={file.path}
     >
       {loading ? (
         <div className={styles.loading} role="status">
@@ -148,77 +145,110 @@ export function FileSheet({
           <Skeleton width="100%" height="120px" />
         </div>
       ) : (
-        <>
-          {!file.analyzed && (
-            <p className={styles.unanalyzed}>
-              <Icon name="info" size={20} className={styles.unanalyzedIcon} />
-              <span>
-                <strong>{TEXT.unanalyzedTitle(file.languageName)}</strong>
-                {TEXT.unanalyzedBody}
-              </span>
-            </p>
-          )}
-
-          <MetricPairs columns={2} metrics={fileMetrics(file)} />
-
-          {file.analyzed && (
-            <FileFacts file={file} onOpenFolder={onOpenFolder} onShowCycle={onShowCycle} />
-          )}
-
-          {file.headerComment && (
-            <HeaderComment text={file.headerComment} defaultExpanded={defaultExpanded} />
-          )}
-
-          <div className={styles.tabs}>
-            <Tabs
-              label={TEXT.tabs}
-              compact
-              tabs={tabs}
-              selected={shownTab}
-              onSelect={(id) => {
-                setCodeLine(undefined)
-                setTab(id as FileTab)
-              }}
-            >
-              {shownTab === 'imports' && (
-                <ImportanceList
-                  rows={file.importList}
-                  direction="imports"
-                  onSelect={onSelectFile}
-                  defaultExpanded={defaultExpanded}
-                />
-              )}
-              {shownTab === 'importedBy' && (
-                <ImportanceList
-                  rows={file.importerList}
-                  direction="importedBy"
-                  onSelect={onSelectFile}
-                  defaultExpanded={defaultExpanded}
-                />
-              )}
-              {shownTab === 'symbols' && (
-                <SymbolList
-                  symbols={file.symbols}
-                  onOpenLine={(line) => {
-                    setCodeLine(line)
-                    setTab('code')
-                  }}
-                  defaultExpanded={defaultExpanded}
-                />
-              )}
-              {shownTab === 'code' && (
-                <CodeView
-                  code={file.code}
-                  githubUrl={file.githubUrl}
-                  onRetry={onRetryCode}
-                  line={codeLine}
-                />
-              )}
-            </Tabs>
-          </div>
-        </>
+        <FileDetails
+          // A new file starts afresh: first tab, lists and comment folded.
+          key={file.path}
+          file={file}
+          onOpenFolder={onOpenFolder}
+          onSelectFile={onSelectFile}
+          onShowCycle={onShowCycle}
+          onRetryCode={onRetryCode}
+          defaultTab={defaultTab}
+          defaultExpanded={defaultExpanded}
+        />
       )}
     </SheetFrame>
+  )
+}
+
+function FileDetails({
+  file,
+  onOpenFolder,
+  onSelectFile,
+  onShowCycle,
+  onRetryCode,
+  defaultTab,
+  defaultExpanded = false,
+}: Pick<
+  FileSheetProps,
+  'file' | 'onOpenFolder' | 'onSelectFile' | 'onShowCycle' | 'onRetryCode' | 'defaultTab'
+> & { defaultExpanded?: boolean }) {
+  const tabs = fileTabs(file)
+  const [tab, setTab] = useState<FileTab | undefined>(defaultTab)
+  const [codeLine, setCodeLine] = useState<number>()
+  // A tab that went away (or none chosen yet) falls back to the first one there is.
+  const shownTab = tabs.find(({ id }) => id === tab)?.id ?? tabs[0]?.id ?? 'code'
+
+  return (
+    <>
+      {!file.analyzed && (
+        <p className={styles.unanalyzed}>
+          <Icon name="info" size={20} className={styles.unanalyzedIcon} />
+          <span>
+            <strong>{TEXT.unanalyzedTitle(file.languageName)}</strong>
+            {TEXT.unanalyzedBody}
+          </span>
+        </p>
+      )}
+
+      <MetricPairs columns={2} metrics={fileMetrics(file)} />
+
+      {file.analyzed && (
+        <FileFacts file={file} onOpenFolder={onOpenFolder} onShowCycle={onShowCycle} />
+      )}
+
+      {file.headerComment && (
+        <HeaderComment text={file.headerComment} defaultExpanded={defaultExpanded} />
+      )}
+
+      <div className={styles.tabs}>
+        <Tabs
+          label={TEXT.tabs}
+          compact
+          tabs={tabs}
+          selected={shownTab}
+          onSelect={(id) => {
+            setCodeLine(undefined)
+            setTab(id as FileTab)
+          }}
+        >
+          {shownTab === 'imports' && (
+            <ImportanceList
+              rows={file.importList}
+              direction="imports"
+              onSelect={onSelectFile}
+              defaultExpanded={defaultExpanded}
+            />
+          )}
+          {shownTab === 'importedBy' && (
+            <ImportanceList
+              rows={file.importerList}
+              direction="importedBy"
+              onSelect={onSelectFile}
+              defaultExpanded={defaultExpanded}
+            />
+          )}
+          {shownTab === 'symbols' && (
+            <SymbolList
+              symbols={file.symbols}
+              onOpenLine={(line) => {
+                setCodeLine(line)
+                setTab('code')
+              }}
+              defaultExpanded={defaultExpanded}
+            />
+          )}
+          {shownTab === 'code' && (
+            <CodeView
+              code={file.code}
+              githubUrl={file.githubUrl}
+              onRetry={onRetryCode}
+              line={codeLine}
+            />
+          )}
+        </Tabs>
+      </div>
+    </>
   )
 }
 

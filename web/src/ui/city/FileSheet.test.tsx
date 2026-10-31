@@ -89,4 +89,24 @@ describe('FileSheet', () => {
     expect(html).toContain('aria-busy="true"')
     expect(html).not.toContain('<footer')
   })
+
+  it('falls back to the first tab there is when the asked one is gone', () => {
+    const html = renderToStaticMarkup(
+      <FileSheet
+        open
+        file={{ ...FILE, symbols: [] }}
+        defaultTab="symbols"
+        onClose={noop}
+        onOpenFolder={noop}
+        onSelectFile={noop}
+        onShowCycle={noop}
+        onCopyPath={noop}
+        onCopyLink={noop}
+        onRetryCode={noop}
+        onShowImpact={noop}
+        onFindPath={noop}
+      />,
+    )
+    expect(html).toMatch(/aria-selected="true"[^>]*>Imports/)
+  })
 })
