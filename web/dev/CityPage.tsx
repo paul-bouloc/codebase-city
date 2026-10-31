@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { CityView } from '../src/app/CityView'
 import { syntheticCity } from '../src/city/synthetic'
 import { Button } from '../src/ui/Button'
+import { archetypeGallery } from './archetype-gallery'
 import styles from './CityPage.module.css'
 
 const TEXT = {
@@ -19,10 +20,17 @@ function param(name: string, fallback: number): number {
 
 const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve))
 
-/** A synthetic city, full screen: `?islands=12&files=2000&seed=synthetic`. */
+/**
+ * A synthetic city, full screen: `?islands=12&files=2000&seed=synthetic`, or every archetype on
+ * one island: `?gallery`.
+ */
 export function CityPage() {
   const layout = useMemo(() => {
-    const seed = new URLSearchParams(window.location.search).get('seed') ?? undefined
+    const query = new URLSearchParams(window.location.search)
+    if (query.has('gallery')) {
+      return archetypeGallery()
+    }
+    const seed = query.get('seed') ?? undefined
     return syntheticCity({ islands: param('islands', 12), files: param('files', 2_000), seed })
   }, [])
   const [mount, setMount] = useState(0)
