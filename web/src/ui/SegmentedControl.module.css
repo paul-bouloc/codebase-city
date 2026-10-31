@@ -1,0 +1,98 @@
+.rail {
+  --segment-gap: var(--space-1);
+  --segment-padding: calc(var(--space-1) - var(--border-width-default));
+
+  position: relative;
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: var(--segment-gap);
+  height: 40px;
+  padding: var(--segment-padding);
+  border: var(--border-width-default) solid var(--color-border-default);
+  border-radius: var(--radius-full);
+  background: var(--color-bg-sunken);
+}
+
+@media (pointer: coarse) {
+  .rail {
+    height: 44px;
+  }
+}
+
+.rail[aria-disabled="true"] {
+  opacity: 0.5;
+}
+
+.thumb {
+  position: absolute;
+  top: var(--segment-padding);
+  bottom: var(--segment-padding);
+  left: var(--segment-padding);
+  width: calc(
+    (100% - 2 * var(--segment-padding) - (var(--segment-count) - 1) * var(--segment-gap)) /
+    var(--segment-count)
+  );
+  border-radius: var(--radius-full);
+  background: var(--color-surface-default);
+  box-shadow: var(--shadow-sm);
+  transform: translateX(calc(var(--segment-index) * (100% + var(--segment-gap))));
+  transition: transform var(--duration-base) var(--easing-standard);
+}
+
+/* Reduced motion: the thumb jumps, the label weight still changes. */
+@media (prefers-reduced-motion: reduce) {
+  .thumb {
+    transition: none;
+  }
+}
+
+.rail[aria-disabled="true"] .thumb {
+  box-shadow: none;
+}
+
+.option {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3-5);
+  border-radius: var(--radius-full);
+  color: var(--color-text-secondary);
+  font: var(--label);
+  letter-spacing: var(--label-tracking);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color var(--duration-fast) var(--easing-standard),
+    color var(--duration-fast) var(--easing-standard);
+}
+
+/* The radio stays in the page for the keyboard and screen readers, but is not drawn. */
+.input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.option:has(.input:checked) {
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.option:has(.input:focus-visible) {
+  box-shadow: var(--focus-ring);
+}
+
+.option:hover:not(:has(.input:checked, .input:disabled)) {
+  background: var(--state-hover);
+  color: var(--color-text-primary);
+}
+
+.option:has(.input:disabled) {
+  cursor: not-allowed;
+}
