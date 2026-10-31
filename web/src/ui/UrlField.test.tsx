@@ -42,19 +42,19 @@ describe('UrlField', () => {
 
   it('marks invalid and unknown repositories as errors', () => {
     for (const state of ['invalid', 'not-found'] as const) {
-      const html = render(state)
-      expect(html).toContain('aria-invalid="true"')
-      expect(html).toContain('role="alert"')
+      expect(render(state)).toContain('aria-invalid="true"')
+    }
+    for (const state of ['empty', 'typing', 'valid', 'branch', 'submitting'] as const) {
+      expect(render(state)).not.toContain('aria-invalid')
     }
   })
 
-  it('announces valid, branch and submitting states politely', () => {
-    for (const state of ['valid', 'branch', 'submitting'] as const) {
+  it('keeps the same live region in every state', () => {
+    for (const state of ['empty', 'valid', 'invalid', 'submitting'] as const) {
       const html = render(state)
-      expect(html).toContain('role="status"')
-      expect(html).not.toContain('aria-invalid')
+      expect(html).toMatch(/<p [^>]*aria-live="polite" aria-atomic="true"/)
+      expect(html).not.toContain('role="alert"')
     }
-    expect(render('empty', '')).not.toContain('role=')
   })
 
   it('locks the field and busies the button while submitting', () => {

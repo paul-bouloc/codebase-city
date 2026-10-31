@@ -27,17 +27,16 @@ type Tone = 'neutral' | 'success' | 'error' | 'info'
 interface StateLook {
   tone: Tone
   icon?: IconName
-  role?: 'status' | 'alert'
 }
 
 const LOOKS: Record<UrlFieldState, StateLook> = {
   empty: { tone: 'neutral' },
   typing: { tone: 'neutral' },
-  valid: { tone: 'success', icon: 'check', role: 'status' },
-  invalid: { tone: 'error', icon: 'alert-circle', role: 'alert' },
-  'not-found': { tone: 'error', icon: 'alert-circle', role: 'alert' },
-  branch: { tone: 'info', icon: 'info', role: 'status' },
-  submitting: { tone: 'neutral', role: 'status' },
+  valid: { tone: 'success', icon: 'check' },
+  invalid: { tone: 'error', icon: 'alert-circle' },
+  'not-found': { tone: 'error', icon: 'alert-circle' },
+  branch: { tone: 'info', icon: 'info' },
+  submitting: { tone: 'neutral' },
 }
 
 interface UrlFieldProps {
@@ -134,7 +133,15 @@ export function UrlField({
           {submitLabel}
         </Button>
       </div>
-      <p id={messageId} role={look.role} className={`${styles.message} ${styles[look.tone]}`}>
+      {/* One live region for every state: screen readers only announce changes inside a region
+          that already exists, so its role must not change along with its text. Errors are also
+          flagged on the input with `aria-invalid`. */}
+      <p
+        id={messageId}
+        aria-live="polite"
+        aria-atomic="true"
+        className={`${styles.message} ${styles[look.tone]}`}
+      >
         {look.icon && <Icon name={look.icon} size={16} className={styles.messageIcon} />}
         <span>{message}</span>
       </p>
