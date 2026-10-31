@@ -1,6 +1,9 @@
 /* The interface over a real city, laid out as on the "City UI · City idle" board. */
 
 .stage {
+  /* The sheet's width and right margin: how far the sheet, the camera and the scale move. */
+  --sheet-travel: 412px;
+
   position: relative;
   height: 100vh;
   overflow: hidden;
@@ -43,11 +46,12 @@
 
 /* 424 px from the right edge: the 400 px sheet, its 12 px margin and 12 px more. */
 .besideSheet {
-  transform: translateX(-412px);
+  transform: translateX(calc(-1 * var(--sheet-travel)));
   transition: transform var(--duration-slow) var(--easing-enter);
 }
 
-/* The floating panel's motion (fondations): slides 16 px in from the right while fading in. */
+/* Off screen when closed, by the same distance the camera and the scale travel, so all three
+ * edges stay locked together while they move. */
 .sheet {
   position: absolute;
   top: 84px;
@@ -56,27 +60,28 @@
   width: 400px;
   padding: var(--space-5);
   visibility: hidden;
-  opacity: 0;
-  transform: translateX(var(--space-4));
+  transform: translateX(var(--sheet-travel));
   transition:
-    opacity var(--duration-base) var(--easing-exit),
     transform var(--duration-base) var(--easing-exit),
     visibility var(--duration-base);
 }
 
 .sheetOpen {
   visibility: visible;
-  opacity: 1;
   transform: none;
   transition:
-    opacity var(--duration-slow) var(--easing-enter),
     transform var(--duration-slow) var(--easing-enter),
     visibility 0s;
 }
 
+/* Reduced motion: everything jumps into place. */
 @media (prefers-reduced-motion: reduce) {
-  .sheet {
-    transform: none;
+  .camera,
+  .scale,
+  .besideSheet,
+  .sheet,
+  .sheetOpen {
+    transition: none;
   }
 }
 
