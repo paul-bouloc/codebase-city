@@ -1,0 +1,75 @@
+/* The rose, the zoom group and the framing group, stacked. Each block is its own glass. */
+.toolbar {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2-5);
+}
+
+.group,
+.compass {
+  border: var(--glass-border);
+  background: var(--glass-bg);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: var(--glass-blur);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0-5);
+  padding: var(--space-1);
+  border-radius: var(--radius-lg);
+}
+
+.compass {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--easing-standard);
+}
+
+.compass:hover {
+  background: var(--glass-bg-fallback);
+}
+
+.compass:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
+.rose {
+  width: 44px;
+  height: 44px;
+  transform: rotate(var(--rose-turn));
+}
+
+.ring {
+  fill: none;
+  stroke: var(--color-border-strong);
+  stroke-width: var(--border-width-default);
+}
+
+.branch {
+  fill: var(--color-border-strong);
+}
+
+.needle {
+  fill: var(--color-text-primary);
+}
+
+.letter {
+  fill: var(--color-text-primary);
+  font-family: var(--font-family-mono);
+  font-size: 7px;
+  font-weight: 700;
+}
+
+/* The active top view, after the ghost button's own states. */
+.group .button[aria-pressed="true"] {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-strong);
+}
