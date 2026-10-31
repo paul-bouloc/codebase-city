@@ -1,5 +1,7 @@
 /* The rose, the zoom group and the framing group, stacked. Each block is its own glass. */
 .toolbar {
+  position: relative;
+  z-index: var(--layer-raised);
   display: inline-flex;
   flex-direction: column;
   align-items: center;

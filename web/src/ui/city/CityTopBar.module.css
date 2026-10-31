@@ -1,4 +1,7 @@
+/* Raised: its hints, account menu and future popovers hang over the panels below. */
 .bar {
+  position: relative;
+  z-index: var(--layer-raised);
   display: flex;
   align-items: center;
   gap: var(--space-3);
