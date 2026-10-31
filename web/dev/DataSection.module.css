@@ -1,0 +1,69 @@
+.section {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.secondary {
+  color: var(--color-text-secondary);
+}
+
+.block {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.block h3,
+.block h4,
+.block p {
+  margin: 0;
+}
+
+.block h4 {
+  color: var(--color-text-secondary);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2-5);
+}
+
+.list {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 760px;
+  padding: var(--space-3);
+  border: var(--border-width-default) solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-default);
+}
+
+.narrow {
+  width: 520px;
+  min-width: 320px;
+  max-width: 100%;
+  overflow: hidden;
+  resize: horizontal;
+}
+
+.quota {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--space-4);
+  max-width: 1040px;
+}
+
+.progress {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr));
+  align-items: start;
+  gap: var(--space-6);
+}
+
+.leave {
+  padding-top: var(--space-3-5);
+  border-top: var(--border-width-default) solid var(--color-border-subtle);
+  color: var(--color-text-body);
+}

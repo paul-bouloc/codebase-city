@@ -1,4 +1,5 @@
 import { ActionsSection } from './ActionsSection'
+import { DataSection } from './DataSection'
 import { IconsSection } from './IconsSection'
 import { LogoSection } from './LogoSection'
 import styles from './TokensPage.module.css'
@@ -139,6 +140,7 @@ export function TokensPage() {
       <IconsSection />
       <LogoSection />
       <ActionsSection />
+      <DataSection />
     </main>
   )
 }
