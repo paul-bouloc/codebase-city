@@ -3,5 +3,6 @@
 pub mod config;
 pub mod github;
 pub mod http;
+pub mod ingest;
 pub mod store;
 pub mod telemetry;
