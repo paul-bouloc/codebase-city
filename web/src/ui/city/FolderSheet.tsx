@@ -15,7 +15,7 @@ import type { FolderSheetData, IslandLink, KeyFile } from './sheet-data'
 import { splitPath } from './shorten-folder'
 
 const numbers = new Intl.NumberFormat('en-US')
-const compact = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 })
+const compact = new Intl.NumberFormat('en-US', { notation: 'compact', maximumSignificantDigits: 3 })
 
 const TEXT = {
   github: 'Open on GitHub',
