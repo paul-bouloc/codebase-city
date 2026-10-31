@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from 'react'
+import { type ReactNode, useEffect, useState } from 'react'
 import { Button, type ButtonVariant } from '../src/ui/Button'
 import type { IconName } from '../src/ui/icons'
 import { Kbd } from '../src/ui/Kbd'
@@ -13,6 +13,7 @@ const TEXT = {
   buttons: 'Buttons',
   iconOnly: 'Icon only',
   large: 'Large size',
+  liveLoading: 'The first one is live: click it to see the loading state come and go.',
   touch: 'With a touch screen, medium controls grow to 44 px.',
   urlField: 'Repository URL field',
   segmented: 'Segmented control',
@@ -176,6 +177,31 @@ function ButtonRow({ variant, label, loadingLabel, icon }: ButtonSample) {
   )
 }
 
+// Loads for a few seconds, like a build being started, then comes back.
+function LiveLoadingButton() {
+  const [loading, setLoading] = useState(false)
+  useEffect(() => {
+    if (!loading) {
+      return
+    }
+    const timer = setTimeout(() => setLoading(false), 2500)
+    return () => clearTimeout(timer)
+  }, [loading])
+
+  return (
+    <Button
+      variant="primary"
+      size="lg"
+      icon="buildings"
+      loading={loading}
+      loadingLabel="Starting…"
+      onClick={() => setLoading(true)}
+    >
+      Build the city
+    </Button>
+  )
+}
+
 function UrlFieldDemo({ sample, size }: { sample: UrlSample; size: UrlFieldSize }) {
   const [value, setValue] = useState(sample.value)
   return (
@@ -245,9 +271,7 @@ export function ActionsSection() {
         <p className={`body-s ${styles.secondary}`}>{TEXT.touch}</p>
         <h4 className="eyebrow-mono">{TEXT.large}</h4>
         <div className={styles.row}>
-          <Button variant="primary" size="lg" icon="buildings" loadingLabel="Starting…">
-            Build the city
-          </Button>
+          <LiveLoadingButton />
           <Button variant="primary" size="lg" loading loadingLabel="Starting…">
             Build the city
           </Button>
@@ -256,6 +280,7 @@ export function ActionsSection() {
             Sign in with GitHub
           </Button>
         </div>
+        <p className={`body-s ${styles.secondary}`}>{TEXT.liveLoading}</p>
       </div>
 
       <div className={styles.block}>
