@@ -54,7 +54,10 @@ export function seaField(layout: CityLayout, maxTexels = 512): SeaField {
       for (let column = firstColumn; column <= lastColumn; column++) {
         const x = originX + (column + 0.5) * texel
         const index = row * columns + column
-        distances[index] = Math.min(distances[index] ?? 0, distanceToRect(x, y, plateau))
+        distances[index] = Math.min(
+          distances[index] ?? Number.POSITIVE_INFINITY,
+          distanceToRect(x, y, plateau),
+        )
       }
     }
   }
