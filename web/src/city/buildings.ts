@@ -65,6 +65,14 @@ function stretchedDepthMaterial(): MeshDepthMaterial {
   return material
 }
 
+const VERTEX_ATTRIBUTES = [
+  'position',
+  'sideFactor',
+  'heightFactor',
+  'normal',
+  'paint',
+] as const satisfies readonly (keyof Vertex)[]
+
 interface Placed {
   building: Building
   position: Vec3
@@ -101,28 +109,10 @@ export function createBuildings(layout: CityLayout): Group {
 function instancedArchetype(archetype: Archetype, placed: Placed[]): InstancedMesh {
   const vertices = archetypeGeometry(archetype).flat()
   const geometry = new BufferGeometry()
-  const attribute = (values: (vertex: Vertex) => number[], size: number) =>
-    new Float32BufferAttribute(vertices.flatMap(values), size)
-  geometry.setAttribute(
-    'position',
-    attribute((vertex) => vertex.position, 3),
-  )
-  geometry.setAttribute(
-    'sideFactor',
-    attribute((vertex) => vertex.sideFactor, 3),
-  )
-  geometry.setAttribute(
-    'heightFactor',
-    attribute((vertex) => vertex.heightFactor, 2),
-  )
-  geometry.setAttribute(
-    'normal',
-    attribute((vertex) => vertex.normal, 3),
-  )
-  geometry.setAttribute(
-    'paint',
-    attribute((vertex) => vertex.paint, 4),
-  )
+  for (const name of VERTEX_ATTRIBUTES) {
+    const values = vertices.flatMap((vertex) => vertex[name])
+    geometry.setAttribute(name, new Float32BufferAttribute(values, values.length / vertices.length))
+  }
 
   const sizes = new Float32Array(placed.length * 3)
   const tints = new Float32Array(placed.length * 3)
