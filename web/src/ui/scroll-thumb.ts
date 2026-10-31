@@ -17,7 +17,8 @@ export function thumbGeometry(
   if (content <= viewport + 1 || track <= 0) {
     return null
   }
-  const size = Math.max(MIN_THUMB, Math.min(track, (viewport / content) * track))
+  // Never below the minimum, but never longer than its track either.
+  const size = Math.min(track, Math.max(MIN_THUMB, (viewport / content) * track))
   const maxScroll = content - viewport
   const ratio = Math.max(0, Math.min(1, scroll / maxScroll))
   return { size, offset: ratio * (track - size) }

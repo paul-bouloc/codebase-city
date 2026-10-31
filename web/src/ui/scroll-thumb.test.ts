@@ -17,6 +17,10 @@ describe('thumbGeometry', () => {
     expect(thumbGeometry(100, 100_000, 0, 100)?.size).toBe(MIN_THUMB)
   })
 
+  it('fits a thumb in a track shorter than the minimum', () => {
+    expect(thumbGeometry(10, 100, 90, 20)).toEqual({ size: 20, offset: 0 })
+  })
+
   it('clamps an overscrolled position', () => {
     expect(thumbGeometry(500, 1000, 900, 500)?.offset).toBe(250)
   })
