@@ -1,0 +1,191 @@
+.field {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.md {
+  --field-height: 48px;
+  --field-padding: var(--space-3-5);
+  --field-icon: 20px;
+  --field-font: var(--body-m);
+}
+
+/* The home page hero. */
+.lg {
+  --field-height: 56px;
+  --field-padding: var(--space-4-5);
+  --field-icon: 22px;
+  --field-font: var(--body-l);
+}
+
+.label {
+  font: var(--label);
+  letter-spacing: var(--label-tracking);
+}
+
+.row {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.box {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2-5);
+  height: var(--field-height);
+  padding: 0 var(--field-padding);
+  border: var(--border-width-default) solid var(--color-border-field);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-default);
+  transition:
+    border-color var(--duration-fast) var(--easing-standard),
+    box-shadow var(--duration-fast) var(--easing-standard);
+}
+
+.box:hover {
+  border-color: var(--color-border-field-hover);
+}
+
+/* "typing" forces the focused look for the demo page; a real field gets it from the focus. */
+.box:focus-within,
+[data-state="typing"] .box {
+  border-color: var(--state-focus);
+  outline: var(--border-width-focus) solid transparent;
+  box-shadow: var(--focus-ring);
+}
+
+[data-state="invalid"] .box,
+[data-state="not-found"] .box {
+  border-width: var(--border-width-strong);
+  border-color: var(--feedback-error-fg);
+}
+
+[data-state="submitting"] .box {
+  border-color: var(--color-border-subtle);
+  background: var(--state-disabled-bg);
+}
+
+.linkIcon {
+  width: var(--field-icon);
+  height: var(--field-icon);
+  color: var(--color-text-secondary);
+}
+
+[data-state="submitting"] .linkIcon {
+  color: var(--color-text-disabled);
+}
+
+.input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-primary);
+  font: var(--field-font);
+}
+
+/* The box draws the focus. */
+.input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.input::placeholder {
+  color: var(--color-text-secondary);
+  opacity: 1;
+}
+
+[data-state="submitting"] .input {
+  color: var(--color-text-secondary);
+}
+
+.clear {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.clear:hover {
+  background: var(--state-hover);
+  color: var(--color-text-primary);
+}
+
+/* On touch, the hit area grows to 44 × 44 while the drawn button stays 32. */
+@media (pointer: coarse) {
+  .clear::before {
+    content: "";
+    position: absolute;
+    inset: calc((32px - 44px) / 2);
+  }
+}
+
+/* The submit button matches the field height. */
+.row .submit {
+  --button-height: var(--field-height);
+}
+
+.message {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1-5);
+  margin: 0;
+  color: var(--message-color);
+}
+
+.md .message {
+  font: var(--caption);
+  letter-spacing: var(--caption-tracking);
+}
+
+/* 14/20 regular: the label size without its weight. */
+.lg .message {
+  font: var(--label);
+  font-weight: 400;
+}
+
+.messageIcon {
+  margin-top: calc((1lh - 16px) / 2);
+}
+
+.message code {
+  padding: 1px 5px;
+  border-radius: var(--radius-xs);
+  background: var(--message-code-bg);
+  font-family: var(--font-family-mono);
+  font-size: 0.92em;
+}
+
+.neutral {
+  --message-color: var(--color-text-secondary);
+  --message-code-bg: var(--color-bg-sunken);
+}
+
+.success {
+  --message-color: var(--feedback-success-fg);
+  --message-code-bg: var(--feedback-success-bg);
+}
+
+.error {
+  --message-color: var(--feedback-error-fg);
+  --message-code-bg: var(--feedback-error-bg);
+}
+
+.info {
+  --message-color: var(--feedback-info-fg);
+  --message-code-bg: var(--feedback-info-bg);
+}
