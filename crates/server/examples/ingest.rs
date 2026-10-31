@@ -1,14 +1,20 @@
-//! Ingests a real repository and prints what came out, to check the
-//! filters and limits by hand: `just ingest owner/repo`.
+//! Ingests and analyzes a real repository, and prints what came out, to
+//! check the filters, limits and measures by hand: `just ingest owner/repo`,
+//! plus `--out result.json` to write the result.
 //!
 //! Uses `GITHUB_TOKEN` when set, and GitHub anonymously otherwise.
 
 use std::collections::BTreeMap;
+use std::io::Write;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 
 use anyhow::Context;
+use flate2::Compression;
+use flate2::write::GzEncoder;
+use model::{AnalysisResult, Repo};
 use server::github::{GithubClient, RepoName, Token};
 use server::ingest::{Limits, Progress, ingest};
 
@@ -16,10 +22,14 @@ const MB: f64 = 1024.0 * 1024.0;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let name = std::env::args()
-        .nth(1)
-        .context("usage: ingest owner/repo")?;
-    let repo = RepoName::parse(&name)?;
+    const USAGE: &str = "usage: ingest owner/repo [--out result.json]";
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let (name, out) = match args.as_slice() {
+        [name] => (name, None),
+        [name, flag, path] if flag == "--out" => (name, Some(PathBuf::from(path))),
+        _ => anyhow::bail!(USAGE),
+    };
+    let repo = RepoName::parse(name)?;
     let token = std::env::var("GITHUB_TOKEN")
         .ok()
         .filter(|token| !token.is_empty())
@@ -99,5 +109,108 @@ async fn main() -> anyhow::Result<()> {
         .map(|(name, count)| format!("{name} {count}"))
         .collect();
     println!("languages     {}", top.join(", "));
+
+    let repo = Repo {
+        owner: snapshot.repo.owner().to_owned(),
+        name: snapshot.repo.name().to_owned(),
+    };
+    let started = Instant::now();
+    let result = tokio::task::spawn_blocking(move || {
+        analyzer::analyze(repo, snapshot.sha, ingested.files, ingested.ignored)
+    })
+    .await?;
+    let elapsed = started.elapsed();
+    result.validate()?;
+    print_analysis(&result, elapsed);
+
+    let json = serde_json::to_vec(&result)?;
+    let mut gzip = GzEncoder::new(Vec::new(), Compression::default());
+    gzip.write_all(&json)?;
+    let gzipped = gzip.finish()?;
+    println!(
+        "result        {:.1} MB JSON, {:.2} MB gzip",
+        json.len() as f64 / MB,
+        gzipped.len() as f64 / MB
+    );
+    if let Some(path) = out {
+        std::fs::write(&path, &json).with_context(|| format!("writing {}", path.display()))?;
+        println!("written to    {}", path.display());
+    }
     Ok(())
+}
+
+/// The path of a file, rebuilt from the folder table.
+fn path(result: &AnalysisResult, file: usize) -> String {
+    let mut parts = vec![result.files.name[file].as_str()];
+    let mut dir = result.files.dir[file] as usize;
+    while let Some(parent) = result.dirs.parent[dir] {
+        parts.push(&result.dirs.name[dir]);
+        dir = parent as usize;
+    }
+    parts.reverse();
+    parts.join("/")
+}
+
+/// Building archetypes by complexity, from the floor formula of the city
+/// design: upper bound of each class, and its name.
+const ARCHETYPES: &[(u32, &str)] = &[
+    (3, "house"),
+    (15, "small block"),
+    (51, "setback block"),
+    (117, "pyramid roof"),
+    (u32::MAX, "tower"),
+];
+
+fn print_analysis(result: &AnalysisResult, elapsed: std::time::Duration) {
+    let files = &result.files;
+    let mut measured: Vec<(u32, usize)> = files
+        .complexity
+        .iter()
+        .enumerate()
+        .filter_map(|(row, complexity)| complexity.map(|complexity| (complexity, row)))
+        .collect();
+    measured.sort_unstable();
+    let headers = files.header.iter().flatten().count();
+    println!("analyzed in   {elapsed:.1?}");
+    println!(
+        "parsed        {} files, {} symbols, {} headers",
+        measured.len(),
+        result.symbols.name.len(),
+        headers
+    );
+    if measured.is_empty() {
+        return;
+    }
+    let percentile = |p: usize| measured[(measured.len() - 1) * p / 100].0;
+    println!(
+        "complexity    p50 {}, p90 {}, p97 {}, p99 {}, max {}",
+        percentile(50),
+        percentile(90),
+        percentile(97),
+        percentile(99),
+        measured[measured.len() - 1].0
+    );
+    let mut lower = 0;
+    let shares: Vec<String> = ARCHETYPES
+        .iter()
+        .map(|&(upper, name)| {
+            let count = measured
+                .iter()
+                .filter(|&&(complexity, _)| complexity > lower && complexity <= upper)
+                .count();
+            lower = upper;
+            format!(
+                "{name} {:.1}%",
+                100.0 * count as f64 / measured.len() as f64
+            )
+        })
+        .collect();
+    println!("archetypes    {}", shares.join(", "));
+    let top: Vec<String> = measured
+        .iter()
+        .rev()
+        .take(5)
+        .map(|&(complexity, row)| format!("{} {complexity}", path(result, row)))
+        .collect();
+    println!("most complex  {}", top.join(", "));
 }
