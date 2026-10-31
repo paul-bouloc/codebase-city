@@ -70,7 +70,8 @@ pub struct Files {
     pub language: Vec<u32>,
     /// Lines, blank and comment lines included, as GitHub counts them.
     pub lines: Vec<u32>,
-    /// Cyclomatic complexity; `null` when the language is not analyzed.
+    /// Cyclomatic complexity; `null` when the language is not analyzed or
+    /// the file is too large to be read.
     pub complexity: Vec<Option<u32>>,
     /// Generated code: shown in the city, left out of every ranking.
     pub generated: Vec<bool>,

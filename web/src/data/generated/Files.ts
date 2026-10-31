@@ -21,7 +21,8 @@ language: Array<number>,
  */
 lines: Array<number>, 
 /**
- * Cyclomatic complexity; `null` when the language is not analyzed.
+ * Cyclomatic complexity; `null` when the language is not analyzed or
+ * the file is too large to be read.
  */
 complexity: Array<number | null>, 
 /**
