@@ -1,0 +1,72 @@
+/* Neutral by default; status tones override the three local properties. */
+
+.badge {
+  --badge-bg: var(--color-bg-sunken);
+  --badge-fg: var(--color-text-primary);
+  --badge-border: var(--color-border-default);
+
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 24px;
+  padding: 0 var(--space-2);
+  border: var(--border-width-default) solid var(--badge-border);
+  border-radius: var(--radius-sm);
+  background: var(--badge-bg);
+  color: var(--badge-fg);
+  font: var(--caption);
+  font-weight: 500;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.likely {
+  border-style: dashed;
+}
+
+.language {
+  --badge-bg: var(--color-surface-default);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  margin-right: var(--space-0-5);
+  border-radius: var(--radius-full);
+  background: var(--lang-other);
+}
+
+.language[data-language="typescript"] .dot {
+  background: var(--lang-typescript);
+}
+
+.language[data-language="javascript"] .dot {
+  background: var(--lang-javascript);
+}
+
+.language[data-language="css"] .dot {
+  background: var(--lang-css);
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+}
+
+.building {
+  --badge-bg: var(--feedback-info-bg);
+  --badge-fg: var(--feedback-info-fg);
+  --badge-border: var(--feedback-info-border);
+}
+
+.done {
+  --badge-bg: var(--feedback-success-bg);
+  --badge-fg: var(--feedback-success-fg);
+  --badge-border: var(--feedback-success-border);
+}
+
+.failed {
+  --badge-bg: var(--feedback-error-bg);
+  --badge-fg: var(--feedback-error-fg);
+  --badge-border: var(--feedback-error-border);
+}
