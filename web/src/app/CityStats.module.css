@@ -1,0 +1,12 @@
+.stats {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-glass);
+  color: var(--color-text-primary);
+  font: var(--code-s);
+  letter-spacing: var(--code-s-tracking);
+  pointer-events: none;
+}
