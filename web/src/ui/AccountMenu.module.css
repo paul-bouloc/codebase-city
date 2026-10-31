@@ -48,6 +48,43 @@
   border-radius: var(--radius-md);
   background: var(--color-surface-default);
   box-shadow: var(--shadow-md);
+  animation: popup-in var(--duration-base) var(--easing-enter);
+}
+
+/* The focus is already back on the trigger: the fading menu only needs to stay out of the way. */
+.closing {
+  pointer-events: none;
+  animation: popup-out var(--duration-fast) var(--easing-exit) forwards;
+}
+
+@keyframes popup-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--space-1)));
+  }
+}
+
+@keyframes popup-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes popup-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .popup {
+    animation-name: popup-fade-in;
+  }
+
+  /* Repeated, or the rule above would win over the closing menu. */
+  .closing {
+    animation-name: popup-out;
+  }
 }
 
 .popup:focus-visible {

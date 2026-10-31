@@ -27,6 +27,8 @@ export function AccountMenu({ login, avatarSrc, quota, accountHref, onSignOut }:
   // The item to focus while open, or null when closed.
   const [focused, setFocused] = useState<number | null>(null)
   const open = focused !== null
+  // Closed but still fading out: drawn, without the menu semantics on the trigger.
+  const [closing, setClosing] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const itemRefs = useRef<(HTMLElement | null)[]>([])
   const menuId = useId()
@@ -39,6 +41,7 @@ export function AccountMenu({ login, avatarSrc, quota, accountHref, onSignOut }:
 
   const close = (returnFocus: boolean) => {
     setFocused(null)
+    setClosing(true)
     if (returnFocus) {
       triggerRef.current?.focus()
     }
@@ -92,9 +95,17 @@ export function AccountMenu({ login, avatarSrc, quota, accountHref, onSignOut }:
         <Icon name="chevron-down" size={16} className={styles.chevron} />
       </button>
 
-      {open && (
+      {(open || closing) && (
         // Focusable, so a click on the header keeps the focus inside and the menu open.
-        <div className={styles.popup} tabIndex={-1}>
+        <div
+          className={open ? styles.popup : `${styles.popup} ${styles.closing}`}
+          tabIndex={-1}
+          onAnimationEnd={(event) => {
+            if (!open && event.target === event.currentTarget) {
+              setClosing(false)
+            }
+          }}
+        >
           <div className={styles.header}>
             <Avatar login={login} src={avatarSrc} size={40} />
             <span className={styles.who}>
