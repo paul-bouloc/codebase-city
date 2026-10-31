@@ -35,6 +35,7 @@ pub struct AnalysisResult {
 
 /// A GitHub repository, `owner/name`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
 #[ts(export)]
 pub struct Repo {
     pub owner: String,
@@ -46,6 +47,7 @@ pub struct Repo {
 /// Row 0 is the repository root, and every folder comes after its parent, so
 /// paths can be built in a single pass.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
 #[ts(export)]
 pub struct Dirs {
     /// Index of the parent folder; `null` for the root only.
@@ -56,6 +58,7 @@ pub struct Dirs {
 
 /// The files kept after ingestion, one row per file.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
 #[ts(export)]
 pub struct Files {
     /// Index of the folder holding the file.
@@ -74,6 +77,7 @@ pub struct Files {
 
 /// Resolved imports between files, one row per import.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
 #[ts(export)]
 pub struct Edges {
     /// Index of the importing file.
@@ -128,6 +132,7 @@ pub struct Stats {
 
 /// Files dropped at ingestion, by reason.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
 #[ts(export)]
 pub struct Ignored {
     pub vendored: u32,
