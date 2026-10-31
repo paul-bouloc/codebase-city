@@ -56,8 +56,10 @@ export function Toast({ toast, onDismiss }: ToastProps) {
 
   return (
     // The slot folds its height away on exit, so the other toasts slide instead of jumping.
+    // Inert meanwhile: a second Enter on the action must not run it again.
     <div
       className={leaving ? `${styles.slot} ${styles.leaving}` : styles.slot}
+      inert={leaving}
       onAnimationEnd={handleExitEnd}
     >
       {/* biome-ignore lint/a11y/noStaticElementInteractions: hover and focus only pause the timer */}

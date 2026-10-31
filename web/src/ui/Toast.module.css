@@ -41,10 +41,6 @@
   animation: toast-out var(--duration-toast-out) var(--easing-exit) forwards;
 }
 
-.leaving > .toast {
-  pointer-events: none;
-}
-
 @keyframes toast-out {
   to {
     grid-template-rows: 0fr;
