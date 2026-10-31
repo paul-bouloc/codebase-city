@@ -128,10 +128,12 @@ export class CityEngine {
     this.camera.updateProjectionMatrix()
     const framing = new Sphere(centre, Math.max(radius, MIN_DISTANCE))
     this.controls.maxDistance = MAX_FRAMING * this.controls.getDistanceToFitSphere(framing.radius)
+    // The target stays on the sea plane: zooming to the cursor would otherwise drag it, and the
+    // camera with it, under the water.
     const box = new Box3(
-      new Vector3(cx - bounds.width / 2, 0, cz - bounds.height / 2),
-      new Vector3(cx + bounds.width / 2, 0, cz + bounds.height / 2),
-    ).expandByScalar(TARGET_MARGIN)
+      new Vector3(cx - bounds.width / 2 - TARGET_MARGIN, 0, cz - bounds.height / 2 - TARGET_MARGIN),
+      new Vector3(cx + bounds.width / 2 + TARGET_MARGIN, 0, cz + bounds.height / 2 + TARGET_MARGIN),
+    )
     this.controls.setBoundary(box)
     void this.controls.rotateTo(START_AZIMUTH, START_POLAR_ANGLE, false)
     void this.controls.fitToSphere(framing, false)
