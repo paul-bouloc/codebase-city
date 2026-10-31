@@ -8,7 +8,8 @@ import { Dialog } from '../src/ui/Dialog'
 import { EmptyState } from '../src/ui/EmptyState'
 import { InlineAlert } from '../src/ui/InlineAlert'
 import { LiveRegion } from '../src/ui/LiveRegion'
-import { ToastProvider, useToast } from '../src/ui/ToastProvider'
+import { ToastProvider } from '../src/ui/ToastProvider'
+import { useToast } from '../src/ui/use-toast'
 import styles from './FeedbackSection.module.css'
 
 const TEXT = {

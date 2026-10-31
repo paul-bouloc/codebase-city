@@ -1,34 +1,11 @@
-import {
-  createContext,
-  type ReactNode,
-  useCallback,
-  useContext,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { type ReactNode, useCallback, useMemo, useRef, useState } from 'react'
 import { Toast } from './Toast'
 import styles from './ToastProvider.module.css'
+import { ToastContext, type ToastInput } from './toast-context'
 import { pushToast, removeToast, type ToastData } from './toast-queue'
 
 const TEXT = {
   region: 'Notifications',
-}
-
-type ToastInput = Omit<ToastData, 'id'>
-
-interface ToastApi {
-  show: (toast: ToastInput) => void
-}
-
-const ToastContext = createContext<ToastApi | null>(null)
-
-export function useToast(): ToastApi {
-  const api = useContext(ToastContext)
-  if (!api) {
-    throw new Error('useToast must be used inside a ToastProvider')
-  }
-  return api
 }
 
 // Holds the toasts of the whole app and draws them bottom-left.
