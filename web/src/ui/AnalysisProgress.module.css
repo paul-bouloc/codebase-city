@@ -1,0 +1,205 @@
+.card {
+  display: grid;
+  gap: var(--space-4-5);
+  padding: var(--space-6);
+  border: var(--border-width-default) solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-default);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.heading {
+  display: grid;
+  gap: var(--space-0-5);
+  min-width: 0;
+}
+
+.repo {
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  font: var(--code-m);
+  font-size: 14px;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repo b {
+  color: var(--color-text-primary);
+  font-weight: 700;
+}
+
+.title {
+  margin: 0;
+  font: var(--heading-2);
+  letter-spacing: var(--heading-2-tracking);
+}
+
+/* Steps. Each state sets the marker and the line below it. */
+
+.steps {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+[data-outcome="reconnecting"] .steps {
+  opacity: 0.6;
+}
+
+.step {
+  --marker-bg: var(--color-surface-default);
+  --marker-border: var(--color-border-strong);
+  --line: var(--color-border-default);
+  --name-color: var(--color-text-secondary);
+  --meta-color: var(--color-text-secondary);
+
+  position: relative;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-3-5);
+  min-height: 44px;
+}
+
+.done {
+  --marker-bg: var(--color-accent);
+  --marker-border: var(--color-accent);
+  --line: var(--color-accent);
+  --name-color: var(--color-text-primary);
+}
+
+.current {
+  --marker-bg: var(--color-accent);
+  --marker-border: var(--color-accent);
+  --name-color: var(--color-text-primary);
+}
+
+.current.warning {
+  --marker-bg: var(--feedback-warning-fg);
+  --marker-border: var(--feedback-warning-fg);
+}
+
+.failed {
+  --marker-bg: var(--feedback-error-fg);
+  --marker-border: var(--feedback-error-fg);
+  --name-color: var(--feedback-error-fg);
+  --meta-color: var(--feedback-error-fg);
+}
+
+.cancelled {
+  --marker-bg: var(--color-text-secondary);
+  --marker-border: var(--color-text-secondary);
+  --name-color: var(--color-text-primary);
+}
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+}
+
+.marker {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: var(--border-width-marker) solid var(--marker-border);
+  border-radius: var(--radius-full);
+  background: var(--marker-bg);
+  color: var(--color-text-inverse);
+}
+
+/* The cream dot of the step in progress. */
+.current .marker::after {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-text-inverse);
+  content: "";
+}
+
+.line {
+  flex: 1 1 auto;
+  width: var(--border-width-marker);
+  min-height: 20px;
+  background: var(--line);
+}
+
+.body {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-1-5);
+  min-width: 0;
+  padding: var(--space-0-5) 0 var(--space-3);
+}
+
+.name {
+  color: var(--name-color);
+  font: var(--body-m);
+  font-weight: 500;
+}
+
+.current .name,
+.failed .name,
+.cancelled .name {
+  font-weight: 600;
+}
+
+.detail,
+.meta {
+  font: var(--body-s);
+  font-variant-numeric: tabular-nums;
+}
+
+.detail {
+  color: var(--color-text-secondary);
+}
+
+.meta {
+  padding-top: var(--space-0-5);
+  color: var(--meta-color);
+  white-space: nowrap;
+}
+
+.bar {
+  justify-self: stretch;
+  height: 6px;
+  border: 0;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--color-bg-sunken);
+  appearance: none;
+}
+
+.bar::-webkit-progress-bar {
+  background: var(--color-bg-sunken);
+}
+
+.bar::-webkit-progress-value {
+  border-radius: 3px;
+  background: var(--color-accent);
+}
+
+.bar::-moz-progress-bar {
+  border-radius: 3px;
+  background: var(--color-accent);
+}
+
+[data-outcome="reconnecting"] .bar::-webkit-progress-value {
+  background: var(--color-text-disabled);
+}
+
+[data-outcome="reconnecting"] .bar::-moz-progress-bar {
+  background: var(--color-text-disabled);
+}
