@@ -47,8 +47,8 @@ const FRAMING: CameraButton[] = [
 const ORDER: CameraAction[] = ['north', ...[...ZOOM, ...FRAMING].map((button) => button.action)]
 const NONE_DISABLED = ORDER.map(() => false)
 
-// `aria-keyshortcuts` wants the key name, not the typographic minus of the hint.
-const KEY_NAMES: Record<string, string> = { '+': 'Plus', '−': 'Minus', F: 'F', T: 'T' }
+// `aria-keyshortcuts` wants key values (ARIA spells + as Plus), not the typographic minus.
+const KEY_NAMES: Record<string, string> = { '+': 'Plus', '−': '-', F: 'F', T: 'T' }
 
 interface CameraControlsProps {
   // Camera heading in degrees, clockwise from north: the rose turns the other way, so its N
