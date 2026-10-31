@@ -14,3 +14,9 @@
   font: var(--eyebrow-mono);
   font-weight: 400;
 }
+
+.inverse {
+  border-color: var(--color-text-secondary);
+  background: transparent;
+  color: var(--color-text-inverse);
+}
