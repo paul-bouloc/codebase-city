@@ -33,8 +33,14 @@
   gap: var(--space-1);
 }
 
-.chevronUp {
-  transform: rotate(180deg);
+.pill:not([hidden]) {
+  animation: pill-in var(--duration-fast) var(--easing-standard);
+}
+
+@keyframes pill-in {
+  from {
+    opacity: 0;
+  }
 }
 
 /* Expanded */
@@ -45,6 +51,50 @@
   gap: var(--space-3);
   width: 300px;
   padding: var(--space-3-5) var(--space-3-5) var(--space-4) var(--space-4);
+}
+
+.panel {
+  animation: panel-in var(--duration-slow) var(--easing-enter);
+  transform-origin: top left;
+}
+
+/* Inert while it fades: the pill comes back at the end. */
+.closing {
+  animation: panel-out var(--duration-base) var(--easing-exit) forwards;
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--space-2)));
+  }
+}
+
+@keyframes panel-out {
+  to {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--space-2)));
+  }
+}
+
+/* Reduced motion: a short fade, no movement. */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes panel-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes panel-out {
+    to {
+      opacity: 0;
+    }
+  }
+}
+
+/* The panel unfolds downwards from the pill: the chevron points up to fold it back. */
+.collapse svg {
+  transform: rotate(180deg);
 }
 
 .pill[hidden],

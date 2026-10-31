@@ -1,4 +1,4 @@
-import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef } from 'react'
+import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react'
 import {
   BRIDGE_RAIL,
   BRIDGE_STONE,
@@ -67,13 +67,19 @@ export function CityLegend({ content, expanded, onExpandedChange }: CityLegendPr
   const collapseRef = useRef<HTMLButtonElement>(null)
   // Only a toggle from inside the legend moves the focus, not the first render.
   const moveFocus = useRef(false)
+  // The panel stays drawn while it fades out; the pill comes back once it has left.
+  const [panelDrawn, setPanelDrawn] = useState(expanded)
+  if (expanded && !panelDrawn) {
+    setPanelDrawn(true)
+  }
+  const closing = panelDrawn && !expanded
 
   useEffect(() => {
     if (moveFocus.current) {
       moveFocus.current = false
-      ;(expanded ? collapseRef : pillRef).current?.focus()
+      ;(panelDrawn ? collapseRef : pillRef).current?.focus()
     }
-  }, [expanded])
+  }, [panelDrawn])
 
   const toggle = (next: boolean) => {
     moveFocus.current = true
@@ -89,7 +95,7 @@ export function CityLegend({ content, expanded, onExpandedChange }: CityLegendPr
 
   return (
     <>
-      <Glass className={styles.pill} hidden={expanded}>
+      <Glass className={styles.pill} hidden={panelDrawn}>
         <button
           ref={pillRef}
           type="button"
@@ -104,7 +110,7 @@ export function CityLegend({ content, expanded, onExpandedChange }: CityLegendPr
             ))}
           </span>
           {TEXT.expand}
-          <Icon name="chevron-down" size={16} className={styles.chevronUp} />
+          <Icon name="chevron-down" size={16} />
         </button>
       </Glass>
 
@@ -112,9 +118,15 @@ export function CityLegend({ content, expanded, onExpandedChange }: CityLegendPr
         as="section"
         id={panelId}
         aria-labelledby={titleId}
-        className={styles.panel}
-        hidden={!expanded}
+        className={closing ? `${styles.panel} ${styles.closing}` : styles.panel}
+        hidden={!panelDrawn}
+        inert={closing}
         onKeyDown={handleEscape}
+        onAnimationEnd={(event) => {
+          if (closing && event.target === event.currentTarget) {
+            setPanelDrawn(false)
+          }
+        }}
       >
         <div className={styles.header}>
           <h2 id={titleId} className={styles.title}>
@@ -124,8 +136,9 @@ export function CityLegend({ content, expanded, onExpandedChange }: CityLegendPr
             ref={collapseRef}
             variant="ghost"
             iconOnly
-            icon="close"
+            icon="chevron-down"
             label={TEXT.collapse}
+            className={styles.collapse}
             aria-expanded={true}
             aria-controls={panelId}
             onClick={() => toggle(false)}
