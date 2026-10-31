@@ -22,6 +22,10 @@ const LANGUAGE_COLOURS: Record<Language, Vec3> = {
   other: srgb('#B9AE9C'),
 }
 const TEST_COLOUR = srgb('#CFC7B8')
+/** Edges are `mix(language, black, 42 %)`, on every part of the building, never shaded. */
+const EDGE_DARKENING = 0.42
+/** Line width each face draws inside its outline, in CSS pixels: two faces make a 0.5 px edge. */
+const EDGE_WIDTH = 0.25
 
 // Each vertex is its fixed part plus what follows the instance's side, height and split.
 const stretchPars = /* glsl */ `
@@ -40,18 +44,32 @@ ${shadingVertexPars}
 ${stretchPars}
 attribute vec4 paint;
 attribute vec3 tint;
+attribute vec3 edge;
 varying vec3 vColor;
+varying vec3 vEdge;
+varying vec3 vEdgeColor;
 void main() {
   vColor = mix(tint, paint.rgb, paint.a);
+  vEdge = edge;
+  vEdgeColor = tint * ${(1 - EDGE_DARKENING).toFixed(6)};
   ${shadingVertex.replace(BEGIN_VERTEX, stretchVertex)}
 }
 `
 
 const fragmentShader = /* glsl */ `
 ${shadingFragmentPars}
+uniform float edgeWidth;
 varying vec3 vColor;
+varying vec3 vEdge;
+varying vec3 vEdgeColor;
 void main() {
-  gl_FragColor = vec4(shade(vColor, normalize(vWorldNormal)), 1.0);
+  // Distance to each side in pixels; a side without a line stays far away.
+  vec3 perPixel = sqrt(dFdx(vEdge) * dFdx(vEdge) + dFdy(vEdge) * dFdy(vEdge));
+  vec3 toSide = vEdge / max(perPixel, 1e-6);
+  float d = min(min(toSide.x, toSide.y), toSide.z);
+  // The share of this pixel covered by the line: a sub-pixel line is a lighter pixel.
+  float cover = clamp(min(edgeWidth, d + 0.5) - max(0.0, d - 0.5), 0.0, 1.0);
+  gl_FragColor = vec4(mix(shade(vColor, normalize(vWorldNormal)), vEdgeColor, cover), 1.0);
 }
 `
 
@@ -71,6 +89,7 @@ const VERTEX_ATTRIBUTES = [
   'heightFactor',
   'normal',
   'paint',
+  'edge',
 ] as const satisfies readonly (keyof Vertex)[]
 
 interface Placed {
@@ -79,8 +98,8 @@ interface Placed {
   tint: Vec3
 }
 
-/** Every building, in one instanced draw call per archetype. */
-export function createBuildings(layout: CityLayout): Group {
+/** Every building, in one instanced draw call per archetype; edges are sized for `pixelRatio`. */
+export function createBuildings(layout: CityLayout, pixelRatio: number): Group {
   const byArchetype = new Map<Archetype, Placed[]>()
   for (const island of layout.islands) {
     const altitude = layerAltitude(island.layer)
@@ -100,13 +119,17 @@ export function createBuildings(layout: CityLayout): Group {
   for (const archetype of ARCHETYPES) {
     const placed = byArchetype.get(archetype)
     if (placed) {
-      group.add(instancedArchetype(archetype, placed))
+      group.add(instancedArchetype(archetype, placed, EDGE_WIDTH * pixelRatio))
     }
   }
   return group
 }
 
-function instancedArchetype(archetype: Archetype, placed: Placed[]): InstancedMesh {
+function instancedArchetype(
+  archetype: Archetype,
+  placed: Placed[],
+  edgeWidth: number,
+): InstancedMesh {
   const vertices = archetypeGeometry(archetype).flat()
   const geometry = new BufferGeometry()
   for (const name of VERTEX_ATTRIBUTES) {
@@ -117,7 +140,7 @@ function instancedArchetype(archetype: Archetype, placed: Placed[]): InstancedMe
   const sizes = new Float32Array(placed.length * 3)
   const tints = new Float32Array(placed.length * 3)
   const material = new ShaderMaterial({
-    uniforms: shadingUniforms(),
+    uniforms: { ...shadingUniforms(), edgeWidth: { value: edgeWidth } },
     vertexShader,
     fragmentShader,
     lights: true,

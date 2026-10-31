@@ -117,7 +117,11 @@ export class CityEngine {
       this.scene.remove(this.city)
       disposeObject(this.city)
     }
-    this.city = new Group().add(createSea(layout), createPlateaux(layout), createBuildings(layout))
+    this.city = new Group().add(
+      createSea(layout),
+      createPlateaux(layout),
+      createBuildings(layout, this.renderer.getPixelRatio()),
+    )
     this.scene.add(this.city)
 
     const { bounds } = layout
