@@ -66,7 +66,8 @@ interface AboutPanelProps {
   open: boolean
   about: AboutData
   newer?: NewerVersion
-  // Esc, the close button or a click outside. The focus goes back to the repository button.
+  // Esc, the close button or a click outside. After Esc or the button, the focus goes back to
+  // the repository button; after a click outside, it stays where the click put it.
   onClose: () => void
 }
 
