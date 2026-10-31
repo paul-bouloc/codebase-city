@@ -49,9 +49,7 @@
   border-color: var(--color-border-field-hover);
 }
 
-/* "typing" forces the focused look for the demo page; a real field gets it from the focus. */
-.box:focus-within,
-[data-state="typing"] .box {
+.box:focus-within {
   border-color: var(--state-focus);
   outline: var(--border-width-focus) solid transparent;
   box-shadow: var(--focus-ring);
