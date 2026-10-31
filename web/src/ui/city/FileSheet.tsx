@@ -171,6 +171,7 @@ export function FileSheet({
           <div className={styles.tabs}>
             <Tabs
               label={TEXT.tabs}
+              compact
               tabs={tabs}
               selected={shownTab}
               onSelect={(id) => setTab(id as FileTab)}
