@@ -1,0 +1,69 @@
+.dialog {
+  width: min(480px, calc(100% - 2 * var(--space-4)));
+  max-height: calc(100% - 2 * var(--space-4));
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-xl);
+  background: var(--color-surface-default);
+  box-shadow: var(--shadow-xl);
+  color: var(--color-text-primary);
+}
+
+.dialog::backdrop {
+  background: var(--color-scrim);
+}
+
+.box {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-6);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.title {
+  margin: 0;
+  font: var(--heading-2);
+  letter-spacing: var(--heading-2-tracking);
+}
+
+/* The button's hit area reaches into the padding, so its icon lines up with the text. */
+.close {
+  flex: none;
+  margin: calc(-1 * var(--space-2)) calc(-1 * var(--space-2)) 0 0;
+}
+
+.body {
+  display: grid;
+  gap: var(--space-4);
+  color: var(--color-text-body);
+  font: var(--body-m);
+}
+
+.body p {
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+}
+
+/* A full-screen sheet on narrow screens. */
+@media (max-width: 479.98px) {
+  .dialog {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    max-height: none;
+    border-radius: 0;
+  }
+}
