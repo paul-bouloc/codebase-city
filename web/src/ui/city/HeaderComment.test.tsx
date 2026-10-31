@@ -23,4 +23,10 @@ describe('HeaderComment', () => {
     expect(html).not.toContain('<button')
     expect(html).toContain('&lt;b&gt;not bold&lt;/b&gt;')
   })
+
+  it('lets the keyboard reach long lines, in a region named by the title', () => {
+    const html = renderToStaticMarkup(<HeaderComment text="/** a very long line */" />)
+    const titleId = html.match(/<h3 id="([^"]+)"/)?.[1]
+    expect(html).toMatch(new RegExp(`<section [^>]*aria-labelledby="${titleId}"[^>]*tabindex="0"`))
+  })
 })

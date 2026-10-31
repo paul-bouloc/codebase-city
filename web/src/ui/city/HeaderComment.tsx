@@ -26,11 +26,12 @@ export function HeaderComment({ text, defaultExpanded = false }: HeaderCommentPr
   const shown = expanded || hidden <= 0 ? lines : lines.slice(0, FOLDED_LINES)
 
   return (
-    <section aria-labelledby={titleId} className={styles.section}>
+    <div className={styles.section}>
       <h3 id={titleId} className={styles.title}>
         {TEXT.title}
       </h3>
-      <ScrollArea className={styles.frame}>
+      {/* Long lines scroll sideways: the keyboard can reach them too. */}
+      <ScrollArea as="section" className={styles.frame} aria-labelledby={titleId} tabIndex={0}>
         <pre id={blockId} className={styles.comment}>
           {shown.join('\n')}
         </pre>
@@ -46,6 +47,6 @@ export function HeaderComment({ text, defaultExpanded = false }: HeaderCommentPr
           {expanded ? TEXT.fewer : TEXT.more(hidden)}
         </button>
       )}
-    </section>
+    </div>
   )
 }
