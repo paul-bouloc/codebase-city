@@ -51,6 +51,10 @@ test: db-up
     cargo test --workspace --locked
     cd web && pnpm run test
 
+# Ingest a real GitHub repository and print what came out (GITHUB_TOKEN if set)
+ingest repo:
+    cargo run --release --locked -p server --example ingest -- {{repo}}
+
 # Start the local Postgres and wait until it is healthy
 db-up:
     docker compose up -d --wait postgres
