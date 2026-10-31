@@ -21,6 +21,7 @@ interface ButtonOwnProps {
   size?: ButtonSize
   loading?: boolean
   // The action in progress ("Starting…"). Rendered hidden at all times so the width never jumps.
+  // Without it, the spinner sits next to the usual label.
   loadingLabel?: string
   // Blocked for a reason written next to the button (quota, confirmation): stays focusable and
   // readable. Plain `disabled` is for controls that are simply unavailable.
@@ -79,7 +80,7 @@ export function Button({
       {(loading || loadingLabel) && (
         <span className={styles.progress}>
           <Spinner />
-          {!iconOnly && loadingLabel}
+          {!iconOnly && (loadingLabel ?? children)}
         </span>
       )}
     </button>

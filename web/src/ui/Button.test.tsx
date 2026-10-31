@@ -28,6 +28,15 @@ describe('Button', () => {
     expect(html).not.toContain('disabled=""')
   })
 
+  it('keeps the usual label next to the spinner without a loading label', () => {
+    const html = renderToStaticMarkup(
+      <Button variant="ghost" loading>
+        Cancel
+      </Button>,
+    )
+    expect(html.match(/Cancel/g)).toHaveLength(2)
+  })
+
   it('stays focusable when blocked for a reason', () => {
     const html = renderToStaticMarkup(<Button blocked>Build the city</Button>)
     expect(html).toContain('aria-disabled="true"')
