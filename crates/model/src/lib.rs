@@ -6,7 +6,9 @@
 #![forbid(unsafe_code)]
 
 mod result;
+mod validate;
 
 pub use result::{
     AnalysisResult, Confidence, Dirs, EdgeKind, Edges, FORMAT_VERSION, Files, Ignored, Repo, Stats,
 };
+pub use validate::InvalidResult;

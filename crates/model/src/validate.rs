@@ -1,0 +1,299 @@
+//! Consistency checks on an analysis result, run before it is stored.
+//!
+//! The web app runs the same checks when it decodes a result
+//! (`web/src/data/decode-result.ts`); the two lists must stay in step.
+
+use crate::result::{AnalysisResult, FORMAT_VERSION};
+
+/// Why a result is inconsistent. Columns are named as in the JSON.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum InvalidResult {
+    #[error("unsupported format version {0}, expected {FORMAT_VERSION}")]
+    FormatVersion(u32),
+    #[error("column {column} has {actual} rows, expected {expected}")]
+    ColumnLength {
+        column: &'static str,
+        expected: usize,
+        actual: usize,
+    },
+    #[error("{column}[{row}] points to row {index}, but the table has {len} rows")]
+    IndexOutOfBounds {
+        column: &'static str,
+        row: usize,
+        index: u32,
+        len: usize,
+    },
+    #[error("the first folder must be the root: no parent and an empty name")]
+    Root,
+    #[error("dirs.parent[{row}] must point to an earlier folder")]
+    ParentOrder { row: usize },
+    #[error("{column}[{row}] is not a valid name")]
+    Name { column: &'static str, row: usize },
+    #[error("stats.importsResolved is greater than stats.importsTotal")]
+    ResolvedCount,
+}
+
+impl AnalysisResult {
+    /// Checks everything the types cannot say: matching column lengths,
+    /// indexes in bounds, a well-formed folder tree and valid names.
+    pub fn validate(&self) -> Result<(), InvalidResult> {
+        if self.format_version != FORMAT_VERSION {
+            return Err(InvalidResult::FormatVersion(self.format_version));
+        }
+
+        let dirs = &self.dirs;
+        let dir_count = dirs.parent.len();
+        same_length("dirs.name", dir_count, dirs.name.len())?;
+        match (dirs.parent.first(), dirs.name.first()) {
+            (Some(None), Some(name)) if name.is_empty() => {}
+            _ => return Err(InvalidResult::Root),
+        }
+        for (row, parent) in dirs.parent.iter().enumerate().skip(1) {
+            // Parents come first, so the tree has one root and no loop
+            if !parent.is_some_and(|parent| index_below(parent, row)) {
+                return Err(InvalidResult::ParentOrder { row });
+            }
+        }
+        valid_names("dirs.name", dirs.name.iter().skip(1), 1)?;
+
+        let files = &self.files;
+        let file_count = files.dir.len();
+        same_length("files.name", file_count, files.name.len())?;
+        same_length("files.language", file_count, files.language.len())?;
+        same_length("files.lines", file_count, files.lines.len())?;
+        same_length("files.complexity", file_count, files.complexity.len())?;
+        same_length("files.generated", file_count, files.generated.len())?;
+        in_bounds("files.dir", &files.dir, dir_count)?;
+        in_bounds("files.language", &files.language, self.languages.len())?;
+        valid_names("files.name", files.name.iter(), 0)?;
+
+        let edges = &self.edges;
+        let edge_count = edges.from.len();
+        same_length("edges.to", edge_count, edges.to.len())?;
+        same_length("edges.kind", edge_count, edges.kind.len())?;
+        same_length("edges.confidence", edge_count, edges.confidence.len())?;
+        in_bounds("edges.from", &edges.from, file_count)?;
+        in_bounds("edges.to", &edges.to, file_count)?;
+
+        if self.stats.imports_resolved > self.stats.imports_total {
+            return Err(InvalidResult::ResolvedCount);
+        }
+        Ok(())
+    }
+}
+
+fn same_length(column: &'static str, expected: usize, actual: usize) -> Result<(), InvalidResult> {
+    if actual == expected {
+        Ok(())
+    } else {
+        Err(InvalidResult::ColumnLength {
+            column,
+            expected,
+            actual,
+        })
+    }
+}
+
+fn index_below(index: u32, len: usize) -> bool {
+    usize::try_from(index).is_ok_and(|index| index < len)
+}
+
+fn in_bounds(column: &'static str, indexes: &[u32], len: usize) -> Result<(), InvalidResult> {
+    match indexes.iter().position(|&index| !index_below(index, len)) {
+        None => Ok(()),
+        Some(row) => Err(InvalidResult::IndexOutOfBounds {
+            column,
+            row,
+            index: indexes[row],
+            len,
+        }),
+    }
+}
+
+/// A path segment: not empty, no slash, not `.` or `..`.
+fn valid_names<'a>(
+    column: &'static str,
+    names: impl Iterator<Item = &'a String>,
+    first_row: usize,
+) -> Result<(), InvalidResult> {
+    for (offset, name) in names.enumerate() {
+        if name.is_empty() || name.contains('/') || name == "." || name == ".." {
+            return Err(InvalidResult::Name {
+                column,
+                row: first_row + offset,
+            });
+        }
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::result::{Confidence, Dirs, EdgeKind, Edges, Files, Repo, Stats};
+
+    /// Two folders, two files, one import between them.
+    fn result() -> AnalysisResult {
+        AnalysisResult {
+            format_version: FORMAT_VERSION,
+            analyzer_version: "0.1.0".to_owned(),
+            repo: Repo {
+                owner: "acme".to_owned(),
+                name: "app".to_owned(),
+            },
+            sha: "0".repeat(40),
+            dirs: Dirs {
+                parent: vec![None, Some(0)],
+                name: vec![String::new(), "src".to_owned()],
+            },
+            languages: vec!["TypeScript".to_owned()],
+            files: Files {
+                dir: vec![1, 1],
+                name: vec!["main.ts".to_owned(), "util.ts".to_owned()],
+                language: vec![0, 0],
+                lines: vec![40, 12],
+                complexity: vec![Some(6), Some(2)],
+                generated: vec![false, false],
+            },
+            edges: Edges {
+                from: vec![0],
+                to: vec![1],
+                kind: vec![EdgeKind::Import],
+                confidence: vec![Confidence::Exact],
+            },
+            stats: Stats {
+                imports_total: 2,
+                imports_resolved: 1,
+                ..Stats::default()
+            },
+        }
+    }
+
+    fn invalid(change: impl FnOnce(&mut AnalysisResult)) -> InvalidResult {
+        let mut result = result();
+        change(&mut result);
+        result.validate().unwrap_err()
+    }
+
+    #[test]
+    fn a_consistent_result_is_valid() {
+        assert_eq!(result().validate(), Ok(()));
+    }
+
+    #[test]
+    fn another_format_version_is_rejected() {
+        assert_eq!(
+            invalid(|r| r.format_version = 2),
+            InvalidResult::FormatVersion(2)
+        );
+    }
+
+    #[test]
+    fn columns_of_a_table_must_have_the_same_length() {
+        assert_eq!(
+            invalid(|r| r.files.lines.push(1)),
+            InvalidResult::ColumnLength {
+                column: "files.lines",
+                expected: 2,
+                actual: 3,
+            }
+        );
+        assert_eq!(
+            invalid(|r| r.dirs.name.truncate(1)),
+            InvalidResult::ColumnLength {
+                column: "dirs.name",
+                expected: 2,
+                actual: 1,
+            }
+        );
+        assert_eq!(
+            invalid(|r| r.edges.confidence.clear()),
+            InvalidResult::ColumnLength {
+                column: "edges.confidence",
+                expected: 1,
+                actual: 0,
+            }
+        );
+    }
+
+    #[test]
+    fn indexes_must_point_to_an_existing_row() {
+        assert_eq!(
+            invalid(|r| r.files.dir[1] = 2),
+            InvalidResult::IndexOutOfBounds {
+                column: "files.dir",
+                row: 1,
+                index: 2,
+                len: 2,
+            }
+        );
+        assert_eq!(
+            invalid(|r| r.files.language[0] = 1),
+            InvalidResult::IndexOutOfBounds {
+                column: "files.language",
+                row: 0,
+                index: 1,
+                len: 1,
+            }
+        );
+        assert_eq!(
+            invalid(|r| r.edges.to[0] = u32::MAX),
+            InvalidResult::IndexOutOfBounds {
+                column: "edges.to",
+                row: 0,
+                index: u32::MAX,
+                len: 2,
+            }
+        );
+    }
+
+    #[test]
+    fn the_first_folder_must_be_the_root() {
+        assert_eq!(invalid(|r| r.dirs = Dirs::default()), InvalidResult::Root);
+        assert_eq!(invalid(|r| r.dirs.parent[0] = Some(0)), InvalidResult::Root);
+        assert_eq!(
+            invalid(|r| r.dirs.name[0] = "root".to_owned()),
+            InvalidResult::Root
+        );
+    }
+
+    #[test]
+    fn a_folder_must_come_after_its_parent() {
+        assert_eq!(
+            invalid(|r| r.dirs.parent[1] = None),
+            InvalidResult::ParentOrder { row: 1 }
+        );
+        assert_eq!(
+            invalid(|r| r.dirs.parent[1] = Some(1)),
+            InvalidResult::ParentOrder { row: 1 }
+        );
+    }
+
+    #[test]
+    fn names_are_single_path_segments() {
+        for name in ["", "a/b", ".", ".."] {
+            assert_eq!(
+                invalid(|r| r.files.name[1] = name.to_owned()),
+                InvalidResult::Name {
+                    column: "files.name",
+                    row: 1,
+                }
+            );
+        }
+        assert_eq!(
+            invalid(|r| r.dirs.name[1] = String::new()),
+            InvalidResult::Name {
+                column: "dirs.name",
+                row: 1,
+            }
+        );
+    }
+
+    #[test]
+    fn resolved_imports_cannot_outnumber_the_total() {
+        assert_eq!(
+            invalid(|r| r.stats.imports_resolved = 3),
+            InvalidResult::ResolvedCount
+        );
+    }
+}
