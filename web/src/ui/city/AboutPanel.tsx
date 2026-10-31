@@ -2,6 +2,7 @@ import { type KeyboardEvent, type ReactNode, useEffect, useId } from 'react'
 import { Button } from '../Button'
 import { Icon } from '../Icon'
 import { InlineAlert } from '../InlineAlert'
+import { ScrollArea } from '../ScrollArea'
 import styles from './AboutPanel.module.css'
 import { ControlHint } from './ControlHint'
 import { Glass } from './Glass'
@@ -132,98 +133,100 @@ export function AboutPanel({ id, open, about, newer, onClose }: AboutPanelProps)
         </ControlHint>
       </div>
 
-      {newer && <NewerLine newer={newer} />}
+      <ScrollArea className={styles.scroll} viewportClassName={styles.content}>
+        {newer && <NewerLine newer={newer} />}
 
-      <div className={styles.tiles}>
-        <p className={`${styles.tile} ${styles.analyzedTile}`}>
-          <span className={styles.tileValue}>{numbers.format(about.analyzedFiles)}</span>
-          {TEXT.analyzed}
-        </p>
-        <p className={`${styles.tile} ${styles.skippedTile}`}>
-          <span className={styles.tileValue}>{numbers.format(skipped)}</span>
-          {TEXT.skipped}
-        </p>
-      </div>
-      {about.generatedFiles > 0 && (
-        <p className={styles.note}>{TEXT.generated(about.generatedFiles)}</p>
-      )}
+        <div className={styles.tiles}>
+          <p className={`${styles.tile} ${styles.analyzedTile}`}>
+            <span className={styles.tileValue}>{numbers.format(about.analyzedFiles)}</span>
+            {TEXT.analyzed}
+          </p>
+          <p className={`${styles.tile} ${styles.skippedTile}`}>
+            <span className={styles.tileValue}>{numbers.format(skipped)}</span>
+            {TEXT.skipped}
+          </p>
+        </div>
+        {about.generatedFiles > 0 && (
+          <p className={styles.note}>{TEXT.generated(about.generatedFiles)}</p>
+        )}
 
-      {skipped > 0 && (
-        <details className={styles.details}>
-          <summary className={styles.summary}>{TEXT.whySkipped(skipped)}</summary>
-          <dl className={styles.reasons}>
-            {about.skipped.map(({ reason, files }) => (
-              <div key={reason} className={styles.reason}>
-                <dt>{reason}</dt>
-                <dd>{numbers.format(files)}</dd>
-              </div>
-            ))}
-          </dl>
-        </details>
-      )}
+        {skipped > 0 && (
+          <details className={styles.details}>
+            <summary className={styles.summary}>{TEXT.whySkipped(skipped)}</summary>
+            <dl className={styles.reasons}>
+              {about.skipped.map(({ reason, files }) => (
+                <div key={reason} className={styles.reason}>
+                  <dt>{reason}</dt>
+                  <dd>{numbers.format(files)}</dd>
+                </div>
+              ))}
+            </dl>
+          </details>
+        )}
 
-      {languages.length > 0 && (
-        <Section title={TEXT.languages}>
-          <LanguageBar languages={languages} />
-          <ul className={styles.languages}>
-            {languages.map(({ language, files, share }) => (
-              <li key={language} className={styles.language}>
-                <span className={styles.dot} data-language={language} />
+        {languages.length > 0 && (
+          <Section title={TEXT.languages}>
+            <LanguageBar languages={languages} />
+            <ul className={styles.languages}>
+              {languages.map(({ language, files, share }) => (
+                <li key={language} className={styles.language}>
+                  <span className={styles.dot} data-language={language} />
+                  <span>
+                    {LANGUAGE_NAMES[language]}{' '}
+                    <span className={styles.secondary}>· {TEXT.files(files)}</span>
+                  </span>
+                  <span className={styles.share}>{formatShare(share)}</span>
+                </li>
+              ))}
+            </ul>
+          </Section>
+        )}
+
+        <Section title={TEXT.imports}>
+          <ul className={styles.facts}>
+            {about.resolvedImports === undefined ? (
+              <li className={styles.fact}>
+                <Icon name="info" size={16} className={styles.infoIcon} />
+                <span>{TEXT.noFlows}</span>
+              </li>
+            ) : (
+              <li className={styles.fact}>
+                <Icon name="check" size={16} className={styles.checkIcon} />
                 <span>
-                  {LANGUAGE_NAMES[language]}{' '}
-                  <span className={styles.secondary}>· {TEXT.files(files)}</span>
+                  <strong>{TEXT.resolved(about.resolvedImports)}</strong>
+                  {TEXT.resolvedRest}
                 </span>
-                <span className={styles.share}>{formatShare(share)}</span>
+              </li>
+            )}
+            {about.unanalyzed.map(({ name, files }) => (
+              <li key={name} className={styles.fact}>
+                <Icon name="info" size={16} className={styles.infoIcon} />
+                <span>
+                  <strong>{TEXT.unanalyzed(name, files)}</strong>
+                  {TEXT.unanalyzedRest}
+                  <span className={styles.secondary}>{TEXT.unanalyzedWhy(name)}</span>
+                </span>
               </li>
             ))}
           </ul>
         </Section>
-      )}
 
-      <Section title={TEXT.imports}>
-        <ul className={styles.facts}>
-          {about.resolvedImports === undefined ? (
-            <li className={styles.fact}>
-              <Icon name="info" size={16} className={styles.infoIcon} />
-              <span>{TEXT.noFlows}</span>
-            </li>
-          ) : (
-            <li className={styles.fact}>
-              <Icon name="check" size={16} className={styles.checkIcon} />
-              <span>
-                <strong>{TEXT.resolved(about.resolvedImports)}</strong>
-                {TEXT.resolvedRest}
-              </span>
-            </li>
-          )}
-          {about.unanalyzed.map(({ name, files }) => (
-            <li key={name} className={styles.fact}>
-              <Icon name="info" size={16} className={styles.infoIcon} />
-              <span>
-                <strong>{TEXT.unanalyzed(name, files)}</strong>
-                {TEXT.unanalyzedRest}
-                <span className={styles.secondary}>{TEXT.unanalyzedWhy(name)}</span>
-              </span>
-            </li>
-          ))}
-        </ul>
-      </Section>
-
-      <dl className={styles.card}>
-        <dt>{TEXT.commit}</dt>
-        <dd>
-          <a className={styles.commit} href={about.commitUrl}>
-            {about.commit}
-          </a>{' '}
-          · {about.branch}
-        </dd>
-        <dt>{TEXT.analyzedAt}</dt>
-        <dd>
-          {about.analyzedAt} · {about.analyzedAgo}
-        </dd>
-        <dt>{TEXT.analyzer}</dt>
-        <dd className={styles.mono}>{about.analyzer}</dd>
-      </dl>
+        <dl className={styles.card}>
+          <dt>{TEXT.commit}</dt>
+          <dd>
+            <a className={styles.commit} href={about.commitUrl}>
+              {about.commit}
+            </a>{' '}
+            · {about.branch}
+          </dd>
+          <dt>{TEXT.analyzedAt}</dt>
+          <dd>
+            {about.analyzedAt} · {about.analyzedAgo}
+          </dd>
+          <dt>{TEXT.analyzer}</dt>
+          <dd className={styles.mono}>{about.analyzer}</dd>
+        </dl>
+      </ScrollArea>
     </Glass>
   )
 }

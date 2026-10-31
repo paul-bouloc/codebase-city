@@ -2,11 +2,9 @@
 .panel {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3-5);
   width: 420px;
   max-height: 100%;
-  padding: var(--space-4);
-  overflow-y: auto;
+  overflow: hidden;
   visibility: hidden;
   opacity: 0;
   transform: translateY(calc(-1 * var(--space-1)));
@@ -32,11 +30,23 @@
   }
 }
 
+/* The title stays; the rest scrolls under it. */
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: calc(-1 * var(--space-1)) calc(-1 * var(--space-1)) calc(-1 * var(--space-1)) 0;
+  padding: var(--space-3) var(--space-3) var(--space-2) var(--space-4);
+}
+
+.scroll {
+  flex: 1;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3-5);
+  padding: var(--space-1) var(--space-4) var(--space-4);
 }
 
 /* The board says 16/22: brought back to heading.3 (A-c8). */

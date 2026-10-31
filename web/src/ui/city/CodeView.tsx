@@ -2,6 +2,7 @@ import { type CSSProperties, useEffect, useRef } from 'react'
 import { Button } from '../Button'
 import { InlineAlert } from '../InlineAlert'
 import { LinkButton } from '../LinkButton'
+import { ScrollArea } from '../ScrollArea'
 import styles from './CodeView.module.css'
 import { Skeleton } from './Skeleton'
 import type { CodeState } from './sheet-data'
@@ -107,11 +108,12 @@ export function CodeView({ code, githubUrl, onRetry, line }: CodeViewProps) {
   const shown = code.lines.length
   return (
     <div className={styles.code}>
-      <section
-        className={styles.scroll}
+      <ScrollArea
+        as="section"
+        className={styles.frame}
+        viewportClassName={styles.scroll}
         aria-label={TEXT.label}
         // Focusable, so the keyboard can scroll it sideways.
-        // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region must take the focus
         tabIndex={0}
         style={{ '--line-height': `${LINE_HEIGHT}px` } as CSSProperties}
       >
@@ -128,7 +130,7 @@ export function CodeView({ code, githubUrl, onRetry, line }: CodeViewProps) {
         <pre ref={textRef} className={styles.text}>
           {code.lines.join('\n')}
         </pre>
-      </section>
+      </ScrollArea>
       {line !== undefined && target === undefined && (
         <p className={styles.footer}>
           {TEXT.beyond(line)} <a href={`${githubUrl}#L${line}`}>{TEXT.openLine(line)}</a>

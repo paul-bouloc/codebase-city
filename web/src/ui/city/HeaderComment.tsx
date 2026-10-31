@@ -1,4 +1,5 @@
 import { useId, useState } from 'react'
+import { ScrollArea } from '../ScrollArea'
 import styles from './HeaderComment.module.css'
 
 const TEXT = {
@@ -29,9 +30,11 @@ export function HeaderComment({ text, defaultExpanded = false }: HeaderCommentPr
       <h3 id={titleId} className={styles.title}>
         {TEXT.title}
       </h3>
-      <pre id={blockId} className={styles.comment}>
-        {shown.join('\n')}
-      </pre>
+      <ScrollArea className={styles.frame}>
+        <pre id={blockId} className={styles.comment}>
+          {shown.join('\n')}
+        </pre>
+      </ScrollArea>
       {hidden > 0 && (
         <button
           type="button"

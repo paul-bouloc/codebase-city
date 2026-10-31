@@ -6,13 +6,16 @@
   margin: 0 calc(-1 * var(--space-4));
 }
 
-.scroll {
-  position: relative;
-  display: flex;
-  overflow-x: auto;
+.frame {
   border-top: var(--border-width-default) solid var(--color-border-subtle);
   border-bottom: var(--border-width-default) solid var(--color-border-subtle);
   background: var(--color-surface-default);
+}
+
+/* What scrolls sideways; the highlight and the sticky numbers move with it. */
+.scroll {
+  position: relative;
+  display: flex;
 }
 
 .gutter,

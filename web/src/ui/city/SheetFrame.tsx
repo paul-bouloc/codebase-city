@@ -2,6 +2,7 @@ import { type KeyboardEvent, type ReactNode, useId } from 'react'
 import { Button } from '../Button'
 import { Icon } from '../Icon'
 import type { IconName } from '../icons'
+import { ScrollArea } from '../ScrollArea'
 import { ControlHint } from './ControlHint'
 import { Glass } from './Glass'
 import styles from './SheetFrame.module.css'
@@ -103,7 +104,7 @@ export function SheetFrame({
         <div className={styles.actions}>{actions}</div>
       </header>
 
-      <div className={styles.body}>{children}</div>
+      <ScrollArea viewportClassName={styles.body}>{children}</ScrollArea>
 
       {footer && <footer className={styles.footer}>{footer}</footer>}
     </Glass>
