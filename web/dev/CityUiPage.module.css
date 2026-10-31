@@ -1,0 +1,126 @@
+/* The interface over a real city, laid out as on the "City UI · City idle" board. */
+
+.stage {
+  position: relative;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.topBar {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  left: var(--space-3);
+}
+
+.legend {
+  position: absolute;
+  top: 84px;
+  left: var(--space-3);
+}
+
+.camera {
+  position: absolute;
+  right: var(--space-3);
+  bottom: var(--space-3);
+}
+
+.scale {
+  position: absolute;
+  right: 88px;
+  bottom: var(--space-4);
+}
+
+.sheet {
+  position: absolute;
+  top: 84px;
+  right: var(--space-3);
+  bottom: var(--space-3);
+  width: 400px;
+  padding: var(--space-5);
+}
+
+.marker {
+  position: absolute;
+  transform: translate(-50%, -100%);
+}
+
+/* Clear of the expanded legend and of the camera. */
+.tools {
+  position: absolute;
+  top: 84px;
+  right: var(--space-3);
+  display: grid;
+  gap: var(--space-1-5);
+  width: 280px;
+  padding: var(--space-3) var(--space-4);
+  font: var(--body-s);
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.field {
+  display: grid;
+  gap: var(--space-1);
+}
+
+/* Every state side by side. */
+
+.board {
+  display: grid;
+  gap: var(--space-12);
+  padding: var(--space-16) var(--space-6);
+  background: var(--color-bg-page);
+}
+
+.boardHeader {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 720px;
+}
+
+.sample {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.cases {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-6);
+}
+
+.case {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.wide {
+  width: min(1440px, 100%);
+}
+
+.sea {
+  padding: var(--space-6);
+  border-radius: var(--radius-lg);
+  background: var(--city-sea);
+}
+
+/* Contains the fixed tooltips: a transformed box is their containing block. */
+.frame {
+  position: relative;
+  width: 440px;
+  height: 200px;
+  transform: translateZ(0);
+}
+
+.row {
+  display: inline-flex;
+  gap: var(--space-2);
+}
