@@ -25,4 +25,8 @@ describe('Breadcrumb', () => {
     expect(shown[0]).not.toBe('src')
     expect(shown.join(' / ').length + 4).toBeLessThanOrEqual(47)
   })
+
+  it('renders nothing at the root', () => {
+    expect(render([])).toBe('')
+  })
 })

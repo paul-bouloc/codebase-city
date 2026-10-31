@@ -18,6 +18,10 @@ interface BreadcrumbProps {
 
 // Each folder opens its own sheet. A long path loses its first folders: `… / common / model`.
 export function Breadcrumb({ folders, onOpenFolder }: BreadcrumbProps) {
+  // A file at the root, or a top-level folder: no path to show, no empty landmark.
+  if (folders.length === 0) {
+    return null
+  }
   const hidden = hiddenFolders(folders, MAX_CHARS)
   const fullPath = folders.join('/')
 
