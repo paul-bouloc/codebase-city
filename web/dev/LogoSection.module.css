@@ -1,0 +1,45 @@
+.section {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.secondary {
+  color: var(--color-text-secondary);
+}
+
+.logos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 520px), 1fr));
+  gap: var(--space-6);
+}
+
+.logoCell {
+  margin: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.stage {
+  min-height: 200px;
+  padding: var(--space-6);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-6);
+  border-radius: var(--radius-lg);
+}
+
+.cream {
+  background: var(--color-bg-page);
+  border: var(--border-width-default) solid var(--color-border-default);
+}
+
+.sea {
+  background: var(--city-sea);
+}
+
+.tab {
+  min-height: 0;
+  background: var(--color-surface-inverse);
+}

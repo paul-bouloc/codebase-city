@@ -1,3 +1,5 @@
+import { IconsSection } from './IconsSection'
+import { LogoSection } from './LogoSection'
 import styles from './TokensPage.module.css'
 import { COLOR_GROUPS, tokensWithPrefix } from './token-groups'
 
@@ -132,6 +134,9 @@ export function TokensPage() {
           {TEXT.focusButton}
         </button>
       </section>
+
+      <IconsSection />
+      <LogoSection />
     </main>
   )
 }
