@@ -51,7 +51,7 @@ export function ScrollArea({
     if (!viewport) {
       return
     }
-    setThumbs({
+    const next = {
       vertical: thumbGeometry(
         viewport.clientHeight,
         viewport.scrollHeight,
@@ -64,8 +64,27 @@ export function ScrollArea({
         viewport.scrollLeft,
         horizontalTrack.current?.clientWidth ?? 0,
       ),
-    })
+    }
+    // Most scroll events move nothing a pixel can show: no render for them.
+    setThumbs((current) =>
+      sameThumb(current.vertical, next.vertical) && sameThumb(current.horizontal, next.horizontal)
+        ? current
+        : next,
+    )
   }, [])
+
+  // One stable ref: a new function on every render would detach and reattach it each time.
+  const setViewport = useCallback(
+    (element: HTMLElement | null) => {
+      viewportRef.current = element
+      if (typeof ref === 'function') {
+        ref(element as HTMLDivElement | null)
+      } else if (ref) {
+        ref.current = element as HTMLDivElement | null
+      }
+    },
+    [ref],
+  )
 
   // The content changes size as lists unfold or tabs switch: watch the box and its children.
   useEffect(() => {
@@ -186,14 +205,7 @@ export function ScrollArea({
   return (
     <div className={rootClasses}>
       <Viewport
-        ref={(element: HTMLElement | null) => {
-          viewportRef.current = element
-          if (typeof ref === 'function') {
-            ref(element as HTMLDivElement | null)
-          } else if (ref) {
-            ref.current = element as HTMLDivElement | null
-          }
-        }}
+        ref={setViewport}
         className={viewportClasses}
         {...viewportProps}
         onScroll={handleScroll}
@@ -204,4 +216,12 @@ export function ScrollArea({
       {bar('horizontal')}
     </div>
   )
+}
+
+// Equal to the pixel: what a thumb can show.
+function sameThumb(a: ThumbGeometry | null, b: ThumbGeometry | null): boolean {
+  if (a === null || b === null) {
+    return a === b
+  }
+  return Math.round(a.size) === Math.round(b.size) && Math.round(a.offset) === Math.round(b.offset)
 }
