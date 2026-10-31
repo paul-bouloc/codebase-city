@@ -1,10 +1,4 @@
-import {
-  BoxGeometry,
-  type BufferGeometry,
-  Float32BufferAttribute,
-  Mesh,
-  ShaderMaterial,
-} from 'three'
+import { BoxGeometry, BufferGeometry, Float32BufferAttribute, Mesh, ShaderMaterial } from 'three'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import type { CityLayout } from './layout'
 import { shadingFragmentPars, shadingUniforms, shadingVertex, shadingVertexPars } from './shading'
@@ -46,7 +40,8 @@ export function createPlateaux(layout: CityLayout): Mesh {
     paint(block)
     return block
   })
-  const geometry = mergeGeometries(blocks)
+  // An empty city has no plateau: mergeGeometries cannot merge nothing.
+  const geometry = blocks.length > 0 ? mergeGeometries(blocks) : new BufferGeometry()
   for (const block of blocks) {
     block.dispose()
   }
