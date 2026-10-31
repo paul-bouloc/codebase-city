@@ -1,0 +1,32 @@
+.spinner {
+  flex: none;
+  animation: spin 800ms linear infinite;
+}
+
+.track,
+.arc {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+.track {
+  stroke-opacity: 0.3;
+}
+
+.arc {
+  stroke-linecap: round;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+/* Reduced motion: the spinner stops, the arc alone still reads as "busy". */
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+}
