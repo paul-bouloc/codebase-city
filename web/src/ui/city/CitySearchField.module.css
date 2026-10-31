@@ -17,7 +17,8 @@
 }
 
 .field:focus-within {
-  border-color: var(--color-accent);
+  border-color: var(--state-focus);
+  outline: var(--border-width-focus) solid transparent;
   box-shadow: var(--focus-ring);
 }
 
@@ -42,6 +43,12 @@
   color: var(--color-text-primary);
   font: var(--body-m);
   letter-spacing: var(--body-m-tracking);
+}
+
+/* The field draws the focus. */
+.input:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 .input::placeholder {
