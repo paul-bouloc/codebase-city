@@ -98,7 +98,7 @@ export const FILE: FileSheetData = {
   importList: IMPORTS.map(([path, importers]) => ({ path, importers })),
   importerList: IMPORTERS.map(([path, importers]) => ({ path, importers })),
   symbols: [
-    { name: 'TextModel', kind: 'class', line: 284 },
+    { name: 'TextModel', kind: 'class', line: 5 },
     { name: 'TextModelSnapshot', kind: 'class', line: 196 },
     { name: 'createTextBuffer', kind: 'function', line: 112 },
     { name: 'createTextBufferFactory', kind: 'function', line: 140 },
