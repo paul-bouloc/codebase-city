@@ -1,4 +1,5 @@
 import { exactCount } from '../count-format'
+import { Glass } from './Glass'
 import styles from './MapScale.module.css'
 
 const TEXT = {
@@ -17,7 +18,7 @@ interface MapScaleProps {
 // A sea chart scale, counted in files.
 export function MapScale({ files }: MapScaleProps) {
   return (
-    <div role="img" aria-label={TEXT.label(files)} className={styles.scale}>
+    <Glass role="img" aria-label={TEXT.label(files)} radius="md" className={styles.scale}>
       <span className={styles.bar} aria-hidden="true">
         {Array.from({ length: CELLS }, (_, index) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: fixed cells that never move
@@ -27,6 +28,6 @@ export function MapScale({ files }: MapScaleProps) {
       <span className={styles.value} aria-hidden="true">
         {TEXT.value(files)}
       </span>
-    </div>
+    </Glass>
   )
 }
