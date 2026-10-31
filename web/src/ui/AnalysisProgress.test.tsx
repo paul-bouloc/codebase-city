@@ -48,4 +48,13 @@ describe('AnalysisProgress', () => {
     expect(html).toContain(', upcoming')
     expect(html).toContain('<progress')
   })
+
+  it('shows the repository name in bold, with or without its owner', () => {
+    expect(
+      renderToStaticMarkup(<AnalysisProgress repo="microsoft/vscode" step="queued" />),
+    ).toContain('microsoft/<b>vscode</b>')
+    expect(renderToStaticMarkup(<AnalysisProgress repo="vscode" step="queued" />)).toContain(
+      '<b>vscode</b>',
+    )
+  })
 })

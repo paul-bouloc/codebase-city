@@ -114,7 +114,7 @@ export function AnalysisProgress({
   children,
 }: AnalysisProgressProps) {
   const states = stepStates(step, outcome)
-  const [owner, name] = repo.split('/')
+  const slash = repo.indexOf('/')
   const warning = outcome === 'reconnecting' || outcome === 'paused'
 
   return (
@@ -122,7 +122,8 @@ export function AnalysisProgress({
       <header className={styles.header}>
         <div className={styles.heading}>
           <span className={styles.repo}>
-            {owner}/<b>{name}</b>
+            {repo.slice(0, slash + 1)}
+            <b>{repo.slice(slash + 1)}</b>
           </span>
           <h1 className={styles.title}>{progressTitle(step, outcome)}</h1>
         </div>
