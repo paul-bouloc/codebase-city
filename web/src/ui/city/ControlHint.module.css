@@ -5,7 +5,7 @@
 
 .hint {
   position: absolute;
-  z-index: 40;
+  z-index: var(--layer-hint);
   display: inline-flex;
   align-items: center;
   gap: var(--space-1-5);

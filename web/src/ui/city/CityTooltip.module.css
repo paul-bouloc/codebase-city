@@ -2,7 +2,7 @@
 
 .tooltip {
   position: fixed;
-  z-index: 30;
+  z-index: var(--layer-tooltip);
   display: flex;
   flex-direction: column;
   align-items: flex-start;

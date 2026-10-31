@@ -131,6 +131,14 @@
   --shadow-lg: 0 12px 32px rgba(40, 60, 60, 0.18);
   --shadow-xl: 0 24px 64px rgba(35, 49, 58, 0.24);
 
+  /* Layers. Glass makes a stacking context (backdrop-filter): a block whose tooltips or menus
+   * overhang its neighbours is raised as a whole. */
+  --layer-raised: 20;
+  --layer-tooltip: 30;
+  --layer-hint: 40;
+  --layer-menu: 50;
+  --layer-toast: 100;
+
   /* Spacing, 4px base */
   --space-0-5: 2px;
   --space-1: 4px;
