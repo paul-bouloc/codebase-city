@@ -134,6 +134,8 @@
   /* Layers. Glass makes a stacking context (backdrop-filter): a block whose tooltips or menus
    * overhang its neighbours is raised as a whole. */
   --layer-raised: 20;
+  /* The city top bar: its hints, menu and popovers hang over every panel, sheets included. */
+  --layer-bar: 25;
   --layer-tooltip: 30;
   --layer-hint: 40;
   --layer-menu: 50;
