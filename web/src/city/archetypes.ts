@@ -13,7 +13,7 @@ export const ARCHETYPES = [
 
 export type Archetype = (typeof ARCHETYPES)[number]
 
-export const MAX_FLOORS = 40
+const MAX_FLOORS = 40
 const MAX_LINES = 3000
 const MIN_SIDE = 0.75
 const SIDE_RANGE = 0.95
