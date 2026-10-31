@@ -95,11 +95,11 @@ export function FolderSheet({
       subtitle={subtitle(folder.kind)}
       actions={actions}
       busy={loading}
+      busyLabel={TEXT.loading}
       contentKey={folder.path}
     >
       {loading ? (
-        <div className={styles.loading} role="status">
-          <span className="visually-hidden">{TEXT.loading}</span>
+        <div className={styles.loading}>
           <Skeleton width="100%" height="48px" />
           <Skeleton width="100%" height="10px" />
           <Skeleton width="100%" height="140px" />

@@ -2,6 +2,7 @@ import { type KeyboardEvent, type ReactNode, useId } from 'react'
 import { Button } from '../Button'
 import { Icon } from '../Icon'
 import type { IconName } from '../icons'
+import { LiveRegion } from '../LiveRegion'
 import { ScrollArea } from '../ScrollArea'
 import { ControlHint } from './ControlHint'
 import { Glass } from './Glass'
@@ -29,6 +30,8 @@ interface SheetFrameProps {
   footer?: ReactNode
   // While the details load: the header is real, the rest is a skeleton.
   busy?: boolean
+  // Read out while busy: "Loading file details".
+  busyLabel?: string
   // What the sheet shows (a path): when it changes, a focus lost with the old content goes to
   // the title.
   contentKey?: string
@@ -50,6 +53,7 @@ export function SheetFrame({
   actions,
   footer,
   busy = false,
+  busyLabel,
   contentKey,
   children,
 }: SheetFrameProps) {
@@ -74,6 +78,8 @@ export function SheetFrame({
       inert={!open}
       onKeyDown={handleEscape}
     >
+      {/* Always there, so the loading message is announced when it appears. */}
+      <LiveRegion className="visually-hidden">{busy ? busyLabel : null}</LiveRegion>
       <header className={styles.header}>
         <div className={styles.topRow}>
           {breadcrumb}

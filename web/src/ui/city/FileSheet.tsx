@@ -4,6 +4,7 @@ import { Button } from '../Button'
 import { fileSize } from '../count-format'
 import { Icon } from '../Icon'
 import { LinkButton } from '../LinkButton'
+import { LiveRegion } from '../LiveRegion'
 import { type TabItem, Tabs } from '../Tabs'
 import { Breadcrumb } from './Breadcrumb'
 import { CodeView } from './CodeView'
@@ -45,6 +46,7 @@ const TEXT = {
   tabSymbols: 'Symbols',
   tabCode: 'Code',
   loading: 'Loading file details',
+  loadingCode: 'Loading the code',
   unanalyzedTitle: (language: string) => `${language} isn’t analyzed yet.`,
   unanalyzedBody:
     ' This file has no imports, symbols or complexity here: only its size and its code. It stands in raw concrete in the city.',
@@ -134,11 +136,11 @@ export function FileSheet({
       actions={actions}
       footer={footer}
       busy={loading}
+      busyLabel={TEXT.loading}
       contentKey={file.path}
     >
       {loading ? (
-        <div className={styles.loading} role="status">
-          <span className="visually-hidden">{TEXT.loading}</span>
+        <div className={styles.loading}>
           <Skeleton width="100%" height="48px" />
           <Skeleton width="80%" height="14px" />
           <Skeleton width="65%" height="14px" />
@@ -181,6 +183,10 @@ function FileDetails({
 
   return (
     <>
+      {/* Mounted with the details, before the Code tab is opened: the message is announced. */}
+      <LiveRegion className="visually-hidden">
+        {shownTab === 'code' && file.code.status === 'loading' ? TEXT.loadingCode : null}
+      </LiveRegion>
       {!file.analyzed && (
         <p className={styles.unanalyzed}>
           <Icon name="info" size={20} className={styles.unanalyzedIcon} />

@@ -11,7 +11,6 @@ const numbers = new Intl.NumberFormat('en-US')
 
 const TEXT = {
   label: 'Code',
-  loading: 'Loading the code',
   partial: (shown: number, total: number) =>
     `Showing lines 1–${numbers.format(shown)} of ${numbers.format(total)}.`,
   all: (total: number) => `All ${numbers.format(total)} ${total === 1 ? 'line' : 'lines'}.`,
@@ -80,8 +79,7 @@ export function CodeView({ code, githubUrl, onRetry, line }: CodeViewProps) {
 
   if (code.status === 'loading') {
     return (
-      <div className={styles.loading} role="status">
-        <span className="visually-hidden">{TEXT.loading}</span>
+      <div className={styles.loading}>
         {SKELETON_LINES.map((width, index) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: fixed placeholder lines
           <Skeleton key={index} width={width} height="12px" />

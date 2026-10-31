@@ -42,4 +42,26 @@ describe('SheetFrame', () => {
     expect(render(true)).not.toContain('<footer')
     expect(render(true, 'Show impact')).toContain('<footer')
   })
+
+  // A live region that appears already filled is often not read out.
+  it('keeps its live region in the page and fills it while busy', () => {
+    const frame = (busy: boolean) =>
+      renderToStaticMarkup(
+        <SheetFrame
+          open
+          onClose={() => {}}
+          breadcrumb={null}
+          icon="file"
+          tone="accent"
+          title="a.ts"
+          actions={null}
+          busy={busy}
+          busyLabel="Loading file details"
+        >
+          Body
+        </SheetFrame>,
+      )
+    expect(frame(false)).toMatch(/aria-live="polite"[^>]*><\/div>/)
+    expect(frame(true)).toMatch(/aria-live="polite"[^>]*>Loading file details<\/div>/)
+  })
 })
