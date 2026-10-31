@@ -11,6 +11,13 @@ export function canvasFont(style: FontStyle): string {
   return `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`
 }
 
+// Takes the exact width: a rounded-up one could let one character too many through, and the
+// CSS ellipsis would then cut the file name. The tolerance keeps an exact fit (302.4 / 7.2 is
+// 41.999… in floating point).
+export function maxCharsFor(width: number, charWidth: number): number {
+  return charWidth > 0 ? Math.floor(width / charWidth + 1e-6) : Number.POSITIVE_INFINITY
+}
+
 // Paths are set in a monospace font, so one character's width gives the budget.
 function charWidth(element: HTMLElement): number {
   canvas ??= document.createElement('canvas')
@@ -34,8 +41,7 @@ export function useTruncatedPath<T extends HTMLElement>(path: string) {
       return
     }
     const fit = () => {
-      const width = charWidth(element)
-      setMaxChars(width > 0 ? Math.floor(element.clientWidth / width) : Number.POSITIVE_INFINITY)
+      setMaxChars(maxCharsFor(element.getBoundingClientRect().width, charWidth(element)))
     }
     const observer = new ResizeObserver(fit)
     observer.observe(element)
