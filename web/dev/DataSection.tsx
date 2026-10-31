@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { AnalysisProgress, type BuildStep, type ProgressOutcome } from '../src/ui/AnalysisProgress'
+import { AnalysisProgress } from '../src/ui/AnalysisProgress'
+import type { BuildStep, ProgressOutcome } from '../src/ui/analysis-steps'
 import { type AnalysisStatus, Badge, type FileRole, type Language } from '../src/ui/Badge'
 import { Button } from '../src/ui/Button'
 import { ListRow } from '../src/ui/ListRow'
