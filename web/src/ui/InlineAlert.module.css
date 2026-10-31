@@ -1,0 +1,103 @@
+/* Each tone sets the local properties; `.alert` draws them. */
+
+.alert {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-3-5) var(--space-4);
+  border: var(--border-width-default) solid var(--alert-border);
+  border-radius: var(--radius-md);
+  background: var(--alert-bg);
+}
+
+.info {
+  --alert-bg: var(--feedback-info-bg);
+  --alert-border: var(--feedback-info-border);
+  --alert-fg: var(--feedback-info-fg);
+}
+
+.success {
+  --alert-bg: var(--feedback-success-bg);
+  --alert-border: var(--feedback-success-border);
+  --alert-fg: var(--feedback-success-fg);
+}
+
+.warning {
+  --alert-bg: var(--feedback-warning-bg);
+  --alert-border: var(--feedback-warning-border);
+  --alert-fg: var(--feedback-warning-fg);
+}
+
+.error {
+  --alert-bg: var(--feedback-error-bg);
+  --alert-border: var(--feedback-error-border);
+  --alert-fg: var(--feedback-error-fg);
+}
+
+.neutral {
+  --alert-bg: var(--color-bg-sunken);
+  --alert-border: var(--color-border-default);
+  --alert-fg: var(--color-text-primary);
+}
+
+.icon {
+  margin-top: var(--space-0-5);
+  color: var(--alert-fg);
+}
+
+.text {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.title {
+  color: var(--alert-fg);
+  font: var(--body-m);
+  font-weight: 600;
+}
+
+.body {
+  color: var(--color-text-body);
+  font: var(--label);
+  font-weight: 400;
+}
+
+.action {
+  margin-top: var(--space-1);
+}
+
+/* One line: the title runs into the text, all in the tone's colour. */
+
+.compact {
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2-5);
+  padding: var(--space-2-5) var(--space-3-5);
+}
+
+.compact .icon {
+  margin-top: 0;
+}
+
+.compact .text {
+  display: block;
+  color: var(--alert-fg);
+  font: var(--label);
+  font-weight: 400;
+}
+
+.compact .title {
+  font: inherit;
+  font-weight: 600;
+}
+
+.compact .title::after {
+  content: " ";
+}
+
+.compact .body {
+  color: inherit;
+  font: inherit;
+}
