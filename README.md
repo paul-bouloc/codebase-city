@@ -32,8 +32,10 @@ cd web && pnpm install && cd ..
 cp .env.example .env
 just check    # format, lint, types, tests and build: what CI runs
 just db-up    # start Postgres on localhost:55432
-just dev      # start the web dev server
+just dev      # start the server and the web dev server (http://localhost:5173)
 ```
+
+The server reads its configuration from the environment (see `.env.example`) and refuses to start when a required variable is missing.
 
 Run `just` to list every recipe.
 
