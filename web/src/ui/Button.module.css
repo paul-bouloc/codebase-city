@@ -1,0 +1,176 @@
+/*
+ * Each variant sets the local --button-* properties; `.button` draws them.
+ * The label and the loading label share one grid cell, so the button takes the width of the
+ * longer one and keeps it while loading.
+ */
+
+.button {
+  --button-bg: transparent;
+  --button-fg: var(--color-text-primary);
+  --button-border: transparent;
+  --button-shadow: none;
+  --button-bg-hover: var(--button-bg);
+  --button-border-hover: var(--button-border);
+  --button-bg-pressed: var(--button-bg-hover);
+  --button-border-pressed: var(--button-border-hover);
+
+  display: inline-grid;
+  grid-template-areas: "stack";
+  place-items: center;
+  height: var(--button-height);
+  padding: 0 var(--button-padding);
+  border: var(--border-width-default) solid var(--button-border);
+  border-radius: var(--radius-md);
+  background: var(--button-bg);
+  color: var(--button-fg);
+  box-shadow: var(--button-shadow);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--easing-standard),
+    border-color var(--duration-fast) var(--easing-standard),
+    box-shadow var(--duration-fast) var(--easing-standard);
+}
+
+.content,
+.progress {
+  grid-area: stack;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.progress {
+  visibility: hidden;
+}
+
+.loading .content {
+  visibility: hidden;
+}
+
+.loading .progress {
+  visibility: visible;
+}
+
+/* Sizes */
+
+.md {
+  --button-height: 40px;
+  --button-padding: var(--space-4);
+  font: var(--label);
+  letter-spacing: var(--label-tracking);
+}
+
+@media (pointer: coarse) {
+  .md {
+    --button-height: 44px;
+  }
+}
+
+.lg {
+  --button-height: 48px;
+  --button-padding: var(--space-6);
+  font: var(--body-m);
+  font-weight: 500;
+}
+
+.iconOnly {
+  width: var(--button-height);
+  padding: 0;
+}
+
+/* Variants */
+
+.primary {
+  --button-bg: var(--color-surface-inverse);
+  --button-fg: var(--color-text-inverse);
+  --button-bg-hover: var(--state-primary-hover);
+  --button-bg-pressed: var(--state-primary-pressed);
+}
+
+.secondary {
+  --button-bg: var(--color-surface-default);
+  --button-border: var(--color-border-default);
+  --button-shadow: var(--shadow-sm);
+  --button-bg-hover: var(--state-secondary-hover);
+  --button-border-hover: var(--color-border-strong);
+  --button-bg-pressed: var(--state-secondary-pressed);
+}
+
+.ghost {
+  --button-bg-hover: var(--state-ghost-hover);
+  --button-bg-pressed: var(--state-ghost-pressed);
+}
+
+.github {
+  --button-bg: var(--brand-github-bg);
+  --button-fg: var(--brand-github-fg);
+  --button-bg-hover: var(--brand-github-hover);
+  --button-bg-pressed: var(--brand-github-pressed);
+}
+
+.danger {
+  --button-bg: var(--feedback-error-fg);
+  --button-fg: var(--color-text-inverse);
+  --button-bg-hover: var(--state-danger-hover);
+  --button-bg-pressed: var(--state-danger-pressed);
+}
+
+.guide {
+  --button-bg: var(--meaning-guide-text);
+  --button-fg: var(--color-text-inverse);
+  --button-bg-hover: var(--meaning-guide-strong);
+  --button-bg-pressed: var(--meaning-guide-strong);
+}
+
+/* States. Filled variants keep their own background as border. */
+
+.primary,
+.github,
+.danger,
+.guide {
+  --button-border: var(--button-bg);
+  --button-border-hover: var(--button-bg-hover);
+  --button-border-pressed: var(--button-bg-pressed);
+}
+
+.button:hover:not(:disabled, .loading, .blocked) {
+  background: var(--button-bg-hover);
+  border-color: var(--button-border-hover);
+}
+
+.button:active:not(:disabled, .loading, .blocked) {
+  background: var(--button-bg-pressed);
+  border-color: var(--button-border-pressed);
+  box-shadow: none;
+}
+
+/* The focus ring replaces the resting shadow. */
+.button:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
+.loading {
+  cursor: progress;
+}
+
+.button:disabled {
+  background: var(--state-disabled-bg);
+  border-color: var(--color-border-subtle);
+  color: var(--color-text-disabled);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.ghost:disabled {
+  background: transparent;
+  border-color: transparent;
+}
+
+.blocked {
+  background: var(--color-bg-sunken);
+  border-color: var(--color-border-default);
+  color: var(--color-text-secondary);
+  box-shadow: none;
+  cursor: not-allowed;
+}
