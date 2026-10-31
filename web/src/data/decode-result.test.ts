@@ -22,6 +22,8 @@ describe('decodeResult', () => {
     expect(result.formatVersion).toBe(FORMAT_VERSION)
     expect(result.files.name).toHaveLength(20)
     expect(result.edges.kind).toContain('reexport')
+    expect(result.files.header[2]).toContain('Entry point')
+    expect(result.symbols.kind).toContain('interface')
   })
 
   it('rejects anything but an object', () => {
@@ -32,9 +34,9 @@ describe('decodeResult', () => {
   it('rejects another format version', () => {
     expect(
       decodeChanged((json) => {
-        json.formatVersion = 2
+        json.formatVersion = 1
       }),
-    ).toThrow('unsupported format version 2, expected 1')
+    ).toThrow('unsupported format version 1, expected 2')
   })
 
   it('rejects values of the wrong type', () => {
@@ -60,6 +62,16 @@ describe('decodeResult', () => {
     ).toThrow('edges.confidence[0] is not a confidence')
     expect(
       decodeChanged((json) => {
+        json.files.header[0] = 3
+      }),
+    ).toThrow('files.header[0] is not a string or null')
+    expect(
+      decodeChanged((json) => {
+        json.symbols.kind[0] = 'method'
+      }),
+    ).toThrow('symbols.kind[0] is not a symbol kind')
+    expect(
+      decodeChanged((json) => {
         ;(json.files as Record<string, unknown>).generated = 'no'
       }),
     ).toThrow('files.generated is not an array')
@@ -81,6 +93,16 @@ describe('decodeResult', () => {
         json.edges.to.push(0)
       }),
     ).toThrow('column edges.to has 27 rows, expected 26')
+    expect(
+      decodeChanged((json) => {
+        json.files.header.pop()
+      }),
+    ).toThrow('column files.header has 19 rows, expected 20')
+    expect(
+      decodeChanged((json) => {
+        json.symbols.line.pop()
+      }),
+    ).toThrow('column symbols.line has 12 rows, expected 13')
   })
 
   it('rejects an index out of bounds', () => {
@@ -99,6 +121,34 @@ describe('decodeResult', () => {
         json.files.language[0] = 4
       }),
     ).toThrow('files.language[0] points to row 4')
+    expect(
+      decodeChanged((json) => {
+        json.symbols.file[0] = 20
+      }),
+    ).toThrow('symbols.file[0] points to row 20')
+  })
+
+  it('requires named symbols on a line, sorted by file then line', () => {
+    expect(
+      decodeChanged((json) => {
+        json.symbols.name[3] = ''
+      }),
+    ).toThrow('symbols.name[3] is empty')
+    expect(
+      decodeChanged((json) => {
+        json.symbols.line[0] = 0
+      }),
+    ).toThrow('symbols.line[0] must be 1 or more')
+    expect(
+      decodeChanged((json) => {
+        json.symbols.line[3] = 1
+      }),
+    ).toThrow('symbols[3] must come after the previous symbol, by file then line')
+    expect(
+      decodeChanged((json) => {
+        json.symbols.file[1] = 1
+      }),
+    ).toThrow('symbols[1] must come after the previous symbol, by file then line')
   })
 
   it('requires the root first and every folder after its parent', () => {

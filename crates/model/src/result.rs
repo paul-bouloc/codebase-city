@@ -10,7 +10,7 @@ use ts_rs::TS;
 
 /// Version of the shape of the data. Bumped on any change the web app has to
 /// know about; a result with another version is rejected, not guessed at.
-pub const FORMAT_VERSION: u32 = 1;
+pub const FORMAT_VERSION: u32 = 2;
 
 /// One analysis of one repository at one commit.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -29,6 +29,7 @@ pub struct AnalysisResult {
     /// Language names, referred to by [`Files::language`].
     pub languages: Vec<String>,
     pub files: Files,
+    pub symbols: Symbols,
     pub edges: Edges,
     pub stats: Stats,
 }
@@ -67,12 +68,45 @@ pub struct Files {
     pub name: Vec<String>,
     /// Index into [`AnalysisResult::languages`].
     pub language: Vec<u32>,
-    /// Lines of code.
+    /// Lines, blank and comment lines included, as GitHub counts them.
     pub lines: Vec<u32>,
     /// Cyclomatic complexity; `null` when the language is not analyzed.
     pub complexity: Vec<Option<u32>>,
     /// Generated code: shown in the city, left out of every ranking.
     pub generated: Vec<bool>,
+    /// The file's leading comment or docstring, verbatim, a license block
+    /// skipped; `null` when there is none or the language is not analyzed.
+    pub header: Vec<Option<String>>,
+}
+
+/// Symbols exported by the analyzed files, one row per symbol, sorted by
+/// file, then by line.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct Symbols {
+    /// Index of the file that exports the symbol.
+    pub file: Vec<u32>,
+    pub name: Vec<String>,
+    pub kind: Vec<SymbolKind>,
+    /// Line of the declaration, from 1.
+    pub line: Vec<u32>,
+}
+
+/// What an exported symbol is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum SymbolKind {
+    /// A class, or a Go struct.
+    Class,
+    Function,
+    Interface,
+    /// A type alias, or a Go type that is neither a struct nor an interface.
+    Type,
+    Enum,
+    /// An exported value that is not a function.
+    Constant,
 }
 
 /// Resolved imports between files, one row per import.

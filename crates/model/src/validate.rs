@@ -29,6 +29,12 @@ pub enum InvalidResult {
     ParentOrder { row: usize },
     #[error("{column}[{row}] is not a valid name")]
     Name { column: &'static str, row: usize },
+    #[error("symbols.name[{row}] is empty")]
+    SymbolName { row: usize },
+    #[error("symbols.line[{row}] must be 1 or more")]
+    SymbolLine { row: usize },
+    #[error("symbols[{row}] must come after the previous symbol, by file then line")]
+    SymbolOrder { row: usize },
     #[error("stats.importsResolved is greater than stats.importsTotal")]
     ResolvedCount,
 }
@@ -63,9 +69,27 @@ impl AnalysisResult {
         same_length("files.lines", file_count, files.lines.len())?;
         same_length("files.complexity", file_count, files.complexity.len())?;
         same_length("files.generated", file_count, files.generated.len())?;
+        same_length("files.header", file_count, files.header.len())?;
         in_bounds("files.dir", &files.dir, dir_count)?;
         in_bounds("files.language", &files.language, self.languages.len())?;
         valid_names("files.name", files.name.iter(), 0)?;
+
+        let symbols = &self.symbols;
+        let symbol_count = symbols.file.len();
+        same_length("symbols.name", symbol_count, symbols.name.len())?;
+        same_length("symbols.kind", symbol_count, symbols.kind.len())?;
+        same_length("symbols.line", symbol_count, symbols.line.len())?;
+        in_bounds("symbols.file", &symbols.file, file_count)?;
+        if let Some(row) = symbols.name.iter().position(String::is_empty) {
+            return Err(InvalidResult::SymbolName { row });
+        }
+        if let Some(row) = symbols.line.iter().position(|&line| line == 0) {
+            return Err(InvalidResult::SymbolLine { row });
+        }
+        let positions: Vec<_> = symbols.file.iter().zip(&symbols.line).collect();
+        if let Some(row) = positions.windows(2).position(|pair| pair[0] > pair[1]) {
+            return Err(InvalidResult::SymbolOrder { row: row + 1 });
+        }
 
         let edges = &self.edges;
         let edge_count = edges.from.len();
@@ -130,7 +154,9 @@ fn valid_names<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::result::{Confidence, Dirs, EdgeKind, Edges, Files, Repo, Stats};
+    use crate::result::{
+        Confidence, Dirs, EdgeKind, Edges, Files, Repo, Stats, SymbolKind, Symbols,
+    };
 
     /// Two folders, two files, one import between them.
     fn result() -> AnalysisResult {
@@ -154,6 +180,13 @@ mod tests {
                 lines: vec![40, 12],
                 complexity: vec![Some(6), Some(2)],
                 generated: vec![false, false],
+                header: vec![Some("// Starts the app.".to_owned()), None],
+            },
+            symbols: Symbols {
+                file: vec![0, 1, 1],
+                name: vec!["main".to_owned(), "clamp".to_owned(), "Range".to_owned()],
+                kind: vec![SymbolKind::Function, SymbolKind::Function, SymbolKind::Type],
+                line: vec![3, 1, 8],
             },
             edges: Edges {
                 from: vec![0],
@@ -183,8 +216,8 @@ mod tests {
     #[test]
     fn another_format_version_is_rejected() {
         assert_eq!(
-            invalid(|r| r.format_version = 2),
-            InvalidResult::FormatVersion(2)
+            invalid(|r| r.format_version = 1),
+            InvalidResult::FormatVersion(1)
         );
     }
 
@@ -204,6 +237,22 @@ mod tests {
                 column: "dirs.name",
                 expected: 2,
                 actual: 1,
+            }
+        );
+        assert_eq!(
+            invalid(|r| r.files.header.truncate(1)),
+            InvalidResult::ColumnLength {
+                column: "files.header",
+                expected: 2,
+                actual: 1,
+            }
+        );
+        assert_eq!(
+            invalid(|r| r.symbols.kind.truncate(2)),
+            InvalidResult::ColumnLength {
+                column: "symbols.kind",
+                expected: 3,
+                actual: 2,
             }
         );
         assert_eq!(
@@ -286,6 +335,43 @@ mod tests {
                 column: "dirs.name",
                 row: 1,
             }
+        );
+    }
+
+    #[test]
+    fn symbols_point_to_a_file() {
+        assert_eq!(
+            invalid(|r| r.symbols.file[2] = 2),
+            InvalidResult::IndexOutOfBounds {
+                column: "symbols.file",
+                row: 2,
+                index: 2,
+                len: 2,
+            }
+        );
+    }
+
+    #[test]
+    fn symbols_have_a_name_and_a_line() {
+        assert_eq!(
+            invalid(|r| r.symbols.name[1] = String::new()),
+            InvalidResult::SymbolName { row: 1 }
+        );
+        assert_eq!(
+            invalid(|r| r.symbols.line[0] = 0),
+            InvalidResult::SymbolLine { row: 0 }
+        );
+    }
+
+    #[test]
+    fn symbols_are_sorted_by_file_then_line() {
+        assert_eq!(
+            invalid(|r| r.symbols.line[1] = 9),
+            InvalidResult::SymbolOrder { row: 2 }
+        );
+        assert_eq!(
+            invalid(|r| r.symbols.file.swap(0, 1)),
+            InvalidResult::SymbolOrder { row: 1 }
         );
     }
 

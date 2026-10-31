@@ -17,7 +17,7 @@ name: Array<string>,
  */
 language: Array<number>, 
 /**
- * Lines of code.
+ * Lines, blank and comment lines included, as GitHub counts them.
  */
 lines: Array<number>, 
 /**
@@ -27,4 +27,9 @@ complexity: Array<number | null>,
 /**
  * Generated code: shown in the city, left out of every ranking.
  */
-generated: Array<boolean>, };
+generated: Array<boolean>, 
+/**
+ * The file's leading comment or docstring, verbatim, a license block
+ * skipped; `null` when there is none or the language is not analyzed.
+ */
+header: Array<string | null>, };

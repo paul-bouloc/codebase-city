@@ -5,9 +5,11 @@ import type { EdgeKind } from './generated/EdgeKind'
 import type { Edges } from './generated/Edges'
 import type { Files } from './generated/Files'
 import type { Stats } from './generated/Stats'
+import type { SymbolKind } from './generated/SymbolKind'
+import type { Symbols } from './generated/Symbols'
 
 // FORMAT_VERSION in crates/model; the generated sample result keeps the two in step.
-export const FORMAT_VERSION = 1
+export const FORMAT_VERSION = 2
 
 // Checked by the compiler against the generated unions: adding a variant in Rust breaks the build here.
 const EDGE_KINDS = {
@@ -18,6 +20,14 @@ const EDGE_KINDS = {
   reexport: true,
 } satisfies Record<EdgeKind, true>
 const CONFIDENCES = { exact: true, likely: true } satisfies Record<Confidence, true>
+const SYMBOL_KINDS = {
+  class: true,
+  function: true,
+  interface: true,
+  type: true,
+  enum: true,
+  constant: true,
+} satisfies Record<SymbolKind, true>
 
 const MAX_U32 = 2 ** 32 - 1
 
@@ -69,10 +79,14 @@ function column<T>(
 const isString = (item: unknown): item is string => typeof item === 'string'
 const isBoolean = (item: unknown): item is boolean => typeof item === 'boolean'
 const isU32OrNull = (item: unknown): item is number | null => item === null || isU32(item)
+const isStringOrNull = (item: unknown): item is string | null =>
+  item === null || typeof item === 'string'
 const isEdgeKind = (item: unknown): item is EdgeKind =>
   typeof item === 'string' && Object.hasOwn(EDGE_KINDS, item)
 const isConfidence = (item: unknown): item is Confidence =>
   typeof item === 'string' && Object.hasOwn(CONFIDENCES, item)
+const isSymbolKind = (item: unknown): item is SymbolKind =>
+  typeof item === 'string' && Object.hasOwn(SYMBOL_KINDS, item)
 
 const u32Column = (value: unknown, path: string) =>
   column(value, path, isU32, 'an unsigned 32-bit integer')
@@ -132,16 +146,53 @@ function decodeFiles(value: unknown, dirCount: number, languageCount: number): F
     lines: u32Column(fields.lines, 'files.lines'),
     complexity: column(fields.complexity, 'files.complexity', isU32OrNull, 'an integer or null'),
     generated: column(fields.generated, 'files.generated', isBoolean, 'a boolean'),
+    header: column(fields.header, 'files.header', isStringOrNull, 'a string or null'),
   }
   sameLength('files.name', dir.length, files.name)
   sameLength('files.language', dir.length, files.language)
   sameLength('files.lines', dir.length, files.lines)
   sameLength('files.complexity', dir.length, files.complexity)
   sameLength('files.generated', dir.length, files.generated)
+  sameLength('files.header', dir.length, files.header)
   inBounds('files.dir', dir, dirCount)
   inBounds('files.language', files.language, languageCount)
   validNames('files.name', files.name, 0)
   return files
+}
+
+function decodeSymbols(value: unknown, fileCount: number): Symbols {
+  const fields = object(value, 'symbols')
+  const file = u32Column(fields.file, 'symbols.file')
+  const symbols: Symbols = {
+    file,
+    name: stringColumn(fields.name, 'symbols.name'),
+    kind: column(fields.kind, 'symbols.kind', isSymbolKind, 'a symbol kind'),
+    line: u32Column(fields.line, 'symbols.line'),
+  }
+  sameLength('symbols.name', file.length, symbols.name)
+  sameLength('symbols.kind', file.length, symbols.kind)
+  sameLength('symbols.line', file.length, symbols.line)
+  inBounds('symbols.file', file, fileCount)
+  const emptyName = symbols.name.indexOf('')
+  if (emptyName !== -1) {
+    fail(`symbols.name[${emptyName}] is empty`)
+  }
+  const lineZero = symbols.line.indexOf(0)
+  if (lineZero !== -1) {
+    fail(`symbols.line[${lineZero}] must be 1 or more`)
+  }
+  for (let row = 1; row < file.length; row++) {
+    const previousFile = file[row - 1] as number
+    const currentFile = file[row] as number
+    if (
+      previousFile > currentFile ||
+      (previousFile === currentFile &&
+        (symbols.line[row - 1] as number) > (symbols.line[row] as number))
+    ) {
+      fail(`symbols[${row}] must come after the previous symbol, by file then line`)
+    }
+  }
+  return symbols
 }
 
 function decodeEdges(value: unknown, fileCount: number): Edges {
@@ -205,6 +256,7 @@ export function decodeResult(json: unknown): AnalysisResult {
     dirs,
     languages,
     files,
+    symbols: decodeSymbols(fields.symbols, files.dir.length),
     edges: decodeEdges(fields.edges, files.dir.length),
     stats: decodeStats(fields.stats),
   }

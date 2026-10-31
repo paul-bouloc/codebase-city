@@ -10,5 +10,6 @@ mod validate;
 
 pub use result::{
     AnalysisResult, Confidence, Dirs, EdgeKind, Edges, FORMAT_VERSION, Files, Ignored, Repo, Stats,
+    SymbolKind, Symbols,
 };
 pub use validate::InvalidResult;

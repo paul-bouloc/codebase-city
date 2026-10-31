@@ -4,6 +4,7 @@ import type { Edges } from "./Edges";
 import type { Files } from "./Files";
 import type { Repo } from "./Repo";
 import type { Stats } from "./Stats";
+import type { Symbols } from "./Symbols";
 
 /**
  * One analysis of one repository at one commit.
@@ -25,4 +26,4 @@ sha: string, dirs: Dirs,
 /**
  * Language names, referred to by [`Files::language`].
  */
-languages: Array<string>, files: Files, edges: Edges, stats: Stats, };
+languages: Array<string>, files: Files, symbols: Symbols, edges: Edges, stats: Stats, };
