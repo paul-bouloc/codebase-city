@@ -1,7 +1,7 @@
 import styles from './Icon.module.css'
 import { GITHUB_MARK_PATH, type IconName, LUCIDE_ICONS } from './icons'
 
-export type IconSize = 16 | 20 | 24
+export type IconSize = 14 | 16 | 18 | 20 | 24
 
 interface IconBaseProps {
   name: IconName

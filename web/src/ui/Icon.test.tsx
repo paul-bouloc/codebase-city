@@ -31,8 +31,8 @@ describe('Icon', () => {
       <Icon key="no-label" name="close" standalone />,
       // @ts-expect-error a decorative icon takes no label
       <Icon key="stray-label" name="close" label="Close" />,
-      // @ts-expect-error sizes are 16, 20 and 24
-      <Icon key="odd-size" name="close" size={18} />,
+      // @ts-expect-error sizes are 14, 16, 18, 20 and 24
+      <Icon key="odd-size" name="close" size={22} />,
     ]
     expect(rejected).toHaveLength(4)
   })
