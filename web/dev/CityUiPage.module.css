@@ -23,14 +23,31 @@
   position: absolute;
   right: var(--space-3);
   bottom: var(--space-3);
+  transition: transform var(--duration-slow) var(--easing-standard);
+}
+
+/* 424 px from the right edge: the 400 px sheet, its 12 px margin and 12 px more. */
+.besideSheet {
+  transform: translateX(-412px);
 }
 
 .scale {
   position: absolute;
   right: 88px;
   bottom: var(--space-4);
+  transition:
+    opacity var(--duration-base) var(--easing-standard),
+    visibility var(--duration-base);
 }
 
+/* Close up on a file, the scale fades out. */
+.gone {
+  visibility: hidden;
+  opacity: 0;
+}
+
+/* The floating panel's motion (fondations): slides 16 px in from the right while fading in,
+ * leaves faster. Each state carries the timing of the move that leads to it. */
 .sheet {
   position: absolute;
   top: 84px;
@@ -38,6 +55,29 @@
   bottom: var(--space-3);
   width: 400px;
   padding: var(--space-5);
+  visibility: hidden;
+  opacity: 0;
+  transform: translateX(var(--space-4));
+  transition:
+    opacity var(--duration-base) var(--easing-exit),
+    transform var(--duration-base) var(--easing-exit),
+    visibility var(--duration-base);
+}
+
+.sheetOpen {
+  visibility: visible;
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--duration-slow) var(--easing-enter),
+    transform var(--duration-slow) var(--easing-enter),
+    visibility 0s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet {
+    transform: none;
+  }
 }
 
 .marker {
@@ -50,11 +90,18 @@
   position: absolute;
   top: 84px;
   right: var(--space-3);
-  display: grid;
-  gap: var(--space-1-5);
   width: 280px;
   padding: var(--space-3) var(--space-4);
   font: var(--body-s);
+}
+
+.toolsBody {
+  display: grid;
+  gap: var(--space-1-5);
+}
+
+.toolsBody summary {
+  cursor: pointer;
 }
 
 .note {

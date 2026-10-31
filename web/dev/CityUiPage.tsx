@@ -157,7 +157,8 @@ export function CityUiPage() {
             onExpandedChange={setLegendExpanded}
           />
         </div>
-        <div className={styles.camera}>
+        {/* With the file sheet open, the camera slides left of it and the scale goes. */}
+        <div className={sheet ? `${styles.camera} ${styles.besideSheet}` : styles.camera}>
           <CameraControls
             bearing={bearing}
             topView={topView}
@@ -170,43 +171,48 @@ export function CityUiPage() {
             }}
           />
         </div>
-        <div className={styles.scale}>
+        {/* Both stay in the page so they can animate out. */}
+        <div className={sheet ? `${styles.scale} ${styles.gone}` : styles.scale} inert={sheet}>
           <MapScale files={500} />
         </div>
-        {sheet && (
-          <Glass className={styles.sheet}>
-            <p className="body-s">{TEXT.sheetLabel}</p>
-          </Glass>
-        )}
+        <Glass
+          className={sheet ? `${styles.sheet} ${styles.sheetOpen}` : styles.sheet}
+          inert={!sheet}
+        >
+          <p className="body-s">{TEXT.sheetLabel}</p>
+        </Glass>
 
+        {/* Folds away, so it never hides the stand-in sheet. */}
         <Glass className={styles.tools}>
-          <h2 className="eyebrow-mono">{TEXT.tools}</h2>
-          <p className={styles.note}>{TEXT.samples}</p>
-          <Toggle label={TEXT.signedIn} checked={signedIn} onChange={setSignedIn} />
-          <Toggle label={TEXT.aboutOpen} checked={aboutOpen} onChange={setAboutOpen} />
-          <Toggle label={TEXT.shareOpen} checked={shareOpen} onChange={setShareOpen} />
-          <Toggle label={TEXT.showMarkers} checked={markers} onChange={setMarkers} />
-          <Toggle label={TEXT.sheet} checked={sheet} onChange={setSheet} />
-          <label className={styles.field}>
-            {TEXT.bearing}
-            <input
-              type="range"
-              min={-180}
-              max={180}
-              value={bearing}
-              onChange={(event) => setBearing(Number(event.target.value))}
-            />
-          </label>
-          <label className={styles.field}>
-            {TEXT.hover}
-            <select value={hover} onChange={(event) => setHover(event.target.value as Hover)}>
-              {Object.entries(TEXT.hoverOptions).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <details open className={styles.toolsBody}>
+            <summary className="eyebrow-mono">{TEXT.tools}</summary>
+            <p className={styles.note}>{TEXT.samples}</p>
+            <Toggle label={TEXT.signedIn} checked={signedIn} onChange={setSignedIn} />
+            <Toggle label={TEXT.aboutOpen} checked={aboutOpen} onChange={setAboutOpen} />
+            <Toggle label={TEXT.shareOpen} checked={shareOpen} onChange={setShareOpen} />
+            <Toggle label={TEXT.showMarkers} checked={markers} onChange={setMarkers} />
+            <Toggle label={TEXT.sheet} checked={sheet} onChange={setSheet} />
+            <label className={styles.field}>
+              {TEXT.bearing}
+              <input
+                type="range"
+                min={-180}
+                max={180}
+                value={bearing}
+                onChange={(event) => setBearing(Number(event.target.value))}
+              />
+            </label>
+            <label className={styles.field}>
+              {TEXT.hover}
+              <select value={hover} onChange={(event) => setHover(event.target.value as Hover)}>
+                {Object.entries(TEXT.hoverOptions).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </details>
         </Glass>
 
         {pointer && hover !== 'off' && (
