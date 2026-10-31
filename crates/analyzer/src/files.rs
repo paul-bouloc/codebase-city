@@ -6,6 +6,10 @@
 //! but marked. Classification runs in two steps so a caller reading an
 //! archive can skip a file from its path alone, before reading its bytes.
 
+mod attributes;
+
+pub use attributes::{Attribute, Attributes};
+
 /// The language of a file, from its name.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Language {
