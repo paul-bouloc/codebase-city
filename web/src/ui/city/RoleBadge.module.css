@@ -1,0 +1,70 @@
+.anchor {
+  position: relative;
+  display: inline-flex;
+}
+
+/* The badge recipe, as a button with a dashed border: the role is inferred. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 24px;
+  padding: 0 var(--space-2);
+  border: var(--border-width-default) dashed var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-sunken);
+  color: var(--color-text-primary);
+  font: var(--caption);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: help;
+}
+
+.likely {
+  color: var(--color-text-secondary);
+}
+
+.tip {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  left: 0;
+  z-index: var(--layer-hint);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 300px;
+  padding: var(--space-2-5) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-inverse);
+  color: var(--color-text-inverse);
+  font: var(--body-s);
+  letter-spacing: var(--body-s-tracking);
+  box-shadow: var(--shadow-lg);
+  pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    opacity var(--duration-fast) var(--easing-standard),
+    visibility var(--duration-fast);
+}
+
+@media (hover: hover) {
+  .anchor:hover > .tip {
+    visibility: visible;
+    opacity: 1;
+  }
+}
+
+.anchor:has(:focus-visible) > .tip {
+  visibility: visible;
+  opacity: 1;
+}
+
+.tipTitle {
+  font-weight: 600;
+}
+
+.tipNote {
+  color: var(--color-text-inverse-secondary);
+  font: var(--caption);
+}
