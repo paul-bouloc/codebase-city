@@ -1,0 +1,103 @@
+/*
+ * Default values (no board draws scrollbars): a 6 px thumb in `border.strong` floating over the
+ * content, 8 px and darker under the pointer, shown on hover and while scrolling.
+ */
+
+.root {
+  --bar-inset: var(--space-0-5);
+  --bar-thickness: 6px;
+
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.viewport {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-width: none;
+}
+
+.viewport::-webkit-scrollbar {
+  display: none;
+}
+
+.track {
+  position: absolute;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity var(--duration-base) var(--easing-standard);
+}
+
+.track:not([data-active]) {
+  pointer-events: none;
+}
+
+.root:hover > .track[data-active],
+.root.scrolling > .track[data-active],
+.root > .track[data-active]:active {
+  opacity: 1;
+}
+
+.vertical {
+  top: var(--bar-inset);
+  right: var(--bar-inset);
+  bottom: var(--bar-inset);
+  width: calc(var(--bar-thickness) + 2px);
+}
+
+.horizontal {
+  right: var(--bar-inset);
+  bottom: var(--bar-inset);
+  left: var(--bar-inset);
+  height: calc(var(--bar-thickness) + 2px);
+}
+
+.thumb {
+  position: absolute;
+  border-radius: var(--radius-full);
+  background: var(--color-border-strong);
+  transition:
+    background-color var(--duration-fast) var(--easing-standard),
+    width var(--duration-fast) var(--easing-standard),
+    height var(--duration-fast) var(--easing-standard);
+}
+
+.vertical .thumb {
+  top: var(--thumb-offset);
+  right: 0;
+  width: var(--bar-thickness);
+  height: var(--thumb-size);
+}
+
+.horizontal .thumb {
+  bottom: 0;
+  left: var(--thumb-offset);
+  width: var(--thumb-size);
+  height: var(--bar-thickness);
+}
+
+.track:hover .thumb,
+.track:active .thumb {
+  background: var(--color-text-secondary);
+}
+
+.vertical:hover .thumb,
+.vertical:active .thumb {
+  width: calc(var(--bar-thickness) + 2px);
+}
+
+.horizontal:hover .thumb,
+.horizontal:active .thumb {
+  height: calc(var(--bar-thickness) + 2px);
+}
+
+/* Under a finger the native gesture scrolls; the bars are only a cue. */
+@media (pointer: coarse) {
+  .track {
+    pointer-events: none;
+  }
+}
