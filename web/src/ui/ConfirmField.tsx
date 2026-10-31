@@ -1,4 +1,4 @@
-import { useId } from 'react'
+import { type Ref, useId } from 'react'
 import styles from './ConfirmField.module.css'
 import { Icon } from './Icon'
 
@@ -25,10 +25,18 @@ interface ConfirmFieldProps {
   onChange: (value: string) => void
   // While the action runs, the value can no longer change.
   readOnly?: boolean
+  // For a dialog to start its focus here.
+  inputRef?: Ref<HTMLInputElement>
 }
 
 // Guards an irreversible action. The page blocks its button until `confirmationMatches`.
-export function ConfirmField({ expected, value, onChange, readOnly = false }: ConfirmFieldProps) {
+export function ConfirmField({
+  expected,
+  value,
+  onChange,
+  readOnly = false,
+  inputRef,
+}: ConfirmFieldProps) {
   const id = useId()
   const helpId = `${id}-help`
   const matches = confirmationMatches(value, expected)
@@ -41,6 +49,7 @@ export function ConfirmField({ expected, value, onChange, readOnly = false }: Co
       </label>
       <div className={styles.box}>
         <input
+          ref={inputRef}
           id={id}
           className={styles.input}
           type="text"
