@@ -18,6 +18,25 @@ Paste the URL of a public GitHub repository and explore it as a 3D city.
 
 The first supported languages are TypeScript/JavaScript, Python and Go.
 
+## Development
+
+Prerequisites:
+
+- [Rust](https://rustup.rs/) through rustup (the toolchain is pinned in `rust-toolchain.toml`)
+- [Node.js](https://nodejs.org/) 24 and [pnpm](https://pnpm.io/) (pinned in `web/package.json`)
+- [just](https://github.com/casey/just), the command runner
+- [Docker](https://www.docker.com/) with Docker Compose, for the local Postgres
+
+```sh
+cd web && pnpm install && cd ..
+cp .env.example .env
+just check    # format, lint, types, tests and build: what CI runs
+just db-up    # start Postgres on localhost:55432
+just dev      # start the web dev server
+```
+
+Run `just` to list every recipe.
+
 ## License
 
 [MIT](LICENSE)
