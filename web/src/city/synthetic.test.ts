@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { ARCHETYPES, buildingFor } from './archetypes'
 import { boundsOf, distanceToRect, type Rect } from './layout'
 import { channelWidth, syntheticCity } from './synthetic'
 
@@ -58,6 +59,17 @@ describe('syntheticCity', () => {
         expect(gapBetween(a, b)).toBeGreaterThanOrEqual(9 - 1e-9)
       }
     })
+  })
+
+  it('gives files metrics that reach every archetype', () => {
+    const files = city.islands.flatMap((island) => island.lots.map((lot) => lot.file))
+    for (const { lines, complexity } of files) {
+      expect(lines).toBeGreaterThanOrEqual(10)
+      expect(lines).toBeLessThanOrEqual(3000)
+      expect(complexity).toBeGreaterThanOrEqual(1)
+    }
+    const archetypes = new Set(files.map((file) => buildingFor(file).archetype))
+    expect([...archetypes].sort()).toEqual([...ARCHETYPES].sort())
   })
 
   it('centres the city on the origin', () => {
