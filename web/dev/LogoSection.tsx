@@ -1,4 +1,4 @@
-import { Logo } from '../src/ui/Logo'
+import { Logo, type LogoVariant } from '../src/ui/Logo'
 import styles from './LogoSection.module.css'
 
 const TEXT = {
@@ -12,6 +12,12 @@ const TEXT = {
   favicons: 'Favicons, SVG then PNG, on cream and on a dark tab',
 }
 
+// Sizes as shown on the board.
+const VERSIONS: { variant: LogoVariant; sizes: number[]; label: string }[] = [
+  { variant: 'full', sizes: [96], label: TEXT.full },
+  { variant: 'compact', sizes: [56], label: TEXT.compact },
+  { variant: 'mark', sizes: [48, 24], label: TEXT.mark },
+]
 const SURFACES = ['cream', 'sea'] as const
 const FAVICONS = ['favicon-32.svg', 'favicon-32.png', 'favicon-16.svg', 'favicon-16.png']
 
@@ -21,37 +27,20 @@ export function LogoSection() {
       <h2 className="heading-2">{TEXT.logo}</h2>
       <p className={`body-s ${styles.secondary}`}>{TEXT.logoHint}</p>
       <div className={styles.logos}>
-        {SURFACES.map((surface) => (
-          <figure key={`full-${surface}`} className={styles.logoCell}>
-            <div className={`${styles.stage} ${styles[surface]}`}>
-              <Logo variant="full" surface={surface} size={96} />
-            </div>
-            <figcaption className={`code-s ${styles.secondary}`}>
-              {TEXT.full} {surface === 'cream' ? TEXT.onCream : TEXT.onSea}
-            </figcaption>
-          </figure>
-        ))}
-        {SURFACES.map((surface) => (
-          <figure key={`compact-${surface}`} className={styles.logoCell}>
-            <div className={`${styles.stage} ${styles[surface]}`}>
-              <Logo variant="compact" surface={surface} size={56} />
-            </div>
-            <figcaption className={`code-s ${styles.secondary}`}>
-              {TEXT.compact} {surface === 'cream' ? TEXT.onCream : TEXT.onSea}
-            </figcaption>
-          </figure>
-        ))}
-        {SURFACES.map((surface) => (
-          <figure key={`mark-${surface}`} className={styles.logoCell}>
-            <div className={`${styles.stage} ${styles[surface]}`}>
-              <Logo variant="mark" surface={surface} size={48} />
-              <Logo variant="mark" surface={surface} size={24} />
-            </div>
-            <figcaption className={`code-s ${styles.secondary}`}>
-              {TEXT.mark} {surface === 'cream' ? TEXT.onCream : TEXT.onSea}
-            </figcaption>
-          </figure>
-        ))}
+        {VERSIONS.flatMap(({ variant, sizes, label }) =>
+          SURFACES.map((surface) => (
+            <figure key={`${variant}-${surface}`} className={styles.logoCell}>
+              <div className={`${styles.stage} ${styles[surface]}`}>
+                {sizes.map((size) => (
+                  <Logo key={size} variant={variant} surface={surface} size={size} />
+                ))}
+              </div>
+              <figcaption className={`code-s ${styles.secondary}`}>
+                {label} {surface === 'cream' ? TEXT.onCream : TEXT.onSea}
+              </figcaption>
+            </figure>
+          )),
+        )}
         <figure className={styles.logoCell}>
           <div className={`${styles.stage} ${styles.cream}`}>
             {FAVICONS.map((file) => (
