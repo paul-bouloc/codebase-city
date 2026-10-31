@@ -1,0 +1,105 @@
+import type { FileRole, Language } from '../Badge'
+
+// What the sheets and the About panel show. The analysis format (v1) does not carry symbols,
+// header comments or READMEs yet: the city screen will fill these from it once it does.
+
+// A role inferred from the graph, with the transitive measure that grounds it:
+// "Depends on 4,800 files, directly or not: most paths through the editor go through it."
+export interface InferredRole {
+  role: FileRole
+  reason: string
+}
+
+// A file in a list, with the count that ranks it: its importers.
+export interface RankedFile {
+  path: string
+  importers: number
+}
+
+export interface FileSymbol {
+  name: string
+  kind: 'class' | 'function' | 'interface' | 'type' | 'enum' | 'const'
+  line: number
+}
+
+export type CodeState =
+  | { status: 'loading' }
+  | { status: 'ready'; lines: readonly string[]; totalLines: number }
+  // `timeout`: GitHub did not answer; `gone`: the file is no longer at that commit on GitHub.
+  | { status: 'error'; cause: 'timeout' | 'gone' }
+
+export interface FileSheetData {
+  path: string
+  // Its display name, which may be a language without an analyzer ("PowerShell").
+  languageName: string
+  language: Language
+  analyzed: boolean
+  lines: number
+  // For an unanalyzed file, which shows its size instead of its complexity.
+  sizeBytes?: number
+  complexity?: number
+  complexityTop?: number
+  complexityRank?: number
+  repoFiles?: number
+  roles: readonly InferredRole[]
+  importers: number
+  // All files that depend on it, directly or not.
+  dependents: number
+  // Set when the city groups the arcs: "Showing 20 of 1,204 importers".
+  shownImporters?: number
+  imports: number
+  layer?: { index: number; of: number; island: string }
+  // One entry per cycle the file belongs to, by size.
+  cycles: readonly number[]
+  headerComment?: string
+  importList: readonly RankedFile[]
+  importerList: readonly RankedFile[]
+  symbols: readonly FileSymbol[]
+  code: CodeState
+  githubUrl: string
+}
+
+export interface KeyFile {
+  path: string
+  // A likely role, or the measure that picked it.
+  reason: { role: FileRole } | { mostImported: number } | { mostComplex: number }
+}
+
+export interface IslandLink {
+  island: string
+  direction: 'imports' | 'importedBy'
+  // An import that goes up the layers.
+  upward: boolean
+  count: number
+}
+
+export interface FolderSheetData {
+  path: string
+  // "Island · layer 3 of 5", "Tests · park".
+  kind: { island: { layer: number; of: number } } | { parcel: { island: string } } | 'tests'
+  analyzed: boolean
+  files: number
+  lines: number
+  subFolders: number
+  languages: readonly { language: Language; share: number }[]
+  keyFiles: readonly KeyFile[]
+  links: readonly IslandLink[]
+  readme?: string
+  githubUrl: string
+}
+
+export interface AboutData {
+  analyzedFiles: number
+  generatedFiles: number
+  skipped: readonly { reason: 'vendored' | 'minified' | 'binary' | 'too large'; files: number }[]
+  languages: readonly { language: Language; files: number }[]
+  // Share of imports resolved to a file; absent when no language is analyzed.
+  resolvedImports?: number
+  unanalyzed: readonly { name: string; files: number }[]
+  commit: string
+  commitUrl: string
+  branch: string
+  analyzedAt: string
+  analyzedAgo: string
+  analyzer: string
+}
