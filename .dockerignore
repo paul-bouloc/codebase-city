@@ -1,0 +1,15 @@
+# Allowlist: the build context only gets what the image is built from.
+*
+!Cargo.toml
+!Cargo.lock
+!rust-toolchain.toml
+!crates/
+!web/
+
+# Build output, dependencies and local files inside the allowed folders
+**/target/
+**/node_modules/
+**/dist/
+**/.env*
+**/*.log
+**/.DS_Store
