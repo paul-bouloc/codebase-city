@@ -6,3 +6,7 @@
   box-shadow: var(--glass-shadow);
   backdrop-filter: var(--glass-blur);
 }
+
+.md {
+  border-radius: var(--radius-md);
+}

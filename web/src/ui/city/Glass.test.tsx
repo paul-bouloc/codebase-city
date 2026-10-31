@@ -15,4 +15,11 @@ describe('Glass', () => {
   it('is a div by default', () => {
     expect(renderToStaticMarkup(<Glass />)).toMatch(/^<div /)
   })
+
+  it('adds a class only for the medium radius', () => {
+    const lg = renderToStaticMarkup(<Glass />)
+    const md = renderToStaticMarkup(<Glass radius="md" />)
+    expect(lg).toMatch(/class="[^" ]+"/)
+    expect(md).toMatch(/class="[^" ]+ [^" ]+"/)
+  })
 })

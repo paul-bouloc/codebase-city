@@ -34,7 +34,13 @@ export function AreaTooltip({ path, files, layer, island, pointer, obstacles }: 
   const where = island ? TEXT.inIsland(island, layer) : TEXT.layer(layer)
 
   return (
-    <Glass ref={ref} role="tooltip" className={`${styles.tooltip} ${styles.area}`} style={style}>
+    <Glass
+      ref={ref}
+      role="tooltip"
+      radius="md"
+      className={`${styles.tooltip} ${styles.area}`}
+      style={style}
+    >
       <p className={`${styles.path} ${styles.areaPath}`}>
         <span className="visually-hidden">{path}</span>
         <span className={styles.folder} aria-hidden="true">
