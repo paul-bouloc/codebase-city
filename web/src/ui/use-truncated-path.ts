@@ -3,6 +3,14 @@ import { truncatePath } from './truncate-path'
 
 let canvas: HTMLCanvasElement | undefined
 
+type FontStyle = Pick<CSSStyleDeclaration, 'fontStyle' | 'fontWeight' | 'fontSize' | 'fontFamily'>
+
+// Built from the longhands: some browsers serialize the computed `font` shorthand as an empty
+// string, which would leave the canvas on its 10 px default.
+export function canvasFont(style: FontStyle): string {
+  return `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`
+}
+
 // Paths are set in a monospace font, so one character's width gives the budget.
 function charWidth(element: HTMLElement): number {
   canvas ??= document.createElement('canvas')
@@ -10,7 +18,7 @@ function charWidth(element: HTMLElement): number {
   if (!context) {
     return 0
   }
-  context.font = getComputedStyle(element).font
+  context.font = canvasFont(getComputedStyle(element))
   return context.measureText('0').width
 }
 
