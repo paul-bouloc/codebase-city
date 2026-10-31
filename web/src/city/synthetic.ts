@@ -1,4 +1,12 @@
-import { boundsOf, type CityLayout, type IslandLayout, type Point, type Rect } from './layout'
+import type { Language } from '../ui/Badge'
+import {
+  boundsOf,
+  type CityLayout,
+  type FileMetrics,
+  type IslandLayout,
+  type Lot,
+  type Rect,
+} from './layout'
 import { seededRandom } from './random'
 import { LOT_SIZE, MAX_LAYER } from './units'
 
@@ -25,7 +33,7 @@ interface Draft {
   layer: number
   columns: number
   rows: number
-  files: number
+  files: FileMetrics[]
   width: number
   height: number
 }
@@ -54,7 +62,7 @@ export function syntheticCity({
       layer,
       columns,
       rows,
-      files: count,
+      files: Array.from({ length: count }, (_, file) => syntheticFile(`${seed}/${path}/${file}`)),
       width: columns * LOT_SIZE + 2 * LOT_MARGIN,
       height: rows * LOT_SIZE + 2 * LOT_MARGIN,
     }
@@ -67,7 +75,7 @@ export function syntheticCity({
   const centred = placed.map((island) => ({
     ...island,
     plateau: { ...island.plateau, x: island.plateau.x + shiftX, y: island.plateau.y + shiftY },
-    lots: island.lots.map((lot) => ({ x: lot.x + shiftX, y: lot.y + shiftY })),
+    lots: island.lots.map((lot) => ({ ...lot, x: lot.x + shiftX, y: lot.y + shiftY })),
   }))
   return {
     islands: centred,
@@ -126,7 +134,7 @@ function packInRows(drafts: Draft[]): IslandLayout[] {
         path: draft.path,
         layer: draft.layer,
         plateau,
-        lots: lotCentres(draft, plateau),
+        lots: lotsOf(draft, plateau),
       })
     })
     // Any island of this row may face any island of the next: keep the widest channel needed.
@@ -136,9 +144,35 @@ function packInRows(drafts: Draft[]): IslandLayout[] {
   return islands.sort((a, b) => a.path.localeCompare(b.path, 'en', { numeric: true }))
 }
 
-function lotCentres(draft: Draft, plateau: Rect): Point[] {
-  return Array.from({ length: draft.files }, (_, index) => ({
+function lotsOf(draft: Draft, plateau: Rect): Lot[] {
+  return draft.files.map((file, index) => ({
     x: plateau.x + LOT_MARGIN + ((index % draft.columns) + 0.5) * LOT_SIZE,
     y: plateau.y + LOT_MARGIN + (Math.floor(index / draft.columns) + 0.5) * LOT_SIZE,
+    file,
   }))
+}
+
+const LANGUAGES: readonly [Language, number][] = [
+  ['typescript', 0.55],
+  ['javascript', 0.15],
+  ['css', 0.12],
+  ['other', 0.18],
+]
+
+/**
+ * Lines spread from 10 to 3,000, most files short; complexity per line varies a lot, and data
+ * files (`other`) have almost none, so that long, simple files exist.
+ */
+function syntheticFile(seed: string): FileMetrics {
+  const random = seededRandom(seed)
+  const test = random() < 0.1
+  let pick = random()
+  const language =
+    LANGUAGES.find(([, share]) => {
+      pick -= share
+      return pick < 0
+    })?.[0] ?? 'other'
+  const lines = Math.round(10 * 300 ** (random() ** 1.6))
+  const density = language === 'other' && random() < 0.5 ? 0.001 : 0.01 + 0.08 * random() ** 2
+  return { language, lines, complexity: Math.max(1, Math.round(lines * density)), test }
 }

@@ -1,3 +1,5 @@
+import type { Language } from '../ui/Badge'
+
 /** An axis-aligned rectangle on the ground, in board coordinates (x, y), in u. */
 export interface Rect {
   x: number
@@ -11,13 +13,25 @@ export interface Point {
   y: number
 }
 
+/** What a building is made from. */
+export interface FileMetrics {
+  language: Language
+  lines: number
+  complexity: number
+  test: boolean
+}
+
+/** A file's 2 × 2 u lot, by its centre. */
+export interface Lot extends Point {
+  file: FileMetrics
+}
+
 export interface IslandLayout {
   path: string
   /** 1 (foundations, lowest) to 5 (highest). */
   layer: number
   plateau: Rect
-  /** Centre of each file's 2 × 2 u lot. */
-  lots: Point[]
+  lots: Lot[]
 }
 
 export interface CityLayout {
