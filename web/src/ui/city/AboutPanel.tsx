@@ -1,5 +1,6 @@
 import { type KeyboardEvent, type ReactNode, useEffect, useId } from 'react'
 import { Button } from '../Button'
+import { percent } from '../count-format'
 import { Icon } from '../Icon'
 import { InlineAlert } from '../InlineAlert'
 import { ScrollArea } from '../ScrollArea'
@@ -17,15 +18,17 @@ const TEXT = {
   title: 'About this repository',
   close: 'Close',
   closeKey: 'Esc',
-  analyzed: 'files analyzed',
-  skipped: 'files skipped',
+  analyzed: (count: number) => (count === 1 ? 'file analyzed' : 'files analyzed'),
+  skipped: (count: number) => (count === 1 ? 'file skipped' : 'files skipped'),
   generated: (count: number) =>
     `${numbers.format(count)} generated ${count === 1 ? 'file' : 'files'}, shown but left out of the tour`,
-  whySkipped: (count: number) => `Why ${numbers.format(count)} were skipped`,
+  whySkipped: (count: number) =>
+    `Why ${numbers.format(count)} ${count === 1 ? 'was' : 'were'} skipped`,
   languages: 'Languages',
   files: (count: number) => `${numbers.format(count)} ${count === 1 ? 'file' : 'files'}`,
   imports: 'Imports',
-  resolved: (share: number) => `${Math.round(share * 100)}%`,
+  // Never "100%" while one import is left unresolved.
+  resolved: (share: number) => percent(share),
   resolvedRest: ' of imports resolved to a file',
   noFlows:
     'No language in this repository is analyzed yet, so the city draws no flows between files.',
@@ -138,11 +141,11 @@ export function AboutPanel({ id, open, about, newer, onClose }: AboutPanelProps)
         <div className={styles.tiles}>
           <p className={`${styles.tile} ${styles.analyzedTile}`}>
             <span className={styles.tileValue}>{numbers.format(about.analyzedFiles)}</span>
-            {TEXT.analyzed}
+            {TEXT.analyzed(about.analyzedFiles)}
           </p>
           <p className={`${styles.tile} ${styles.skippedTile}`}>
             <span className={styles.tileValue}>{numbers.format(skipped)}</span>
-            {TEXT.skipped}
+            {TEXT.skipped(skipped)}
           </p>
         </div>
         {about.generatedFiles > 0 && (

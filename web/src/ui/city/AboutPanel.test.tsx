@@ -76,4 +76,17 @@ describe('AboutPanel', () => {
     expect(out).toContain('The repository has changed since.')
     expect(out).toContain('Sign in with GitHub to rebuild')
   })
+
+  it('speaks of one file in the singular and never rounds to 100%', () => {
+    const html = render({
+      ...ABOUT,
+      analyzedFiles: 1,
+      skipped: [{ reason: 'binary', files: 1 }],
+      resolvedImports: 0.996,
+    })
+    expect(html).toContain('file analyzed')
+    expect(html).toContain('file skipped')
+    expect(html).toContain('Why 1 was skipped')
+    expect(html).toContain('&gt;99%</strong> of imports resolved')
+  })
 })
