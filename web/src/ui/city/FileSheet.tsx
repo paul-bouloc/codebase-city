@@ -19,6 +19,7 @@ import { Skeleton } from './Skeleton'
 import { SymbolList } from './SymbolList'
 import type { FileSheetData } from './sheet-data'
 import { splitPath } from './shorten-folder'
+import { UnanalyzedNote } from './UnanalyzedNote'
 
 const numbers = new Intl.NumberFormat('en-US')
 
@@ -50,7 +51,7 @@ const TEXT = {
   loadingCode: 'Loading the code',
   unanalyzedTitle: (language: string) => `${language} isn’t analyzed yet.`,
   unanalyzedBody:
-    ' This file has no imports, symbols or complexity here: only its size and its code. It stands in raw concrete in the city.',
+    'This file has no imports, symbols or complexity here: only its size and its code. It stands in raw concrete in the city.',
   showImpact: 'Show impact',
   findPath: 'Find a path to…',
 }
@@ -192,13 +193,10 @@ function FileDetails({
         {shownTab === 'code' && file.code.status === 'loading' ? TEXT.loadingCode : null}
       </LiveRegion>
       {!file.analyzed && (
-        <p className={styles.unanalyzed}>
-          <Icon name="info" size={20} className={styles.unanalyzedIcon} />
-          <span>
-            <strong>{TEXT.unanalyzedTitle(file.languageName)}</strong>
-            {TEXT.unanalyzedBody}
-          </span>
-        </p>
+        <UnanalyzedNote
+          title={TEXT.unanalyzedTitle(file.languageName)}
+          body={TEXT.unanalyzedBody}
+        />
       )}
 
       <MetricPairs columns={2} metrics={fileMetrics(file)} />

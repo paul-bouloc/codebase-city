@@ -17,6 +17,7 @@ import { SheetSection } from './SheetSection'
 import { Skeleton } from './Skeleton'
 import type { FolderSheetData, IslandLink, KeyFile } from './sheet-data'
 import { splitPath } from './shorten-folder'
+import { UnanalyzedNote } from './UnanalyzedNote'
 
 const numbers = new Intl.NumberFormat('en-US')
 const compact = new Intl.NumberFormat('en-US', { notation: 'compact', maximumSignificantDigits: 3 })
@@ -45,7 +46,7 @@ const TEXT = {
   loading: 'Loading folder details',
   unanalyzedTitle: 'Nothing in this folder is analyzed yet.',
   unanalyzedBody:
-    ' Its files keep only their lines, size and code, with no imports between them. They stand in raw concrete in the city.',
+    'Its files keep only their lines, size and code, with no imports between them. They stand in raw concrete in the city.',
 }
 
 interface FolderSheetProps {
@@ -114,13 +115,7 @@ export function FolderSheet({
       ) : (
         <>
           {!folder.analyzed && (
-            <p className={styles.unanalyzed}>
-              <Icon name="info" size={20} className={styles.unanalyzedIcon} />
-              <span>
-                <strong>{TEXT.unanalyzedTitle}</strong>
-                {TEXT.unanalyzedBody}
-              </span>
-            </p>
+            <UnanalyzedNote title={TEXT.unanalyzedTitle} body={TEXT.unanalyzedBody} />
           )}
 
           <MetricPairs
