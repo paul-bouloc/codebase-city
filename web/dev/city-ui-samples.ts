@@ -1,4 +1,5 @@
 import type { CityAccount, CityRepo } from '../src/ui/city/CityTopBar'
+import { githubTreeUrl } from '../src/ui/city/github-links'
 import { type LegendContent, legendContent } from '../src/ui/city/legend-content'
 
 // The demonstration content of the boards: microsoft/vscode at a1b2c3d.
@@ -7,7 +8,7 @@ export const REPO: CityRepo = {
   name: 'vscode',
   commit: 'a1b2c3d',
   analyzed: '2 days ago',
-  githubUrl: 'https://github.com/microsoft/vscode/tree/a1b2c3d',
+  githubUrl: githubTreeUrl({ owner: 'microsoft', name: 'vscode' }, 'a1b2c3d'),
 }
 
 export const ACCOUNT: CityAccount = {

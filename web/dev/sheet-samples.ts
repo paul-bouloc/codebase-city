@@ -1,10 +1,13 @@
+import { githubBlobUrl, githubCommitUrl, githubTreeUrl } from '../src/ui/city/github-links'
 import type { AboutData, FileSheetData, FolderSheetData } from '../src/ui/city/sheet-data'
 
 // The boards' demonstration content: microsoft/vscode at a1b2c3d. Counts are made up but kept
 // consistent with one another, and lists are sorted by importance (the boards' were not, A-c16).
 
-const BLOB = 'https://github.com/microsoft/vscode/blob/a1b2c3d'
-const TREE = 'https://github.com/microsoft/vscode/tree/a1b2c3d'
+const REPO = { owner: 'microsoft', name: 'vscode' }
+const SHA = 'a1b2c3d'
+const blob = (path: string) => githubBlobUrl(REPO, SHA, path)
+const tree = (path: string) => githubTreeUrl(REPO, SHA, path)
 
 const HEADER_COMMENT = `/*---------------------------------------------------------------------------------------------
  *  Copyright (c) Microsoft Corporation. All rights reserved.
@@ -113,7 +116,7 @@ export const FILE: FileSheetData = {
     })),
   ],
   code: { status: 'ready', lines: CODE_LINES, totalLines: 2481 },
-  githubUrl: `${BLOB}/src/vs/editor/common/model/textModel.ts`,
+  githubUrl: blob('src/vs/editor/common/model/textModel.ts'),
 }
 
 // A file in several cycles: one line each (A11).
@@ -154,7 +157,7 @@ export const UNANALYZED_FILE: FileSheetData = {
     ],
     totalLines: 8,
   },
-  githubUrl: `${BLOB}/src/vs/workbench/contrib/terminal/common/scripts/shellIntegration.ps1`,
+  githubUrl: blob('src/vs/workbench/contrib/terminal/common/scripts/shellIntegration.ps1'),
 }
 
 export const FOLDER: FolderSheetData = {
@@ -212,9 +215,9 @@ export const FOLDER: FolderSheetData = {
   ],
   readme: {
     text: 'Monaco is the code editor that powers VS Code. This folder holds its model, its view and its contributions: everything that turns a text buffer into an editor, from tokenization and decorations to find, folding and suggestions. It has no dependency on the workbench and ships on its own as the Monaco Editor package.',
-    url: `${TREE}/src/vs/editor#readme`,
+    url: `${tree('src/vs/editor')}#readme`,
   },
-  githubUrl: `${TREE}/src/vs/editor`,
+  githubUrl: tree('src/vs/editor'),
 }
 
 export const FOLDER_NO_README: FolderSheetData = { ...FOLDER, readme: undefined }
@@ -229,7 +232,7 @@ export const UNANALYZED_FOLDER: FolderSheetData = {
   languages: [{ language: 'other', share: 1 }],
   keyFiles: [],
   links: [],
-  githubUrl: `${TREE}/src/vs/workbench/contrib/terminal/common/scripts`,
+  githubUrl: tree('src/vs/workbench/contrib/terminal/common/scripts'),
 }
 
 export const TEST_PARK: FolderSheetData = {
@@ -242,7 +245,7 @@ export const TEST_PARK: FolderSheetData = {
   languages: [{ language: 'typescript', share: 1 }],
   keyFiles: [],
   readme: undefined,
-  githubUrl: `${TREE}/src/vs/editor/test`,
+  githubUrl: tree('src/vs/editor/test'),
 }
 
 export const ABOUT: AboutData = {
@@ -263,7 +266,7 @@ export const ABOUT: AboutData = {
   resolvedImports: 0.92,
   unanalyzed: [{ name: 'C', files: 312 }],
   commit: 'a1b2c3d',
-  commitUrl: 'https://github.com/microsoft/vscode/commit/a1b2c3d',
+  commitUrl: githubCommitUrl(REPO, SHA),
   branch: 'main',
   analyzedAt: 'Oct 27, 2026, 9:14 AM',
   analyzedAgo: '2 days ago',
