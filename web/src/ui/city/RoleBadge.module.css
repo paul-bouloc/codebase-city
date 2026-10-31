@@ -1,5 +1,6 @@
+/* Not positioned: the tip hangs from the row of badges that holds it (the sheet's), so it
+ * starts at the content's edge and stays inside the sheet whatever the badge's place. */
 .anchor {
-  position: relative;
   display: inline-flex;
 }
 
@@ -33,6 +34,7 @@
   flex-direction: column;
   gap: var(--space-1);
   width: 300px;
+  max-width: 100%;
   padding: var(--space-2-5) var(--space-3);
   border-radius: var(--radius-md);
   background: var(--color-surface-inverse);

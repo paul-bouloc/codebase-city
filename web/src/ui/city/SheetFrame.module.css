@@ -103,6 +103,11 @@
   letter-spacing: var(--caption-tracking);
 }
 
+/* Holds the role badge's tip. */
+.badges {
+  position: relative;
+}
+
 .badges,
 .actions {
   display: flex;
