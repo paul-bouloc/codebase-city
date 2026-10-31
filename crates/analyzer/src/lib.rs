@@ -2,10 +2,4 @@
 
 #![forbid(unsafe_code)]
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_suite_runs() {
-        assert_eq!(env!("CARGO_PKG_NAME"), "analyzer");
-    }
-}
+pub mod files;
