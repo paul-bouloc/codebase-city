@@ -34,6 +34,10 @@ pub(crate) enum Outcome {
     Resolved(Vec<(Target, Confidence)>),
     /// A dependency that is not in the repository.
     External,
+    /// Taken for a dependency only because nothing in the repository
+    /// matches or declares it: the package named. An alias the resolver
+    /// could not read would end up here, so these are worth a look.
+    Undeclared(String),
     /// Looks internal, but no file matches.
     Unresolved,
 }

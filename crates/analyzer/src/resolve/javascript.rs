@@ -242,7 +242,7 @@ impl Resolver {
         if looks_internal {
             Outcome::Unresolved
         } else {
-            Outcome::External
+            Outcome::Undeclared(package.to_owned())
         }
     }
 

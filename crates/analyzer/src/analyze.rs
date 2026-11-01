@@ -32,6 +32,10 @@ pub struct ImportReport {
     /// Modules that could not be resolved, with how many imports name
     /// them; the most frequent first.
     pub unresolved_modules: Vec<(String, u32)>,
+    /// Packages counted as external only because nothing declares them,
+    /// with how many imports name them; the most frequent first. An alias
+    /// the resolver missed shows up here.
+    pub undeclared_packages: Vec<(String, u32)>,
 }
 
 /// Analyzes the files of one commit. The result does not depend on the
@@ -112,6 +116,7 @@ pub fn analyze_with_report(
     let mut report = ImportReport::default();
     let mut by_kind: BTreeMap<u8, (EdgeKind, u32)> = BTreeMap::new();
     let mut unresolved: HashMap<&str, u32> = HashMap::new();
+    let mut undeclared: HashMap<&str, u32> = HashMap::new();
     // Importing file, then folder targets after file targets, then index
     let mut edges: BTreeMap<(u32, bool, u32), (EdgeKind, Confidence)> = BTreeMap::new();
     for (from, (imports, outcomes)) in imports.iter().zip(&outcomes).enumerate() {
@@ -125,6 +130,11 @@ pub fn analyze_with_report(
                 Outcome::Resolved(targets) => targets,
                 Outcome::External => {
                     report.external += 1;
+                    continue;
+                }
+                Outcome::Undeclared(package) => {
+                    report.external += 1;
+                    *undeclared.entry(package).or_default() += 1;
                     continue;
                 }
                 Outcome::Unresolved => {
@@ -162,13 +172,8 @@ pub fn analyze_with_report(
         }
     }
     report.by_kind = by_kind.into_values().rev().collect();
-    report.unresolved_modules = unresolved
-        .into_iter()
-        .map(|(module, count)| (module.to_owned(), count))
-        .collect();
-    report
-        .unresolved_modules
-        .sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+    report.unresolved_modules = most_frequent(unresolved);
+    report.undeclared_packages = most_frequent(undeclared);
 
     let mut table_edges = Edges::default();
     for ((from, is_dir, target), (kind, confidence)) in edges {
@@ -197,6 +202,16 @@ pub fn analyze_with_report(
         },
     };
     (result, report)
+}
+
+/// Names with their count, the most frequent first, then by name.
+fn most_frequent(counts: HashMap<&str, u32>) -> Vec<(String, u32)> {
+    let mut sorted: Vec<(String, u32)> = counts
+        .into_iter()
+        .map(|(name, count)| (name.to_owned(), count))
+        .collect();
+    sorted.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+    sorted
 }
 
 /// The outcome of every import of every file, in the same order.

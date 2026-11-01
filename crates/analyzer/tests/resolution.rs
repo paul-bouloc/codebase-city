@@ -428,6 +428,7 @@ fn an_unknown_alias_is_matched_by_suffix_when_only_one_file_fits() {
         (1, 1, 1)
     );
     assert_eq!(report.unresolved_modules, [("~/util".to_owned(), 1)]);
+    assert_eq!(report.undeclared_packages, [("redis".to_owned(), 1)]);
 }
 
 #[test]
