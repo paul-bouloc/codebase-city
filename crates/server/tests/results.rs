@@ -268,3 +268,21 @@ async fn usage_counts_results_and_bytes(pool: PgPool) {
     assert_eq!(used.results, 2);
     assert_eq!(used.stored_bytes, bytes);
 }
+
+#[sqlx::test(migrator = "server::store::MIGRATOR")]
+async fn concurrent_saves_to_one_repository_keep_the_retention(pool: PgPool) {
+    sqlx::query("UPDATE settings SET value = '2' WHERE key = 'results_kept_per_repo'")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let saves: Vec<_> = (1..=16)
+        .map(|n| {
+            let pool = pool.clone();
+            tokio::spawn(async move { store(&pool, "acme", &sha(n), CURRENT).await })
+        })
+        .collect();
+    for save in saves {
+        save.await.unwrap();
+    }
+    assert_eq!(shas(&pool).await.len(), 2);
+}
