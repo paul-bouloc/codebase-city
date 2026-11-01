@@ -243,6 +243,36 @@ fn a_tsconfig_extending_a_missing_package_keeps_its_own_paths() {
 }
 
 #[test]
+fn a_jsconfig_alone_is_read_like_a_tsconfig() {
+    let (result, _) = analyze(&[
+        (
+            "jsconfig.json",
+            r#"{ "compilerOptions": { "baseUrl": ".", "paths": { "@components/*": ["app/ui/*"] } } }"#,
+        ),
+        (
+            "pages/index.jsx",
+            "import Button from '@components/Button'\n",
+        ),
+        ("app/ui/Button.jsx", "export default 1\n"),
+        // Next to a tsconfig, a jsconfig is not read
+        (
+            "web/tsconfig.json",
+            r#"{ "compilerOptions": { "baseUrl": "." } }"#,
+        ),
+        (
+            "web/jsconfig.json",
+            r#"{ "compilerOptions": { "baseUrl": ".", "paths": { "@x/*": ["x/*"] } } }"#,
+        ),
+        ("web/main.js", "import x from '@x/y'\n"),
+        ("web/x/y.js", "export default 1\n"),
+    ]);
+    assert_eq!(
+        edges(&result),
+        [edge("pages/index.jsx", "app/ui/Button.jsx", Import)]
+    );
+}
+
+#[test]
 fn workspace_packages_resolve_to_their_sources() {
     let (result, report) = analyze(&[
         (

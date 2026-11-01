@@ -10,6 +10,8 @@
 //! A tsconfig that extends a configuration missing from the repository
 //! (`@vue/tsconfig`, `@tsconfig/node20`) would fail as a whole, its own
 //! `paths` with it: the missing parents are left out of what it extends.
+//! The resolver only looks for `tsconfig.json`: a `jsconfig.json` alone in
+//! its folder is shown under that name, with the `allowJs` it implies.
 
 use std::collections::{HashMap, HashSet};
 use std::io;
@@ -326,6 +328,29 @@ fn is_config(path: &str) -> bool {
     (name.starts_with("tsconfig") || name.starts_with("jsconfig")) && name.ends_with(".json")
 }
 
+/// A configuration read as JSON with comments and trailing commas.
+fn read_config(content: &[u8]) -> Option<serde_json::Value> {
+    let mut json = content
+        .strip_prefix(b"\xEF\xBB\xBF")
+        .unwrap_or(content)
+        .to_vec();
+    json_strip_comments::strip_slice(&mut json).ok()?;
+    serde_json::from_slice(&json).ok()
+}
+
+/// A `jsconfig.json` as the `tsconfig.json` it stands for: JavaScript files
+/// belong to it, which a tsconfig only says with `allowJs`.
+fn allowing_js(content: &[u8]) -> Option<Vec<u8>> {
+    let mut config = read_config(content)?;
+    let options = config
+        .as_object_mut()?
+        .entry("compilerOptions")
+        .or_insert_with(|| serde_json::Value::Object(serde_json::Map::new()))
+        .as_object_mut()?;
+    options.insert("allowJs".to_owned(), serde_json::Value::Bool(true));
+    serde_json::to_vec(&config).ok()
+}
+
 /// The configuration at `path` without the parents of its `extends` that
 /// are not in the repository; `None` when it needs no change or cannot be
 /// read (the resolver then reports it, and resolution goes on without it).
@@ -335,12 +360,7 @@ fn without_missing_extends(
     path: &str,
     content: &[u8],
 ) -> Option<Vec<u8>> {
-    let mut json = content
-        .strip_prefix(b"\xEF\xBB\xBF")
-        .unwrap_or(content)
-        .to_vec();
-    json_strip_comments::strip_slice(&mut json).ok()?;
-    let mut config: serde_json::Value = serde_json::from_slice(&json).ok()?;
+    let mut config = read_config(content)?;
     let object = config.as_object_mut()?;
     let dir = split_path(path).0;
     let exists = |parent: &str| {
@@ -422,20 +442,28 @@ impl MemoryFs {
                 dirs.insert(absolute(&format!("node_modules/{scope}")));
             }
         }
-        let contents = manifests
-            .iter()
-            .map(|(path, content)| {
-                let content = if is_config(path) {
-                    without_missing_extends(index, &workspace, path, content)
-                        .unwrap_or_else(|| content.to_vec())
-                } else {
-                    content.to_vec()
-                };
-                (absolute(path), content)
-            })
-            .collect();
+        let mut files: HashSet<PathBuf> = index.paths.iter().map(|path| absolute(path)).collect();
+        let mut contents = HashMap::with_capacity(manifests.len());
+        for (path, content) in manifests {
+            let content = if is_config(path) {
+                without_missing_extends(index, &workspace, path, content)
+                    .unwrap_or_else(|| content.to_vec())
+            } else {
+                content.to_vec()
+            };
+            let (dir, name) = split_path(path);
+            let tsconfig = under(dir, "tsconfig.json");
+            if name == "jsconfig.json"
+                && index.file(&tsconfig).is_none()
+                && let Some(as_tsconfig) = allowing_js(&content)
+            {
+                files.insert(absolute(&tsconfig));
+                contents.insert(absolute(&tsconfig), as_tsconfig);
+            }
+            contents.insert(absolute(path), content);
+        }
         Self {
-            files: index.paths.iter().map(|path| absolute(path)).collect(),
+            files,
             dirs,
             contents,
             workspace,
