@@ -273,6 +273,15 @@ fn a_jsconfig_alone_is_read_like_a_tsconfig() {
 }
 
 #[test]
+fn an_absolute_import_starts_from_the_root_of_the_repository() {
+    let (result, _) = analyze(&[
+        ("web/index.ts", "import { a } from '/src/a'\n"),
+        ("src/a.ts", "export const a = 1\n"),
+    ]);
+    assert_eq!(edges(&result), [edge("web/index.ts", "src/a.ts", Import)]);
+}
+
+#[test]
 fn a_folder_whose_build_is_missing_is_likely_its_sources() {
     let (result, _) = analyze(&[
         ("lib/package.json", r#"{ "main": "dist/index.js" }"#),
@@ -341,12 +350,16 @@ fn workspace_packages_resolve_to_their_sources() {
         ),
         ("tools/index.js", "module.exports = {}\n"),
         ("scripts/run.js", "const tools = require('../tools')\n"),
+        // The root folder itself, from two levels down
+        ("index.js", "module.exports = {}\n"),
+        ("examples/auth/index.js", "const app = require('../..')\n"),
     ]);
     assert_eq!(
         edges(&result),
         [
             edge("apps/web/main.ts", "packages/ui/src/button.tsx", Import),
             edge("apps/web/main.ts", "packages/ui/src/index.ts", Import),
+            edge("examples/auth/index.js", "index.js", Import),
             edge(
                 "packages/ui/src/index.ts",
                 "packages/ui/src/button.tsx",

@@ -52,6 +52,11 @@ const SUFFIX_ENDINGS: &[&str] = &[
     "/index.jsx",
 ];
 
+/// Where the repository is in [`MemoryFs`]. Not at `/`: the resolver does
+/// not resolve the root folder itself (`require('../..')` from two levels
+/// down), and `/node_modules` stays outside the repository.
+const ROOT: &str = "/repo";
+
 /// Folders whose `package.json` files are test material, not packages of
 /// the repository: a fixture may be named like a real dependency.
 const TEST_DIRS: &[&str] = &[
@@ -156,6 +161,8 @@ impl Resolver {
             main_fields: ["module", "main"].map(String::from).to_vec(),
             main_files: vec!["index".into()],
             builtin_modules: true,
+            // `/src/main.ts` is from the root of the repository, as for Vite
+            roots: vec![PathBuf::from(ROOT)],
             symlinks: false,
             ..ResolveOptions::default()
         };
@@ -180,7 +187,7 @@ impl Resolver {
     }
 
     pub(super) fn resolve(&self, index: &Index<'_>, path: &str, specifier: &str) -> Outcome {
-        let file = Path::new("/").join(path);
+        let file = in_memory(path);
         let resolved = match self.with_tsconfig.resolve_file(&file, specifier) {
             Err(error) if is_tsconfig_error(&error) => self.plain.resolve_file(&file, specifier),
             other => other,
@@ -419,12 +426,21 @@ fn without_missing_extends(
     serde_json::to_vec(&config).ok()
 }
 
+/// The path in [`MemoryFs`] of a path of the repository.
+fn in_memory(path: &str) -> PathBuf {
+    Path::new(ROOT).join(path)
+}
+
 /// Where a path of [`MemoryFs`] is in the repository: a path under
 /// `/node_modules` is a package of the repository, shown there by name.
 fn in_repository(workspace: &Workspace, path: &Path) -> Option<String> {
-    let path = path.to_str()?.strip_prefix('/')?;
-    let Some(rest) = path.strip_prefix("node_modules/") else {
-        return Some(path.to_owned());
+    let path = path.to_str()?;
+    let Some(rest) = path.strip_prefix("/node_modules/") else {
+        let inside = path.strip_prefix(ROOT)?;
+        if !inside.is_empty() && !inside.starts_with('/') {
+            return None;
+        }
+        return Some(inside.trim_start_matches('/').to_owned());
     };
     let name = package_name(rest);
     let dir = workspace.get(name)?;
@@ -443,13 +459,14 @@ struct MemoryFs {
 
 impl MemoryFs {
     fn new(index: &Index<'_>, manifests: &HashMap<&str, &[u8]>, workspace: Workspace) -> Self {
-        let absolute = |path: &str| Path::new("/").join(path);
+        let absolute = |path: &str| in_memory(path);
         let mut dirs: HashSet<PathBuf> = index.dirs.iter().map(|dir| absolute(dir)).collect();
-        dirs.insert(absolute("node_modules"));
+        dirs.insert(PathBuf::from("/"));
+        dirs.insert(PathBuf::from("/node_modules"));
         // `/node_modules/@scope` holds the packages of that scope
         for name in workspace.keys() {
             if let Some((scope, _)) = name.split_once('/') {
-                dirs.insert(absolute(&format!("node_modules/{scope}")));
+                dirs.insert(PathBuf::from(format!("/node_modules/{scope}")));
             }
         }
         let mut files: HashSet<PathBuf> = index.paths.iter().map(|path| absolute(path)).collect();
@@ -483,7 +500,7 @@ impl MemoryFs {
     /// The path in the repository that `path` shows.
     fn real(&self, path: &Path) -> Option<PathBuf> {
         let inside = in_repository(&self.workspace, path)?;
-        Some(Path::new("/").join(inside))
+        Some(in_memory(&inside))
     }
 
     fn not_found() -> io::Error {
