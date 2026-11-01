@@ -1,13 +1,14 @@
 import { floorsFor } from '../src/city/archetypes'
-import type { CityLayout, FileMetrics, Lot } from '../src/city/layout'
+import type { BuildingLanguage, CityLayout, FileMetrics, Lot } from '../src/city/layout'
 import { LOT_SIZE } from '../src/city/units'
-import type { Language } from '../src/ui/Badge'
 
 interface Sample {
-  language: Language
+  language: BuildingLanguage
   floors: number
   side: number
   test?: boolean
+  analyzed?: boolean
+  generated?: boolean
 }
 
 // The examples of the design's archetype board, then each archetype at its smallest and largest.
@@ -39,18 +40,35 @@ const ROWS: Sample[][] = [
     { language: 'javascript', floors: 2, side: 1.7 },
     { language: 'other', floors: 1, side: 1.7, test: true },
   ],
+  // Python and Go, generated files, then files of unread languages, short and long
+  [
+    { language: 'python', floors: 4, side: 1.3 },
+    { language: 'go', floors: 9, side: 1.5 },
+    { language: 'typescript', floors: 2, side: 1.2, generated: true },
+    { language: 'javascript', floors: 4, side: 1.4, generated: true },
+    { language: 'typescript', floors: 13, side: 1.5, generated: true },
+    { language: 'other', floors: 1, side: 0.9, analyzed: false },
+    { language: 'other', floors: 1, side: 1.7, analyzed: false },
+  ],
 ]
 
 const MARGIN = 0.9
 
 /** Metrics that give a building of these floors and footprint. */
-function metricsFor({ language, floors, side, test = false }: Sample): FileMetrics {
+function metricsFor({
+  language,
+  floors,
+  side,
+  test = false,
+  analyzed = true,
+  generated = false,
+}: Sample): FileMetrics {
   let complexity = 1
   while (floorsFor(complexity) < floors) {
     complexity++
   }
   const lines = Math.round(3000 * ((side - 0.75) / 0.95) ** 2)
-  return { language, lines, complexity, test }
+  return { language, lines, complexity, test, analyzed, generated }
 }
 
 /** One island holding every archetype, to compare with the design. */
