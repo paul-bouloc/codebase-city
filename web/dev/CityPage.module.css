@@ -7,4 +7,24 @@
   position: absolute;
   top: var(--space-3);
   right: var(--space-3);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  max-width: 40rem;
+}
+
+.file {
+  display: none;
+}
+
+.error {
+  margin: 0;
+  flex-basis: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--feedback-error-border);
+  border-radius: var(--radius-md);
+  background: var(--feedback-error-bg);
+  color: var(--feedback-error-fg);
+  text-align: right;
 }
