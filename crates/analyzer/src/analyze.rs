@@ -147,7 +147,7 @@ mod tests {
             file("README.md", None),
             file(
                 "src/main.ts",
-                Some("// Starts the app.\nexport function main() {\n  if (a) b()\n}\n"),
+                Some("// Starts the app.\n\nexport function main() {\n  if (a) b()\n}\n"),
             ),
             file(
                 "src/core/store.ts",
@@ -232,7 +232,7 @@ mod tests {
         let symbols = &result.symbols;
         assert_eq!(symbols.file, [1, 1, 2, 3, 5]);
         assert_eq!(symbols.name, ["Store", "MAX", "Schema", "main", "build"]);
-        assert_eq!(symbols.line, [1, 2, 1, 2, 1]);
+        assert_eq!(symbols.line, [1, 2, 1, 3, 1]);
     }
 
     #[test]

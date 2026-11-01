@@ -54,13 +54,43 @@ pub(super) fn symbols(root: Node<'_>, source: &[u8]) -> Vec<Symbol> {
     symbols
 }
 
+/// The first block of comments before the first statement. A block right
+/// above a declaration, with no blank line, documents that declaration and
+/// is left out; one right above the imports still describes the file.
 pub(super) fn header(root: Node<'_>, source: &[u8]) -> Option<String> {
-    let comments: Vec<_> = children(root)
+    let mut nodes = children(root)
         .into_iter()
         .skip_while(|node| node.kind() == "hash_bang_line")
-        .take_while(|node| matches!(node.kind(), "comment" | "html_comment"))
-        .collect();
+        .peekable();
+    let mut comments = Vec::new();
+    while let Some(comment) =
+        nodes.next_if(|node| matches!(node.kind(), "comment" | "html_comment"))
+    {
+        comments.push(comment);
+    }
+    if let Some(first) = nodes.next()
+        && !is_import(first, source)
+    {
+        let mut next_row = first.start_position().row;
+        while let Some(last) = comments.last()
+            && last.end_position().row + 1 >= next_row
+        {
+            next_row = last.start_position().row;
+            comments.pop();
+        }
+    }
     header::pick(&comments, source)
+}
+
+/// An `import`, or a CommonJS `require` at the top level.
+fn is_import(node: Node<'_>, source: &[u8]) -> bool {
+    match node.kind() {
+        "import_statement" => true,
+        "lexical_declaration" | "variable_declaration" | "expression_statement" => {
+            text(node, source).contains("require(")
+        }
+        _ => false,
+    }
 }
 
 /// The names a declaration introduces, with their kind.

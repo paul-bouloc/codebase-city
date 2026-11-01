@@ -178,7 +178,7 @@ fn prose_that_looks_like_a_directive_is_a_header() {
         "// Global state shared by the store and the view.",
         "// Validates the license key entered by the user.",
     ] {
-        let parsed = parse_text("a.ts", &format!("{header}\nexport const a = 1\n"));
+        let parsed = parse_text("a.ts", &format!("{header}\n\nexport const a = 1\n"));
         assert_eq!(parsed.header.as_deref(), Some(header));
     }
     // An encoding declaration only counts on the first two lines (PEP 263)
@@ -209,6 +209,27 @@ fn a_python_wildcard_case_is_not_a_decision() {
     );
     // `case 1`, the guarded case and its guard, and nothing for `case _`
     assert_eq!(parsed.complexity, 4);
+}
+
+#[test]
+fn the_doc_of_a_declaration_is_not_a_header() {
+    let parsed = parse_text(
+        "add.ts",
+        "/** Adds two numbers. */\nexport function add() {}\n",
+    );
+    assert_eq!(parsed.header, None);
+
+    let parsed = parse_text(
+        "add.ts",
+        "// Arithmetic helpers.\n\n/** Adds two numbers. */\nexport function add() {}\n",
+    );
+    assert_eq!(parsed.header.as_deref(), Some("// Arithmetic helpers."));
+
+    // Right above the imports, it describes the file
+    for first in ["import { b } from './b'", "const b = require('./b')"] {
+        let parsed = parse_text("a.js", &format!("// Wires a to b.\n{first}\n"));
+        assert_eq!(parsed.header.as_deref(), Some("// Wires a to b."));
+    }
 }
 
 #[test]
@@ -264,7 +285,7 @@ fn a_type_and_a_value_may_share_a_name() {
 
 #[test]
 fn invalid_utf8_does_not_stop_parsing() {
-    let content = b"// caf\xe9\nexport const a = 1\n";
+    let content = b"// caf\xe9\n\nexport const a = 1\n";
     let parsed = parse("a.js", Language::JavaScript, content).unwrap();
     assert_eq!(parsed.header.as_deref(), Some("// caf\u{fffd}"));
     assert_eq!(parsed.symbols.len(), 1);
