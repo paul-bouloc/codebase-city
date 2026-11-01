@@ -23,7 +23,7 @@ use crate::scope;
 
 /// Version of the algorithms. Bumped whenever a change would give another
 /// result for the same commit, so stored results are recomputed.
-pub const ANALYZER_VERSION: &str = "0.5.0";
+pub const ANALYZER_VERSION: &str = "0.5.1";
 
 /// What an analysis found beyond its result.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
