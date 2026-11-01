@@ -441,27 +441,63 @@ fn join(dir: &str, path: &str) -> String {
 }
 
 /// Scripts of a `pyproject.toml`, as (command, `module:function`):
-/// `[project.scripts]` and `[tool.poetry.scripts]`.
+/// `[project.scripts]` and `[tool.poetry.scripts]`, or under `[project]`
+/// an inline `scripts = { … }` or dotted `scripts.name = …` keys. Comments
+/// after a header or a value are ignored.
 fn pyproject_scripts(content: &[u8]) -> Vec<(String, String)> {
     let text = String::from_utf8_lossy(content);
     let mut scripts = Vec::new();
-    let mut inside = false;
+    let mut section = String::new();
     for line in text.lines() {
         let line = line.trim();
         if line.starts_with('[') {
-            inside = matches!(line, "[project.scripts]" | "[tool.poetry.scripts]");
+            let header = line.split('#').next().unwrap_or_default().trim();
+            section = header.chars().filter(|c| !c.is_whitespace()).collect();
             continue;
         }
-        if inside && let Some((command, target)) = line.split_once('=') {
-            let unquote = |text: &str| {
-                text.trim()
-                    .trim_matches(|c| c == '"' || c == '\'')
-                    .to_owned()
-            };
-            scripts.push((unquote(command), unquote(target)));
+        let Some((key, value)) = line.split_once('=') else {
+            continue;
+        };
+        let key = unquote(key);
+        match section.as_str() {
+            "[project.scripts]" | "[tool.poetry.scripts]" => {
+                scripts.extend(quoted(value).map(|target| (key, target)));
+            }
+            "[project]" if key == "scripts" => {
+                // One inline table on one line: `{ a = "m:f", b = "n:g" }`
+                let table = value.trim().trim_start_matches('{');
+                let table = table.split('}').next().unwrap_or_default();
+                for pair in table.split(',') {
+                    if let Some((command, target)) = pair.split_once('=') {
+                        scripts.extend(quoted(target).map(|target| (unquote(command), target)));
+                    }
+                }
+            }
+            "[project]" => {
+                if let Some(command) = key.strip_prefix("scripts.") {
+                    let command = unquote(command);
+                    scripts.extend(quoted(value).map(|target| (command, target)));
+                }
+            }
+            _ => {}
         }
     }
     scripts
+}
+
+/// A TOML key without its quotes.
+fn unquote(text: &str) -> String {
+    text.trim()
+        .trim_matches(|c| c == '"' || c == '\'')
+        .to_owned()
+}
+
+/// The first quoted string of a TOML value, a comment after it ignored.
+fn quoted(value: &str) -> Option<String> {
+    let value = value.trim_start();
+    let quote = value.chars().next().filter(|&c| c == '"' || c == '\'')?;
+    let rest = &value[1..];
+    rest.find(quote).map(|end| rest[..end].to_owned())
 }
 
 /// `console_scripts` of a `setup.cfg`, as (command, `module:function`).
@@ -588,6 +624,24 @@ mod tests {
                 ("harbor".to_owned(), "harbor.cli:main".to_owned()),
                 ("dock".to_owned(), "harbor.dock:run".to_owned()),
             ]
+        );
+        let commented = b"[project.scripts] # commands\nharbor = \"harbor.cli:main\" # the CLI\n";
+        assert_eq!(
+            pyproject_scripts(commented),
+            [("harbor".to_owned(), "harbor.cli:main".to_owned())]
+        );
+        let inline = b"[project]\nname = \"harbor\"\nscripts = { harbor = \"harbor.cli:main\", dock = 'harbor.dock:run' }\n";
+        assert_eq!(
+            pyproject_scripts(inline),
+            [
+                ("harbor".to_owned(), "harbor.cli:main".to_owned()),
+                ("dock".to_owned(), "harbor.dock:run".to_owned()),
+            ]
+        );
+        let dotted = b"[project]\nscripts.harbor = \"harbor.cli:main\"\n[tool.ruff]\nscripts.x = \"no:no\"\n";
+        assert_eq!(
+            pyproject_scripts(dotted),
+            [("harbor".to_owned(), "harbor.cli:main".to_owned())]
         );
         let setup_cfg = b"[metadata]\nname = harbor\n\n[options.entry_points]\nconsole_scripts =\n    harbor = harbor.cli:main\n    dock = harbor.dock:run\ngui_scripts =\n    view = harbor.view:main\n";
         assert_eq!(
