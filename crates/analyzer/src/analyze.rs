@@ -190,7 +190,9 @@ pub fn analyze_with_report(
     report.unresolved_modules = most_frequent(unresolved);
     report.undeclared_packages = most_frequent(undeclared);
 
+    let paths: Vec<&str> = files.iter().map(|file| file.path.as_str()).collect();
     let (graph, barrel_report) = graph::build(&graph::Input {
+        paths: &paths,
         scopes: &table.scope,
         generated: &table.generated,
         barrels: &barrels,

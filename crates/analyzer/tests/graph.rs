@@ -368,3 +368,45 @@ fn a_barrel_built_to_make_lookups_slow_does_not_hold_the_analysis() {
         [("b.ts".to_owned(), false)]
     );
 }
+
+#[test]
+fn each_name_of_a_python_import_goes_with_its_own_module() {
+    let (result, report) = analyze(&[
+        ("app.py", "from pkg import engine, run\n"),
+        ("pkg/__init__.py", "from .core import engine, run\n"),
+        ("pkg/core/__init__.py", "def run():\n    pass\n"),
+        ("pkg/core/engine.py", "class Engine:\n    pass\n"),
+    ]);
+    assert_eq!(
+        edges_from(&result, &report, "app.py"),
+        through(&["pkg/core/__init__.py", "pkg/core/engine.py"])
+    );
+    assert_eq!(report.barrels.names_missing, 0);
+}
+
+#[test]
+fn a_package_of_many_modules_stays_linear() {
+    const MODULES: usize = 3_000;
+    let names: Vec<String> = (0..MODULES).map(|n| format!("m{n}")).collect();
+    let mut files = vec![
+        ("app.py".to_owned(), "from pkg import m0\n".to_owned()),
+        (
+            "pkg/__init__.py".to_owned(),
+            format!("from . import {}\n", names.join(", ")),
+        ),
+    ];
+    for name in &names {
+        files.push((format!("pkg/{name}.py"), "def f():\n    pass\n".to_owned()));
+    }
+    let files: Vec<(&str, &str)> = files
+        .iter()
+        .map(|(path, content)| (path.as_str(), content.as_str()))
+        .collect();
+    let started = std::time::Instant::now();
+    let (result, report) = analyze(&files);
+    assert!(started.elapsed() < std::time::Duration::from_secs(10));
+    assert_eq!(
+        edges_from(&result, &report, "app.py"),
+        [("pkg/m0.py".to_owned(), false)]
+    );
+}

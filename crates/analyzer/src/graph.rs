@@ -10,6 +10,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 
 use model::{Confidence, EdgeKind, Scope, Symbols};
 
+use crate::files::split_path;
 use crate::lang::Import;
 use crate::resolve::{Outcome, Target};
 use crate::scope;
@@ -111,6 +112,8 @@ pub struct BarrelReport {
 
 /// What the graph is built from, row for row with the files of the result.
 pub(crate) struct Input<'a> {
+    /// Paths of the files.
+    pub paths: &'a [&'a str],
     pub scopes: &'a [Scope],
     pub generated: &'a [bool],
     pub barrels: &'a [bool],
@@ -149,45 +152,51 @@ pub(crate) fn build(input: &Input<'_>) -> (Graph, BarrelReport) {
             let Outcome::Resolved(targets) = outcome else {
                 continue;
             };
+            let whole = import.names.is_empty() || import.names.iter().any(|name| name == "*");
             for (target, confidence) in targets {
-                let target = match target {
-                    Target::File(file) => *file,
+                match target {
                     Target::Dir(path) => {
                         if let Some(&dir) = input.dirs.get(path) {
                             add(from, Node::Dir(dir), import.kind, *confidence, false);
                         }
+                    }
+                    Target::File(file) if !input.barrels[*file as usize] => {
+                        add(from, Node::File(*file), import.kind, *confidence, false);
+                    }
+                    Target::File(file) if whole => {
+                        report.whole_imports += 1;
+                        add(from, Node::File(*file), import.kind, *confidence, false);
+                    }
+                    // Named imports from a barrel: each name below
+                    Target::File(_) => {}
+                }
+            }
+            if whole {
+                continue;
+            }
+            let by_name = targets_by_name(input.paths, targets, &import.names);
+            for (name, own) in import.names.iter().zip(&by_name) {
+                for &(barrel, confidence) in own {
+                    if !input.barrels[barrel as usize] {
                         continue;
                     }
-                };
-                if !input.barrels[target as usize] {
-                    add(from, Node::File(target), import.kind, *confidence, false);
-                    continue;
-                }
-                if import.names.is_empty() || import.names.iter().any(|name| name == "*") {
-                    report.whole_imports += 1;
-                    add(from, Node::File(target), import.kind, *confidence, false);
-                    continue;
-                }
-                for name in &import.names {
-                    match lookups.find(target, name) {
-                        Lookup::Found(file, found) if file != target => {
+                    let (to, confidence, via) = match lookups.find(barrel, name) {
+                        Lookup::Found(file, found) if file != barrel => {
                             report.names_through += 1;
-                            let confidence = weakest(*confidence, found);
-                            add(from, Node::File(file), import.kind, confidence, true);
+                            (file, weakest(confidence, found), true)
                         }
                         // The barrel declares the name itself
-                        Lookup::Found(..) => {
-                            add(from, Node::File(target), import.kind, *confidence, false);
-                        }
+                        Lookup::Found(..) => (barrel, confidence, false),
                         Lookup::Missing => {
                             report.names_missing += 1;
-                            add(from, Node::File(target), import.kind, *confidence, false);
+                            (barrel, confidence, false)
                         }
                         Lookup::Ambiguous => {
                             report.names_ambiguous += 1;
-                            add(from, Node::File(target), import.kind, *confidence, false);
+                            (barrel, confidence, false)
                         }
-                    }
+                    };
+                    add(from, Node::File(to), import.kind, confidence, via);
                 }
             }
         }
@@ -280,14 +289,12 @@ impl<'a> Exports<'a> {
                 let Outcome::Resolved(targets) = outcome else {
                     continue;
                 };
-                let targets = targets
-                    .iter()
-                    .filter_map(|(target, confidence)| match target {
-                        Target::File(target) => Some((*target, *confidence)),
-                        Target::Dir(_) => None,
-                    });
-                for (target, confidence) in targets {
-                    for (name, export) in import.names.iter().zip(&import.exports) {
+                if import.exports.is_empty() {
+                    continue;
+                }
+                let by_name = targets_by_name(input.paths, targets, &import.names);
+                for ((name, export), own) in import.names.iter().zip(&import.exports).zip(by_name) {
+                    for (target, confidence) in own {
                         reexporting.insert(file);
                         if export == "*" {
                             stars.entry(file).or_default().push((target, confidence));
@@ -400,6 +407,54 @@ impl<'e, 'a> Lookups<'e, 'a> {
         found.map_or(Lookup::Missing, |(file, confidence)| {
             Lookup::Found(file, confidence)
         })
+    }
+}
+
+/// The files each name of an import comes from, among those it resolved
+/// to. `from . import a, b` resolves to one module per name: each name goes
+/// with its own module, and a name that is not a module with the files no
+/// name claims (the package itself). Built in one pass, so a package of
+/// thousands of modules stays linear.
+fn targets_by_name(
+    paths: &[&str],
+    targets: &[(Target, Confidence)],
+    names: &[String],
+) -> Vec<Vec<(u32, Confidence)>> {
+    let files: Vec<(u32, Confidence)> = targets
+        .iter()
+        .filter_map(|(target, confidence)| match target {
+            Target::File(file) => Some((*file, *confidence)),
+            Target::Dir(_) => None,
+        })
+        .collect();
+    if files.len() <= 1 {
+        return vec![files; names.len()];
+    }
+    let wanted: HashSet<&str> = names.iter().map(String::as_str).collect();
+    let mut modules: HashMap<&str, Vec<(u32, Confidence)>> = HashMap::new();
+    let mut rest = Vec::new();
+    for (file, confidence) in files {
+        let module = module_name(paths[file as usize]);
+        if wanted.contains(module) {
+            modules.entry(module).or_default().push((file, confidence));
+        } else {
+            rest.push((file, confidence));
+        }
+    }
+    names
+        .iter()
+        .map(|name| modules.get(name.as_str()).unwrap_or(&rest).clone())
+        .collect()
+}
+
+/// The module a file is, as imports name it: `tides` for `harbor/tides.py`
+/// or `harbor/tides/__init__.py`.
+fn module_name(path: &str) -> &str {
+    let (dir, name) = split_path(path);
+    if name.starts_with("__init__.") {
+        split_path(dir).1
+    } else {
+        name.split('.').next().unwrap_or(name)
     }
 }
 
