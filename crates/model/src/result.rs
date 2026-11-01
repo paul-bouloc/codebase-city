@@ -10,7 +10,7 @@ use ts_rs::TS;
 
 /// Version of the shape of the data. Bumped on any change the web app has to
 /// know about; a result with another version is rejected, not guessed at.
-pub const FORMAT_VERSION: u32 = 3;
+pub const FORMAT_VERSION: u32 = 4;
 
 /// One analysis of one repository at one commit.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -75,9 +75,31 @@ pub struct Files {
     pub complexity: Vec<Option<u32>>,
     /// Generated code: shown in the city, left out of every ranking.
     pub generated: Vec<bool>,
+    /// What part of the repository the file belongs to, from its path.
+    pub scope: Vec<Scope>,
     /// The file's leading comment or docstring, verbatim, a license block
     /// skipped; `null` when there is none or the language is not analyzed.
     pub header: Vec<Option<String>>,
+}
+
+/// What part of the repository a file belongs to. Rankings only look at
+/// [`Scope::Source`], the code the project ships.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum Scope {
+    Source,
+    Test,
+    /// Data and mocks for the tests.
+    Fixture,
+    /// Examples, demos and samples.
+    Example,
+    Docs,
+    Bench,
+    /// Build output and build tooling.
+    Build,
+    /// Configuration of tools: manifests, dotfiles, `*.config.*`.
+    Config,
 }
 
 /// Symbols exported by the analyzed files, one row per symbol, sorted by

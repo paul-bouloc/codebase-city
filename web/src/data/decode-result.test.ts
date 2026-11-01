@@ -34,9 +34,9 @@ describe('decodeResult', () => {
   it('rejects another format version', () => {
     expect(
       decodeChanged((json) => {
-        json.formatVersion = 1
+        json.formatVersion = 3
       }),
-    ).toThrow('unsupported format version 1, expected 3')
+    ).toThrow('unsupported format version 3, expected 4')
   })
 
   it('rejects values of the wrong type', () => {
@@ -72,6 +72,11 @@ describe('decodeResult', () => {
     ).toThrow('symbols.kind[0] is not a symbol kind')
     expect(
       decodeChanged((json) => {
+        json.files.scope[0] = 'vendor'
+      }),
+    ).toThrow('files.scope[0] is not a scope')
+    expect(
+      decodeChanged((json) => {
         ;(json.files as Record<string, unknown>).generated = 'no'
       }),
     ).toThrow('files.generated is not an array')
@@ -98,6 +103,11 @@ describe('decodeResult', () => {
         json.files.header.pop()
       }),
     ).toThrow('column files.header has 19 rows, expected 20')
+    expect(
+      decodeChanged((json) => {
+        json.files.scope.pop()
+      }),
+    ).toThrow('column files.scope has 19 rows, expected 20')
     expect(
       decodeChanged((json) => {
         json.symbols.line.pop()

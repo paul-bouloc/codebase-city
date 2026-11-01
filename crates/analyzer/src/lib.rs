@@ -7,6 +7,7 @@ pub mod files;
 pub mod lang;
 mod metrics;
 mod resolve;
+mod scope;
 
 pub use analyze::{ANALYZER_VERSION, ImportReport, analyze, analyze_with_report};
 

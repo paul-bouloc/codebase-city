@@ -9,8 +9,8 @@
 use std::path::PathBuf;
 
 use model::{
-    AnalysisResult, Confidence, Dirs, EdgeKind, Edges, FORMAT_VERSION, Files, Ignored, Repo, Stats,
-    SymbolKind, Symbols,
+    AnalysisResult, Confidence, Dirs, EdgeKind, Edges, FORMAT_VERSION, Files, Ignored, Repo, Scope,
+    Stats, SymbolKind, Symbols,
 };
 
 const DIRS: &[(Option<u32>, &str)] = &[
@@ -50,6 +50,14 @@ const FILES: &[FileRow] = &[
     (6, "store.test.ts", 0, 130, Some(7), false),
     (6, "view.test.ts", 0, 95, Some(5), false),
     (7, "release.sh", 3, 45, None, false),
+];
+
+/// Files outside [`Scope::Source`]; the others are source.
+const SCOPES: &[(u32, Scope)] = &[
+    (0, Scope::Config),
+    (1, Scope::Config),
+    (17, Scope::Test),
+    (18, Scope::Test),
 ];
 
 /// File, leading comment.
@@ -152,6 +160,14 @@ fn sample() -> AnalysisResult {
                         .iter()
                         .find(|header| header.0 as usize == row)
                         .map(|header| header.1.to_owned())
+                })
+                .collect(),
+            scope: (0..FILES.len())
+                .map(|row| {
+                    SCOPES
+                        .iter()
+                        .find(|scope| scope.0 as usize == row)
+                        .map_or(Scope::Source, |scope| scope.1)
                 })
                 .collect(),
         },

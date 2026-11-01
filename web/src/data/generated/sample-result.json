@@ -1,5 +1,5 @@
 {
-  "formatVersion": 3,
+  "formatVersion": 4,
   "analyzerVersion": "0.1.0",
   "repo": {
     "owner": "acme",
@@ -166,6 +166,28 @@
       false,
       false,
       false
+    ],
+    "scope": [
+      "config",
+      "config",
+      "source",
+      "source",
+      "source",
+      "source",
+      "source",
+      "source",
+      "source",
+      "source",
+      "source",
+      "source",
+      "source",
+      "source",
+      "source",
+      "source",
+      "source",
+      "test",
+      "test",
+      "source"
     ],
     "header": [
       null,

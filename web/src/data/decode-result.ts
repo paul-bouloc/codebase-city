@@ -4,12 +4,13 @@ import type { Dirs } from './generated/Dirs'
 import type { EdgeKind } from './generated/EdgeKind'
 import type { Edges } from './generated/Edges'
 import type { Files } from './generated/Files'
+import type { Scope } from './generated/Scope'
 import type { Stats } from './generated/Stats'
 import type { SymbolKind } from './generated/SymbolKind'
 import type { Symbols } from './generated/Symbols'
 
 // FORMAT_VERSION in crates/model; the generated sample result keeps the two in step.
-export const FORMAT_VERSION = 3
+export const FORMAT_VERSION = 4
 
 // Checked by the compiler against the generated unions: adding a variant in Rust breaks the build here.
 const EDGE_KINDS = {
@@ -20,6 +21,16 @@ const EDGE_KINDS = {
   reexport: true,
 } satisfies Record<EdgeKind, true>
 const CONFIDENCES = { exact: true, likely: true } satisfies Record<Confidence, true>
+const SCOPES = {
+  source: true,
+  test: true,
+  fixture: true,
+  example: true,
+  docs: true,
+  bench: true,
+  build: true,
+  config: true,
+} satisfies Record<Scope, true>
 const SYMBOL_KINDS = {
   class: true,
   function: true,
@@ -87,6 +98,8 @@ const isConfidence = (item: unknown): item is Confidence =>
   typeof item === 'string' && Object.hasOwn(CONFIDENCES, item)
 const isSymbolKind = (item: unknown): item is SymbolKind =>
   typeof item === 'string' && Object.hasOwn(SYMBOL_KINDS, item)
+const isScope = (item: unknown): item is Scope =>
+  typeof item === 'string' && Object.hasOwn(SCOPES, item)
 
 const u32Column = (value: unknown, path: string) =>
   column(value, path, isU32, 'an unsigned 32-bit integer')
@@ -154,6 +167,7 @@ function decodeFiles(value: unknown, dirCount: number, languageCount: number): F
     complexity: column(fields.complexity, 'files.complexity', isU32OrNull, 'an integer or null'),
     generated: column(fields.generated, 'files.generated', isBoolean, 'a boolean'),
     header: column(fields.header, 'files.header', isStringOrNull, 'a string or null'),
+    scope: column(fields.scope, 'files.scope', isScope, 'a scope'),
   }
   sameLength('files.name', dir.length, files.name)
   sameLength('files.language', dir.length, files.language)
@@ -161,6 +175,7 @@ function decodeFiles(value: unknown, dirCount: number, languageCount: number): F
   sameLength('files.complexity', dir.length, files.complexity)
   sameLength('files.generated', dir.length, files.generated)
   sameLength('files.header', dir.length, files.header)
+  sameLength('files.scope', dir.length, files.scope)
   inBounds('files.dir', dir, dirCount)
   inBounds('files.language', files.language, languageCount)
   validNames('files.name', files.name, 0)

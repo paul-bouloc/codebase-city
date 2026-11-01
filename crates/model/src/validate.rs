@@ -78,6 +78,7 @@ impl AnalysisResult {
         same_length("files.complexity", file_count, files.complexity.len())?;
         same_length("files.generated", file_count, files.generated.len())?;
         same_length("files.header", file_count, files.header.len())?;
+        same_length("files.scope", file_count, files.scope.len())?;
         in_bounds("files.dir", &files.dir, dir_count)?;
         in_bounds("files.language", &files.language, self.languages.len())?;
         valid_names("files.name", files.name.iter(), 0)?;
@@ -205,7 +206,7 @@ fn valid_names<'a>(
 mod tests {
     use super::*;
     use crate::result::{
-        Confidence, Dirs, EdgeKind, Edges, Files, Repo, Stats, SymbolKind, Symbols,
+        Confidence, Dirs, EdgeKind, Edges, Files, Repo, Scope, Stats, SymbolKind, Symbols,
     };
 
     /// Two folders, two files, an import between them and two of folders.
@@ -231,6 +232,7 @@ mod tests {
                 complexity: vec![Some(6), Some(2)],
                 generated: vec![false, false],
                 header: vec![Some("// Starts the app.".to_owned()), None],
+                scope: vec![Scope::Source, Scope::Source],
             },
             symbols: Symbols {
                 file: vec![0, 1, 1],
@@ -295,6 +297,14 @@ mod tests {
             invalid(|r| r.files.header.truncate(1)),
             InvalidResult::ColumnLength {
                 column: "files.header",
+                expected: 2,
+                actual: 1,
+            }
+        );
+        assert_eq!(
+            invalid(|r| r.files.scope.truncate(1)),
+            InvalidResult::ColumnLength {
+                column: "files.scope",
                 expected: 2,
                 actual: 1,
             }

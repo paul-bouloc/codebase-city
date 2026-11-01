@@ -12,6 +12,7 @@ use crate::files::{SourceFile, split_path};
 use crate::lang::{self, Parsed};
 use crate::resolve::{self, Outcome, Target};
 use crate::saturating_u32 as index;
+use crate::scope;
 
 /// Version of the algorithms. Bumped whenever a change would give another
 /// result for the same commit, so stored results are recomputed.
@@ -93,6 +94,7 @@ pub fn analyze_with_report(
         table.language.push(index(language));
         table.lines.push(file.lines);
         table.generated.push(file.generated);
+        table.scope.push(scope::of(&file.path));
         match parsed {
             Some(parsed) => {
                 table.complexity.push(Some(parsed.complexity));
@@ -288,6 +290,7 @@ impl DirTree {
 mod tests {
     use super::*;
     use crate::files::Language;
+    use model::Scope;
 
     fn file(path: &str, content: Option<&str>) -> SourceFile {
         SourceFile {
@@ -381,6 +384,17 @@ mod tests {
         );
         assert_eq!(files.header[3].as_deref(), Some("// Starts the app."));
         assert_eq!(files.generated, [false, false, true, false, false, false]);
+        assert_eq!(
+            files.scope,
+            [
+                Scope::Docs,
+                Scope::Source,
+                Scope::Source,
+                Scope::Source,
+                Scope::Source,
+                Scope::Source
+            ]
+        );
     }
 
     #[test]
