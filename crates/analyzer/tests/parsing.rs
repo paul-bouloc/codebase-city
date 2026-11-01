@@ -514,3 +514,33 @@ fn the_default_export_is_known_by_its_own_name_unless_also_exported() {
     assert_eq!(default("export default () => 1\n"), Some(None));
     assert_eq!(default("export const x = 1\n"), None);
 }
+
+#[test]
+fn a_program_is_known_by_its_main() {
+    let programs = [
+        ("main.go", "package main\n\nfunc main() {}\n"),
+        (
+            "run.py",
+            "def run():\n    pass\n\nif __name__ == \"__main__\":\n    run()\n",
+        ),
+        ("run.py", "if '__main__' == __name__ :\n    run()\n"),
+    ];
+    for (name, content) in programs {
+        assert!(parse_text(name, content).main, "{name}: {content}");
+    }
+    let others = [
+        // A library package, and a main package without its function
+        ("harbor.go", "package harbor\n\nfunc main() {}\n"),
+        ("main.go", "package main\n\nfunc Main() {}\n"),
+        // Only at the top level, and only `__main__`
+        (
+            "run.py",
+            "def f():\n    if __name__ == \"__main__\":\n        run()\n",
+        ),
+        ("run.py", "if __name__ == \"harbor\":\n    run()\n"),
+        ("main.ts", "export function main() {}\nmain()\n"),
+    ];
+    for (name, content) in others {
+        assert!(!parse_text(name, content).main, "{name}: {content}");
+    }
+}

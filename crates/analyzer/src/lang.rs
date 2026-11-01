@@ -31,6 +31,9 @@ pub struct Parsed {
     pub barrel: bool,
     /// The module's `export default`, if it has one.
     pub default_export: Option<DefaultExport>,
+    /// The file starts a program: Go `func main` in `package main`, or a
+    /// Python `if __name__ == "__main__":`.
+    pub main: bool,
 }
 
 /// The default export of a module, which only an import of `default`
@@ -148,6 +151,14 @@ impl Dialect {
         }
     }
 
+    fn is_main(self, root: Node<'_>, source: &[u8]) -> bool {
+        match self {
+            Self::TypeScript | Self::Tsx | Self::JavaScript => false,
+            Self::Python => python::is_main(root, source),
+            Self::Go => go::is_main(root, source),
+        }
+    }
+
     fn imports(self, path: &str, root: Node<'_>, source: &[u8]) -> Vec<Import> {
         match self {
             Self::TypeScript | Self::Tsx | Self::JavaScript => javascript::imports(root, source),
@@ -186,6 +197,7 @@ pub fn parse(path: &str, language: Language, content: &[u8]) -> Option<Parsed> {
         imports: dialect.imports(path, root, content),
         barrel: is_barrel(dialect.statements(path, root, content)),
         default_export: dialect.default_export(root, content),
+        main: dialect.is_main(root, content),
     })
 }
 

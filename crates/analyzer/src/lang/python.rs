@@ -223,6 +223,24 @@ pub(super) fn statements(path: &str, root: Node<'_>, source: &[u8]) -> (u32, u32
     (statements, reexports)
 }
 
+/// Whether the module runs something when started as a script: a top-level
+/// `if __name__ == "__main__":`, either way round, with either quotes.
+pub(super) fn is_main(root: Node<'_>, source: &[u8]) -> bool {
+    children(root).into_iter().any(|node| {
+        node.kind() == "if_statement"
+            && node
+                .child_by_field_name("condition")
+                .is_some_and(|condition| {
+                    let condition: String = text(condition, source)
+                        .chars()
+                        .filter(|c| !c.is_whitespace())
+                        .map(|c| if c == '\'' { '"' } else { c })
+                        .collect();
+                    condition == r#"__name__=="__main__""# || condition == r#""__main__"==__name__"#
+                })
+    })
+}
+
 fn is_init(path: &str) -> bool {
     path == "__init__.py" || path.ends_with("/__init__.py")
 }
