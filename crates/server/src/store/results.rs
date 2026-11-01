@@ -16,6 +16,9 @@ const WINDOW: u32 = 24;
 /// Above this, a result is refused rather than stored: twenty times the
 /// largest reference repository.
 pub const MAX_STORED_BYTES: usize = 16 * 1024 * 1024;
+/// Commits kept per repository when the setting is missing or not a number,
+/// so a bad setting neither stops the retention nor fails every save.
+const DEFAULT_KEPT_PER_REPO: i64 = 3;
 
 #[derive(Debug, thiserror::Error)]
 pub enum StoreError {
@@ -154,14 +157,16 @@ pub async fn save(pool: &PgPool, encoded: &Encoded) -> Result<u64, StoreError> {
                   ORDER BY sha, created_at DESC, id DESC
               ) AS newest
               ORDER BY created_at DESC, id DESC
-              LIMIT (
-                  SELECT GREATEST(1, (value #>> '{}')::bigint)
-                  FROM settings WHERE key = 'results_kept_per_repo'
-              )
+              LIMIT COALESCE((
+                  SELECT GREATEST(1, LEAST(floor(value::numeric), 1000))::bigint
+                  FROM settings
+                  WHERE key = 'results_kept_per_repo' AND jsonb_typeof(value) = 'number'
+              ), $3)
           ))
         "#,
         repo_id,
         format_version(),
+        DEFAULT_KEPT_PER_REPO,
     )
     .execute(&mut *tx)
     .await?

@@ -173,6 +173,58 @@ async fn the_number_of_commits_kept_is_a_setting(pool: PgPool) {
         .unwrap();
     store(&pool, "acme", &sha(3), CURRENT).await;
     assert_eq!(shas(&pool).await, [(sha(3), CURRENT.to_owned())]);
+
+    // A fraction is rounded down.
+    sqlx::query("UPDATE settings SET value = '2.7' WHERE key = 'results_kept_per_repo'")
+        .execute(&pool)
+        .await
+        .unwrap();
+    for n in 4..=5 {
+        store(&pool, "acme", &sha(n), CURRENT).await;
+    }
+    assert_eq!(shas(&pool).await.len(), 2);
+}
+
+/// Stores five commits and returns how many are kept.
+async fn kept_after_five(pool: &PgPool) -> usize {
+    for n in 1..=5 {
+        store(pool, "acme", &sha(n), CURRENT).await;
+    }
+    shas(pool).await.len()
+}
+
+#[sqlx::test(migrator = "server::store::MIGRATOR")]
+async fn a_missing_setting_keeps_three_commits(pool: PgPool) {
+    sqlx::query("DELETE FROM settings")
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert_eq!(kept_after_five(&pool).await, 3);
+}
+
+#[sqlx::test(migrator = "server::store::MIGRATOR")]
+async fn a_setting_that_is_not_a_number_keeps_three_commits(pool: PgPool) {
+    for value in [r#""three""#, r#""2""#, "null", "true", "[1]"] {
+        sqlx::query("UPDATE settings SET value = $1::jsonb WHERE key = 'results_kept_per_repo'")
+            .bind(value)
+            .execute(&pool)
+            .await
+            .unwrap();
+        sqlx::query("DELETE FROM results")
+            .execute(&pool)
+            .await
+            .unwrap();
+        assert_eq!(kept_after_five(&pool).await, 3, "{value}");
+    }
+}
+
+#[sqlx::test(migrator = "server::store::MIGRATOR")]
+async fn a_huge_setting_does_not_fail_the_save(pool: PgPool) {
+    sqlx::query("UPDATE settings SET value = '1e30' WHERE key = 'results_kept_per_repo'")
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert_eq!(kept_after_five(&pool).await, 5);
 }
 
 #[sqlx::test(migrator = "server::store::MIGRATOR")]

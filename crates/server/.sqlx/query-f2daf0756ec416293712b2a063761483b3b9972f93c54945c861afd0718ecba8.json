@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM results\n        WHERE repo_id = $1\n          AND (format_version <> $2 OR id NOT IN (\n              SELECT id FROM (\n                  SELECT DISTINCT ON (sha) id, created_at\n                  FROM results\n                  WHERE repo_id = $1 AND format_version = $2\n                  ORDER BY sha, created_at DESC, id DESC\n              ) AS newest\n              ORDER BY created_at DESC, id DESC\n              LIMIT COALESCE((\n                  SELECT GREATEST(1, LEAST(floor(value::numeric), 1000))::bigint\n                  FROM settings\n                  WHERE key = 'results_kept_per_repo' AND jsonb_typeof(value) = 'number'\n              ), $3)\n          ))\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int4",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f2daf0756ec416293712b2a063761483b3b9972f93c54945c861afd0718ecba8"
+}
