@@ -1,0 +1,874 @@
+//! A treemap in rows whose leaves are grids of lots.
+//!
+//! A pack lays its items out in rows as wide as itself, the heaviest first
+//! (a strip treemap, after Bederson), and closes a row when one more item
+//! would make it less square (the criterion of the squarified treemap, after
+//! Bruls, Huizing and van Wijk). Each item then takes the height of its
+//! row: a grid by changing its columns and rows, a pack by picking the one
+//! of its shapes that comes closest. A pack works its shapes out once, for
+//! a range of widths, from its items' own shapes: nothing is laid out twice.
+//! What an item still cannot fill is stretched over when the rectangles are
+//! placed, and a stretched grid gains empty lots.
+//!
+//! Lengths are in tenths of a unit, x to the east and y to the north.
+
+/// A lot is 2 × 2 u.
+pub(crate) const LOT: u32 = 20;
+
+/// How much wider than tall the shapes of a pack are: from a twelfth to twelve.
+const ASPECTS: [f64; 17] = [
+    1.0 / 12.0,
+    1.0 / 8.0,
+    1.0 / 6.0,
+    1.0 / 4.0,
+    1.0 / 3.0,
+    1.0 / 2.2,
+    1.0 / 1.6,
+    1.0 / 1.25,
+    1.0,
+    1.25,
+    1.6,
+    2.2,
+    3.0,
+    4.0,
+    6.0,
+    8.0,
+    12.0,
+];
+
+/// How many times a row's height is corrected to make it as wide as its
+/// pack.
+const ROW_FITS: usize = 4;
+
+/// The worst aspect ratio a last row keeps before it joins the row above.
+const LAST_ROW_RATIO: f64 = 3.0;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Axis {
+    X,
+    Y,
+}
+
+impl Axis {
+    fn other(self) -> Self {
+        match self {
+            Self::X => Self::Y,
+            Self::Y => Self::X,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct Rect {
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
+}
+
+/// The space between two neighbours of a pack.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Gap {
+    Fixed(u32),
+    /// Water between islands: 22 % of the facing sides, 9 to 24 u.
+    Channel,
+}
+
+impl Gap {
+    fn between(self, facing: u32) -> u32 {
+        match self {
+            Self::Fixed(gap) => gap,
+            Self::Channel => (facing * 22 / 100).clamp(90, 240),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum Kind {
+    /// Lots for `lots` files or more. Its shapes are its numbers of rows.
+    Grid { lots: u32 },
+    /// A rectangle around one node, `padding` inside it, at least `min`. A
+    /// frame that does not stretch keeps its own size, centred in what it
+    /// is given. Its shapes are its child's.
+    Frame {
+        padding: u32,
+        stretch: bool,
+        min: (u32, u32),
+        child: Box<Node>,
+    },
+    /// Items laid out in rows, in one of several shapes.
+    Pack {
+        items: Vec<Node>,
+        shapes: Vec<PackShape>,
+        /// The shape the pack takes when nothing asks for another.
+        preferred: u32,
+    },
+}
+
+/// One way to lay a pack's items out.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct PackShape {
+    rows: Shape,
+    /// The shape each item takes.
+    choices: Vec<u32>,
+    width: u32,
+    height: u32,
+}
+
+/// How a pack's items are arranged.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum Shape {
+    Item(usize),
+    /// Shapes side by side along `axis`, the first to the west or north,
+    /// `gaps[i]` between shape `i` and the next.
+    Split {
+        axis: Axis,
+        gaps: Vec<u32>,
+        children: Vec<Shape>,
+        width: u32,
+        height: u32,
+    },
+}
+
+/// A node of the treemap.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Node {
+    /// The caller's name for the node: placed grids and frames carry it.
+    id: u32,
+    kind: Kind,
+    /// The area of the node's preferred shape, which orders a pack's items.
+    weight: u64,
+}
+
+/// Where the grids and frames of a tree were placed.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub(crate) struct Placed {
+    /// Id, south-west corner, columns and rows.
+    pub grids: Vec<(u32, u32, u32, u32, u32)>,
+    /// Id, rectangle, and whether the frame stretches.
+    pub frames: Vec<(u32, Rect, bool)>,
+}
+
+impl Node {
+    fn new(id: u32, kind: Kind) -> Self {
+        let mut node = Self {
+            id,
+            kind,
+            weight: 0,
+        };
+        let (width, height) = node.size(node.preferred());
+        node.weight = u64::from(width) * u64::from(height);
+        node
+    }
+
+    /// A grid for `lots` lots.
+    pub(crate) fn grid(id: u32, lots: u32) -> Self {
+        Self::new(id, Kind::Grid { lots: lots.max(1) })
+    }
+
+    /// A frame around `child`, at least `min` wide and tall.
+    pub(crate) fn frame(
+        id: u32,
+        padding: u32,
+        stretch: bool,
+        child: Self,
+        min: (u32, u32),
+    ) -> Self {
+        Self::new(
+            id,
+            Kind::Frame {
+                padding,
+                stretch,
+                min,
+                child: Box::new(child),
+            },
+        )
+    }
+
+    /// `items` in rows, preferably about `aspect` times wider than tall;
+    /// the item itself when there is only one.
+    pub(crate) fn pack(id: u32, mut items: Vec<Self>, aspect: f64, gap: Gap) -> Self {
+        if items.len() == 1 {
+            return items.pop().unwrap_or_else(|| Self::empty(id));
+        }
+        if items.is_empty() {
+            return Self::empty(id);
+        }
+        // Heaviest first, the given order between equals
+        items.sort_by_key(|item| std::cmp::Reverse(item.weight));
+        let area: f64 = items
+            .iter()
+            .map(|item| {
+                let side = (item.weight as f64).sqrt();
+                let gap = f64::from(gap.between(item_side(item)));
+                (side + gap) * (side + gap)
+            })
+            .sum();
+        let shapes: Vec<PackShape> = ASPECTS
+            .iter()
+            .map(|&aspect| rows(&items, (area * aspect).sqrt(), gap))
+            .collect();
+        let preferred = closest(&shapes, |shape| {
+            (f64::from(shape.width) / f64::from(shape.height.max(1)) / aspect)
+                .ln()
+                .abs()
+        });
+        Self::new(
+            id,
+            Kind::Pack {
+                items,
+                shapes,
+                preferred,
+            },
+        )
+    }
+
+    /// Nothing: an empty island.
+    pub(crate) fn empty(id: u32) -> Self {
+        let rows = Shape::Split {
+            axis: Axis::X,
+            gaps: Vec::new(),
+            children: Vec::new(),
+            width: 0,
+            height: 0,
+        };
+        let shape = PackShape {
+            rows,
+            choices: Vec::new(),
+            width: 0,
+            height: 0,
+        };
+        Self::new(
+            id,
+            Kind::Pack {
+                items: Vec::new(),
+                shapes: vec![shape],
+                preferred: 0,
+            },
+        )
+    }
+
+    /// The shape the node takes when nothing asks for another.
+    fn preferred(&self) -> u32 {
+        match &self.kind {
+            Kind::Grid { lots } => {
+                let columns = lots.isqrt() + u32::from(lots.isqrt().pow(2) < *lots);
+                lots.div_ceil(columns)
+            }
+            Kind::Frame { child, .. } => child.preferred(),
+            Kind::Pack { preferred, .. } => *preferred,
+        }
+    }
+
+    /// The size of one of the node's shapes.
+    fn size(&self, choice: u32) -> (u32, u32) {
+        match &self.kind {
+            Kind::Grid { lots } => {
+                let rows = choice.max(1);
+                (lots.div_ceil(rows) * LOT, rows * LOT)
+            }
+            Kind::Frame {
+                padding,
+                min,
+                child,
+                ..
+            } => {
+                let (width, height) = child.size(choice);
+                (
+                    (width + 2 * padding).max(min.0),
+                    (height + 2 * padding).max(min.1),
+                )
+            }
+            Kind::Pack { shapes, .. } => {
+                let shape = &shapes[choice as usize];
+                (shape.width, shape.height)
+            }
+        }
+    }
+
+    pub(crate) fn width(&self) -> u32 {
+        self.size(self.preferred()).0
+    }
+
+    pub(crate) fn height(&self) -> u32 {
+        self.size(self.preferred()).1
+    }
+
+    /// The shape that wastes the least room in a row: see [`Row::waste`].
+    fn fit(&self, row: &Row) -> u32 {
+        let candidates: Vec<u32> = match &self.kind {
+            Kind::Grid { lots } => {
+                let rows = (row.height / LOT).clamp(1, *lots);
+                vec![rows, (rows + 1).min(*lots)]
+            }
+            Kind::Frame { padding, child, .. } => match &child.kind {
+                Kind::Grid { lots } => {
+                    let inner = row.height.saturating_sub(2 * padding);
+                    let rows = (inner / LOT).clamp(1, *lots);
+                    vec![rows, (rows + 1).min(*lots)]
+                }
+                Kind::Frame { .. } | Kind::Pack { .. } => (0..child.shape_count()).collect(),
+            },
+            Kind::Pack { shapes, .. } => (0..).take(shapes.len()).collect(),
+        };
+        let mut best = (self.preferred(), f64::INFINITY);
+        for choice in candidates {
+            let waste = row.waste(self.size(choice), self.weight);
+            if waste < best.1 {
+                best = (choice, waste);
+            }
+        }
+        best.0
+    }
+
+    /// How many shapes a pack, or a frame around one, has.
+    fn shape_count(&self) -> u32 {
+        match &self.kind {
+            Kind::Grid { .. } => 1,
+            Kind::Frame { child, .. } => child.shape_count(),
+            Kind::Pack { shapes, .. } => crate::saturating_u32(shapes.len()),
+        }
+    }
+
+    /// Places the tree with its south-west corner at the origin, in its
+    /// preferred shape.
+    pub(crate) fn place(&self) -> Placed {
+        let mut placed = Placed::default();
+        let choice = self.preferred();
+        let (width, height) = self.size(choice);
+        self.place_in(
+            choice,
+            Rect {
+                x: 0,
+                y: 0,
+                width,
+                height,
+            },
+            &mut placed,
+        );
+        placed
+    }
+
+    /// Places the node, in shape `choice`, in `rect`, which is at least
+    /// that big.
+    fn place_in(&self, choice: u32, rect: Rect, placed: &mut Placed) {
+        match &self.kind {
+            Kind::Grid { .. } => {
+                let (columns, rows) = (rect.width / LOT, rect.height / LOT);
+                placed.grids.push((
+                    self.id,
+                    rect.x + (rect.width - columns * LOT) / 2,
+                    rect.y + (rect.height - rows * LOT) / 2,
+                    columns,
+                    rows,
+                ));
+            }
+            Kind::Frame {
+                padding,
+                stretch,
+                child,
+                ..
+            } => {
+                let rect = if *stretch {
+                    rect
+                } else {
+                    let (width, height) = self.size(choice);
+                    Rect {
+                        x: rect.x + (rect.width - width) / 2,
+                        y: rect.y + (rect.height - height) / 2,
+                        width,
+                        height,
+                    }
+                };
+                placed.frames.push((self.id, rect, *stretch));
+                child.place_in(
+                    choice,
+                    Rect {
+                        x: rect.x + padding,
+                        y: rect.y + padding,
+                        width: rect.width - 2 * padding,
+                        height: rect.height - 2 * padding,
+                    },
+                    placed,
+                );
+            }
+            Kind::Pack { items, shapes, .. } => {
+                // The shape that fills `rect` best, of those that fit in it
+                let mut best = (choice, 0u64);
+                for (index, shape) in (0..).zip(shapes) {
+                    let area = u64::from(shape.width) * u64::from(shape.height);
+                    if shape.width <= rect.width && shape.height <= rect.height && area > best.1 {
+                        best = (index, area);
+                    }
+                }
+                let shape = &shapes[best.0 as usize];
+                let item = |index: usize| (&items[index], shape.choices[index]);
+                shape.rows.place_in(&item, rect, placed);
+            }
+        }
+    }
+}
+
+/// A row an item is fitted into: its height, how wide the row is, and how
+/// wide the item would be in an ideal layout.
+struct Row {
+    height: u32,
+    width: u32,
+    expected: u32,
+}
+
+impl Row {
+    /// The room lost by giving the item a shape of `size`, for an item that
+    /// needs `weight`: what the shape wastes itself, what the row or the
+    /// item is stretched by when the shape is taller or shorter than the
+    /// row, and what the row loses when the shape is wider or narrower than
+    /// expected.
+    fn waste(&self, (width, height): (u32, u32), weight: u64) -> f64 {
+        let (width, height) = (f64::from(width), f64::from(height));
+        let (row_width, row_height) = (f64::from(self.width), f64::from(self.height));
+        let own = (width * height - weight as f64).max(0.0);
+        let vertical = if height <= row_height {
+            (row_height - height) * width
+        } else {
+            (height - row_height) * (row_width - width).max(0.0)
+        };
+        let horizontal = (width - f64::from(self.expected)).abs() * row_height;
+        own + vertical + horizontal
+    }
+}
+
+/// The side of an item's preferred shape that faces its neighbours.
+fn item_side(item: &Node) -> u32 {
+    item.width().min(item.height())
+}
+
+/// The index of the shape with the smallest `cost`, the first among equals.
+fn closest(shapes: &[PackShape], cost: impl Fn(&PackShape) -> f64) -> u32 {
+    let mut best = (0, f64::INFINITY);
+    for (index, shape) in (0..).zip(shapes) {
+        let cost = cost(shape);
+        if cost < best.1 {
+            best = (index, cost);
+        }
+    }
+    best.0
+}
+
+impl Shape {
+    fn size(&self, size_of: &impl Fn(usize) -> (u32, u32)) -> (u32, u32) {
+        match self {
+            Self::Item(index) => size_of(*index),
+            Self::Split { width, height, .. } => (*width, *height),
+        }
+    }
+
+    fn extent(&self, size_of: &impl Fn(usize) -> (u32, u32), axis: Axis) -> u32 {
+        let (width, height) = self.size(size_of);
+        match axis {
+            Axis::X => width,
+            Axis::Y => height,
+        }
+    }
+
+    fn split(
+        size_of: &impl Fn(usize) -> (u32, u32),
+        axis: Axis,
+        gaps: Vec<u32>,
+        children: Vec<Self>,
+    ) -> Self {
+        let along = children
+            .iter()
+            .map(|child| child.extent(size_of, axis))
+            .sum::<u32>()
+            + gaps.iter().sum::<u32>();
+        let across = children
+            .iter()
+            .map(|child| child.extent(size_of, axis.other()))
+            .max()
+            .unwrap_or(0);
+        let (width, height) = match axis {
+            Axis::X => (along, across),
+            Axis::Y => (across, along),
+        };
+        Self::Split {
+            axis,
+            gaps,
+            children,
+            width,
+            height,
+        }
+    }
+
+    /// Places the shape in `rect`, which is at least its size: each child
+    /// gets the whole of `rect` across, and its share of the room along.
+    /// `item` gives each item and the shape it takes.
+    fn place_in<'a>(
+        &self,
+        item: &impl Fn(usize) -> (&'a Node, u32),
+        rect: Rect,
+        placed: &mut Placed,
+    ) {
+        let size_of = |index: usize| {
+            let (node, choice) = item(index);
+            node.size(choice)
+        };
+        let (axis, gaps, children) = match self {
+            Self::Item(index) => {
+                let (node, choice) = item(*index);
+                return node.place_in(choice, rect, placed);
+            }
+            Self::Split {
+                axis,
+                gaps,
+                children,
+                ..
+            } => (*axis, gaps, children),
+        };
+        let natural: u64 = children
+            .iter()
+            .map(|child| u64::from(child.extent(&size_of, axis)))
+            .sum();
+        let available = match axis {
+            Axis::X => rect.width,
+            Axis::Y => rect.height,
+        };
+        let extra = u64::from(available - self.extent(&size_of, axis));
+        let mut given = 0;
+        // West to east, or north to south
+        let mut cursor = 0;
+        for (index, child) in children.iter().enumerate() {
+            let size = u64::from(child.extent(&size_of, axis));
+            let share = if index + 1 == children.len() {
+                extra - given
+            } else {
+                (extra * size).checked_div(natural).unwrap_or(0)
+            };
+            given += share;
+            // At most `available`, so it fits in a u32
+            let length = u32::try_from(size + share).unwrap_or(u32::MAX);
+            let cell = match axis {
+                Axis::X => Rect {
+                    x: rect.x + cursor,
+                    y: rect.y,
+                    width: length,
+                    height: rect.height,
+                },
+                Axis::Y => Rect {
+                    x: rect.x,
+                    y: rect.y + rect.height - cursor - length,
+                    width: rect.width,
+                    height: length,
+                },
+            };
+            child.place_in(item, cell, placed);
+            cursor += length + gaps.get(index).copied().unwrap_or(0);
+        }
+    }
+}
+
+/// Lays `items`, heaviest first, out in rows about `width` wide, from the
+/// north. A row takes items while that makes its worst item squarer, as
+/// the squarified treemap does; each item then takes the shape closest to
+/// the row's height.
+fn rows(items: &[Node], width: f64, gap: Gap) -> PackShape {
+    let weights: Vec<f64> = items.iter().map(|item| item.weight as f64).collect();
+    let mut ranges: Vec<std::ops::Range<usize>> = Vec::new();
+    let mut start = 0;
+    while start < items.len() {
+        let mut end = start + 1;
+        let mut worst = row_ratio(&weights[start..end], width, gap);
+        while end < items.len() {
+            let next = row_ratio(&weights[start..=end], width, gap);
+            if next > worst {
+                break;
+            }
+            worst = next;
+            end += 1;
+        }
+        ranges.push(start..end);
+        start = end;
+    }
+    // The last items may be too few to fill a row: a thin strip across the
+    // whole width. They join the row before when that is squarer
+    while ranges.len() > 1 {
+        let last = ranges[ranges.len() - 1].clone();
+        let before = ranges[ranges.len() - 2].clone();
+        let alone = row_ratio(&weights[last.clone()], width, gap);
+        let merged = row_ratio(&weights[before.start..last.end], width, gap);
+        if alone <= LAST_ROW_RATIO || merged >= alone {
+            break;
+        }
+        ranges.pop();
+        if let Some(previous) = ranges.last_mut() {
+            previous.end = last.end;
+        }
+    }
+
+    let mut choices = vec![0; items.len()];
+    for range in &ranges {
+        // Shapes come in steps: the row may come out wider than the pack. A
+        // taller row makes narrower items
+        let mut height = row_height(&weights[range.clone()], width, gap);
+        for _ in 0..ROW_FITS {
+            for index in range.clone() {
+                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                let row = Row {
+                    height: height.round() as u32,
+                    width: width.round() as u32,
+                    expected: (weights[index] / height.max(1.0)).round() as u32,
+                };
+                choices[index] = items[index].fit(&row);
+            }
+            let built: u32 = range
+                .clone()
+                .map(|index| items[index].size(choices[index]).0)
+                .sum::<u32>()
+                + (range.start..range.end - 1)
+                    .map(|index| {
+                        let (a, b) = (
+                            items[index].size(choices[index]),
+                            items[index + 1].size(choices[index + 1]),
+                        );
+                        gap.between(a.1.min(b.1))
+                    })
+                    .sum::<u32>();
+            // A row too narrow is stretched over: flattening it would make
+            // thin strips
+            let ratio = f64::from(built) / width.max(1.0);
+            if ratio < 1.03 {
+                break;
+            }
+            height *= ratio;
+        }
+    }
+    let size_of = |index: usize| items[index].size(choices[index]);
+    let mut rows: Vec<Shape> = ranges
+        .into_iter()
+        .map(|range| {
+            if range.len() == 1 {
+                Shape::Item(range.start)
+            } else {
+                let gaps = (range.start..range.end - 1)
+                    .map(|a| gap.between(size_of(a).1.min(size_of(a + 1).1)))
+                    .collect();
+                Shape::split(&size_of, Axis::X, gaps, range.map(Shape::Item).collect())
+            }
+        })
+        .collect();
+    let rows = if rows.len() == 1 {
+        rows.pop().unwrap_or(Shape::Item(0))
+    } else {
+        let gaps = rows
+            .windows(2)
+            .map(|pair| {
+                gap.between(
+                    pair[0]
+                        .extent(&size_of, Axis::X)
+                        .min(pair[1].extent(&size_of, Axis::X)),
+                )
+            })
+            .collect();
+        Shape::split(&size_of, Axis::Y, gaps, rows)
+    };
+    let (width, height) = rows.size(&size_of);
+    PackShape {
+        rows,
+        choices,
+        width,
+        height,
+    }
+}
+
+/// The height of a row of items of `weights` across `width`, gaps between
+/// them left out.
+fn row_height(weights: &[f64], width: f64, gap: Gap) -> f64 {
+    let sum: f64 = weights.iter().sum();
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let typical = (sum / weights.len() as f64).sqrt() as u32;
+    let gaps = f64::from(gap.between(typical)) * (weights.len() - 1) as f64;
+    sum / (width - gaps).max(f64::from(LOT))
+}
+
+/// The worst aspect ratio of the items of a row.
+fn row_ratio(weights: &[f64], width: f64, gap: Gap) -> f64 {
+    let height = row_height(weights, width, gap);
+    let height2 = height * height;
+    weights
+        .iter()
+        .map(|&weight| (weight / height2).max(height2 / weight.max(1.0)))
+        .fold(0.0, f64::max)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The space between two rectangles, negative when they overlap.
+    fn spacing(a: Rect, b: Rect) -> i64 {
+        let gap = |start: u32, length: u32, other: u32, other_length: u32| {
+            (i64::from(other) - i64::from(start + length))
+                .max(i64::from(start) - i64::from(other + other_length))
+        };
+        gap(a.x, a.width, b.x, b.width).max(gap(a.y, a.height, b.y, b.height))
+    }
+
+    fn grid_rect(grid: &(u32, u32, u32, u32, u32)) -> Rect {
+        Rect {
+            x: grid.1,
+            y: grid.2,
+            width: grid.3 * LOT,
+            height: grid.4 * LOT,
+        }
+    }
+
+    const LOTS: [u32; 10] = [40, 1, 7, 7, 23, 3, 12, 2, 2, 60];
+
+    fn parcels() -> Vec<Node> {
+        (0..)
+            .zip(LOTS)
+            .map(|(id, lots)| Node::frame(id, 3, true, Node::grid(id, lots), (0, 0)))
+            .collect()
+    }
+
+    #[test]
+    fn a_grid_is_as_square_as_it_gets() {
+        let grid = Node::grid(0, 10);
+        assert_eq!((grid.width(), grid.height()), (4 * LOT, 3 * LOT));
+        let grid = Node::grid(0, 9);
+        assert_eq!((grid.width(), grid.height()), (3 * LOT, 3 * LOT));
+        let grid = Node::grid(0, 1);
+        assert_eq!((grid.width(), grid.height()), (LOT, LOT));
+    }
+
+    /// A row `height` high for an item that would ideally be `expected`
+    /// wide, in a row ten times wider.
+    fn row(height: u32, expected: u32) -> Row {
+        Row {
+            height,
+            width: 10 * expected,
+            expected,
+        }
+    }
+
+    #[test]
+    fn a_grid_fits_a_row_with_room_for_its_lots() {
+        let grid = Node::grid(0, 10);
+        assert_eq!(
+            grid.size(grid.fit(&row(2 * LOT + 5, 5 * LOT))),
+            (5 * LOT, 2 * LOT)
+        );
+        assert_eq!(grid.size(grid.fit(&row(3, 10 * LOT))), (10 * LOT, LOT));
+        assert_eq!(grid.size(grid.fit(&row(100 * LOT, LOT))), (LOT, 10 * LOT));
+    }
+
+    #[test]
+    fn a_framed_grid_fits_inside_its_padding() {
+        let frame = Node::frame(0, 3, true, Node::grid(1, 6), (0, 0));
+        assert_eq!(
+            frame.size(frame.fit(&row(3 * LOT + 6, 2 * LOT + 6))),
+            (2 * LOT + 6, 3 * LOT + 6)
+        );
+    }
+
+    #[test]
+    fn a_frame_keeps_its_minimum_size() {
+        let frame = Node::frame(0, 9, false, Node::grid(1, 1), (100, 66));
+        assert_eq!((frame.width(), frame.height()), (100, 66));
+        // One row or two make the same height, the minimum: two waste less
+        let frame = Node::frame(0, 9, false, Node::grid(1, 12), (100, 66));
+        assert_eq!(
+            frame.size(frame.fit(&row(10, 12 * LOT))),
+            (6 * LOT + 18, 66)
+        );
+    }
+
+    #[test]
+    fn a_pack_has_shapes_from_narrow_to_wide() {
+        let pack = Node::pack(9, parcels(), 1.0, Gap::Fixed(9));
+        let Kind::Pack { shapes, .. } = &pack.kind else {
+            panic!("not a pack");
+        };
+        let narrowest = shapes.first().unwrap();
+        let widest = shapes.last().unwrap();
+        assert!(narrowest.width < narrowest.height);
+        assert!(widest.width > 2 * widest.height);
+        let tall = pack.fit(&row(narrowest.height, narrowest.width));
+        assert_eq!(pack.size(tall), (narrowest.width, narrowest.height));
+    }
+
+    #[test]
+    fn items_never_overlap_and_keep_their_gaps() {
+        let tree = Node::pack(99, parcels(), 1.0, Gap::Fixed(9));
+        let placed = tree.place();
+        assert_eq!(placed.frames.len(), 10);
+        assert_eq!(placed.grids.len(), 10);
+        for (index, &(_, a, _)) in placed.frames.iter().enumerate() {
+            assert!(a.x + a.width <= tree.width() && a.y + a.height <= tree.height());
+            for &(_, b, _) in &placed.frames[index + 1..] {
+                assert!(spacing(a, b) >= 9, "{a:?} and {b:?} are less than 9 apart");
+            }
+        }
+        // Each grid holds its lots, inside its frame's padding
+        for grid in &placed.grids {
+            assert!(grid.3 * grid.4 >= LOTS[grid.0 as usize]);
+            let frame = placed
+                .frames
+                .iter()
+                .find(|frame| frame.0 == grid.0)
+                .unwrap()
+                .1;
+            let rect = grid_rect(grid);
+            assert!(rect.x >= frame.x + 3 && rect.y >= frame.y + 3);
+            assert!(rect.x + rect.width <= frame.x + frame.width - 3);
+            assert!(rect.y + rect.height <= frame.y + frame.height - 3);
+        }
+    }
+
+    #[test]
+    fn grids_are_mostly_full() {
+        let items: Vec<Node> = (0..30).map(|id| Node::grid(id, 4 + id % 5)).collect();
+        let tree = Node::pack(99, items, 1.0, Gap::Fixed(4));
+        let ratio =
+            f64::from(tree.width().max(tree.height())) / f64::from(tree.width().min(tree.height()));
+        assert!(ratio < 2.0, "{} × {}", tree.width(), tree.height());
+        let lots: u32 = (0..30).map(|id| 4 + id % 5).sum();
+        let placed = tree.place();
+        let given: u32 = placed.grids.iter().map(|grid| grid.3 * grid.4).sum();
+        assert!(
+            f64::from(lots) / f64::from(given) > 0.75,
+            "{lots} of {given}"
+        );
+    }
+
+    #[test]
+    fn a_fixed_frame_stays_centred_in_a_larger_cell() {
+        let big = Node::frame(0, 9, false, Node::grid(0, 100), (0, 0));
+        let small = Node::frame(1, 9, false, Node::grid(1, 1), (100, 66));
+        let tree = Node::pack(99, vec![small, big], 1.0, Gap::Channel);
+        let placed = tree.place();
+        let small = placed.frames.iter().find(|frame| frame.0 == 1).unwrap();
+        assert!(small.1.width >= 66 && small.1.height >= 66);
+        assert!(!placed.frames.iter().any(|frame| frame.2));
+        let big = placed.frames.iter().find(|frame| frame.0 == 0).unwrap();
+        assert!(spacing(small.1, big.1) >= 90);
+    }
+
+    #[test]
+    fn the_same_items_give_the_same_layout() {
+        let items = || -> Vec<Node> { (0..12).map(|id| Node::grid(id, 1 + id * 3 % 7)).collect() };
+        assert_eq!(
+            Node::pack(99, items(), 1.3, Gap::Fixed(9)).place(),
+            Node::pack(99, items(), 1.3, Gap::Fixed(9)).place()
+        );
+    }
+
+    #[test]
+    fn one_item_or_none() {
+        assert_eq!(
+            Node::pack(7, Vec::new(), 1.0, Gap::Fixed(9)).place(),
+            Placed::default()
+        );
+        let grid = Node::grid(3, 5);
+        assert_eq!(Node::pack(7, vec![grid.clone()], 1.0, Gap::Fixed(9)), grid);
+    }
+}

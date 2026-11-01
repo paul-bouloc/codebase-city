@@ -10,6 +10,7 @@ pub mod graph;
 mod islands;
 pub mod lang;
 mod layers;
+pub mod layout;
 mod metrics;
 mod reach;
 mod resolve;
