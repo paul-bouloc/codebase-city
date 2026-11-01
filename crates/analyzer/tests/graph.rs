@@ -333,3 +333,38 @@ fn diamonds_of_reexports_are_followed_once() {
         through(&["l10/index.ts"])
     );
 }
+
+#[test]
+fn a_barrel_built_to_make_lookups_slow_does_not_hold_the_analysis() {
+    // Every missing name is looked up in every target: steps grow with the
+    // square of the barrel, and stop at a budget
+    const TARGETS: usize = 3_000;
+    let names: Vec<String> = (0..TARGETS).map(|n| format!("n{n}")).collect();
+    let mut files = vec![
+        (
+            "app.ts".to_owned(),
+            format!("import {{ {} }} from './b'\n", names.join(", ")),
+        ),
+        (
+            "b.ts".to_owned(),
+            (0..TARGETS)
+                .map(|n| format!("export * from './f/f{n}'\n"))
+                .collect(),
+        ),
+    ];
+    for n in 0..TARGETS {
+        files.push((format!("f/f{n}.ts"), format!("export const x{n} = 1\n")));
+    }
+    let files: Vec<(&str, &str)> = files
+        .iter()
+        .map(|(path, content)| (path.as_str(), content.as_str()))
+        .collect();
+    let started = std::time::Instant::now();
+    let (result, report) = analyze(&files);
+    assert!(started.elapsed() < std::time::Duration::from_secs(10));
+    assert_eq!(report.barrels.steps, 2_000_000);
+    assert_eq!(
+        edges_from(&result, &report, "app.ts"),
+        [("b.ts".to_owned(), false)]
+    );
+}

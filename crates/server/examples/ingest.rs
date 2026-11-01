@@ -309,12 +309,13 @@ fn print_graph(result: &AnalysisResult, report: &analyzer::Report) {
         index_files.len()
     );
     println!(
-        "barrels       {}: {} names followed, {} missing, {} ambiguous, {} whole imports",
+        "barrels       {}: {} names followed, {} missing, {} ambiguous, {} whole imports, {} lookup steps",
         barrels.barrels,
         barrels.names_through,
         barrels.names_missing,
         barrels.names_ambiguous,
-        barrels.whole_imports
+        barrels.whole_imports,
+        barrels.steps
     );
 
     let mut complete = vec![0_u32; graph.file_count()];

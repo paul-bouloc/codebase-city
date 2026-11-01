@@ -18,6 +18,11 @@ use crate::scope;
 /// recursion.
 const MAX_DEPTH: usize = 256;
 
+/// Steps of lookup through re-exports, over the whole analysis. Past it,
+/// imports stay on their barrel: a repository built to make lookups slow
+/// cannot hold the analysis. nest takes about 25 000, vscode 16 000.
+const MAX_STEPS: u32 = 2_000_000;
+
 /// Imports between the files of one analysis, barrels seen through.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Graph {
@@ -100,6 +105,8 @@ pub struct BarrelReport {
     /// Imports of a barrel as a whole (`import * as ns`, `require`), which
     /// stay on the barrel.
     pub whole_imports: u32,
+    /// Steps of lookup through re-exports, at most [`MAX_STEPS`].
+    pub steps: u32,
 }
 
 /// What the graph is built from, row for row with the files of the result.
@@ -115,7 +122,8 @@ pub(crate) struct Input<'a> {
 }
 
 pub(crate) fn build(input: &Input<'_>) -> (Graph, BarrelReport) {
-    let mut exports = Exports::new(input);
+    let exports = Exports::new(input);
+    let mut lookups = Lookups::new(&exports);
     let mut report = BarrelReport {
         barrels: crate::saturating_u32(input.barrels.iter().filter(|&&barrel| barrel).count()),
         ..BarrelReport::default()
@@ -161,7 +169,7 @@ pub(crate) fn build(input: &Input<'_>) -> (Graph, BarrelReport) {
                     continue;
                 }
                 for name in &import.names {
-                    match exports.find(target, name) {
+                    match lookups.find(target, name) {
                         Lookup::Found(file, found) if file != target => {
                             report.names_through += 1;
                             let confidence = weakest(*confidence, found);
@@ -191,6 +199,7 @@ pub(crate) fn build(input: &Input<'_>) -> (Graph, BarrelReport) {
     let mut merged = merged.into_iter().peekable();
     for file in 0..file_count {
         offsets.push(crate::saturating_u32(edges.len()));
+        report.steps = lookups.steps;
         let file = crate::saturating_u32(file);
         while let Some(((_, to), (kind, confidence, via_barrel))) =
             merged.next_if(|((from, _), _)| *from == file)
@@ -204,6 +213,7 @@ pub(crate) fn build(input: &Input<'_>) -> (Graph, BarrelReport) {
         }
     }
     offsets.push(crate::saturating_u32(edges.len()));
+    report.steps = lookups.steps;
 
     let mut dir_production = vec![false; input.dirs.len()];
     for (path, &dir) in input.dirs {
@@ -240,7 +250,7 @@ enum Lookup {
 /// files that module resolved to.
 type Source<'a> = (&'a str, u32, Confidence);
 
-/// What each file declares and re-exports, and the lookups made so far.
+/// What each file declares and re-exports.
 struct Exports<'a> {
     declared: HashSet<(u32, &'a str)>,
     /// By file and exported name: the name in the module it comes from,
@@ -248,11 +258,8 @@ struct Exports<'a> {
     named: HashMap<(u32, &'a str), Vec<Source<'a>>>,
     /// By file: the files whose exports it re-exports whole.
     stars: HashMap<u32, Vec<(u32, Confidence)>>,
-    /// Every lookup is made once: chains of `export *` that meet again
-    /// would otherwise be walked once per path, exponentially many.
-    memo: HashMap<(u32, &'a str), Lookup>,
-    /// The chain followed so far, to stop on a loop.
-    visiting: Vec<(u32, &'a str)>,
+    /// Files with a re-export of either kind.
+    reexporting: HashSet<u32>,
 }
 
 impl<'a> Exports<'a> {
@@ -266,6 +273,7 @@ impl<'a> Exports<'a> {
             .collect();
         let mut named: HashMap<_, Vec<_>> = HashMap::new();
         let mut stars: HashMap<_, Vec<_>> = HashMap::new();
+        let mut reexporting = HashSet::new();
         for (file, (imports, outcomes)) in input.imports.iter().zip(input.outcomes).enumerate() {
             let file = crate::saturating_u32(file);
             for (import, outcome) in imports.iter().zip(outcomes) {
@@ -280,6 +288,7 @@ impl<'a> Exports<'a> {
                     });
                 for (target, confidence) in targets {
                     for (name, export) in import.names.iter().zip(&import.exports) {
+                        reexporting.insert(file);
                         if export == "*" {
                             stars.entry(file).or_default().push((target, confidence));
                         } else {
@@ -297,8 +306,29 @@ impl<'a> Exports<'a> {
             declared,
             named,
             stars,
+            reexporting,
+        }
+    }
+}
+
+/// Lookups of names through re-exports, and what they found so far.
+struct Lookups<'e, 'a> {
+    exports: &'e Exports<'a>,
+    /// Every lookup is made once: chains of `export *` that meet again
+    /// would otherwise be walked once per path, exponentially many.
+    memo: HashMap<(u32, &'a str), Lookup>,
+    /// The chain followed so far, to stop on a loop.
+    visiting: Vec<(u32, &'a str)>,
+    steps: u32,
+}
+
+impl<'e, 'a> Lookups<'e, 'a> {
+    fn new(exports: &'e Exports<'a>) -> Self {
+        Self {
+            exports,
             memo: HashMap::new(),
             visiting: Vec::new(),
+            steps: 0,
         }
     }
 
@@ -308,8 +338,16 @@ impl<'a> Exports<'a> {
     /// missing, even for files of the chain that would find the name from
     /// elsewhere. Both only happen in broken or contrived repositories.
     fn find(&mut self, file: u32, name: &'a str) -> Lookup {
-        if self.declared.contains(&(file, name)) {
+        let exports = self.exports;
+        if exports.declared.contains(&(file, name)) {
             return Lookup::Found(file, Confidence::Exact);
+        }
+        if self.steps >= MAX_STEPS {
+            return Lookup::Missing;
+        }
+        self.steps += 1;
+        if !exports.reexporting.contains(&file) {
+            return Lookup::Missing;
         }
         if let Some(&lookup) = self.memo.get(&(file, name)) {
             return lookup;
@@ -325,8 +363,9 @@ impl<'a> Exports<'a> {
     }
 
     fn find_reexported(&mut self, file: u32, name: &'a str) -> Lookup {
-        if let Some(sources) = self.named.get(&(file, name)).cloned() {
-            for &(source, target, confidence) in &sources {
+        let exports = self.exports;
+        if let Some(sources) = exports.named.get(&(file, name)) {
+            for &(source, target, confidence) in sources {
                 // `export * as ns from`: the name is the whole module
                 if source == "*" {
                     return Lookup::Found(target, confidence);
@@ -348,8 +387,7 @@ impl<'a> Exports<'a> {
                 });
         }
         let mut found: Option<(u32, Confidence)> = None;
-        let stars = self.stars.get(&file).cloned().unwrap_or_default();
-        for (target, confidence) in stars {
+        for &(target, confidence) in exports.stars.get(&file).map_or(&[][..], Vec::as_slice) {
             match self.find(target, name) {
                 Lookup::Found(file, sure) => match found {
                     Some((other, _)) if other != file => return Lookup::Ambiguous,
