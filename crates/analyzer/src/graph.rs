@@ -326,6 +326,9 @@ struct Lookups<'e, 'a> {
     memo: HashMap<(u32, &'a str), Lookup>,
     /// The chain followed so far, to stop on a loop.
     visiting: Vec<(u32, &'a str)>,
+    /// The shallowest position in `visiting` where a loop was cut since
+    /// the current lookup started; `usize::MAX` when none was.
+    cut: usize,
     steps: u32,
 }
 
@@ -335,15 +338,16 @@ impl<'e, 'a> Lookups<'e, 'a> {
             exports,
             memo: HashMap::new(),
             visiting: Vec::new(),
+            cut: usize::MAX,
             steps: 0,
         }
     }
 
     /// The file that declares `name`, as `file` exports it.
     ///
-    /// A lookup cut short by a loop or by the depth limit is remembered as
-    /// missing, even for files of the chain that would find the name from
-    /// elsewhere. Both only happen in broken or contrived repositories.
+    /// A loop of re-exports is cut where it closes. What was found below the
+    /// cut is incomplete for the files of the loop, so it is remembered only
+    /// once back at the file where the loop started.
     fn find(&mut self, file: u32, name: &'a str) -> Lookup {
         let exports = self.exports;
         if exports.declared.contains(&(file, name)) {
@@ -359,13 +363,25 @@ impl<'e, 'a> Lookups<'e, 'a> {
         if let Some(&lookup) = self.memo.get(&(file, name)) {
             return lookup;
         }
-        if self.visiting.len() >= MAX_DEPTH || self.visiting.contains(&(file, name)) {
+        let depth = self.visiting.len();
+        if depth >= MAX_DEPTH {
+            self.cut = 0;
             return Lookup::Missing;
         }
+        if let Some(open) = self.visiting.iter().position(|&seen| seen == (file, name)) {
+            self.cut = self.cut.min(open);
+            return Lookup::Missing;
+        }
+        let outer = std::mem::replace(&mut self.cut, usize::MAX);
         self.visiting.push((file, name));
         let lookup = self.find_reexported(file, name);
         self.visiting.pop();
-        self.memo.insert((file, name), lookup);
+        let inner = std::mem::replace(&mut self.cut, outer);
+        if inner >= depth {
+            self.memo.insert((file, name), lookup);
+        } else {
+            self.cut = self.cut.min(inner);
+        }
         lookup
     }
 

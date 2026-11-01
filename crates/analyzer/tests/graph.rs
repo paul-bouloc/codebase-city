@@ -410,3 +410,17 @@ fn a_package_of_many_modules_stays_linear() {
         [("pkg/m0.py".to_owned(), false)]
     );
 }
+
+#[test]
+fn a_loop_of_reexports_does_not_depend_on_who_looks_first() {
+    let files = [
+        ("a.ts", "export * from './b'\nexport * from './c'\n"),
+        ("b.ts", "export * from './a'\n"),
+        ("c.ts", "export const X = 1\n"),
+        ("m1.ts", "import { X } from './a'\n"),
+        ("m2.ts", "import { X } from './b'\n"),
+    ];
+    let (result, report) = analyze(&files);
+    assert_eq!(edges_from(&result, &report, "m1.ts"), through(&["c.ts"]));
+    assert_eq!(edges_from(&result, &report, "m2.ts"), through(&["c.ts"]));
+}
