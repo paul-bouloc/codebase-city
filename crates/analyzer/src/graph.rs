@@ -14,8 +14,9 @@ use crate::lang::Import;
 use crate::resolve::{Outcome, Target};
 use crate::scope;
 
-/// Re-export chains longer than this are not followed.
-const MAX_DEPTH: usize = 32;
+/// Re-export chains longer than this are not followed, which bounds the
+/// recursion.
+const MAX_DEPTH: usize = 256;
 
 /// Imports between the files of one analysis, barrels seen through.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -114,8 +115,7 @@ pub(crate) struct Input<'a> {
 }
 
 pub(crate) fn build(input: &Input<'_>) -> (Graph, BarrelReport) {
-    let exports = Exports::new(input);
-    let mut memo: HashMap<(u32, &str), Lookup> = HashMap::new();
+    let mut exports = Exports::new(input);
     let mut report = BarrelReport {
         barrels: crate::saturating_u32(input.barrels.iter().filter(|&&barrel| barrel).count()),
         ..BarrelReport::default()
@@ -161,10 +161,7 @@ pub(crate) fn build(input: &Input<'_>) -> (Graph, BarrelReport) {
                     continue;
                 }
                 for name in &import.names {
-                    let lookup = *memo
-                        .entry((target, name))
-                        .or_insert_with(|| exports.find(target, name, &mut Vec::new()));
-                    match lookup {
+                    match exports.find(target, name) {
                         Lookup::Found(file, found) if file != target => {
                             report.names_through += 1;
                             let confidence = weakest(*confidence, found);
@@ -243,7 +240,7 @@ enum Lookup {
 /// files that module resolved to.
 type Source<'a> = (&'a str, u32, Confidence);
 
-/// What each file declares and re-exports.
+/// What each file declares and re-exports, and the lookups made so far.
 struct Exports<'a> {
     declared: HashSet<(u32, &'a str)>,
     /// By file and exported name: the name in the module it comes from,
@@ -251,6 +248,11 @@ struct Exports<'a> {
     named: HashMap<(u32, &'a str), Vec<Source<'a>>>,
     /// By file: the files whose exports it re-exports whole.
     stars: HashMap<u32, Vec<(u32, Confidence)>>,
+    /// Every lookup is made once: chains of `export *` that meet again
+    /// would otherwise be walked once per path, exponentially many.
+    memo: HashMap<(u32, &'a str), Lookup>,
+    /// The chain followed so far, to stop on a loop.
+    visiting: Vec<(u32, &'a str)>,
 }
 
 impl<'a> Exports<'a> {
@@ -295,37 +297,41 @@ impl<'a> Exports<'a> {
             declared,
             named,
             stars,
+            memo: HashMap::new(),
+            visiting: Vec::new(),
         }
     }
 
-    /// The file that declares `name`, as `file` exports it. `visiting`
-    /// holds the chain followed so far, to stop on a loop.
-    fn find(&self, file: u32, name: &'a str, visiting: &mut Vec<(u32, &'a str)>) -> Lookup {
+    /// The file that declares `name`, as `file` exports it.
+    ///
+    /// A lookup cut short by a loop or by the depth limit is remembered as
+    /// missing, even for files of the chain that would find the name from
+    /// elsewhere. Both only happen in broken or contrived repositories.
+    fn find(&mut self, file: u32, name: &'a str) -> Lookup {
         if self.declared.contains(&(file, name)) {
             return Lookup::Found(file, Confidence::Exact);
         }
-        if visiting.len() >= MAX_DEPTH || visiting.contains(&(file, name)) {
+        if let Some(&lookup) = self.memo.get(&(file, name)) {
+            return lookup;
+        }
+        if self.visiting.len() >= MAX_DEPTH || self.visiting.contains(&(file, name)) {
             return Lookup::Missing;
         }
-        visiting.push((file, name));
-        let lookup = self.find_reexported(file, name, visiting);
-        visiting.pop();
+        self.visiting.push((file, name));
+        let lookup = self.find_reexported(file, name);
+        self.visiting.pop();
+        self.memo.insert((file, name), lookup);
         lookup
     }
 
-    fn find_reexported(
-        &self,
-        file: u32,
-        name: &'a str,
-        visiting: &mut Vec<(u32, &'a str)>,
-    ) -> Lookup {
-        if let Some(sources) = self.named.get(&(file, name)) {
-            for &(source, target, confidence) in sources {
+    fn find_reexported(&mut self, file: u32, name: &'a str) -> Lookup {
+        if let Some(sources) = self.named.get(&(file, name)).cloned() {
+            for &(source, target, confidence) in &sources {
                 // `export * as ns from`: the name is the whole module
                 if source == "*" {
                     return Lookup::Found(target, confidence);
                 }
-                match self.find(target, source, visiting) {
+                match self.find(target, source) {
                     Lookup::Found(found, sure) => {
                         return Lookup::Found(found, weakest(confidence, sure));
                     }
@@ -342,8 +348,9 @@ impl<'a> Exports<'a> {
                 });
         }
         let mut found: Option<(u32, Confidence)> = None;
-        for &(target, confidence) in self.stars.get(&file).map_or(&[][..], Vec::as_slice) {
-            match self.find(target, name, visiting) {
+        let stars = self.stars.get(&file).cloned().unwrap_or_default();
+        for (target, confidence) in stars {
+            match self.find(target, name) {
                 Lookup::Found(file, sure) => match found {
                     Some((other, _)) if other != file => return Lookup::Ambiguous,
                     _ => found = Some((file, weakest(confidence, sure))),

@@ -296,3 +296,40 @@ fn the_order_of_the_files_does_not_matter() {
     assert_eq!(report.graph, expected.graph);
     assert_eq!(report.barrels, expected.barrels);
 }
+
+#[test]
+fn diamonds_of_reexports_are_followed_once() {
+    // Each level re-exports several files that all re-export the next
+    // level: without memory, a lookup would walk SIDES^LEVELS chains
+    const LEVELS: usize = 10;
+    const SIDES: usize = 8;
+    let mut files = vec![(
+        "app.ts".to_owned(),
+        "import { deep } from './l0/index'\n".to_owned(),
+    )];
+    for level in 0..LEVELS {
+        let sides: String = (0..SIDES)
+            .map(|side| format!("export * from './s{side}'\n"))
+            .collect();
+        files.push((format!("l{level}/index.ts"), sides));
+        for side in 0..SIDES {
+            files.push((
+                format!("l{level}/s{side}.ts"),
+                format!("export * from '../l{}/index'\n", level + 1),
+            ));
+        }
+    }
+    files.push((
+        format!("l{LEVELS}/index.ts"),
+        "export const deep = 1\n".to_owned(),
+    ));
+    let files: Vec<(&str, &str)> = files
+        .iter()
+        .map(|(path, content)| (path.as_str(), content.as_str()))
+        .collect();
+    let (result, report) = analyze(&files);
+    assert_eq!(
+        edges_from(&result, &report, "app.ts"),
+        through(&["l10/index.ts"])
+    );
+}
