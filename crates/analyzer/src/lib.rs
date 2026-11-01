@@ -8,6 +8,7 @@ pub mod files;
 pub mod graph;
 mod islands;
 pub mod lang;
+mod layers;
 mod metrics;
 mod reach;
 mod resolve;

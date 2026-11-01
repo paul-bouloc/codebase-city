@@ -13,6 +13,7 @@ use crate::files::{Language, SourceFile, split_path};
 use crate::graph::{self, BarrelReport, Graph, Node, strength};
 use crate::islands;
 use crate::lang::{self, Parsed};
+use crate::layers;
 use crate::reach::{self, Reach, Units};
 use crate::resolve::{self, Outcome, Target};
 use crate::roles::{self, RolesReport};
@@ -312,6 +313,7 @@ pub fn analyze_with_report(
             }),
     );
     dirs.dirs.island.clone_from(&islands.of_dir);
+    let layers = island_layers(&graph, &islands, &table.dir);
     let result = AnalysisResult {
         format_version: FORMAT_VERSION,
         analyzer_version: ANALYZER_VERSION.to_owned(),
@@ -328,8 +330,8 @@ pub fn analyze_with_report(
             conductors,
         },
         islands: Islands {
-            layer: vec![None; islands.dirs.len()],
             dir: islands.dirs,
+            layer: layers,
         },
         links,
         cycles: Cycles::default(),
@@ -347,6 +349,40 @@ pub fn analyze_with_report(
         roles: roles_report,
     };
     (result, report)
+}
+
+/// The layer of each island, from the plain imports and re-exports between
+/// production files, barrels left out; `None` for an island without
+/// production code.
+fn island_layers(graph: &Graph, islands: &islands::Islands, file_dirs: &[u32]) -> Vec<Option<u32>> {
+    let island_of = |file: u32| islands.of_dir[file_dirs[file as usize] as usize];
+    let counted = |file: u32| graph.is_production(file) && !graph.is_barrel(file);
+    let mut production = vec![false; islands.dirs.len()];
+    let mut imports: Vec<(u32, u32)> = Vec::new();
+    for file in (0..index(graph.file_count())).filter(|&file| counted(file)) {
+        let Some(from) = island_of(file) else {
+            continue;
+        };
+        production[from as usize] = true;
+        for edge in graph.production_edges(file) {
+            if !matches!(edge.kind, EdgeKind::Import | EdgeKind::Reexport) {
+                continue;
+            }
+            let to = match edge.to {
+                Node::File(to) if counted(to) => island_of(to),
+                Node::File(_) => None,
+                Node::Dir(dir) => islands.of_dir[dir as usize],
+            };
+            if let Some(to) = to {
+                imports.push((from, to));
+            }
+        }
+    }
+    layers::layers(islands.dirs.len(), imports.into_iter())
+        .into_iter()
+        .zip(production)
+        .map(|(layer, production)| production.then_some(layer))
+        .collect()
 }
 
 /// Names with their count, the most frequent first, then by name.
