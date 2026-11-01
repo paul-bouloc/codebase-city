@@ -76,14 +76,16 @@ const FOLDER_ENTRIES: &[&str] = &[
     "/index.js",
 ];
 
+/// The packages of the repository: the folder of each, by name.
+type Workspace = HashMap<String, String>;
+
 pub(super) struct Resolver {
     /// With the nearest `tsconfig.json`.
     with_tsconfig: ResolverGeneric<MemoryFs>,
     /// For files whose tsconfig cannot be read, often because it extends a
     /// package that is not in the repository.
     plain: ResolverGeneric<MemoryFs>,
-    /// Name and folder of each package of the repository.
-    workspace: Vec<(String, String)>,
+    workspace: Workspace,
     /// Packages the repository's `package.json` files depend on.
     dependencies: HashSet<String>,
     /// Folders at the root, which a bare import may name through an alias.
@@ -103,7 +105,7 @@ struct PackageJson {
 
 impl Resolver {
     pub(super) fn new(index: &Index<'_>, manifests: &HashMap<&str, &[u8]>) -> Self {
-        let mut workspace = Vec::new();
+        let mut workspace = Workspace::new();
         let mut dependencies = HashSet::new();
         let mut packages: Vec<(&str, &[u8])> = manifests
             .iter()
@@ -117,10 +119,10 @@ impl Resolver {
             let Ok(package) = serde_json::from_slice::<PackageJson>(content) else {
                 continue;
             };
-            if let Some(name) = package.name.filter(|name| !name.is_empty())
-                && !workspace.iter().any(|(known, _)| *known == name)
-            {
-                workspace.push((name, split_path(path).0.to_owned()));
+            if let Some(name) = package.name.filter(|name| !name.is_empty()) {
+                workspace
+                    .entry(name)
+                    .or_insert_with(|| split_path(path).0.to_owned());
             }
             for names in [
                 package.dependencies,
@@ -249,8 +251,7 @@ impl Resolver {
     /// The package of the repository named `package`, with its folder.
     fn workspace_package(&self, package: &str) -> Option<(&str, &str)> {
         self.workspace
-            .iter()
-            .find(|(name, _)| name == package)
+            .get_key_value(package)
             .map(|(name, dir)| (name.as_str(), dir.as_str()))
     }
 }
@@ -375,7 +376,7 @@ fn allowing_js(content: &[u8]) -> Option<Vec<u8>> {
 /// read (the resolver then reports it, and resolution goes on without it).
 fn without_missing_extends(
     index: &Index<'_>,
-    workspace: &[(String, String)],
+    workspace: &Workspace,
     path: &str,
     content: &[u8],
 ) -> Option<Vec<u8>> {
@@ -392,8 +393,7 @@ fn without_missing_extends(
                 index.file(&target).is_some() || index.file(&format!("{target}.json")).is_some()
             })
         } else {
-            let package = package_name(parent);
-            workspace.iter().any(|(name, _)| name == package)
+            workspace.contains_key(package_name(parent))
         }
     };
     let kept = match object.get("extends")? {
@@ -421,18 +421,14 @@ fn without_missing_extends(
 
 /// Where a path of [`MemoryFs`] is in the repository: a path under
 /// `/node_modules` is a package of the repository, shown there by name.
-fn in_repository(workspace: &[(String, String)], path: &Path) -> Option<String> {
+fn in_repository(workspace: &Workspace, path: &Path) -> Option<String> {
     let path = path.to_str()?.strip_prefix('/')?;
     let Some(rest) = path.strip_prefix("node_modules/") else {
         return Some(path.to_owned());
     };
-    workspace.iter().find_map(|(name, dir)| {
-        let inner = rest.strip_prefix(name.as_str())?;
-        if !inner.is_empty() && !inner.starts_with('/') {
-            return None;
-        }
-        Some(under(dir, inner.trim_start_matches('/')))
-    })
+    let name = package_name(rest);
+    let dir = workspace.get(name)?;
+    Some(under(dir, rest[name.len()..].trim_start_matches('/')))
 }
 
 /// The repository as a read-only file system rooted at `/`, with its own
@@ -442,21 +438,16 @@ struct MemoryFs {
     files: HashSet<PathBuf>,
     dirs: HashSet<PathBuf>,
     contents: HashMap<PathBuf, Vec<u8>>,
-    /// Name and folder of each package of the repository.
-    workspace: Vec<(String, String)>,
+    workspace: Workspace,
 }
 
 impl MemoryFs {
-    fn new(
-        index: &Index<'_>,
-        manifests: &HashMap<&str, &[u8]>,
-        workspace: Vec<(String, String)>,
-    ) -> Self {
+    fn new(index: &Index<'_>, manifests: &HashMap<&str, &[u8]>, workspace: Workspace) -> Self {
         let absolute = |path: &str| Path::new("/").join(path);
         let mut dirs: HashSet<PathBuf> = index.dirs.iter().map(|dir| absolute(dir)).collect();
         dirs.insert(absolute("node_modules"));
         // `/node_modules/@scope` holds the packages of that scope
-        for (name, _) in &workspace {
+        for name in workspace.keys() {
             if let Some((scope, _)) = name.split_once('/') {
                 dirs.insert(absolute(&format!("node_modules/{scope}")));
             }
@@ -506,7 +497,7 @@ impl FileSystem for MemoryFs {
             files: HashSet::new(),
             dirs: HashSet::new(),
             contents: HashMap::new(),
-            workspace: Vec::new(),
+            workspace: Workspace::new(),
         }
     }
 
