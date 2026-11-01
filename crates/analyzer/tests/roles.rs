@@ -444,3 +444,16 @@ fn a_main_compiled_next_to_its_source_is_found() {
         )]
     );
 }
+
+#[test]
+fn only_the_name_itself_is_conventional() {
+    let result = analyzed(&[
+        ("src/app.module.ts", "export class AppModule {}\n"),
+        ("src/app.controller.ts", "export class AppController {}\n"),
+        ("src/main.ts", "export const main = 1\n"),
+    ]);
+    assert_eq!(
+        entries(&result),
+        [entry("src/main.ts", &[ConventionalName], None)]
+    );
+}

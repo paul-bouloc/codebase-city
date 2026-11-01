@@ -141,7 +141,8 @@ pub(crate) fn find(input: &Input<'_>) -> Entries {
             }
             _ => {}
         }
-        let stem = name.split('.').next().unwrap_or(name);
+        // `app.ts`, not `app.controller.ts`
+        let stem = name.rsplit_once('.').map_or(name, |(stem, _)| stem);
         if CONVENTIONAL.contains(&stem) && roots.contains(dir) {
             add(Node::File(file), EntryReason::ConventionalName, 2, None);
         }
