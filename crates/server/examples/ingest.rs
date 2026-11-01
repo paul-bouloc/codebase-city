@@ -2,7 +2,8 @@
 //! check the filters, limits and measures by hand: `just ingest owner/repo`,
 //! plus `--out result.json` to write the result, and `--expect file` to
 //! compare the roles with what a person expects (`entries: [a, b]`,
-//! `foundations: […]`, `conductors: […]`, one list per line).
+//! `foundations: […]`, `conductors: […]`, one list per line; a Go package
+//! ends with `/`, and the one at the root is `/`).
 //!
 //! Uses `GITHUB_TOKEN` when set, and GitHub anonymously otherwise.
 
