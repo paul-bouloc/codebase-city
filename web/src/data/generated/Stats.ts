@@ -10,11 +10,16 @@ export type Stats = {
  */
 ignored: Ignored, 
 /**
- * Imports found in the analyzed files.
+ * Imports found in the analyzed files, before several imports of the
+ * same target are merged into one edge.
  */
 importsTotal: number, 
 /**
- * Imports resolved to a file of the repository; the rest point outside
- * it or could not be resolved.
+ * Imports resolved to a file or folder of the repository.
  */
-importsResolved: number, };
+importsResolved: number, 
+/**
+ * Imports of a dependency that is not in the repository. The rest of
+ * the imports could not be resolved.
+ */
+importsExternal: number, };

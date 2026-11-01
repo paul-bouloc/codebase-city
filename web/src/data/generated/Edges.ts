@@ -3,7 +3,11 @@ import type { Confidence } from "./Confidence";
 import type { EdgeKind } from "./EdgeKind";
 
 /**
- * Resolved imports between files, one row per import.
+ * Resolved imports, one row per importing file and target, sorted by
+ * importing file, then file targets by index, then folder targets by index.
+ *
+ * Several imports of the same target make one edge, with the strongest
+ * kind and the best confidence.
  */
 export type Edges = { 
 /**
@@ -11,6 +15,12 @@ export type Edges = {
  */
 from: Array<number>, 
 /**
- * Index of the imported file.
+ * Index of the imported file; `null` when the import targets a folder.
+ * Never the importing file itself.
  */
-to: Array<number>, kind: Array<EdgeKind>, confidence: Array<Confidence>, };
+to: Array<number | null>, 
+/**
+ * Index of the imported folder, for languages whose imports name a
+ * package rather than a file (Go); `null` when the target is a file.
+ */
+toDir: Array<number | null>, kind: Array<EdgeKind>, confidence: Array<Confidence>, };

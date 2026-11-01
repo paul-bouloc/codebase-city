@@ -36,7 +36,7 @@ describe('decodeResult', () => {
       decodeChanged((json) => {
         json.formatVersion = 1
       }),
-    ).toThrow('unsupported format version 1, expected 2')
+    ).toThrow('unsupported format version 1, expected 3')
   })
 
   it('rejects values of the wrong type', () => {
@@ -190,11 +190,70 @@ describe('decodeResult', () => {
     ).toThrow('dirs.name[1] is not a valid name')
   })
 
-  it('rejects more resolved imports than imports', () => {
+  it('rejects more resolved and external imports than imports', () => {
     expect(
       decodeChanged((json) => {
         json.stats.importsResolved = 1000
       }),
-    ).toThrow('stats.importsResolved is greater than stats.importsTotal')
+    ).toThrow(
+      'stats.importsResolved and stats.importsExternal add up to more than stats.importsTotal',
+    )
+    expect(
+      decodeChanged((json) => {
+        json.stats.importsExternal = 6
+      }),
+    ).toThrow('add up to more than stats.importsTotal')
+  })
+
+  it('accepts an edge to a folder', () => {
+    const decode = decodeChanged((json) => {
+      json.edges.to[25] = null
+      json.edges.toDir[25] = 2
+    })
+    expect(decode().edges.toDir[25]).toBe(2)
+  })
+
+  it('requires one target per edge, never the importing file', () => {
+    expect(
+      decodeChanged((json) => {
+        json.edges.toDir[0] = 1
+      }),
+    ).toThrow('edges[0] must have exactly one target, in to or toDir')
+    expect(
+      decodeChanged((json) => {
+        json.edges.to[0] = null
+      }),
+    ).toThrow('edges[0] must have exactly one target, in to or toDir')
+    expect(
+      decodeChanged((json) => {
+        json.edges.to[0] = 2
+      }),
+    ).toThrow('edges[0] points to the file it comes from')
+    expect(
+      decodeChanged((json) => {
+        json.edges.toDir[2] = 8
+        json.edges.to[2] = null
+      }),
+    ).toThrow('edges.toDir[2] points to row 8, but the table has 8 rows')
+  })
+
+  it('requires edges sorted by file then target, each once', () => {
+    expect(
+      decodeChanged((json) => {
+        json.edges.to[2] = 4
+      }),
+    ).toThrow('edges[2] must come after the previous edge, by file then target')
+    expect(
+      decodeChanged((json) => {
+        json.edges.from[1] = 9
+      }),
+    ).toThrow('edges[2] must come after the previous edge, by file then target')
+    // A folder target sorts after every file target of the same file
+    expect(
+      decodeChanged((json) => {
+        json.edges.to[1] = null
+        json.edges.toDir[1] = 0
+      }),
+    ).toThrow('edges[2] must come after the previous edge, by file then target')
   })
 })

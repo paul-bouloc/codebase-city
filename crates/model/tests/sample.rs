@@ -82,8 +82,9 @@ const SYMBOLS: &[(u32, &str, SymbolKind, u32)] = &[
     (14, "request", SymbolKind::Function, 22),
 ];
 
-/// Importing file, imported file, kind, confidence. `store.ts` and
-/// `events.ts` form a cycle, so do `view.ts` and `panel.ts`.
+/// Importing file, imported file, kind, confidence; sorted by importing
+/// file, then imported file. `store.ts` and `events.ts` form a cycle, so do
+/// `view.ts` and `panel.ts`.
 const EDGES: &[(u32, u32, EdgeKind, Confidence)] = &[
     (2, 3, EdgeKind::Import, Confidence::Exact),
     (3, 4, EdgeKind::Import, Confidence::Exact),
@@ -99,22 +100,25 @@ const EDGES: &[(u32, u32, EdgeKind, Confidence)] = &[
     (6, 7, EdgeKind::Type, Confidence::Exact),
     (9, 4, EdgeKind::Import, Confidence::Exact),
     (9, 10, EdgeKind::Import, Confidence::Exact),
-    (9, 12, EdgeKind::Import, Confidence::Exact),
     (9, 11, EdgeKind::Import, Confidence::Exact),
-    (12, 9, EdgeKind::Import, Confidence::Exact),
-    (12, 8, EdgeKind::Import, Confidence::Exact),
+    (9, 12, EdgeKind::Import, Confidence::Exact),
     (10, 8, EdgeKind::Import, Confidence::Exact),
+    (12, 8, EdgeKind::Import, Confidence::Exact),
+    (12, 9, EdgeKind::Import, Confidence::Exact),
     (13, 9, EdgeKind::Dynamic, Confidence::Likely),
+    (14, 7, EdgeKind::Type, Confidence::Exact),
     (14, 15, EdgeKind::Import, Confidence::Exact),
     (14, 16, EdgeKind::Import, Confidence::Exact),
-    (14, 7, EdgeKind::Type, Confidence::Exact),
     (15, 8, EdgeKind::Import, Confidence::Likely),
     (17, 5, EdgeKind::Import, Confidence::Exact),
     (18, 9, EdgeKind::Import, Confidence::Exact),
 ];
 
-/// Imports that point outside the repository or could not be resolved.
-const UNRESOLVED_IMPORTS: u32 = 5;
+/// Imports of npm packages, not in the repository.
+const EXTERNAL_IMPORTS: u32 = 4;
+
+/// Imports that could not be resolved.
+const UNRESOLVED_IMPORTS: u32 = 1;
 
 fn strings(values: impl IntoIterator<Item = &'static str>) -> Vec<String> {
     values.into_iter().map(str::to_owned).collect()
@@ -159,7 +163,8 @@ fn sample() -> AnalysisResult {
         },
         edges: Edges {
             from: EDGES.iter().map(|edge| edge.0).collect(),
-            to: EDGES.iter().map(|edge| edge.1).collect(),
+            to: EDGES.iter().map(|edge| Some(edge.1)).collect(),
+            to_dir: vec![None; EDGES.len()],
             kind: EDGES.iter().map(|edge| edge.2).collect(),
             confidence: EDGES.iter().map(|edge| edge.3).collect(),
         },
@@ -169,8 +174,9 @@ fn sample() -> AnalysisResult {
                 minified: 1,
                 binary: 2,
             },
-            imports_total: imports_resolved + UNRESOLVED_IMPORTS,
+            imports_total: imports_resolved + EXTERNAL_IMPORTS + UNRESOLVED_IMPORTS,
             imports_resolved,
+            imports_external: EXTERNAL_IMPORTS,
         },
     }
 }
@@ -192,6 +198,8 @@ fn json_uses_the_names_of_the_generated_types() {
     let json = serde_json::to_value(sample()).unwrap();
     assert_eq!(json["formatVersion"], FORMAT_VERSION);
     assert_eq!(json["stats"]["importsResolved"], 26);
+    assert_eq!(json["stats"]["importsExternal"], 4);
+    assert!(json["edges"]["toDir"][0].is_null());
     assert_eq!(json["edges"]["kind"][3], "lazy");
     assert_eq!(json["edges"]["confidence"][19], "likely");
     assert!(json["files"]["complexity"][0].is_null());

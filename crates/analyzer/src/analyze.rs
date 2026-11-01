@@ -85,6 +85,7 @@ pub fn analyze(
             ignored,
             imports_total: 0,
             imports_resolved: 0,
+            imports_external: 0,
         },
     }
 }

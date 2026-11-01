@@ -35,8 +35,16 @@ pub enum InvalidResult {
     SymbolLine { row: usize },
     #[error("symbols[{row}] must come after the previous symbol, by file then line")]
     SymbolOrder { row: usize },
-    #[error("stats.importsResolved is greater than stats.importsTotal")]
-    ResolvedCount,
+    #[error("edges[{row}] must have exactly one target, in to or toDir")]
+    EdgeTarget { row: usize },
+    #[error("edges[{row}] points to the file it comes from")]
+    EdgeLoop { row: usize },
+    #[error("edges[{row}] must come after the previous edge, by file then target")]
+    EdgeOrder { row: usize },
+    #[error(
+        "stats.importsResolved and stats.importsExternal add up to more than stats.importsTotal"
+    )]
+    ImportCounts,
 }
 
 impl AnalysisResult {
@@ -94,13 +102,36 @@ impl AnalysisResult {
         let edges = &self.edges;
         let edge_count = edges.from.len();
         same_length("edges.to", edge_count, edges.to.len())?;
+        same_length("edges.toDir", edge_count, edges.to_dir.len())?;
         same_length("edges.kind", edge_count, edges.kind.len())?;
         same_length("edges.confidence", edge_count, edges.confidence.len())?;
         in_bounds("edges.from", &edges.from, file_count)?;
-        in_bounds("edges.to", &edges.to, file_count)?;
+        in_bounds_or_null("edges.to", &edges.to, file_count)?;
+        in_bounds_or_null("edges.toDir", &edges.to_dir, dir_count)?;
+        let mut previous = None;
+        for row in 0..edge_count {
+            // File targets sort before folder targets
+            let target = match (edges.to[row], edges.to_dir[row]) {
+                (Some(file), None) => (false, file),
+                (None, Some(dir)) => (true, dir),
+                _ => return Err(InvalidResult::EdgeTarget { row }),
+            };
+            if edges.to[row] == Some(edges.from[row]) {
+                return Err(InvalidResult::EdgeLoop { row });
+            }
+            let key = (edges.from[row], target);
+            // Strictly increasing, so a target appears once per file
+            if previous.is_some_and(|previous| previous >= key) {
+                return Err(InvalidResult::EdgeOrder { row });
+            }
+            previous = Some(key);
+        }
 
-        if self.stats.imports_resolved > self.stats.imports_total {
-            return Err(InvalidResult::ResolvedCount);
+        let stats = &self.stats;
+        if u64::from(stats.imports_resolved) + u64::from(stats.imports_external)
+            > u64::from(stats.imports_total)
+        {
+            return Err(InvalidResult::ImportCounts);
         }
         Ok(())
     }
@@ -134,6 +165,25 @@ fn in_bounds(column: &'static str, indexes: &[u32], len: usize) -> Result<(), In
     }
 }
 
+fn in_bounds_or_null(
+    column: &'static str,
+    indexes: &[Option<u32>],
+    len: usize,
+) -> Result<(), InvalidResult> {
+    match indexes
+        .iter()
+        .position(|index| index.is_some_and(|index| !index_below(index, len)))
+    {
+        None => Ok(()),
+        Some(row) => Err(InvalidResult::IndexOutOfBounds {
+            column,
+            row,
+            index: indexes[row].unwrap_or_default(),
+            len,
+        }),
+    }
+}
+
 /// A path segment: not empty, no slash, not `.` or `..`.
 fn valid_names<'a>(
     column: &'static str,
@@ -158,7 +208,7 @@ mod tests {
         Confidence, Dirs, EdgeKind, Edges, Files, Repo, Stats, SymbolKind, Symbols,
     };
 
-    /// Two folders, two files, one import between them.
+    /// Two folders, two files, an import between them and two of folders.
     fn result() -> AnalysisResult {
         AnalysisResult {
             format_version: FORMAT_VERSION,
@@ -189,14 +239,16 @@ mod tests {
                 line: vec![3, 1, 8],
             },
             edges: Edges {
-                from: vec![0],
-                to: vec![1],
-                kind: vec![EdgeKind::Import],
-                confidence: vec![Confidence::Exact],
+                from: vec![0, 0, 1],
+                to: vec![Some(1), None, None],
+                to_dir: vec![None, Some(0), Some(1)],
+                kind: vec![EdgeKind::Import, EdgeKind::Import, EdgeKind::Type],
+                confidence: vec![Confidence::Exact, Confidence::Exact, Confidence::Likely],
             },
             stats: Stats {
-                imports_total: 2,
-                imports_resolved: 1,
+                imports_total: 6,
+                imports_resolved: 3,
+                imports_external: 2,
                 ..Stats::default()
             },
         }
@@ -259,8 +311,16 @@ mod tests {
             invalid(|r| r.edges.confidence.clear()),
             InvalidResult::ColumnLength {
                 column: "edges.confidence",
-                expected: 1,
+                expected: 3,
                 actual: 0,
+            }
+        );
+        assert_eq!(
+            invalid(|r| r.edges.to_dir.truncate(2)),
+            InvalidResult::ColumnLength {
+                column: "edges.toDir",
+                expected: 3,
+                actual: 2,
             }
         );
     }
@@ -286,11 +346,20 @@ mod tests {
             }
         );
         assert_eq!(
-            invalid(|r| r.edges.to[0] = u32::MAX),
+            invalid(|r| r.edges.to[0] = Some(u32::MAX)),
             InvalidResult::IndexOutOfBounds {
                 column: "edges.to",
                 row: 0,
                 index: u32::MAX,
+                len: 2,
+            }
+        );
+        assert_eq!(
+            invalid(|r| r.edges.to_dir[2] = Some(2)),
+            InvalidResult::IndexOutOfBounds {
+                column: "edges.toDir",
+                row: 2,
+                index: 2,
                 len: 2,
             }
         );
@@ -376,10 +445,61 @@ mod tests {
     }
 
     #[test]
-    fn resolved_imports_cannot_outnumber_the_total() {
+    fn an_edge_has_one_target() {
         assert_eq!(
-            invalid(|r| r.stats.imports_resolved = 3),
-            InvalidResult::ResolvedCount
+            invalid(|r| r.edges.to_dir[0] = Some(1)),
+            InvalidResult::EdgeTarget { row: 0 }
+        );
+        assert_eq!(
+            invalid(|r| r.edges.to_dir[1] = None),
+            InvalidResult::EdgeTarget { row: 1 }
+        );
+    }
+
+    #[test]
+    fn an_edge_does_not_loop_on_its_file() {
+        assert_eq!(
+            invalid(|r| r.edges.to[0] = Some(0)),
+            InvalidResult::EdgeLoop { row: 0 }
+        );
+    }
+
+    #[test]
+    fn edges_are_sorted_and_unique() {
+        // A folder target before a file target of the same file
+        assert_eq!(
+            invalid(|r| {
+                r.edges.to.swap(0, 1);
+                r.edges.to_dir.swap(0, 1);
+            }),
+            InvalidResult::EdgeOrder { row: 1 }
+        );
+        assert_eq!(
+            invalid(|r| {
+                r.edges.from[0] = 1;
+                r.edges.to[0] = Some(0);
+            }),
+            InvalidResult::EdgeOrder { row: 1 }
+        );
+        // The same folder twice from the same file
+        assert_eq!(
+            invalid(|r| {
+                r.edges.from[2] = 0;
+                r.edges.to_dir[2] = Some(0);
+            }),
+            InvalidResult::EdgeOrder { row: 2 }
+        );
+    }
+
+    #[test]
+    fn counted_imports_cannot_outnumber_the_total() {
+        assert_eq!(
+            invalid(|r| r.stats.imports_resolved = 5),
+            InvalidResult::ImportCounts
+        );
+        assert_eq!(
+            invalid(|r| r.stats.imports_external = u32::MAX),
+            InvalidResult::ImportCounts
         );
     }
 }

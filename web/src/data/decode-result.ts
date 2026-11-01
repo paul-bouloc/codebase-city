@@ -9,7 +9,7 @@ import type { SymbolKind } from './generated/SymbolKind'
 import type { Symbols } from './generated/Symbols'
 
 // FORMAT_VERSION in crates/model; the generated sample result keeps the two in step.
-export const FORMAT_VERSION = 2
+export const FORMAT_VERSION = 3
 
 // Checked by the compiler against the generated unions: adding a variant in Rust breaks the build here.
 const EDGE_KINDS = {
@@ -105,6 +105,13 @@ function inBounds(path: string, indexes: number[], length: number): void {
   }
 }
 
+function inBoundsOrNull(path: string, indexes: (number | null)[], length: number): void {
+  const row = indexes.findIndex((index) => index !== null && index >= length)
+  if (row !== -1) {
+    fail(`${path}[${row}] points to row ${indexes[row]}, but the table has ${length} rows`)
+  }
+}
+
 function isSegment(name: string): boolean {
   return name !== '' && !name.includes('/') && name !== '.' && name !== '..'
 }
@@ -195,21 +202,48 @@ function decodeSymbols(value: unknown, fileCount: number): Symbols {
   return symbols
 }
 
-function decodeEdges(value: unknown, fileCount: number): Edges {
+function decodeEdges(value: unknown, fileCount: number, dirCount: number): Edges {
   const fields = object(value, 'edges')
   const from = u32Column(fields.from, 'edges.from')
   const edges: Edges = {
     from,
-    to: u32Column(fields.to, 'edges.to'),
+    to: column(fields.to, 'edges.to', isU32OrNull, 'an index or null'),
+    toDir: column(fields.toDir, 'edges.toDir', isU32OrNull, 'an index or null'),
     kind: column(fields.kind, 'edges.kind', isEdgeKind, 'an edge kind'),
     confidence: column(fields.confidence, 'edges.confidence', isConfidence, 'a confidence'),
   }
   sameLength('edges.to', from.length, edges.to)
+  sameLength('edges.toDir', from.length, edges.toDir)
   sameLength('edges.kind', from.length, edges.kind)
   sameLength('edges.confidence', from.length, edges.confidence)
   inBounds('edges.from', from, fileCount)
-  inBounds('edges.to', edges.to, fileCount)
+  inBoundsOrNull('edges.to', edges.to, fileCount)
+  inBoundsOrNull('edges.toDir', edges.toDir, dirCount)
+  // Sort key of the previous edge: importing file, folder target (1) after file target (0), index
+  let previous: [number, number, number] | null = null
+  for (let row = 0; row < from.length; row++) {
+    const source = from[row] as number
+    const file = edges.to[row] ?? null
+    const dir = edges.toDir[row] ?? null
+    if ((file === null) === (dir === null)) {
+      fail(`edges[${row}] must have exactly one target, in to or toDir`)
+    }
+    if (file === source) {
+      fail(`edges[${row}] points to the file it comes from`)
+    }
+    const key: [number, number, number] =
+      file === null ? [source, 1, dir as number] : [source, 0, file]
+    // Strictly increasing, so a target appears once per file
+    if (previous !== null && compareKeys(previous, key) >= 0) {
+      fail(`edges[${row}] must come after the previous edge, by file then target`)
+    }
+    previous = key
+  }
   return edges
+}
+
+function compareKeys(a: [number, number, number], b: [number, number, number]): number {
+  return a[0] - b[0] || a[1] - b[1] || a[2] - b[2]
 }
 
 function decodeStats(value: unknown): Stats {
@@ -223,9 +257,10 @@ function decodeStats(value: unknown): Stats {
     },
     importsTotal: u32(fields.importsTotal, 'stats.importsTotal'),
     importsResolved: u32(fields.importsResolved, 'stats.importsResolved'),
+    importsExternal: u32(fields.importsExternal, 'stats.importsExternal'),
   }
-  if (stats.importsResolved > stats.importsTotal) {
-    fail('stats.importsResolved is greater than stats.importsTotal')
+  if (stats.importsResolved + stats.importsExternal > stats.importsTotal) {
+    fail('stats.importsResolved and stats.importsExternal add up to more than stats.importsTotal')
   }
   return stats
 }
@@ -257,7 +292,7 @@ export function decodeResult(json: unknown): AnalysisResult {
     languages,
     files,
     symbols: decodeSymbols(fields.symbols, files.dir.length),
-    edges: decodeEdges(fields.edges, files.dir.length),
+    edges: decodeEdges(fields.edges, files.dir.length, dirs.parent.length),
     stats: decodeStats(fields.stats),
   }
 }

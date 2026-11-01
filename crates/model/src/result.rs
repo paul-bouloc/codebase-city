@@ -10,7 +10,7 @@ use ts_rs::TS;
 
 /// Version of the shape of the data. Bumped on any change the web app has to
 /// know about; a result with another version is rejected, not guessed at.
-pub const FORMAT_VERSION: u32 = 2;
+pub const FORMAT_VERSION: u32 = 3;
 
 /// One analysis of one repository at one commit.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -110,15 +110,23 @@ pub enum SymbolKind {
     Constant,
 }
 
-/// Resolved imports between files, one row per import.
+/// Resolved imports, one row per importing file and target, sorted by
+/// importing file, then file targets by index, then folder targets by index.
+///
+/// Several imports of the same target make one edge, with the strongest
+/// kind and the best confidence.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
 pub struct Edges {
     /// Index of the importing file.
     pub from: Vec<u32>,
-    /// Index of the imported file.
-    pub to: Vec<u32>,
+    /// Index of the imported file; `null` when the import targets a folder.
+    /// Never the importing file itself.
+    pub to: Vec<Option<u32>>,
+    /// Index of the imported folder, for languages whose imports name a
+    /// package rather than a file (Go); `null` when the target is a file.
+    pub to_dir: Vec<Option<u32>>,
     pub kind: Vec<EdgeKind>,
     pub confidence: Vec<Confidence>,
 }
@@ -158,11 +166,14 @@ pub enum Confidence {
 pub struct Stats {
     /// Files dropped at ingestion, by reason. They are not in [`Files`].
     pub ignored: Ignored,
-    /// Imports found in the analyzed files.
+    /// Imports found in the analyzed files, before several imports of the
+    /// same target are merged into one edge.
     pub imports_total: u32,
-    /// Imports resolved to a file of the repository; the rest point outside
-    /// it or could not be resolved.
+    /// Imports resolved to a file or folder of the repository.
     pub imports_resolved: u32,
+    /// Imports of a dependency that is not in the repository. The rest of
+    /// the imports could not be resolved.
+    pub imports_external: u32,
 }
 
 /// Files dropped at ingestion, by reason.
