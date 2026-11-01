@@ -110,6 +110,7 @@ pub(super) fn imports(root: Node<'_>, source: &[u8]) -> Vec<Import> {
                 kind: EdgeKind::Import,
                 line: line(spec),
                 names: Vec::new(),
+                exports: Vec::new(),
             })
         })
         .collect()

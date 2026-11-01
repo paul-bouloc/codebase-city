@@ -376,6 +376,7 @@ fn es_import(node: Node<'_>, source: &[u8]) -> Option<Import> {
         kind,
         line: line(node),
         names,
+        exports: Vec::new(),
     })
 }
 
@@ -383,23 +384,34 @@ fn es_import(node: Node<'_>, source: &[u8]) -> Option<Import> {
 fn reexport(node: Node<'_>, source: &[u8]) -> Option<Import> {
     let module = node.child_by_field_name("source")?;
     let mut names = Vec::new();
-    if has_token(node, "*")
-        || children(node)
-            .iter()
-            .any(|child| child.kind() == "namespace_export")
-    {
+    let mut exports = Vec::new();
+    if has_token(node, "*") {
         names.push("*".to_owned());
+        exports.push("*".to_owned());
     }
-    if let Some(clause) = children(node)
-        .into_iter()
-        .find(|child| child.kind() == "export_clause")
-    {
-        names.extend(
-            children(clause)
-                .into_iter()
-                .filter_map(|specifier| specifier.child_by_field_name("name"))
-                .map(|name| text(name, source)),
-        );
+    for child in children(node) {
+        match child.kind() {
+            // `export * as ns from "m"`
+            "namespace_export" => {
+                names.push("*".to_owned());
+                exports.push(
+                    children(child)
+                        .first()
+                        .map_or_else(|| "*".to_owned(), |name| text(*name, source)),
+                );
+            }
+            "export_clause" => {
+                for specifier in children(child) {
+                    let Some(name) = specifier.child_by_field_name("name") else {
+                        continue;
+                    };
+                    let alias = specifier.child_by_field_name("alias").unwrap_or(name);
+                    names.push(text(name, source));
+                    exports.push(text(alias, source));
+                }
+            }
+            _ => {}
+        }
     }
     let kind = if has_token(node, "type") {
         EdgeKind::Type
@@ -411,6 +423,7 @@ fn reexport(node: Node<'_>, source: &[u8]) -> Option<Import> {
         kind,
         line: line(node),
         names,
+        exports,
     })
 }
 
@@ -437,6 +450,7 @@ fn call(node: Node<'_>, source: &[u8]) -> Option<Import> {
         kind,
         line: line(node),
         names: Vec::new(),
+        exports: Vec::new(),
     })
 }
 

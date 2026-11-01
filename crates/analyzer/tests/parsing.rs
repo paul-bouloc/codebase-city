@@ -385,3 +385,49 @@ fn go_imports_name_packages() {
         ]
     );
 }
+
+/// Specifier, then each name with the name it is re-exported under.
+fn reexports(parsed: &Parsed) -> Vec<(&str, Vec<(&str, &str)>)> {
+    parsed
+        .imports
+        .iter()
+        .filter(|import| !import.exports.is_empty())
+        .map(|import| {
+            let pairs = import
+                .names
+                .iter()
+                .zip(&import.exports)
+                .map(|(name, export)| (name.as_str(), export.as_str()))
+                .collect();
+            (import.specifier.as_str(), pairs)
+        })
+        .collect()
+}
+
+#[test]
+fn typescript_reexports_keep_the_name_they_export() {
+    assert_eq!(
+        reexports(&fixture("imports.ts")),
+        [
+            ("./anchor", vec![("*", "*")]),
+            ("./knots", vec![("*", "knots")]),
+            ("./rope", vec![("Rope", "Line")]),
+            ("./chart", vec![("Chart", "Chart")]),
+        ]
+    );
+}
+
+#[test]
+fn python_reexports_keep_the_name_they_export() {
+    let parsed = parse_text(
+        "harbor/__init__.py",
+        "from .docks import Dock, Crane as Lift\nfrom .tides import *\nfrom harbor.charts import Chart\n",
+    );
+    assert_eq!(
+        reexports(&parsed),
+        [
+            (".docks", vec![("Dock", "Dock"), ("Crane", "Lift")]),
+            (".tides", vec![("*", "*")]),
+        ]
+    );
+}

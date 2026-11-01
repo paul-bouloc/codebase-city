@@ -210,6 +210,7 @@ pub(super) fn imports(path: &str, root: Node<'_>, source: &[u8]) -> Vec<Import> 
                         kind,
                         line: line(node),
                         names: Vec::new(),
+                        exports: Vec::new(),
                     }));
                 }
             }
@@ -226,26 +227,40 @@ fn from_import(node: Node<'_>, source: &[u8], in_init: bool) -> Option<Import> {
     let module = node.child_by_field_name("module_name")?;
     let relative = module.kind() == "relative_import";
     let mut names = Vec::new();
+    let mut bound = Vec::new();
     let mut cursor = node.walk();
     for name in node.children_by_field_name("name", &mut cursor) {
-        let name = match name.kind() {
-            "aliased_import" => name.child_by_field_name("name"),
-            _ => Some(name),
+        let (name, alias) = match name.kind() {
+            "aliased_import" => (
+                name.child_by_field_name("name"),
+                name.child_by_field_name("alias"),
+            ),
+            _ => (Some(name), None),
         };
-        names.extend(name.map(|name| dotted(name, source)));
+        if let Some(name) = name {
+            names.push(dotted(name, source));
+            bound.push(dotted(alias.unwrap_or(name), source));
+        }
     }
     if children(node)
         .iter()
         .any(|child| child.kind() == "wildcard_import")
     {
         names.push("*".to_owned());
+        bound.push("*".to_owned());
     }
+    // A package re-exports what its `__init__.py` imports from its own modules
+    let kind = kind(node, source, in_init && relative);
     Some(Import {
         specifier: dotted(module, source),
-        // A package re-exports what its `__init__.py` imports from its own modules
-        kind: kind(node, source, in_init && relative),
+        kind,
         line: line(node),
         names,
+        exports: if kind == EdgeKind::Reexport {
+            bound
+        } else {
+            Vec::new()
+        },
     })
 }
 

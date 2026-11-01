@@ -41,6 +41,10 @@ pub struct Import {
     /// `default` for a default import, `*` for all of them. Empty when it
     /// binds the module itself (`require`, `import a.b`, Go).
     pub names: Vec<String>,
+    /// For a re-export, the name under which the file exports each of
+    /// `names`, one to one (`Line` for `export { Rope as Line }`); empty
+    /// when the import does not re-export.
+    pub exports: Vec<String>,
 }
 
 /// A symbol a file exports.
