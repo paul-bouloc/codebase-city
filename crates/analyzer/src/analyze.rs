@@ -3,8 +3,8 @@
 use std::collections::{BTreeMap, HashMap};
 
 use model::{
-    AnalysisResult, Confidence, Dirs, EdgeKind, Edges, FORMAT_VERSION, Files, Ignored, Repo, Roles,
-    Stats, Symbols,
+    AnalysisResult, Confidence, Dirs, EdgeKind, Edges, Entries, FORMAT_VERSION, Files, Ignored,
+    Repo, Roles, Stats, Symbols,
 };
 use rayon::prelude::*;
 
@@ -13,6 +13,7 @@ use crate::graph::{self, BarrelReport, Graph, strength};
 use crate::lang::{self, Parsed};
 use crate::reach::{self, Reach, Units};
 use crate::resolve::{self, Outcome, Target};
+use crate::roles::{self, RolesReport};
 use crate::saturating_u32 as index;
 use crate::scope;
 
@@ -27,6 +28,7 @@ pub struct Report {
     pub barrels: BarrelReport,
     /// The import graph, barrels seen through, that rankings use.
     pub graph: Graph,
+    pub roles: RolesReport,
 }
 
 /// How the imports of an analysis were resolved, to check the resolution
@@ -234,6 +236,20 @@ pub fn analyze_with_report(
     };
     table.dependents = per_file(|reach| &reach.dependents);
     table.dependencies = per_file(|reach| &reach.dependencies);
+    let mut dir_paths = vec![""; dirs.dirs.parent.len()];
+    for (path, &dir) in &dirs.by_path {
+        dir_paths[dir as usize] = path.as_str();
+    }
+    let (foundations, conductors, roles_report) = roles::rank(
+        &units,
+        reach.as_ref(),
+        &roles::Context {
+            file_dirs: &table.dir,
+            barrels: &barrels,
+            file_paths: &paths,
+            dir_paths: &dir_paths,
+        },
+    );
     table.barrel = barrels;
 
     let result = AnalysisResult {
@@ -246,7 +262,11 @@ pub fn analyze_with_report(
         files: table,
         symbols,
         edges: table_edges,
-        roles: Roles::default(),
+        roles: Roles {
+            entries: Entries::default(),
+            foundations,
+            conductors,
+        },
         stats: Stats {
             ignored,
             imports_total: report.exact + report.likely + report.external + report.unresolved,
@@ -258,6 +278,7 @@ pub fn analyze_with_report(
         imports: report,
         barrels: barrel_report,
         graph,
+        roles: roles_report,
     };
     (result, report)
 }

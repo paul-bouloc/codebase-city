@@ -9,9 +9,11 @@ pub mod lang;
 mod metrics;
 mod reach;
 mod resolve;
+mod roles;
 mod scope;
 
 pub use analyze::{ANALYZER_VERSION, ImportReport, Report, analyze, analyze_with_report};
+pub use roles::RolesReport;
 
 /// Counts and indexes are `u32` in the result: far more than ingestion keeps.
 fn saturating_u32(value: usize) -> u32 {

@@ -128,3 +128,96 @@ fn the_files_of_a_go_package_share_its_counts() {
         ])
     );
 }
+
+/// A ranking as (path, count); a Go package's path ends with `/`.
+fn ranking(result: &AnalysisResult, ranked: &model::Ranked) -> Vec<(String, u32)> {
+    (0..ranked.count.len())
+        .map(|row| {
+            let path = match (ranked.file[row], ranked.dir[row]) {
+                (Some(file), _) => path_of_file(result, file),
+                (_, Some(dir)) => format!("{}/", path_of_dir(result, dir)),
+                _ => unreachable!(),
+            };
+            (path, ranked.count[row])
+        })
+        .collect()
+}
+
+fn pairs(rows: &[(&str, u32)]) -> Vec<(String, u32)> {
+    rows.iter()
+        .map(|&(path, count)| (path.to_owned(), count))
+        .collect()
+}
+
+#[test]
+fn a_barrel_is_never_a_foundation() {
+    let whole = "import * as core from '../core'\n";
+    let result = analyzed(&[
+        (
+            "src/core/index.ts",
+            "export * from './anchor'\nexport * from './buoy'\n",
+        ),
+        ("src/core/anchor.ts", "export const ANCHOR = 1\n"),
+        ("src/core/buoy.ts", "export const BUOY = 1\n"),
+        ("src/fleet/one.ts", whole),
+        ("src/fleet/two.ts", whole),
+        ("src/fleet/three.ts", whole),
+        ("src/fleet/four.ts", whole),
+    ]);
+    // The barrel has 4 dependents, more than most, but it is a facade
+    assert_eq!(
+        ranking(&result, &result.roles.foundations),
+        pairs(&[("src/core/anchor.ts", 5), ("src/core/buoy.ts", 5)])
+    );
+}
+
+#[test]
+fn ties_go_to_the_most_widely_imported_then_the_path() {
+    let result = analyzed(&[
+        ("src/apron.ts", "export const A = 1\n"),
+        ("src/zenith.ts", "export const Z = 1\n"),
+        ("src/p/one.ts", "import { Z } from '../zenith'\n"),
+        ("src/q/two.ts", "import { Z } from '../zenith'\n"),
+        ("src/p/three.ts", "import { A } from '../apron'\n"),
+        ("src/p/four.ts", "import { A } from '../apron'\n"),
+    ]);
+    // Both have 2 dependents; `zenith.ts` is imported from two folders
+    assert_eq!(
+        ranking(&result, &result.roles.foundations),
+        pairs(&[("src/zenith.ts", 2), ("src/apron.ts", 2)])
+    );
+    assert_eq!(
+        ranking(&result, &result.roles.conductors),
+        pairs(&[
+            ("src/p/four.ts", 1),
+            ("src/p/one.ts", 1),
+            ("src/p/three.ts", 1),
+            ("src/q/two.ts", 1),
+        ])
+    );
+}
+
+#[test]
+fn go_packages_are_ranked_as_folders() {
+    let result = analyzed(&[
+        ("go.mod", "module example.com/harbor\n"),
+        (
+            "cmd/harbor/main.go",
+            "package main\n\nimport \"example.com/harbor/docks\"\n\nfunc main() {}\n",
+        ),
+        (
+            "docks/dock.go",
+            "package docks\n\nimport \"example.com/harbor/tides\"\n",
+        ),
+        ("docks/berth.go", "package docks\n"),
+        ("tides/tide.go", "package tides\n"),
+    ]);
+    assert_eq!(
+        ranking(&result, &result.roles.foundations),
+        pairs(&[("tides/", 3), ("docks/", 1)])
+    );
+    assert_eq!(
+        ranking(&result, &result.roles.conductors),
+        pairs(&[("cmd/harbor/", 3)])
+    );
+}
