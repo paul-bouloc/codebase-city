@@ -10,7 +10,7 @@
 use crate::graph::{Graph, Node};
 
 /// Work allowed for the count, in steps of the inner loops. vscode takes
-/// about 60 million; past this, a repository too large or too tangled gets
+/// about 75 million; past this, a repository too large or too tangled gets
 /// no count rather than holding the analysis.
 const MAX_WORK: u64 = 3_000_000_000;
 
@@ -153,7 +153,9 @@ pub(crate) fn reach(units: &Units, facades: &[bool]) -> Option<Reach> {
     edges.sort_unstable();
     edges.dedup();
     let blocks = count.div_ceil(64) as u64;
-    let work = blocks * (count as u64 * 8 + edges.len() as u64) * 2;
+    // Per block: 8 table lookups per component going down, 16 going up
+    // (dependents and users), and the edges once each way
+    let work = blocks * (count as u64 * 24 + edges.len() as u64 * 2);
     if work > MAX_WORK {
         return None;
     }
