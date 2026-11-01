@@ -50,10 +50,11 @@ pub(super) fn symbols(root: Node<'_>, source: &[u8]) -> Vec<Symbol> {
 
     match all {
         Some(names) => {
-            let by_name: HashMap<_, _> = defined
-                .into_iter()
-                .map(|(name, kind)| (text(name, source), (name, kind)))
-                .collect();
+            // The first definition wins: `f = wrap(f)` keeps `f` a function
+            let mut by_name = HashMap::new();
+            for (name, kind) in defined {
+                by_name.entry(text(name, source)).or_insert((name, kind));
+            }
             names
                 .iter()
                 .filter_map(|wanted| by_name.get(wanted))

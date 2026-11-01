@@ -116,6 +116,15 @@ fn python_follows_dunder_all_and_prefers_the_docstring() {
 }
 
 #[test]
+fn a_python_function_wrapped_later_stays_a_function() {
+    let parsed = parse_text(
+        "a.py",
+        "__all__ = ['f']\n\n\ndef f():\n    pass\n\nf = wrap(f)\n",
+    );
+    assert_eq!(symbols(&parsed), [("f", Function, 4)]);
+}
+
+#[test]
 fn python_without_dunder_all_exports_public_definitions() {
     let parsed = fixture("plain.py");
     assert_eq!(parsed.complexity, 1);
