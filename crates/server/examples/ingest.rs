@@ -7,7 +7,10 @@
 //! islands (`layers: [a, [b, c], d]`, from the bottom up, islands of one
 //! layer in brackets). `--store` saves the result in the database of
 //! `DATABASE_URL`, retention included, without applying migrations.
-
+//!
+//! Given a result written by `--out` instead of a repository, lays it out
+//! again with the current code and prints the layout, without downloading
+//! anything: `just ingest result.json [--out result.json]`.
 //!
 //! Uses `GITHUB_TOKEN` when set, and GitHub anonymously otherwise.
 
@@ -30,7 +33,7 @@ const MB: f64 = 1024.0 * 1024.0;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     const USAGE: &str =
-        "usage: ingest owner/repo [--out result.json] [--expect roles.yaml] [--store]";
+        "usage: ingest owner/repo|result.json [--out result.json] [--expect roles.yaml] [--store]";
     let args: Vec<String> = std::env::args().skip(1).collect();
     let Some((name, flags)) = args.split_first() else {
         anyhow::bail!(USAGE);
@@ -56,6 +59,18 @@ async fn main() -> anyhow::Result<()> {
             }
             _ => anyhow::bail!(USAGE),
         }
+    }
+    if name.ends_with(".json") {
+        let text = std::fs::read_to_string(name).with_context(|| format!("reading {name}"))?;
+        let mut result: AnalysisResult = serde_json::from_str(&text)?;
+        result.layout = analyzer::layout::of_result(&result);
+        result.validate()?;
+        print_layout(&result);
+        if let Some(out) = out {
+            std::fs::write(&out, serde_json::to_vec(&result)?)
+                .with_context(|| format!("writing {}", out.display()))?;
+        }
+        return Ok(());
     }
     let repo = RepoName::parse(name)?;
     let token = std::env::var("GITHUB_TOKEN")
