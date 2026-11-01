@@ -3,11 +3,12 @@
 use std::collections::{BTreeMap, HashMap};
 
 use model::{
-    AnalysisResult, Confidence, Cycles, Dirs, EdgeKind, Edges, FORMAT_VERSION, Files, Ignored,
-    Islands, Repo, Roles, Scope, Stats, Symbols,
+    AnalysisResult, Confidence, Dirs, EdgeKind, Edges, FORMAT_VERSION, Files, Ignored, Islands,
+    Repo, Roles, Scope, Stats, Symbols,
 };
 use rayon::prelude::*;
 
+use crate::cycles;
 use crate::entries;
 use crate::files::{Language, SourceFile, split_path};
 use crate::graph::{self, BarrelReport, Graph, Node, strength};
@@ -334,7 +335,7 @@ pub fn analyze_with_report(
             layer: layers,
         },
         links,
-        cycles: Cycles::default(),
+        cycles: cycles::cycles(&graph),
         stats: Stats {
             ignored,
             imports_total: report.exact + report.likely + report.external + report.unresolved,
