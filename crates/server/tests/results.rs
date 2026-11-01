@@ -286,3 +286,14 @@ async fn concurrent_saves_to_one_repository_keep_the_retention(pool: PgPool) {
     }
     assert_eq!(shas(&pool).await.len(), 2);
 }
+
+#[sqlx::test(migrator = "server::store::MIGRATOR")]
+async fn the_body_is_not_compressed_twice(pool: PgPool) {
+    let storage: i8 = sqlx::query_scalar(
+        "SELECT attstorage FROM pg_attribute WHERE attrelid = 'results'::regclass AND attname = 'body'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(storage as u8, b'e');
+}
