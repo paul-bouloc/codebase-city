@@ -24,7 +24,7 @@ fn analyze(files: &[(&str, &str)]) -> (AnalysisResult, ImportReport) {
     };
     let (result, report) = analyze_with_report(repo, "0".repeat(40), files, Ignored::default());
     assert_eq!(result.validate(), Ok(()));
-    (result, report)
+    (result, report.imports)
 }
 
 fn path(result: &AnalysisResult, file: u32) -> String {

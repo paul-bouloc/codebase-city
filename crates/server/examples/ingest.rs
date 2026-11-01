@@ -123,7 +123,7 @@ async fn main() -> anyhow::Result<()> {
     let elapsed = started.elapsed();
     result.validate()?;
     print_analysis(&result, elapsed);
-    print_imports(&result, &report);
+    print_imports(&result, &report.imports);
 
     let json = serde_json::to_vec(&result)?;
     let mut gzip = GzEncoder::new(Vec::new(), Compression::default());

@@ -9,6 +9,7 @@ use model::{
 use rayon::prelude::*;
 
 use crate::files::{SourceFile, split_path};
+use crate::graph::{self, BarrelReport, Graph, strength};
 use crate::lang::{self, Parsed};
 use crate::resolve::{self, Outcome, Target};
 use crate::saturating_u32 as index;
@@ -17,6 +18,15 @@ use crate::scope;
 /// Version of the algorithms. Bumped whenever a change would give another
 /// result for the same commit, so stored results are recomputed.
 pub const ANALYZER_VERSION: &str = "0.2.1";
+
+/// What an analysis found beyond its result.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Report {
+    pub imports: ImportReport,
+    pub barrels: BarrelReport,
+    /// The import graph, barrels seen through, that rankings use.
+    pub graph: Graph,
+}
 
 /// How the imports of an analysis were resolved, to check the resolution
 /// by hand on real repositories. Not part of the result.
@@ -50,13 +60,14 @@ pub fn analyze(
     analyze_with_report(repo, sha, files, ignored).0
 }
 
-/// [`analyze`], with a report on the resolution of the imports.
+/// [`analyze`], with the import graph and reports on how imports were
+/// resolved and seen through barrels.
 pub fn analyze_with_report(
     repo: Repo,
     sha: String,
     mut files: Vec<SourceFile>,
     ignored: Ignored,
-) -> (AnalysisResult, ImportReport) {
+) -> (AnalysisResult, Report) {
     files.sort_by(|a, b| a.path.cmp(&b.path));
     // `collect` keeps the order of the files, whatever the scheduling. Each
     // content is freed once parsed; the manifests keep theirs for the
@@ -79,6 +90,7 @@ pub fn analyze_with_report(
     let mut table = Files::default();
     let mut symbols = Symbols::default();
     let mut imports = Vec::with_capacity(files.len());
+    let mut barrels = Vec::with_capacity(files.len());
     for (row, (file, parsed)) in files.iter().zip(parsed).enumerate() {
         let (dir_path, name) = split_path(&file.path);
         let language = file.language.name();
@@ -95,6 +107,7 @@ pub fn analyze_with_report(
         table.lines.push(file.lines);
         table.generated.push(file.generated);
         table.scope.push(scope::of(&file.path));
+        barrels.push(parsed.as_ref().is_some_and(|parsed| parsed.barrel));
         match parsed {
             Some(parsed) => {
                 table.complexity.push(Some(parsed.complexity));
@@ -177,6 +190,16 @@ pub fn analyze_with_report(
     report.unresolved_modules = most_frequent(unresolved);
     report.undeclared_packages = most_frequent(undeclared);
 
+    let (graph, barrel_report) = graph::build(&graph::Input {
+        scopes: &table.scope,
+        generated: &table.generated,
+        barrels: &barrels,
+        symbols: &symbols,
+        imports: &imports,
+        outcomes: &outcomes,
+        dirs: &dirs.by_path,
+    });
+
     let mut table_edges = Edges::default();
     for ((from, is_dir, target), (kind, confidence)) in edges {
         table_edges.from.push(from);
@@ -202,6 +225,11 @@ pub fn analyze_with_report(
             imports_resolved: report.exact + report.likely,
             imports_external: report.external,
         },
+    };
+    let report = Report {
+        imports: report,
+        barrels: barrel_report,
+        graph,
     };
     (result, report)
 }
@@ -238,18 +266,6 @@ fn resolve_imports(files: &[SourceFile], parsed: &[Option<Parsed>]) -> Vec<Vec<O
             })
         })
         .collect()
-}
-
-/// Which kind an edge keeps when a file imports the same target several
-/// ways: the one that weighs most on the structure.
-fn strength(kind: EdgeKind) -> u8 {
-    match kind {
-        EdgeKind::Reexport => 4,
-        EdgeKind::Import => 3,
-        EdgeKind::Lazy => 2,
-        EdgeKind::Dynamic => 1,
-        EdgeKind::Type => 0,
-    }
 }
 
 /// The folder table, built as files come: a folder is added the first time
