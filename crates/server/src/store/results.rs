@@ -2,6 +2,7 @@
 //! and analyzer version. Only the latest few commits of a repository are
 //! kept.
 
+use std::fmt;
 use std::io::{Read, Write};
 
 use model::{AnalysisResult, FORMAT_VERSION, InvalidResult};
@@ -40,13 +41,26 @@ pub enum StoreError {
 
 /// A result checked and compressed, ready to store. Encoding is CPU work,
 /// so an async caller runs it in `spawn_blocking`.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Encoded {
     repo: RepoName,
     sha: String,
     analyzer_version: String,
     body: Vec<u8>,
     raw_size: usize,
+}
+
+/// Sizes instead of the body, which can weigh megabytes in a log line.
+impl fmt::Debug for Encoded {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Encoded")
+            .field("repo", &self.repo)
+            .field("sha", &self.sha)
+            .field("analyzer_version", &self.analyzer_version)
+            .field("raw_size", &self.raw_size)
+            .field("stored_size", &self.body.len())
+            .finish()
+    }
 }
 
 impl Encoded {
@@ -318,6 +332,14 @@ mod tests {
         assert_eq!(json.len(), encoded.raw_size());
         let decoded: AnalysisResult = serde_json::from_slice(&json).unwrap();
         assert_eq!(decoded, result);
+    }
+
+    #[test]
+    fn debug_shows_sizes_not_the_body() {
+        let encoded = encode(&sample()).unwrap();
+        let debug = format!("{encoded:?}");
+        assert!(debug.contains(&format!("stored_size: {}", encoded.stored_size())));
+        assert!(!debug.contains("body"));
     }
 
     #[test]
