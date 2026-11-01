@@ -269,6 +269,12 @@ fn read_entries<R: Read>(
             let dir = path.rsplit_once('/').map_or("", |(dir, _)| dir);
             attributes.add(dir, content);
         }
+        // Rules already read drop vendored files before they count against
+        // the limits; the pass at the end covers the rules that come later
+        if !attributes.is_empty() && attributes.lookup(&path).vendored == Some(true) {
+            count(&mut ignored, Skip::Vendored);
+            continue;
+        }
         let content = content.filter(|_| files::keeps_content(&path)).cloned();
         if let Some(content) = &content {
             kept_files += 1;

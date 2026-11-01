@@ -171,6 +171,27 @@ async fn gitattributes_apply_to_files_read_before_them() {
 }
 
 #[tokio::test]
+async fn files_vendored_by_rules_read_earlier_do_not_count_against_the_limits() {
+    let ingested = ingest_files(
+        &[
+            (".gitattributes", b"legacy/** linguist-vendored\n"),
+            ("legacy/a.js", b"var a = 1\n"),
+            ("legacy/b.js", b"var b = 1\n"),
+            ("src/index.ts", b"export {}\n"),
+        ],
+        &Limits {
+            kept_files: 1,
+            ..Limits::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(paths(&ingested), [".gitattributes", "src/index.ts"]);
+    assert_eq!(ingested.ignored.vendored, 2);
+}
+
+#[tokio::test]
 async fn a_negated_attribute_hands_the_file_back_to_detection() {
     let ingested = ingest_files(
         &[
