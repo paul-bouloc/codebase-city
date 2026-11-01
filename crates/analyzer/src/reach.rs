@@ -10,7 +10,7 @@
 use crate::graph::{Graph, Node};
 
 /// Work allowed for the count, in steps of the inner loops. vscode takes
-/// about 30 million; past this, a repository too large or too tangled gets
+/// about 60 million; past this, a repository too large or too tangled gets
 /// no count rather than holding the analysis.
 const MAX_WORK: u64 = 3_000_000_000;
 
