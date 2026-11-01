@@ -164,6 +164,23 @@ fn the_code_wins_over_its_declaration() {
 }
 
 #[test]
+fn exports_are_read_for_the_code_not_the_types() {
+    let (result, report) = analyze(&[
+        (
+            "packages/ui/package.json",
+            r#"{ "name": "@acme/ui", "exports": { ".": { "types": "./dist/index.d.ts", "default": "./src/main.ts" } } }"#,
+        ),
+        ("packages/ui/src/main.ts", "export const a = 1\n"),
+        ("apps/web/main.ts", "import { a } from '@acme/ui'\n"),
+    ]);
+    assert_eq!(
+        edges(&result),
+        [edge("apps/web/main.ts", "packages/ui/src/main.ts", Import)]
+    );
+    assert_eq!(report.unresolved, 0);
+}
+
+#[test]
 fn tsconfig_paths_are_read_through_extends() {
     let (result, _) = analyze(&[
         (

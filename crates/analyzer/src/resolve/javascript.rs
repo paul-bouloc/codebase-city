@@ -122,7 +122,9 @@ impl Resolver {
                 (".mjs".into(), vec![".mts".into(), ".mjs".into()]),
                 (".cjs".into(), vec![".cts".into(), ".cjs".into()]),
             ],
-            condition_names: ["types", "import", "require", "node", "default"]
+            // Not `types`: it wins over `default` in `exports` and names a
+            // declaration, often of a build that is not in the repository
+            condition_names: ["import", "require", "node", "default"]
                 .map(String::from)
                 .to_vec(),
             // Not `types`, which names a declaration
