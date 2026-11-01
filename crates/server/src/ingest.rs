@@ -44,7 +44,8 @@ pub struct Limits {
     pub kept_files: u32,
     /// Entries of the archive, folders included.
     pub entries: u32,
-    /// Time for the whole archive to arrive, once GitHub starts sending it.
+    /// Time spent waiting for the archive, once GitHub starts sending it.
+    /// The time the reader takes is not counted.
     pub download: Duration,
 }
 
@@ -142,24 +143,31 @@ pub async fn ingest(
 
 /// Sends the archive's chunks to the reader. Stops early, without error,
 /// when the reader has stopped.
+///
+/// The download limit counts the time spent waiting for GitHub only: while
+/// the reader is busy and the channel full, the archive is not late.
 async fn download(
     mut response: reqwest::Response,
     sender: mpsc::Sender<Bytes>,
     limits: &Limits,
     on_progress: &(dyn Fn(Progress) + Sync),
 ) -> Result<u64, IngestError> {
-    let deadline = Instant::now() + limits.download;
-    let timeout = IngestError::DownloadTimeout {
-        limit: limits.download,
-    };
+    let mut waited = Duration::ZERO;
     let mut received = 0u64;
     loop {
-        let chunk = match tokio::time::timeout_at(deadline, response.chunk()).await {
-            Err(_) => return Err(timeout),
+        let started = Instant::now();
+        let left = limits.download.saturating_sub(waited);
+        let chunk = match tokio::time::timeout(left, response.chunk()).await {
+            Err(_) => {
+                return Err(IngestError::DownloadTimeout {
+                    limit: limits.download,
+                });
+            }
             Ok(Err(_)) => return Err(GithubError::Unavailable.into()),
             Ok(Ok(None)) => return Ok(received),
             Ok(Ok(Some(chunk))) => chunk,
         };
+        waited += started.elapsed();
         received += chunk.len() as u64;
         if received > limits.archive_bytes {
             return Err(IngestError::ArchiveTooLarge {
@@ -167,10 +175,8 @@ async fn download(
             });
         }
         on_progress(Progress::Downloading { bytes: received });
-        match tokio::time::timeout_at(deadline, sender.send(chunk)).await {
-            Err(_) => return Err(timeout),
-            Ok(Err(_)) => return Ok(received),
-            Ok(Ok(())) => {}
+        if sender.send(chunk).await.is_err() {
+            return Ok(received);
         }
     }
 }

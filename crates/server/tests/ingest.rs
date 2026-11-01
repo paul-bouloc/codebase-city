@@ -249,6 +249,46 @@ async fn a_download_that_drags_on_is_stopped() {
 }
 
 #[tokio::test]
+async fn a_slow_reader_is_not_a_slow_download() {
+    // 500 small files make the reader report its progress, then a file
+    // that does not compress, so the archive is still arriving
+    let mut seed = 1u32;
+    let noise: String = (0..40_000)
+        .map(|_| {
+            seed = seed.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+            char::from(b'a' + (seed >> 24) as u8 % 26)
+        })
+        .collect();
+    let names: Vec<String> = (0..500).map(|i| format!("src/f{i}.ts")).collect();
+    let mut files: Vec<(&str, &[u8])> = names
+        .iter()
+        .map(|name| (name.as_str(), b"export const a = 1\n".as_slice()))
+        .collect();
+    files.push(("src/noise.ts", noise.as_bytes()));
+
+    let github = FakeGithub::start().await;
+    github.on(
+        &tarball_path(),
+        [Reply::SlowArchive(tarball(&files), Duration::ZERO)],
+    );
+    // The reader stalls for 1 s at its first progress report, with the
+    // channel full behind it; the network alone takes far less than 500 ms
+    let on_progress = Arc::new(|progress| {
+        if let Progress::Reading { kept: 500, .. } = progress {
+            std::thread::sleep(Duration::from_secs(1));
+        }
+    });
+    let limits = Limits {
+        download: Duration::from_millis(500),
+        ..Limits::default()
+    };
+    let ingested = ingest(&github.client(None), &repo(), SHA, &limits, on_progress)
+        .await
+        .unwrap();
+    assert_eq!(ingested.files.len(), 501);
+}
+
+#[tokio::test]
 async fn a_corrupt_archive_is_refused() {
     let error = serve(
         Reply::Archive(b"not a gzip file".to_vec()),
