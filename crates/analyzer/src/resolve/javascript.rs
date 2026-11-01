@@ -102,6 +102,10 @@ pub(super) struct Resolver {
 #[serde(default, rename_all = "camelCase")]
 struct PackageJson {
     name: Option<String>,
+    /// Any value, so that a `"true"` written as a string does not lose the
+    /// whole manifest.
+    private: Option<serde_json::Value>,
+    workspaces: Option<serde::de::IgnoredAny>,
     dependencies: HashMap<String, serde::de::IgnoredAny>,
     dev_dependencies: HashMap<String, serde::de::IgnoredAny>,
     peer_dependencies: HashMap<String, serde::de::IgnoredAny>,
@@ -112,18 +116,24 @@ impl Resolver {
     pub(super) fn new(index: &Index<'_>, manifests: &HashMap<&str, &[u8]>) -> Self {
         let mut workspace = Workspace::new();
         let mut dependencies = HashSet::new();
-        let mut packages: Vec<(&str, &[u8])> = manifests
+        let mut packages: Vec<(&str, PackageJson)> = manifests
             .iter()
             .filter(|(path, _)| split_path(path).1 == "package.json")
             .filter(|(path, _)| !path.split('/').any(|part| TEST_DIRS.contains(&part)))
-            .map(|(path, content)| (*path, *content))
+            .filter_map(|(path, content)| Some((*path, serde_json::from_slice(content).ok()?)))
             .collect();
-        // When two packages share a name, the one nearest the root wins
-        packages.sort_unstable_by_key(|&(path, _)| (path.matches('/').count(), path));
-        for (path, content) in packages {
-            let Ok(package) = serde_json::from_slice::<PackageJson>(content) else {
-                continue;
-            };
+        // When two packages share a name, a published one wins over the root
+        // of a monorepo (nest names its root `@nestjs/core`) or a private
+        // one, then the one nearest the root
+        packages.sort_unstable_by_key(|(path, package)| {
+            let private = matches!(
+                package.private,
+                Some(serde_json::Value::Bool(true))
+            ) || matches!(&package.private, Some(serde_json::Value::String(text)) if text == "true");
+            let unpublished = private || package.workspaces.is_some();
+            (unpublished, path.matches('/').count(), *path)
+        });
+        for (path, package) in packages {
             if let Some(name) = package.name.filter(|name| !name.is_empty()) {
                 workspace
                     .entry(name)

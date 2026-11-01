@@ -327,6 +327,34 @@ fn a_fixture_named_like_a_dependency_is_not_a_package() {
 }
 
 #[test]
+fn the_root_of_a_monorepo_gives_way_to_the_package_of_its_name() {
+    // nest names its root `@nestjs/core`, like one of its packages
+    let (result, _) = analyze(&[
+        (
+            "package.json",
+            r#"{ "name": "@acme/core", "private": "true", "workspaces": ["packages/*"] }"#,
+        ),
+        (
+            "packages/core/package.json",
+            r#"{ "name": "@acme/core", "exports": { ".": "./index.js", "./internal": "./internal.js" } }"#,
+        ),
+        ("packages/core/index.ts", "export const core = 1\n"),
+        ("packages/core/internal.ts", "export const inner = 1\n"),
+        (
+            "packages/web/app.ts",
+            "import { core } from '@acme/core'\nimport { inner } from '@acme/core/internal'\n",
+        ),
+    ]);
+    assert_eq!(
+        edges(&result),
+        [
+            edge("packages/web/app.ts", "packages/core/index.ts", Import),
+            edge("packages/web/app.ts", "packages/core/internal.ts", Import),
+        ]
+    );
+}
+
+#[test]
 fn workspace_packages_resolve_to_their_sources() {
     let (result, report) = analyze(&[
         (
