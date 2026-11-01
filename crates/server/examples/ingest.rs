@@ -217,7 +217,7 @@ fn print_analysis(result: &AnalysisResult, elapsed: std::time::Duration) {
     println!("most complex  {}", top.join(", "));
 }
 
-/// How many unresolved modules to list.
+/// How many unresolved modules, and undeclared packages, to list.
 const UNRESOLVED_SHOWN: usize = 20;
 
 fn print_imports(result: &AnalysisResult, report: &ImportReport) {
@@ -252,5 +252,8 @@ fn print_imports(result: &AnalysisResult, report: &ImportReport) {
     );
     for (module, count) in report.unresolved_modules.iter().take(UNRESOLVED_SHOWN) {
         println!("  unresolved  {module} ({count})");
+    }
+    for (package, count) in report.undeclared_packages.iter().take(UNRESOLVED_SHOWN) {
+        println!("  undeclared  {package} ({count})");
     }
 }
