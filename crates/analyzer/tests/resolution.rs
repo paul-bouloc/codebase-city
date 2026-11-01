@@ -273,6 +273,16 @@ fn a_jsconfig_alone_is_read_like_a_tsconfig() {
 }
 
 #[test]
+fn a_folder_whose_build_is_missing_is_likely_its_sources() {
+    let (result, _) = analyze(&[
+        ("lib/package.json", r#"{ "main": "dist/index.js" }"#),
+        ("lib/src/index.ts", "export const a = 1\n"),
+        ("app/main.ts", "import { a } from '../lib'\n"),
+    ]);
+    assert_eq!(edges(&result), [likely("app/main.ts", "lib/src/index.ts")]);
+}
+
+#[test]
 fn a_fixture_named_like_a_dependency_is_not_a_package() {
     let (result, report) = analyze(&[
         (

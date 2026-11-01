@@ -201,8 +201,10 @@ impl Resolver {
                 Some(absolute) => join("", absolute),
                 None => join(base, specifier),
             };
+            // A guess, unlike a package of the repository, whose sources
+            // are what its build is made from
             return match target.and_then(|dir| folder_entry(index, &dir)) {
-                Some(row) => exact(row),
+                Some(row) => Outcome::Resolved(vec![(Target::File(row), Confidence::Likely)]),
                 None => Outcome::Unresolved,
             };
         }
