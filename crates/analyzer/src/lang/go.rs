@@ -67,9 +67,6 @@ pub(super) fn symbols(root: Node<'_>, source: &[u8]) -> Vec<Symbol> {
         .collect()
 }
 
-/// The comment of the package: the first block of comments before the
-/// package clause that is not a license, a build constraint or the
-/// "Code generated" line.
 /// Whether the file is part of a program: `package main` with a top-level
 /// `func main`.
 pub(super) fn is_main(root: Node<'_>, source: &[u8]) -> bool {
@@ -89,6 +86,9 @@ pub(super) fn is_main(root: Node<'_>, source: &[u8]) -> bool {
         })
 }
 
+/// The comment of the package: the first block of comments before the
+/// package clause that is not a license, a build constraint or the
+/// "Code generated" line.
 pub(super) fn header(root: Node<'_>, source: &[u8]) -> Option<String> {
     let comments: Vec<_> = children(root)
         .into_iter()
