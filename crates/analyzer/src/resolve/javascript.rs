@@ -20,9 +20,11 @@ use serde::Deserialize;
 use super::{Index, Outcome, Target, join, under};
 use crate::files::split_path;
 
-/// Extensions tried after a path without one, in this order.
+/// Extensions tried after a path without one, in this order. A
+/// declaration (`.d.ts`) comes after the code it describes: the city shows
+/// what runs.
 const EXTENSIONS: &[&str] = &[
-    ".ts", ".tsx", ".d.ts", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts", ".json",
+    ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts", ".d.ts", ".json",
 ];
 
 /// Endings tried after an import the resolver could not read: a file with
@@ -114,7 +116,7 @@ impl Resolver {
             extension_alias: vec![
                 (
                     ".js".into(),
-                    vec![".ts".into(), ".tsx".into(), ".d.ts".into(), ".js".into()],
+                    vec![".ts".into(), ".tsx".into(), ".js".into(), ".d.ts".into()],
                 ),
                 (".jsx".into(), vec![".tsx".into(), ".jsx".into()]),
                 (".mjs".into(), vec![".mts".into(), ".mjs".into()]),
@@ -123,7 +125,8 @@ impl Resolver {
             condition_names: ["types", "import", "require", "node", "default"]
                 .map(String::from)
                 .to_vec(),
-            main_fields: ["types", "module", "main"].map(String::from).to_vec(),
+            // Not `types`, which names a declaration
+            main_fields: ["module", "main"].map(String::from).to_vec(),
             main_files: vec!["index".into()],
             builtin_modules: true,
             symlinks: false,

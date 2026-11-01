@@ -132,6 +132,38 @@ fn typescript_follows_node_and_typescript_rules() {
 }
 
 #[test]
+fn the_code_wins_over_its_declaration() {
+    let (result, _) = analyze(&[
+        (
+            "lib/index.js",
+            "const util = require('./util')\nimport('./esm.js')\nconst ui = require('ui')\n",
+        ),
+        ("lib/util.js", "module.exports = {}\n"),
+        ("lib/util.d.ts", "export {}\n"),
+        ("lib/esm.js", "export {}\n"),
+        ("lib/esm.d.ts", "export {}\n"),
+        (
+            "packages/ui/package.json",
+            r#"{ "name": "ui", "types": "index.d.ts", "main": "index.js" }"#,
+        ),
+        ("packages/ui/index.js", "module.exports = {}\n"),
+        ("packages/ui/index.d.ts", "export {}\n"),
+        // A declaration alone is still found
+        ("src/main.ts", "import { parse } from './semver.js'\n"),
+        ("src/semver.d.ts", "export declare function parse(): void\n"),
+    ]);
+    assert_eq!(
+        edges(&result),
+        [
+            edge("lib/index.js", "lib/esm.js", Dynamic),
+            edge("lib/index.js", "lib/util.js", Import),
+            edge("lib/index.js", "packages/ui/index.js", Import),
+            edge("src/main.ts", "src/semver.d.ts", Import),
+        ]
+    );
+}
+
+#[test]
 fn tsconfig_paths_are_read_through_extends() {
     let (result, _) = analyze(&[
         (
