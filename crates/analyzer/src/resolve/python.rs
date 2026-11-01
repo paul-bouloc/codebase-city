@@ -2,6 +2,8 @@
 //! under one of the folders Python would search. A relative import starts
 //! from the importing file's package.
 
+use std::collections::HashSet;
+
 use model::Confidence;
 
 use super::{Index, Outcome, Target, join, under};
@@ -18,13 +20,14 @@ pub(super) struct Resolver<'a> {
 impl<'a> Resolver<'a> {
     pub(super) fn new(index: &'a Index<'a>) -> Self {
         let mut roots = vec!["", "src"];
+        let mut seen: HashSet<&str> = roots.iter().copied().collect();
         for &path in index.paths {
             let (package, name) = split_path(path);
             if name != "__init__.py" || package.is_empty() {
                 continue;
             }
             let parent = split_path(package).0;
-            if index.file(&init(parent)).is_none() && !roots.contains(&parent) {
+            if index.file(&init(parent)).is_none() && seen.insert(parent) {
                 roots.push(parent);
             }
         }
