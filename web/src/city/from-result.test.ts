@@ -29,7 +29,10 @@ describe('cityFromResult', () => {
       complexity: 8,
       test: false,
       analyzed: true,
+      generated: false,
     })
+    // `schema.ts` is generated
+    expect(city.islands[5]?.lots[0]?.file.generated).toBe(true)
     // `release.sh`: Shell is not analyzed
     expect(city.islands[7]?.lots[0]?.file.analyzed).toBe(false)
     const css = lots.find((lot) => lot.file.language === 'css')

@@ -43,20 +43,54 @@ transformed.y += dot(heightFactor, building.yz);
 `
 const BEGIN_VERTEX = '#include <begin_vertex>'
 
+// A generated file keeps its archetype, with walls of pale concrete, grey edges and three bars
+// stamped on its roof, drawn here rather than built.
+const GENERATED_WALL = '#D9D5CC'
+const GENERATED_WALL_SHARE = 0.82
+const GENERATED_EDGE = '#5E6468'
+const GENERATED_EDGE_SHARE = 0.6
+const GENERATED_BAR_DARKENING = 0.25
+/** Bars: 0.09 u wide, 0.86 × side long, at −0.3, 0 and +0.3 × side. */
+const BAR_WIDTH = 0.09
+const BAR_LENGTH = 0.86
+const BAR_SPACING = 0.3
+
+const glslColour = (hex: string) =>
+  `vec3(${srgb(hex)
+    .map((c) => c.toFixed(6))
+    .join(', ')})`
+
 const vertexShader = /* glsl */ `
 ${shadingVertexPars}
 ${stretchPars}
 attribute vec4 paint;
 attribute vec3 tint;
 attribute vec3 edge;
+attribute float generated;
 varying vec3 vColor;
 varying vec3 vEdge;
 varying vec3 vEdgeColor;
+varying vec3 vLocal;
+varying float vSide;
+varying float vRoof;
+varying vec3 vTint;
 void main() {
   vColor = mix(tint, paint.rgb, paint.a);
-  vEdge = edge;
   vEdgeColor = tint * ${(1 - EDGE_DARKENING).toFixed(6)};
+  vRoof = 0.0;
+  if (generated > 0.5) {
+    // Only the faces painted from the language: wood, stone and kiosks keep their colour
+    if (abs(normal.y) < 0.5 && paint.a < 0.999) {
+      vColor = mix(tint, ${glslColour(GENERATED_WALL)}, ${GENERATED_WALL_SHARE.toFixed(6)});
+    }
+    vEdgeColor = mix(tint, ${glslColour(GENERATED_EDGE)}, ${GENERATED_EDGE_SHARE.toFixed(6)});
+    vRoof = normal.y > 0.5 ? 1.0 : 0.0;
+  }
+  vEdge = edge;
+  vSide = building.x;
+  vTint = tint;
   ${shadingVertex.replace(BEGIN_VERTEX, stretchVertex)}
+  vLocal = transformed;
 }
 `
 
@@ -66,14 +100,26 @@ uniform float edgeWidth;
 varying vec3 vColor;
 varying vec3 vEdge;
 varying vec3 vEdgeColor;
+varying vec3 vLocal;
+varying float vSide;
+varying float vRoof;
+varying vec3 vTint;
 void main() {
+  vec3 colour = vColor;
+  if (vRoof > 0.5) {
+    float across = abs(vLocal.x);
+    float bar = min(across, abs(across - ${BAR_SPACING.toFixed(6)} * vSide));
+    if (bar < ${(BAR_WIDTH / 2).toFixed(6)} && abs(vLocal.z) < ${(BAR_LENGTH / 2).toFixed(6)} * vSide) {
+      colour = vTint * ${(1 - GENERATED_BAR_DARKENING).toFixed(6)};
+    }
+  }
   // Distance to each side in pixels; a side without a line stays far away.
   vec3 perPixel = sqrt(dFdx(vEdge) * dFdx(vEdge) + dFdy(vEdge) * dFdy(vEdge));
   vec3 toSide = vEdge / max(perPixel, 1e-6);
   float d = min(min(toSide.x, toSide.y), toSide.z);
   // The share of this pixel covered by the line: a sub-pixel line is a lighter pixel.
   float cover = clamp(min(edgeWidth, d + 0.5) - max(0.0, d - 0.5), 0.0, 1.0);
-  gl_FragColor = vec4(mix(shade(vColor, normalize(vWorldNormal)), vEdgeColor, cover), 1.0);
+  gl_FragColor = vec4(mix(shade(colour, normalize(vWorldNormal)), vEdgeColor, cover), 1.0);
 }
 `
 
@@ -100,6 +146,7 @@ interface Placed {
   building: Building
   position: Vec3
   tint: Vec3
+  generated: boolean
 }
 
 /** Every building, in one instanced draw call per archetype; edges are sized for `pixelRatio`. */
@@ -114,6 +161,7 @@ export function createBuildings(layout: CityLayout, pixelRatio: number): Group {
         building,
         position: boardToThree(lot.x, lot.y, altitude + (lot.base ?? 0)),
         tint: tintOf(lot.file),
+        generated: lot.file.generated === true,
       })
       byArchetype.set(building.archetype, placed)
     }
@@ -150,6 +198,7 @@ function instancedArchetype(
 
   const sizes = new Float32Array(placed.length * 3)
   const tints = new Float32Array(placed.length * 3)
+  const generated = new Float32Array(placed.length)
   const material = new ShaderMaterial({
     uniforms: { ...shadingUniforms(), edgeWidth: { value: edgeWidth } },
     vertexShader,
@@ -158,13 +207,15 @@ function instancedArchetype(
   })
   const mesh = new InstancedMesh(geometry, material, placed.length)
   const matrix = new Matrix4()
-  placed.forEach(({ building, position, tint }, index) => {
+  placed.forEach(({ building, position, tint, generated: made }, index) => {
     mesh.setMatrixAt(index, matrix.makeTranslation(...position))
     sizes.set([building.side, building.height, building.split], index * 3)
     tints.set(tint, index * 3)
+    generated[index] = made ? 1 : 0
   })
   geometry.setAttribute('building', new InstancedBufferAttribute(sizes, 3))
   geometry.setAttribute('tint', new InstancedBufferAttribute(tints, 3))
+  geometry.setAttribute('generated', new InstancedBufferAttribute(generated, 1))
 
   mesh.customDepthMaterial = stretchedDepthMaterial()
   mesh.castShadow = true

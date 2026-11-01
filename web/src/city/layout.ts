@@ -24,6 +24,8 @@ export interface FileMetrics {
   test: boolean
   /** False for a language the analyzer does not read: a bare concrete block. True if absent. */
   analyzed?: boolean
+  /** Made by a tool: pale concrete walls and three bars on the roof. False if absent. */
+  generated?: boolean
 }
 
 /** A file's 2 × 2 u lot, by its centre. */

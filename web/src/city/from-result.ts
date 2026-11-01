@@ -75,6 +75,7 @@ export function cityFromResult(result: AnalysisResult): CityLayout {
         complexity: files.complexity[file] ?? 0,
         test: scope === 'test' || scope === 'fixture',
         analyzed: ANALYZED.has(language),
+        generated: files.generated[file] ?? false,
       },
     }
     islands[dirs.island[dir] ?? 0]?.lots.push(lot)
