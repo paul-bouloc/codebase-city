@@ -309,6 +309,27 @@ fn exported_property(
     }
 }
 
+pub(super) fn statements(root: Node<'_>) -> (u32, u32) {
+    let mut statements = 0;
+    let mut reexports = 0;
+    for node in children(root) {
+        match node.kind() {
+            "comment" | "hash_bang_line" | "import_statement" | "empty_statement" => {}
+            // `"use strict"`
+            "expression_statement"
+                if children(node)
+                    .first()
+                    .is_some_and(|child| child.kind() == "string") => {}
+            "export_statement" if node.child_by_field_name("source").is_some() => {
+                statements += 1;
+                reexports += 1;
+            }
+            _ => statements += 1,
+        }
+    }
+    (statements, reexports)
+}
+
 pub(super) fn imports(root: Node<'_>, source: &[u8]) -> Vec<Import> {
     let mut imports = Vec::new();
     walk(root, |node| match node.kind() {

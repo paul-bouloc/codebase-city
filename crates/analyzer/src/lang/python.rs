@@ -192,8 +192,41 @@ fn declares_encoding(comment: &str) -> bool {
     })
 }
 
+/// Only a package's `__init__.py` can be a barrel: its relative imports
+/// re-export, while `__all__`, the docstring and absolute imports are
+/// neutral.
+pub(super) fn statements(path: &str, root: Node<'_>, source: &[u8]) -> (u32, u32) {
+    if !is_init(path) {
+        return (0, 0);
+    }
+    let mut statements = 0;
+    let mut reexports = 0;
+    for node in children(root) {
+        match node.kind() {
+            "comment" | "import_statement" | "future_import_statement" => {}
+            "import_from_statement" => {
+                if node
+                    .child_by_field_name("module_name")
+                    .is_some_and(|module| module.kind() == "relative_import")
+                {
+                    statements += 1;
+                    reexports += 1;
+                }
+            }
+            "expression_statement" if docstring(node, source).is_some() => {}
+            "expression_statement" if dunder_all(node, source).is_some() => {}
+            _ => statements += 1,
+        }
+    }
+    (statements, reexports)
+}
+
+fn is_init(path: &str) -> bool {
+    path == "__init__.py" || path.ends_with("/__init__.py")
+}
+
 pub(super) fn imports(path: &str, root: Node<'_>, source: &[u8]) -> Vec<Import> {
-    let in_init = path == "__init__.py" || path.ends_with("/__init__.py");
+    let in_init = is_init(path);
     let mut imports = Vec::new();
     walk(root, |node| {
         match node.kind() {

@@ -26,6 +26,9 @@ pub struct Parsed {
     pub symbols: Vec<Symbol>,
     /// Imports with a literal module, in the order of the source.
     pub imports: Vec<Import>,
+    /// A file made of re-exports, such as an `index.ts` or an `__init__.py`
+    /// that gathers its package: see [`is_barrel`].
+    pub barrel: bool,
 }
 
 /// An import as the source writes it, before resolution.
@@ -114,6 +117,16 @@ impl Dialect {
         }
     }
 
+    /// Top-level statements that count for [`is_barrel`], and how many of
+    /// them re-export.
+    fn statements(self, path: &str, root: Node<'_>, source: &[u8]) -> (u32, u32) {
+        match self {
+            Self::TypeScript | Self::Tsx | Self::JavaScript => javascript::statements(root),
+            Self::Python => python::statements(path, root, source),
+            Self::Go => (0, 0),
+        }
+    }
+
     fn imports(self, path: &str, root: Node<'_>, source: &[u8]) -> Vec<Import> {
         match self {
             Self::TypeScript | Self::Tsx | Self::JavaScript => javascript::imports(root, source),
@@ -150,7 +163,15 @@ pub fn parse(path: &str, language: Language, content: &[u8]) -> Option<Parsed> {
         header: dialect.header(root, content),
         symbols,
         imports: dialect.imports(path, root, content),
+        barrel: is_barrel(dialect.statements(path, root, content)),
     })
+}
+
+/// Whether a file is a barrel: at least one re-export, and re-exports make
+/// at least 80 % of the statements that count. Plain imports, comments and
+/// directives do not count either way.
+fn is_barrel((statements, reexports): (u32, u32)) -> bool {
+    reexports > 0 && u64::from(reexports) * 5 >= u64::from(statements) * 4
 }
 
 /// The source text of a node; invalid UTF-8 is replaced, not rejected.

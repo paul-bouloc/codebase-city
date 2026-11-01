@@ -431,3 +431,47 @@ fn python_reexports_keep_the_name_they_export() {
         ]
     );
 }
+
+#[test]
+fn a_file_of_reexports_is_a_barrel() {
+    let barrels = [
+        (
+            "index.ts",
+            "// The public API.\nexport * from './store'\nexport { View } from './view'\nexport type { Props } from './props'\n",
+        ),
+        (
+            "index.js",
+            "'use strict'\nimport './polyfill'\nexport * from './a'\nexport * from './b'\nexport * from './c'\nexport * from './d'\nexport const VERSION = '1'\n",
+        ),
+        (
+            "harbor/__init__.py",
+            "\"\"\"The harbor.\"\"\"\nfrom __future__ import annotations\nimport sys\nfrom .docks import Dock\nfrom .tides import *\n__all__ = ['Dock']\n",
+        ),
+    ];
+    for (name, content) in barrels {
+        assert!(parse_text(name, content).barrel, "{name}");
+    }
+}
+
+#[test]
+fn a_file_with_code_of_its_own_is_not_a_barrel() {
+    let others = [
+        // 3 re-exports out of 5 statements
+        (
+            "index.ts",
+            "export * from './a'\nexport * from './b'\nexport * from './c'\nexport const x = 1\nfunction f() {}\n",
+        ),
+        ("index.ts", "import { a } from './a'\nexport { a }\n"),
+        ("empty.ts", "// Nothing here.\n"),
+        ("harbor/docks.py", "from .tides import Tide\n"),
+        ("harbor/__init__.py", "from harbor.docks import Dock\n"),
+        (
+            "harbor/__init__.py",
+            "from .docks import Dock\ndef main():\n    pass\n",
+        ),
+        ("doc.go", "package harbor\n"),
+    ];
+    for (name, content) in others {
+        assert!(!parse_text(name, content).barrel, "{name}: {content}");
+    }
+}
