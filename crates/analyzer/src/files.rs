@@ -186,10 +186,7 @@ const MINIFIED_LINE_LENGTH: u64 = 110;
 /// Classifies a file from its path alone. A file kept here may still be
 /// skipped by [`classify_content`].
 pub fn classify_path(path: &str) -> Verdict {
-    let (dirs, name) = match path.rsplit_once('/') {
-        Some((dirs, name)) => (dirs, name),
-        None => ("", path),
-    };
+    let (dirs, name) = split_path(path);
     let mut dirs = dirs.split('/');
     if dirs.clone().any(|dir| VENDORED_DIRS.contains(&dir)) {
         return Verdict::Skip(Skip::Vendored);
@@ -266,7 +263,7 @@ impl LineCounter {
         let newlines = chunk.iter().filter(|&&byte| byte == b'\n').count();
         self.newlines = self
             .newlines
-            .saturating_add(u32::try_from(newlines).unwrap_or(u32::MAX));
+            .saturating_add(crate::saturating_u32(newlines));
         self.open_line = last != b'\n';
     }
 
@@ -281,8 +278,13 @@ pub fn count_lines(content: &[u8]) -> u32 {
     counter.lines()
 }
 
+/// The folder and the name of a path; the folder is `""` at the root.
+pub fn split_path(path: &str) -> (&str, &str) {
+    path.rsplit_once('/').unwrap_or(("", path))
+}
+
 fn file_name(path: &str) -> &str {
-    path.rsplit('/').next().unwrap_or(path)
+    split_path(path).1
 }
 
 /// Extension without the dot; empty for none and for dotfiles like `.env`.

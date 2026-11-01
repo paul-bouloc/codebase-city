@@ -129,7 +129,7 @@ fn text(node: Node<'_>, source: &[u8]) -> String {
 
 /// The line of a node, from 1.
 fn line(node: Node<'_>) -> u32 {
-    u32::try_from(node.start_position().row + 1).unwrap_or(u32::MAX)
+    crate::saturating_u32(node.start_position().row + 1)
 }
 
 /// A symbol named by `name`, at the line of that name.

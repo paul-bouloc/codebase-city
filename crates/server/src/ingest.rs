@@ -264,9 +264,8 @@ fn read_entries<R: Read>(
         };
 
         if let Some(content) = content
-            && path.rsplit('/').next() == Some(".gitattributes")
+            && let (dir, ".gitattributes") = files::split_path(&path)
         {
-            let dir = path.rsplit_once('/').map_or("", |(dir, _)| dir);
             attributes.add(dir, content);
         }
         // Rules already read drop vendored files before they count against

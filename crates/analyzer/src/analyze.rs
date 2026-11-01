@@ -5,8 +5,9 @@ use std::collections::HashMap;
 use model::{AnalysisResult, Dirs, Edges, FORMAT_VERSION, Files, Ignored, Repo, Stats, Symbols};
 use rayon::prelude::*;
 
-use crate::files::SourceFile;
+use crate::files::{SourceFile, split_path};
 use crate::lang::{self, Parsed};
+use crate::saturating_u32 as index;
 
 /// Version of the algorithms. Bumped whenever a change would give another
 /// result for the same commit, so stored results are recomputed.
@@ -38,7 +39,7 @@ pub fn analyze(
     let mut table = Files::default();
     let mut symbols = Symbols::default();
     for (row, (file, parsed)) in files.iter().zip(parsed).enumerate() {
-        let (dir_path, name) = file.path.rsplit_once('/').unwrap_or(("", &file.path));
+        let (dir_path, name) = split_path(&file.path);
         let language = file.language.name();
         let language = match languages.iter().position(|known| known == language) {
             Some(index) => index,
@@ -88,11 +89,6 @@ pub fn analyze(
     }
 }
 
-/// Row indexes are `u32` in the result; ingestion keeps far fewer files.
-fn index(row: usize) -> u32 {
-    u32::try_from(row).unwrap_or(u32::MAX)
-}
-
 /// The folder table, built as files come: a folder is added the first time
 /// a path goes through it, so it always comes after its parent.
 struct DirTree {
@@ -117,7 +113,7 @@ impl DirTree {
         if let Some(&row) = self.by_path.get(path) {
             return row;
         }
-        let (parent_path, name) = path.rsplit_once('/').unwrap_or(("", path));
+        let (parent_path, name) = split_path(path);
         let parent = self.index(parent_path);
         let row = index(self.dirs.parent.len());
         self.dirs.parent.push(Some(parent));
