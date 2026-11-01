@@ -329,8 +329,9 @@ fn run_target(script: &str) -> Option<&str> {
 }
 
 /// The production file a manifest in `dir` points to with `spec`: as
-/// written, with an extension added, as a folder's index, then, for built
-/// code, the file of the same name under `src/`.
+/// written, with its extension swapped (TypeScript compiled next to its
+/// source: `index.js` is `index.ts`) or one added, as a folder's index,
+/// then, for built code, the file of the same name under `src/`.
 fn locate_script(
     dir: &str,
     spec: &str,
@@ -340,7 +341,16 @@ fn locate_script(
     let relative = normalize(spec)?;
     let found = |path: &str| {
         let path = join(dir, path);
+        let stem = EXTENSIONS
+            .iter()
+            .find_map(|extension| path.strip_suffix(extension))
+            .unwrap_or(&path);
         std::iter::once(path.clone())
+            .chain(
+                EXTENSIONS
+                    .iter()
+                    .map(|extension| format!("{stem}{extension}")),
+            )
             .chain(
                 EXTENSIONS
                     .iter()

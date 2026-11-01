@@ -417,3 +417,23 @@ fn a_conductor_offered_by_a_barrel_is_still_a_conductor() {
         pairs(&[("src/harbor.ts", 2), ("src/tool.ts", 1)])
     );
 }
+
+#[test]
+fn a_main_compiled_next_to_its_source_is_found() {
+    let result = analyzed(&[
+        (
+            "packages/core/package.json",
+            r#"{ "name": "@acme/core", "main": "index.js" }"#,
+        ),
+        ("packages/core/index.ts", "export { Core } from './core'\n"),
+        ("packages/core/core.ts", "export class Core {}\n"),
+    ]);
+    assert_eq!(
+        entries(&result),
+        [entry(
+            "packages/core/index.ts",
+            &[PackageMain, ConventionalName],
+            None
+        )]
+    );
+}
