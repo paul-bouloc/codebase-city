@@ -8,9 +8,10 @@ use model::{
 };
 use rayon::prelude::*;
 
-use crate::files::{SourceFile, split_path};
+use crate::files::{Language, SourceFile, split_path};
 use crate::graph::{self, BarrelReport, Graph, strength};
 use crate::lang::{self, Parsed};
+use crate::reach::{self, Reach, Units};
 use crate::resolve::{self, Outcome, Target};
 use crate::saturating_u32 as index;
 use crate::scope;
@@ -218,9 +219,22 @@ pub fn analyze_with_report(
         table_edges.confidence.push(confidence);
     }
 
+    let packages: Vec<bool> = files
+        .iter()
+        .map(|file| file.language == Language::Go)
+        .collect();
+    let units = Units::new(&graph, &table.dir, &packages);
+    let reach = reach::reach(&units);
+    let per_file = |count: fn(&Reach) -> &Vec<u32>| -> Vec<Option<u32>> {
+        units
+            .of_file
+            .iter()
+            .map(|unit| Some(count(reach.as_ref()?)[(*unit)? as usize]))
+            .collect()
+    };
+    table.dependents = per_file(|reach| &reach.dependents);
+    table.dependencies = per_file(|reach| &reach.dependencies);
     table.barrel = barrels;
-    table.dependents = vec![None; files.len()];
-    table.dependencies = vec![None; files.len()];
 
     let result = AnalysisResult {
         format_version: FORMAT_VERSION,
@@ -319,7 +333,6 @@ impl DirTree {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::files::Language;
     use model::Scope;
 
     fn file(path: &str, content: Option<&str>) -> SourceFile {

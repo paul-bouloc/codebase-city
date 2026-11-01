@@ -1,0 +1,130 @@
+//! What the graph says about each file: transitive counts, then entry
+//! points, foundations and conductors, on small repositories held in
+//! memory.
+
+#![allow(clippy::unwrap_used)]
+
+use analyzer::analyze;
+use analyzer::files::{Language, SourceFile, count_lines};
+use model::{AnalysisResult, Ignored, Repo};
+
+/// Analyzes a repository given as (path, content) pairs.
+fn analyzed(files: &[(&str, &str)]) -> AnalysisResult {
+    let files = files
+        .iter()
+        .map(|&(path, content)| SourceFile {
+            path: path.to_owned(),
+            language: Language::of(path),
+            lines: count_lines(content.as_bytes()),
+            generated: path.contains("generated"),
+            content: Some(content.as_bytes().to_vec()),
+        })
+        .collect();
+    let repo = Repo {
+        owner: "acme".to_owned(),
+        name: "harbor".to_owned(),
+    };
+    let result = analyze(repo, "0".repeat(40), files, Ignored::default());
+    assert_eq!(result.validate(), Ok(()));
+    result
+}
+
+fn path_of_dir(result: &AnalysisResult, dir: u32) -> String {
+    let mut parts = Vec::new();
+    let mut current = Some(dir);
+    while let Some(row) = current {
+        if row != 0 {
+            parts.push(result.dirs.name[row as usize].as_str());
+        }
+        current = result.dirs.parent[row as usize];
+    }
+    parts.reverse();
+    parts.join("/")
+}
+
+fn path_of_file(result: &AnalysisResult, file: u32) -> String {
+    let dir = path_of_dir(result, result.files.dir[file as usize]);
+    let name = &result.files.name[file as usize];
+    if dir.is_empty() {
+        name.clone()
+    } else {
+        format!("{dir}/{name}")
+    }
+}
+
+/// Each file with its (dependents, dependencies), in path order.
+fn counts(result: &AnalysisResult) -> Vec<(String, Option<(u32, u32)>)> {
+    (0..result.files.name.len() as u32)
+        .map(|file| {
+            let counts = result.files.dependents[file as usize]
+                .zip(result.files.dependencies[file as usize]);
+            (path_of_file(result, file), counts)
+        })
+        .collect()
+}
+
+fn owned(rows: &[(&str, Option<(u32, u32)>)]) -> Vec<(String, Option<(u32, u32)>)> {
+    rows.iter()
+        .map(|&(path, counts)| (path.to_owned(), counts))
+        .collect()
+}
+
+#[test]
+fn production_files_count_what_they_reach_through_barrels() {
+    let result = analyzed(&[
+        ("src/main.ts", "import { Store } from './core'\n"),
+        (
+            "src/core/index.ts",
+            "export { Store } from './store'\nexport { clamp } from './utils'\n",
+        ),
+        (
+            "src/core/store.ts",
+            "import { clamp } from './utils'\nexport class Store {}\n",
+        ),
+        ("src/core/utils.ts", "export function clamp() {}\n"),
+        (
+            "src/core/store.test.ts",
+            "import { Store } from './store'\n",
+        ),
+    ]);
+    // `main.ts` goes through the barrel to the store, so nothing reaches
+    // the barrel; the barrel still depends on what it re-exports
+    assert_eq!(
+        counts(&result),
+        owned(&[
+            ("src/core/index.ts", Some((0, 2))),
+            ("src/core/store.test.ts", None),
+            ("src/core/store.ts", Some((2, 1))),
+            ("src/core/utils.ts", Some((3, 0))),
+            ("src/main.ts", Some((0, 2))),
+        ])
+    );
+    assert_eq!(result.files.barrel, [true, false, false, false, false]);
+}
+
+#[test]
+fn the_files_of_a_go_package_share_its_counts() {
+    let result = analyzed(&[
+        ("go.mod", "module example.com/harbor\n"),
+        (
+            "cmd/harbor/main.go",
+            "package main\n\nimport \"example.com/harbor/docks\"\n\nfunc main() {}\n",
+        ),
+        (
+            "docks/dock.go",
+            "package docks\n\nimport \"example.com/harbor/tides\"\n",
+        ),
+        ("docks/berth.go", "package docks\n"),
+        ("tides/tide.go", "package tides\n"),
+    ]);
+    assert_eq!(
+        counts(&result),
+        owned(&[
+            ("cmd/harbor/main.go", Some((0, 3))),
+            ("docks/berth.go", Some((1, 1))),
+            ("docks/dock.go", Some((1, 1))),
+            ("go.mod", None),
+            ("tides/tide.go", Some((3, 0))),
+        ])
+    );
+}

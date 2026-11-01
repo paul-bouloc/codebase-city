@@ -7,6 +7,7 @@ pub mod files;
 pub mod graph;
 pub mod lang;
 mod metrics;
+mod reach;
 mod resolve;
 mod scope;
 
