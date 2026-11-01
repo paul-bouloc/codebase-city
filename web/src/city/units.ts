@@ -10,6 +10,14 @@ export function layerAltitude(layer: number): number {
   return 1.2 + 1.8 * (clamped - 1)
 }
 
+/** How high a parcel's slab stands above the plateau, by level; deeper levels nest flat. */
+const SLAB_TOPS = [0.15, 0.25]
+
+/** The top of the slab of a parcel `level` folders below its island, above the plateau, in u. */
+export function slabTop(level: number): number {
+  return SLAB_TOPS[Math.min(level, SLAB_TOPS.length) - 1] ?? 0
+}
+
 export type Vec3 = [number, number, number]
 
 /** Layouts put the ground on x, y with z up; three.js puts y up. */
