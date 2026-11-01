@@ -1,11 +1,20 @@
 import { BoxGeometry, BufferGeometry, Float32BufferAttribute, Mesh, ShaderMaterial } from 'three'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
-import type { CityLayout } from './layout'
+import type { CityLayout, ParcelNature, Rect } from './layout'
 import { shadingFragmentPars, shadingUniforms, shadingVertex, shadingVertexPars } from './shading'
-import { boardToThree, layerAltitude, srgb } from './units'
+import { boardToThree, layerAltitude, mixSrgb, slabTop, srgb, type Vec3 } from './units'
 
 const PAVING = srgb('#EDE3CF')
 const CLIFF = srgb('#D2AE84')
+const MEADOW = srgb('#C5DFA4')
+const MEADOW_EDGE = srgb('#A9C58A')
+const INNER_MEADOW = srgb('#D3E8B6')
+const INNER_MEADOW_EDGE = srgb('#B9D49D')
+const TEST_PARK = srgb('#B3D58B')
+const TEST_PARK_EDGE = srgb('#93BC6E')
+const CONCRETE = srgb('#D9D5CC')
+/** Edges of a top are `mix(top, black, 12 %)`. */
+const CONCRETE_EDGE = mixSrgb('#D9D5CC', '#000000', 0.12)
 
 const vertexShader = /* glsl */ `
 ${shadingVertexPars}
@@ -24,25 +33,68 @@ void main() {
 }
 `
 
+interface Block {
+  rect: Rect
+  bottom: number
+  top: number
+  topColour: Vec3
+  sideColour: Vec3
+}
+
 /**
  * Every island as a flat-topped block at its layer's altitude, in one draw call: a placeholder
  * until islands get their terraces, beaches and cliffs.
  */
 export function createPlateaux(layout: CityLayout): Mesh {
-  const blocks = layout.islands.map(({ plateau, layer }) => {
-    const altitude = layerAltitude(layer)
+  return blocksMesh(
+    layout.islands.map(({ plateau, layer }) => ({
+      rect: plateau,
+      bottom: 0,
+      top: layerAltitude(layer),
+      topColour: PAVING,
+      sideColour: CLIFF,
+    })),
+  )
+}
+
+/** Every parcel as a flat slab on its island, nested ones higher, in one draw call. */
+export function createParcels(layout: CityLayout): Mesh {
+  return blocksMesh(
+    layout.islands.flatMap(({ parcels, layer }) => {
+      const altitude = layerAltitude(layer)
+      return parcels.map(({ rect, level, nature }) => {
+        const [topColour, sideColour] = parcelColours(nature, level)
+        return { rect, bottom: altitude, top: altitude + slabTop(level), topColour, sideColour }
+      })
+    }),
+  )
+}
+
+function parcelColours(nature: ParcelNature, level: number): [Vec3, Vec3] {
+  switch (nature) {
+    case 'tests':
+      return [TEST_PARK, TEST_PARK_EDGE]
+    case 'unanalyzed':
+      return [CONCRETE, CONCRETE_EDGE]
+    case 'normal':
+      return level <= 1 ? [MEADOW, MEADOW_EDGE] : [INNER_MEADOW, INNER_MEADOW_EDGE]
+  }
+}
+
+function blocksMesh(blocks: Block[]): Mesh {
+  const geometries = blocks.map(({ rect, bottom, top, topColour, sideColour }) => {
     const [x, y, z] = boardToThree(
-      plateau.x + plateau.width / 2,
-      plateau.y + plateau.height / 2,
-      altitude / 2,
+      rect.x + rect.width / 2,
+      rect.y + rect.height / 2,
+      (bottom + top) / 2,
     )
-    const block = new BoxGeometry(plateau.width, altitude, plateau.height).translate(x, y, z)
-    paint(block)
+    const block = new BoxGeometry(rect.width, top - bottom, rect.height).translate(x, y, z)
+    paint(block, topColour, sideColour)
     return block
   })
   // An empty city has no plateau: mergeGeometries cannot merge nothing.
-  const geometry = blocks.length > 0 ? mergeGeometries(blocks) : new BufferGeometry()
-  for (const block of blocks) {
+  const geometry = geometries.length > 0 ? mergeGeometries(geometries) : new BufferGeometry()
+  for (const block of geometries) {
     block.dispose()
   }
   const material = new ShaderMaterial({
@@ -58,12 +110,12 @@ export function createPlateaux(layout: CityLayout): Mesh {
   return mesh
 }
 
-/** Paving on top, cliff on the sides. */
-function paint(geometry: BufferGeometry) {
+/** One colour on top, another on the sides. */
+function paint(geometry: BufferGeometry, top: Vec3, side: Vec3) {
   const normals = geometry.getAttribute('normal')
   const colors = new Float32Array(normals.count * 3)
   for (let i = 0; i < normals.count; i++) {
-    colors.set(normals.getY(i) > 0.5 ? PAVING : CLIFF, i * 3)
+    colors.set(normals.getY(i) > 0.5 ? top : side, i * 3)
   }
   geometry.setAttribute('color', new Float32BufferAttribute(colors, 3))
 }

@@ -27,7 +27,7 @@ import {
 import { createBuildings } from './buildings'
 import type { CityLayout } from './layout'
 import { SUN_DIRECTION } from './light'
-import { createPlateaux } from './plateaux'
+import { createParcels, createPlateaux } from './plateaux'
 import { createSea, OPEN_SEA, seaSize } from './sea'
 import { boardToThree } from './units'
 
@@ -125,6 +125,7 @@ export class CityEngine {
     this.city = new Group().add(
       createSea(layout),
       createPlateaux(layout),
+      createParcels(layout),
       createBuildings(layout, this.renderer.getPixelRatio()),
     )
     this.scene.add(this.city)

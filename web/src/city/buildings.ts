@@ -108,7 +108,7 @@ export function createBuildings(layout: CityLayout, pixelRatio: number): Group {
       const placed = byArchetype.get(building.archetype) ?? []
       placed.push({
         building,
-        position: boardToThree(lot.x, lot.y, altitude),
+        position: boardToThree(lot.x, lot.y, altitude + (lot.base ?? 0)),
         tint: lot.file.test ? TEST_COLOUR : LANGUAGE_COLOURS[lot.file.language],
       })
       byArchetype.set(building.archetype, placed)
