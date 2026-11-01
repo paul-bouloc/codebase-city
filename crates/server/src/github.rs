@@ -334,16 +334,18 @@ fn is_sha(value: &str) -> bool {
     value.len() == 40 && value.bytes().all(|byte| byte.is_ascii_hexdigit())
 }
 
-/// 429 everywhere, or the API's 403 once the hourly budget is spent.
+/// 429 everywhere, or a 403 once the hourly budget is spent or with a
+/// `Retry-After`, as GitHub's secondary limits answer.
 fn is_rate_limited(response: &Response) -> bool {
+    let headers = response.headers();
     match response.status() {
         StatusCode::TOO_MANY_REQUESTS => true,
         StatusCode::FORBIDDEN => {
-            response
-                .headers()
-                .get("x-ratelimit-remaining")
-                .and_then(|value| value.to_str().ok())
-                == Some("0")
+            headers.contains_key(header::RETRY_AFTER)
+                || headers
+                    .get("x-ratelimit-remaining")
+                    .and_then(|value| value.to_str().ok())
+                    == Some("0")
         }
         _ => false,
     }

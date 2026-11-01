@@ -198,6 +198,34 @@ async fn a_download_that_never_answers_is_retried_then_unavailable() {
 }
 
 #[tokio::test]
+async fn a_secondary_rate_limit_is_waited_out() {
+    let github = FakeGithub::start().await;
+    github.on(
+        &tarball_path(),
+        [
+            Reply::Text {
+                status: 403,
+                content_type: "application/json",
+                body: r#"{"message":"You have exceeded a secondary rate limit."}"#.into(),
+                headers: vec![
+                    ("retry-after", "0".into()),
+                    ("x-ratelimit-remaining", "4999".into()),
+                ],
+            },
+            Reply::Archive(tarball(&[])),
+        ],
+    );
+
+    let waits = Mutex::new(Vec::new());
+    let on_wait = |wait| waits.lock().unwrap().push(wait);
+    let response = github.client(None).tarball(&repo(), SHA, &on_wait).await;
+
+    assert!(response.is_ok());
+    // An announced wait lasts 1 s at least
+    assert_eq!(*waits.lock().unwrap(), [Duration::from_secs(1)]);
+}
+
+#[tokio::test]
 async fn an_error_page_is_not_taken_for_an_archive() {
     let github = FakeGithub::start().await;
     github.on(
