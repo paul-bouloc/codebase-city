@@ -123,6 +123,8 @@ pub(crate) struct Input<'a> {
     pub outcomes: &'a [Vec<Outcome>],
     /// Folder rows by path, `""` for the root.
     pub dirs: &'a HashMap<String, u32>,
+    /// Root folders of build tooling, from [`scope::tooling`].
+    pub tooling: &'a [&'a str],
 }
 
 pub(crate) fn build(input: &Input<'_>) -> (Graph, BarrelReport) {
@@ -228,7 +230,7 @@ pub(crate) fn build(input: &Input<'_>) -> (Graph, BarrelReport) {
     let mut dir_production = vec![false; input.dirs.len()];
     for (path, &dir) in input.dirs {
         if let Some(production) = dir_production.get_mut(dir as usize) {
-            *production = scope::of_dir(path).is_none();
+            *production = scope::of_dir(path).is_none() && !scope::is_tooling(path, input.tooling);
         }
     }
     let graph = Graph {

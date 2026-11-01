@@ -49,6 +49,49 @@ fn of_segment(segment: &str, in_src: bool) -> Option<Scope> {
     Some(scope)
 }
 
+/// Folders at the root that usually hold the project's own tooling.
+const TOOLING: &[&str] = &["scripts", "tools", "utils"];
+
+/// The folders of [`TOOLING`] at the root that hold build tooling: those
+/// no source file outside them imports. A `utils` package the code uses is
+/// code. `imports` are `(importing file, imported folder)` pairs: the
+/// folder of the imported file, or the imported package.
+pub(crate) fn tooling<'a>(
+    paths: &[&str],
+    scopes: &[Scope],
+    imports: impl Iterator<Item = (u32, &'a str)>,
+) -> Vec<&'static str> {
+    let root = |dir: &str| -> Option<&'static str> {
+        let first = dir.split('/').next().unwrap_or_default();
+        TOOLING.iter().copied().find(|&folder| folder == first)
+    };
+    let mut used = Vec::new();
+    for (from, to) in imports {
+        let Some(folder) = root(to) else {
+            continue;
+        };
+        let from = from as usize;
+        if scopes[from] == Scope::Source && root(split_path(paths[from]).0) != Some(folder) {
+            used.push(folder);
+        }
+    }
+    TOOLING
+        .iter()
+        .copied()
+        .filter(|folder| !used.contains(folder))
+        .filter(|&folder| {
+            paths
+                .iter()
+                .any(|path| root(split_path(path).0) == Some(folder))
+        })
+        .collect()
+}
+
+/// Whether the folder `dir` is one of the `tooling` folders or under one.
+pub(crate) fn is_tooling(dir: &str, tooling: &[&str]) -> bool {
+    tooling.contains(&dir.split('/').next().unwrap_or_default())
+}
+
 /// Tools configured by a `<tool>.config.*` file.
 const TOOLS: &[&str] = &[
     "astro",
@@ -329,6 +372,33 @@ mod tests {
             .iter()
             .all(|&scope| scope == Scope::Source)
         );
+    }
+
+    #[test]
+    fn root_tooling_is_build_unless_the_code_imports_it() {
+        let paths = [
+            "app/main.py",
+            "scripts/release.py",
+            "tests/test_release.py",
+            "tools/gen.go",
+            "utils/text.py",
+            "src/utils/math.ts",
+        ];
+        let scopes: Vec<Scope> = paths.iter().map(|path| of(path)).collect();
+        let imports = [
+            // The code uses `utils`; only a test and the folder itself use
+            // `scripts`
+            (0, "utils"),
+            (2, "scripts"),
+            (1, "scripts"),
+        ];
+        let tooling = tooling(&paths, &scopes, imports.into_iter());
+        assert_eq!(tooling, ["scripts", "tools"]);
+        assert!(is_tooling("scripts", &tooling));
+        assert!(is_tooling("tools/gen", &tooling));
+        assert!(!is_tooling("utils", &tooling));
+        assert!(!is_tooling("src/utils", &tooling));
+        assert!(!is_tooling("", &tooling));
     }
 
     #[test]

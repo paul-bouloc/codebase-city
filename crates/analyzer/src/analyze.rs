@@ -4,7 +4,7 @@ use std::collections::{BTreeMap, HashMap};
 
 use model::{
     AnalysisResult, Confidence, Dirs, EdgeKind, Edges, FORMAT_VERSION, Files, Ignored, Repo, Roles,
-    Stats, Symbols,
+    Scope, Stats, Symbols,
 };
 use rayon::prelude::*;
 
@@ -203,6 +203,28 @@ pub fn analyze_with_report(
     report.undeclared_packages = most_frequent(undeclared);
 
     let paths: Vec<&str> = files.iter().map(|file| file.path.as_str()).collect();
+    let mut dir_paths = vec![""; dirs.dirs.parent.len()];
+    for (path, &dir) in &dirs.by_path {
+        dir_paths[dir as usize] = path.as_str();
+    }
+    let tooling = scope::tooling(
+        &paths,
+        &table.scope,
+        edges.keys().map(|&(from, is_dir, target)| {
+            let dir = if is_dir {
+                dir_paths[target as usize]
+            } else {
+                split_path(paths[target as usize]).0
+            };
+            (from, dir)
+        }),
+    );
+    for (scope, path) in table.scope.iter_mut().zip(&paths) {
+        if *scope == Scope::Source && scope::is_tooling(split_path(path).0, &tooling) {
+            *scope = Scope::Build;
+        }
+    }
+
     let (graph, barrel_report) = graph::build(&graph::Input {
         paths: &paths,
         scopes: &table.scope,
@@ -213,6 +235,7 @@ pub fn analyze_with_report(
         imports: &imports,
         outcomes: &outcomes,
         dirs: &dirs.by_path,
+        tooling: &tooling,
     });
 
     let mut table_edges = Edges::default();
@@ -244,10 +267,6 @@ pub fn analyze_with_report(
     };
     table.dependents = per_file(|reach| &reach.dependents);
     table.dependencies = per_file(|reach| &reach.dependencies);
-    let mut dir_paths = vec![""; dirs.dirs.parent.len()];
-    for (path, &dir) in &dirs.by_path {
-        dir_paths[dir as usize] = path.as_str();
-    }
     let (foundations, conductors, roles_report) = roles::rank(
         &units,
         reach.as_ref(),
@@ -478,8 +497,9 @@ mod tests {
                 Scope::Source,
                 Scope::Source,
                 Scope::Source,
-                Scope::Source,
-                Scope::Source
+                // Root tooling that the code does not import
+                Scope::Build,
+                Scope::Build
             ]
         );
     }
