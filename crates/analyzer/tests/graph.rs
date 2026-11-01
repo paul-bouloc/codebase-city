@@ -424,3 +424,16 @@ fn a_loop_of_reexports_does_not_depend_on_who_looks_first() {
     assert_eq!(edges_from(&result, &report, "m1.ts"), through(&["c.ts"]));
     assert_eq!(edges_from(&result, &report, "m2.ts"), through(&["c.ts"]));
 }
+
+#[test]
+fn a_python_package_reexporting_by_absolute_imports_is_seen_through() {
+    let (result, report) = analyze(&[
+        ("app.py", "from harbor import Dock\n"),
+        ("harbor/__init__.py", "from harbor.docks import Dock\n"),
+        ("harbor/docks.py", "class Dock:\n    pass\n"),
+    ]);
+    assert_eq!(
+        edges_from(&result, &report, "app.py"),
+        through(&["harbor/docks.py"])
+    );
+}

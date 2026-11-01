@@ -362,14 +362,26 @@ fn python_imports_say_where_they_run() {
 fn a_package_reexports_its_own_modules() {
     let parsed = parse_text(
         "harbor/__init__.py",
-        "from .docks import Dock\nfrom harbor.tides import Tide\n",
+        "from .docks import Dock\nfrom harbor.tides import Tide\nfrom harbor import charts\nfrom harbors.old import Pier\nimport harbor.cranes\n",
     );
     assert_eq!(
         imports(&parsed),
         [
             (".docks", Reexport, 1, vec!["Dock"]),
-            ("harbor.tides", Import, 2, vec!["Tide"]),
+            ("harbor.tides", Reexport, 2, vec!["Tide"]),
+            ("harbor", Reexport, 3, vec!["charts"]),
+            ("harbors.old", Import, 4, vec!["Pier"]),
+            ("harbor.cranes", Import, 5, vec![]),
         ]
+    );
+    // Whatever folder the package root is in
+    let nested = parse_text(
+        "src/harbor/docks/__init__.py",
+        "from harbor.docks.crane import Crane\n",
+    );
+    assert_eq!(
+        imports(&nested),
+        [("harbor.docks.crane", Reexport, 1, vec!["Crane"])]
     );
 }
 
@@ -421,7 +433,7 @@ fn typescript_reexports_keep_the_name_they_export() {
 fn python_reexports_keep_the_name_they_export() {
     let parsed = parse_text(
         "harbor/__init__.py",
-        "from .docks import Dock, Crane as Lift\nfrom .tides import *\nfrom harbor.charts import Chart\n",
+        "from .docks import Dock, Crane as Lift\nfrom .tides import *\nfrom fleet.charts import Chart\n",
     );
     assert_eq!(
         reexports(&parsed),
@@ -447,6 +459,10 @@ fn a_file_of_reexports_is_a_barrel() {
             "harbor/__init__.py",
             "\"\"\"The harbor.\"\"\"\nfrom __future__ import annotations\nimport sys\nfrom .docks import Dock\nfrom .tides import *\n__all__ = ['Dock']\n",
         ),
+        (
+            "harbor/__init__.py",
+            "from harbor.docks import Dock\nfrom harbor.tides import Tide\n",
+        ),
     ];
     for (name, content) in barrels {
         assert!(parse_text(name, content).barrel, "{name}");
@@ -464,7 +480,7 @@ fn a_file_with_code_of_its_own_is_not_a_barrel() {
         ("index.ts", "import { a } from './a'\nexport { a }\n"),
         ("empty.ts", "// Nothing here.\n"),
         ("harbor/docks.py", "from .tides import Tide\n"),
-        ("harbor/__init__.py", "from harbor.docks import Dock\n"),
+        ("harbor/__init__.py", "from fleet.docks import Dock\n"),
         (
             "harbor/__init__.py",
             "from .docks import Dock\ndef main():\n    pass\n",

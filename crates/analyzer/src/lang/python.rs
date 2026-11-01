@@ -11,6 +11,8 @@ use std::collections::HashMap;
 use model::{EdgeKind, SymbolKind};
 use tree_sitter::Node;
 
+use crate::files::split_path;
+
 use super::{Import, Symbol, children, has_ancestor, header, line, symbol, text, walk};
 
 pub(super) fn is_decision(node: Node<'_>) -> bool {
@@ -192,9 +194,9 @@ fn declares_encoding(comment: &str) -> bool {
     })
 }
 
-/// Only a package's `__init__.py` can be a barrel: its relative imports
-/// re-export, while `__all__`, the docstring and absolute imports are
-/// neutral.
+/// Only a package's `__init__.py` can be a barrel: its imports from its
+/// own modules re-export, while `__all__`, the docstring and other imports
+/// are neutral.
 pub(super) fn statements(path: &str, root: Node<'_>, source: &[u8]) -> (u32, u32) {
     if !is_init(path) {
         return (0, 0);
@@ -207,7 +209,7 @@ pub(super) fn statements(path: &str, root: Node<'_>, source: &[u8]) -> (u32, u32
             "import_from_statement" => {
                 if node
                     .child_by_field_name("module_name")
-                    .is_some_and(|module| module.kind() == "relative_import")
+                    .is_some_and(|module| from_own_package(path, module, source))
                 {
                     statements += 1;
                     reexports += 1;
@@ -223,6 +225,29 @@ pub(super) fn statements(path: &str, root: Node<'_>, source: &[u8]) -> (u32, u32
 
 fn is_init(path: &str) -> bool {
     path == "__init__.py" || path.ends_with("/__init__.py")
+}
+
+/// Whether the module of a `from … import` in the `__init__.py` at `path`
+/// is the package itself or one of its modules: `.docks`, or
+/// `harbor.docks` in `harbor/__init__.py` (and in `src/harbor/__init__.py`,
+/// whatever the root).
+fn from_own_package(path: &str, module: Node<'_>, source: &[u8]) -> bool {
+    if module.kind() == "relative_import" {
+        return true;
+    }
+    let module = dotted(module, source);
+    let package: Vec<&str> = split_path(path)
+        .0
+        .split('/')
+        .filter(|part| !part.is_empty())
+        .collect();
+    (0..package.len()).any(|start| {
+        let own = package[start..].join(".");
+        module == own
+            || module
+                .strip_prefix(&own)
+                .is_some_and(|rest| rest.starts_with('.'))
+    })
 }
 
 pub(super) fn imports(path: &str, root: Node<'_>, source: &[u8]) -> Vec<Import> {
@@ -247,7 +272,7 @@ pub(super) fn imports(path: &str, root: Node<'_>, source: &[u8]) -> Vec<Import> 
                     }));
                 }
             }
-            "import_from_statement" => imports.extend(from_import(node, source, in_init)),
+            "import_from_statement" => imports.extend(from_import(path, node, source, in_init)),
             _ => return true,
         }
         false
@@ -256,9 +281,9 @@ pub(super) fn imports(path: &str, root: Node<'_>, source: &[u8]) -> Vec<Import> 
 }
 
 /// `from a.b import c, d as e`, `from .. import f`, `from .g import *`.
-fn from_import(node: Node<'_>, source: &[u8], in_init: bool) -> Option<Import> {
+fn from_import(path: &str, node: Node<'_>, source: &[u8], in_init: bool) -> Option<Import> {
     let module = node.child_by_field_name("module_name")?;
-    let relative = module.kind() == "relative_import";
+    let own = in_init && from_own_package(path, module, source);
     let mut names = Vec::new();
     let mut bound = Vec::new();
     let mut cursor = node.walk();
@@ -283,7 +308,7 @@ fn from_import(node: Node<'_>, source: &[u8], in_init: bool) -> Option<Import> {
         bound.push("*".to_owned());
     }
     // A package re-exports what its `__init__.py` imports from its own modules
-    let kind = kind(node, source, in_init && relative);
+    let kind = kind(node, source, own);
     Some(Import {
         specifier: dotted(module, source),
         kind,
