@@ -53,7 +53,7 @@ test: db-up
     cargo test --workspace --locked
     cd web && pnpm run test
 
-# Ingest and analyze a real GitHub repository and print what came out (GITHUB_TOKEN if set); `--out file.json` writes the result
+# Ingest and analyze a real GitHub repository and print what came out (GITHUB_TOKEN if set); `--out file.json` writes the result, `--store` saves it in the database
 ingest repo *args:
     cargo run --release --locked -p server --example ingest -- {{repo}} {{args}}
 

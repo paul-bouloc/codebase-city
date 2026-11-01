@@ -5,12 +5,12 @@
 //! `foundations: […]`, `conductors: […]`, one list per line; a Go package
 //! ends with `/`, and the one at the root is `/`), and the layers of the
 //! islands (`layers: [a, [b, c], d]`, from the bottom up, islands of one
-//! layer in brackets).
+//! layer in brackets). `--store` saves the result in the database of
+//! `DATABASE_URL`, retention included.
 //!
 //! Uses `GITHUB_TOKEN` when set, and GitHub anonymously otherwise.
 
 use std::collections::BTreeMap;
-use std::io::Write;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -19,30 +19,37 @@ use std::time::Instant;
 use analyzer::ImportReport;
 use analyzer::graph::Node;
 use anyhow::Context;
-use flate2::Compression;
-use flate2::write::GzEncoder;
 use model::{AnalysisResult, Repo};
 use server::github::{GithubClient, RepoName, Token};
 use server::ingest::{Limits, Progress, ingest};
+use server::store::results;
 
 const MB: f64 = 1024.0 * 1024.0;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    const USAGE: &str = "usage: ingest owner/repo [--out result.json] [--expect roles.yaml]";
+    const USAGE: &str =
+        "usage: ingest owner/repo [--out result.json] [--expect roles.yaml] [--store]";
     let args: Vec<String> = std::env::args().skip(1).collect();
     let Some((name, flags)) = args.split_first() else {
         anyhow::bail!(USAGE);
     };
     let mut out = None;
     let mut expected = None;
-    for pair in flags.chunks(2) {
-        match pair {
-            [flag, path] if flag == "--out" => out = Some(PathBuf::from(path)),
-            [flag, path] if flag == "--expect" => {
+    let mut store = false;
+    let mut flags = flags.iter();
+    while let Some(flag) = flags.next() {
+        match (flag.as_str(), flags.clone().next()) {
+            ("--store", _) => store = true,
+            ("--out", Some(path)) => {
+                out = Some(PathBuf::from(path));
+                flags.next();
+            }
+            ("--expect", Some(path)) => {
                 let text =
                     std::fs::read_to_string(path).with_context(|| format!("reading {path}"))?;
                 expected = Some(Expected::parse(&text));
+                flags.next();
             }
             _ => anyhow::bail!(USAGE),
         }
@@ -145,16 +152,22 @@ async fn main() -> anyhow::Result<()> {
     print_roles(&result, &report.roles, expected.as_ref());
     print_structure(&result, expected.as_ref());
 
-    let json = serde_json::to_vec(&result)?;
-    let mut gzip = GzEncoder::new(Vec::new(), Compression::default());
-    gzip.write_all(&json)?;
-    let gzipped = gzip.finish()?;
+    let started = Instant::now();
+    let encoded = results::encode(&result)?;
     println!(
-        "result        {:.1} MB JSON, {:.2} MB gzip",
-        json.len() as f64 / MB,
-        gzipped.len() as f64 / MB
+        "result        {:.1} MB JSON, {:.2} MB brotli in {:.2?}",
+        encoded.raw_size() as f64 / MB,
+        encoded.stored_size() as f64 / MB,
+        started.elapsed()
     );
+    if store {
+        let url = std::env::var("DATABASE_URL").context("--store needs DATABASE_URL")?;
+        let pool = server::store::connect(&url).await?;
+        let removed = results::save(&pool, &encoded).await?;
+        println!("stored        {removed} older results removed by the retention");
+    }
     if let Some(path) = out {
+        let json = serde_json::to_vec(&result)?;
         std::fs::write(&path, &json).with_context(|| format!("writing {}", path.display()))?;
         println!("written to    {}", path.display());
     }
