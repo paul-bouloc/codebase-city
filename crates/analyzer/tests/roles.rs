@@ -398,3 +398,22 @@ fn the_order_of_the_files_does_not_change_the_roles() {
         expected
     );
 }
+
+#[test]
+fn a_conductor_offered_by_a_barrel_is_still_a_conductor() {
+    let result = analyzed(&[
+        ("src/index.ts", "export { Harbor } from './harbor'\n"),
+        (
+            "src/harbor.ts",
+            "import { a } from './a'\nimport { b } from './b'\nexport class Harbor {}\n",
+        ),
+        ("src/a.ts", "export const a = 1\n"),
+        ("src/b.ts", "export const b = 1\n"),
+        ("src/tool.ts", "import { a } from './a'\n"),
+    ]);
+    // Only the barrel depends on `harbor.ts`
+    assert_eq!(
+        ranking(&result, &result.roles.conductors),
+        pairs(&[("src/harbor.ts", 2), ("src/tool.ts", 1)])
+    );
+}

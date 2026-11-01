@@ -95,8 +95,11 @@ pub(crate) fn rank(
 
     let dependents = &reach.dependents;
     let dependencies = &reach.dependencies;
+    // A conductor is little used by the code; a barrel re-exporting it
+    // offers it, and does not count
+    let users = &reach.users;
     let high = percentile(ranked.iter().map(|&unit| dependents[unit]), 4);
-    let low = percentile(ranked.iter().map(|&unit| dependents[unit]), 1);
+    let low = percentile(ranked.iter().map(|&unit| users[unit]), 1);
 
     let mut foundations: Vec<usize> = ranked
         .iter()
@@ -107,7 +110,7 @@ pub(crate) fn rank(
     let mut conductors: Vec<usize> = ranked
         .iter()
         .copied()
-        .filter(|&unit| dependencies[unit] > 0 && dependents[unit] <= low)
+        .filter(|&unit| dependencies[unit] > 0 && users[unit] <= low)
         .collect();
     conductors.sort_by_key(|&unit| (Reverse(dependencies[unit]), path(unit)));
 

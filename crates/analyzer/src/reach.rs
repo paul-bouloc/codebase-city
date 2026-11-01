@@ -119,6 +119,9 @@ impl Units {
 pub(crate) struct Reach {
     /// Production files that depend on the unit, directly or not.
     pub dependents: Vec<u32>,
+    /// The same, facades left out: what the code uses, beyond what a
+    /// barrel offers.
+    pub users: Vec<u32>,
     /// Production files the unit depends on, directly or not.
     pub dependencies: Vec<u32>,
     /// The loop each unit is part of, numbered so that a loop only reaches
@@ -127,15 +130,19 @@ pub(crate) struct Reach {
 }
 
 /// Counts dependents and dependencies; `None` when that would take more
-/// than [`MAX_WORK`].
-pub(crate) fn reach(units: &Units) -> Option<Reach> {
+/// than [`MAX_WORK`]. `facades` says which units are barrels.
+pub(crate) fn reach(units: &Units, facades: &[bool]) -> Option<Reach> {
     let components = strong_components(units);
     let count = components.iter().max().map_or(0, |&last| last as usize + 1);
     let mut weights = vec![0u64; count];
+    let mut user_weights = vec![0u64; count];
     let mut edges: Vec<(u32, u32)> = Vec::new();
     for unit in 0..units.len() {
         let from = components[unit];
         weights[from as usize] += u64::from(units.weights[unit]);
+        if !facades[unit] {
+            user_weights[from as usize] += u64::from(units.weights[unit]);
+        }
         for &to in units.imports(crate::saturating_u32(unit)) {
             let to = components[to as usize];
             if to != from {
@@ -159,11 +166,13 @@ pub(crate) fn reach(units: &Units) -> Option<Reach> {
     // lower numbers, so each pass skips the components that cannot matter
     let mut reached = vec![0u64; count];
     let mut reaching = vec![0u64; count];
+    let mut using = vec![0u64; count];
     let mut bits = vec![0u64; count];
     for block in 0..count.div_ceil(64) {
         let first = block * 64;
         let last = (first + 64).min(count);
         let sums = ByteSums::new(&weights[first..last]);
+        let user_sums = ByteSums::new(&user_weights[first..last]);
 
         bits.fill(0);
         for component in first..count {
@@ -186,6 +195,7 @@ pub(crate) fn reach(units: &Units) -> Option<Reach> {
             }
             let own = bits[component];
             reaching[component] += sums.of(own);
+            using[component] += user_sums.of(own);
             if own != 0 {
                 for &to in succ(component) {
                     bits[to as usize] |= own;
@@ -194,17 +204,21 @@ pub(crate) fn reach(units: &Units) -> Option<Reach> {
         }
     }
 
-    let count_for = |totals: &[u64]| -> Vec<u32> {
+    // A unit's own files are in its component's totals
+    let count_for = |totals: &[u64], own: &dyn Fn(usize) -> u64| -> Vec<u32> {
         (0..units.len())
             .map(|unit| {
-                let total = totals[components[unit] as usize] - u64::from(units.weights[unit]);
+                let total = totals[components[unit] as usize] - own(unit);
                 u32::try_from(total).unwrap_or(u32::MAX)
             })
             .collect()
     };
+    let weight = |unit: usize| u64::from(units.weights[unit]);
+    let user_weight = |unit: usize| if facades[unit] { 0 } else { weight(unit) };
     Some(Reach {
-        dependents: count_for(&reaching),
-        dependencies: count_for(&reached),
+        dependents: count_for(&reaching, &weight),
+        users: count_for(&using, &user_weight),
+        dependencies: count_for(&reached, &weight),
         components,
     })
 }
@@ -354,7 +368,8 @@ mod tests {
     use super::*;
 
     fn counts(weights: Vec<u32>, edges: Vec<(u32, u32)>) -> (Vec<u32>, Vec<u32>) {
-        let reach = reach(&Units::from_edges(weights, edges)).unwrap();
+        let facades = vec![false; weights.len()];
+        let reach = reach(&Units::from_edges(weights, edges), &facades).unwrap();
         (reach.dependents, reach.dependencies)
     }
 
@@ -388,6 +403,15 @@ mod tests {
         let (dependents, dependencies) = counts(vec![1, 3, 1], vec![(0, 1), (1, 2)]);
         assert_eq!(dependents, [0, 1, 4]);
         assert_eq!(dependencies, [4, 1, 0]);
+    }
+
+    #[test]
+    fn users_leave_facades_out() {
+        // 0 → facade 1 → 2, and 3 → 2
+        let units = Units::from_edges(vec![1; 4], vec![(0, 1), (1, 2), (3, 2)]);
+        let reach = reach(&units, &[false, true, false, false]).unwrap();
+        assert_eq!(reach.dependents, [0, 1, 3, 0]);
+        assert_eq!(reach.users, [0, 1, 2, 0]);
     }
 
     #[test]

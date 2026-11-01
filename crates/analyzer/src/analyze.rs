@@ -10,7 +10,7 @@ use rayon::prelude::*;
 
 use crate::entries;
 use crate::files::{Language, SourceFile, split_path};
-use crate::graph::{self, BarrelReport, Graph, strength};
+use crate::graph::{self, BarrelReport, Graph, Node, strength};
 use crate::lang::{self, Parsed};
 use crate::reach::{self, Reach, Units};
 use crate::resolve::{self, Outcome, Target};
@@ -229,7 +229,12 @@ pub fn analyze_with_report(
         .map(|file| file.language == Language::Go)
         .collect();
     let units = Units::new(&graph, &table.dir, &packages);
-    let reach = reach::reach(&units);
+    let facades: Vec<bool> = units
+        .nodes
+        .iter()
+        .map(|node| matches!(node, Node::File(file) if barrels[*file as usize]))
+        .collect();
+    let reach = reach::reach(&units, &facades);
     let per_file = |count: fn(&Reach) -> &Vec<u32>| -> Vec<Option<u32>> {
         units
             .of_file
