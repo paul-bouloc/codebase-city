@@ -524,6 +524,7 @@ fn a_program_is_known_by_its_main() {
             "def run():\n    pass\n\nif __name__ == \"__main__\":\n    run()\n",
         ),
         ("run.py", "if '__main__' == __name__ :\n    run()\n"),
+        ("run.py", "if ((__name__ == '__main__')):\n    run()\n"),
     ];
     for (name, content) in programs {
         assert!(parse_text(name, content).main, "{name}: {content}");

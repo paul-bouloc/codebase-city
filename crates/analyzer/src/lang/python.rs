@@ -224,13 +224,19 @@ pub(super) fn statements(path: &str, root: Node<'_>, source: &[u8]) -> (u32, u32
 }
 
 /// Whether the module runs something when started as a script: a top-level
-/// `if __name__ == "__main__":`, either way round, with either quotes.
+/// `if __name__ == "__main__":`, either way round, with either quotes, in
+/// parentheses or not.
 pub(super) fn is_main(root: Node<'_>, source: &[u8]) -> bool {
     children(root).into_iter().any(|node| {
         node.kind() == "if_statement"
             && node
                 .child_by_field_name("condition")
-                .is_some_and(|condition| {
+                .is_some_and(|mut condition| {
+                    while condition.kind() == "parenthesized_expression"
+                        && let Some(inner) = children(condition).first()
+                    {
+                        condition = *inner;
+                    }
                     let condition: String = text(condition, source)
                         .chars()
                         .filter(|c| !c.is_whitespace())
