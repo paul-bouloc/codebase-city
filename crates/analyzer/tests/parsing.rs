@@ -221,6 +221,19 @@ fn broken_files_are_still_measured() {
 }
 
 #[test]
+fn a_broken_export_has_no_nameless_symbol() {
+    let parsed = parse_text(
+        "broken.js",
+        "exports. = function json() {}\nmodule.exports.= '1.0'\nmodule.exports = { : 1, () {} }\n",
+    );
+    assert!(
+        parsed.symbols.iter().all(|symbol| !symbol.name.is_empty()),
+        "{:?}",
+        parsed.symbols
+    );
+}
+
+#[test]
 fn invalid_utf8_does_not_stop_parsing() {
     let content = b"// caf\xe9\nexport const a = 1\n";
     let parsed = parse("a.js", Language::JavaScript, content).unwrap();

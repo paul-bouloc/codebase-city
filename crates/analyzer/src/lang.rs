@@ -106,6 +106,9 @@ pub fn parse(path: &str, language: Language, content: &[u8]) -> Option<Parsed> {
     let tree = parser.parse(content, None)?;
     let root = tree.root_node();
     let mut symbols = dialect.symbols(root, content);
+    // Syntax errors can leave a declaration without a name: tree-sitter
+    // then fills in an empty, zero-width node
+    symbols.retain(|symbol| !symbol.name.trim().is_empty());
     symbols.sort_by(|a, b| (a.line, &a.name).cmp(&(b.line, &b.name)));
     // TypeScript overloads declare a function once per signature
     let mut seen = HashSet::new();
