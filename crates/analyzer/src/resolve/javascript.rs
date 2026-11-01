@@ -52,6 +52,19 @@ const SUFFIX_ENDINGS: &[&str] = &[
     "/index.jsx",
 ];
 
+/// Folders whose `package.json` files are test material, not packages of
+/// the repository: a fixture may be named like a real dependency.
+const TEST_DIRS: &[&str] = &[
+    "test",
+    "tests",
+    "__tests__",
+    "fixture",
+    "fixtures",
+    "__fixtures__",
+    "testdata",
+    "__mocks__",
+];
+
 /// Files a folder can stand for, when its `package.json` does not lead to
 /// a file of the repository.
 const FOLDER_ENTRIES: &[&str] = &[
@@ -95,14 +108,18 @@ impl Resolver {
         let mut packages: Vec<(&str, &[u8])> = manifests
             .iter()
             .filter(|(path, _)| split_path(path).1 == "package.json")
+            .filter(|(path, _)| !path.split('/').any(|part| TEST_DIRS.contains(&part)))
             .map(|(path, content)| (*path, *content))
             .collect();
-        packages.sort_unstable();
+        // When two packages share a name, the one nearest the root wins
+        packages.sort_unstable_by_key(|&(path, _)| (path.matches('/').count(), path));
         for (path, content) in packages {
             let Ok(package) = serde_json::from_slice::<PackageJson>(content) else {
                 continue;
             };
-            if let Some(name) = package.name.filter(|name| !name.is_empty()) {
+            if let Some(name) = package.name.filter(|name| !name.is_empty())
+                && !workspace.iter().any(|(known, _)| *known == name)
+            {
                 workspace.push((name, split_path(path).0.to_owned()));
             }
             for names in [

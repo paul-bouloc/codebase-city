@@ -273,6 +273,38 @@ fn a_jsconfig_alone_is_read_like_a_tsconfig() {
 }
 
 #[test]
+fn a_fixture_named_like_a_dependency_is_not_a_package() {
+    let (result, report) = analyze(&[
+        (
+            "package.json",
+            r#"{ "name": "app", "dependencies": { "lodash": "4" } }"#,
+        ),
+        (
+            "src/main.js",
+            "const _ = require('lodash')\nconst ui = require('ui')\n",
+        ),
+        (
+            "test/fixtures/fake-lodash/package.json",
+            r#"{ "name": "lodash", "main": "index.js" }"#,
+        ),
+        (
+            "test/fixtures/fake-lodash/index.js",
+            "module.exports = {}\n",
+        ),
+        // Two packages named `ui`: the one nearest the root wins
+        ("packages/ui/package.json", r#"{ "name": "ui" }"#),
+        ("packages/ui/index.js", "module.exports = {}\n"),
+        ("examples/demo/node/ui/package.json", r#"{ "name": "ui" }"#),
+        ("examples/demo/node/ui/index.js", "module.exports = {}\n"),
+    ]);
+    assert_eq!(
+        edges(&result),
+        [edge("src/main.js", "packages/ui/index.js", Import)]
+    );
+    assert_eq!(report.external, 1);
+}
+
+#[test]
 fn workspace_packages_resolve_to_their_sources() {
     let (result, report) = analyze(&[
         (
