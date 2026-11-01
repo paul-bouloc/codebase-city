@@ -1,5 +1,5 @@
 {
-  "formatVersion": 5,
+  "formatVersion": 6,
   "analyzerVersion": "0.1.0",
   "repo": {
     "owner": "acme",
@@ -26,6 +26,16 @@
       "generated",
       "tests",
       "scripts"
+    ],
+    "island": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
     ]
   },
   "languages": [
@@ -187,7 +197,7 @@
       "source",
       "test",
       "test",
-      "source"
+      "build"
     ],
     "header": [
       null,
@@ -537,6 +547,82 @@
         9
       ]
     }
+  },
+  "islands": {
+    "dir": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "layer": [
+      null,
+      3,
+      1,
+      2,
+      2,
+      null,
+      null,
+      null
+    ]
+  },
+  "links": {
+    "from": [
+      1,
+      1,
+      1,
+      3,
+      4,
+      4,
+      6,
+      6
+    ],
+    "to": [
+      2,
+      3,
+      4,
+      2,
+      2,
+      5,
+      2,
+      3
+    ],
+    "imports": [
+      1,
+      1,
+      1,
+      3,
+      2,
+      1,
+      1,
+      1
+    ]
+  },
+  "cycles": {
+    "members": [
+      [
+        5,
+        6
+      ],
+      [
+        9,
+        12
+      ]
+    ],
+    "shortest": [
+      [
+        5,
+        6
+      ],
+      [
+        9,
+        12
+      ]
+    ]
   },
   "stats": {
     "ignored": {

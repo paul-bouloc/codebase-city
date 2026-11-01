@@ -28,6 +28,10 @@ describe('decodeResult', () => {
     expect(result.files.dependents[8]).toBe(11)
     expect(result.roles.entries.reasons[0]).toEqual(['packageMain', 'conventionalName'])
     expect(result.roles.foundations.file[0]).toBe(8)
+    expect(result.islands.layer[2]).toBe(1)
+    expect(result.dirs.island[3]).toBe(3)
+    expect(result.links.imports).toContain(3)
+    expect(result.cycles.shortest[0]).toEqual([5, 6])
   })
 
   it('rejects anything but an object', () => {
@@ -38,9 +42,9 @@ describe('decodeResult', () => {
   it('rejects another format version', () => {
     expect(
       decodeChanged((json) => {
-        json.formatVersion = 4
+        json.formatVersion = 5
       }),
-    ).toThrow('unsupported format version 4, expected 5')
+    ).toThrow('unsupported format version 5, expected 6')
   })
 
   it('rejects values of the wrong type', () => {
@@ -317,5 +321,98 @@ describe('decodeResult', () => {
         json.edges.toDir[1] = 0
       }),
     ).toThrow('edges[2] must come after the previous edge, by file then target')
+  })
+
+  it('requires islands that start at their folder and follow the tree', () => {
+    expect(
+      decodeChanged((json) => {
+        json.dirs.island.pop()
+      }),
+    ).toThrow('column dirs.island has 7 rows, expected 8')
+    expect(
+      decodeChanged((json) => {
+        json.islands.dir.reverse()
+        json.islands.layer.reverse()
+      }),
+    ).toThrow('islands[1] must come after the previous island, by folder')
+    expect(
+      decodeChanged((json) => {
+        json.dirs.island[1] = null
+      }),
+    ).toThrow('dirs.island of islands.dir[1] must point back to island 1')
+    expect(
+      decodeChanged((json) => {
+        json.dirs.island[7] = 9
+      }),
+    ).toThrow('dirs.island[7] points to row 9, but the table has 8 rows')
+    expect(
+      decodeChanged((json) => {
+        json.islands.layer[2] = 0
+      }),
+    ).toThrow('islands.layer[2] must be 1 or more')
+  })
+
+  it('rejects a folder outside its parent island', () => {
+    expect(
+      decodeChanged((json) => {
+        // `src/core` in the root island, which does not start there
+        json.islands.dir.splice(2, 1)
+        json.islands.layer.splice(2, 1)
+        json.links = { from: [], to: [], imports: [] }
+        json.dirs.island = [0, 1, 0, 2, 3, 4, 5, 6]
+      }),
+    ).toThrow('dirs.island[2] must be its parent')
+  })
+
+  it('requires links between two islands, sorted, each once', () => {
+    expect(
+      decodeChanged((json) => {
+        json.links.to[0] = 1
+      }),
+    ).toThrow('links[0] goes from an island to itself')
+    expect(
+      decodeChanged((json) => {
+        json.links.from.reverse()
+        json.links.to.reverse()
+      }),
+    ).toThrow('links[1] must come after the previous link, by islands')
+    expect(
+      decodeChanged((json) => {
+        json.links.imports[0] = 0
+      }),
+    ).toThrow('links.imports[0] must be 1 or more')
+    expect(
+      decodeChanged((json) => {
+        json.links.to[0] = 8
+      }),
+    ).toThrow('links.to[0] points to row 8, but the table has 8 rows')
+  })
+
+  it('requires cycles of two files or more that loop through their members', () => {
+    expect(
+      decodeChanged((json) => {
+        json.cycles.members[0] = [5]
+      }),
+    ).toThrow('cycles.members[0] must hold two files or more, sorted, each once')
+    expect(
+      decodeChanged((json) => {
+        json.cycles.members[0] = [6, 5]
+      }),
+    ).toThrow('cycles.members[0]')
+    expect(
+      decodeChanged((json) => {
+        json.cycles.shortest[1] = [9, 8]
+      }),
+    ).toThrow('cycles.shortest[1] must go through two members or more, each once')
+    expect(
+      decodeChanged((json) => {
+        json.cycles.shortest[0] = [5, 5]
+      }),
+    ).toThrow('cycles.shortest[0]')
+    expect(
+      decodeChanged((json) => {
+        json.cycles.members[0] = 'store'
+      }),
+    ).toThrow('cycles.members[0] is not a list of indexes')
   })
 })

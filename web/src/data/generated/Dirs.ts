@@ -14,4 +14,9 @@ parent: Array<number | null>,
 /**
  * Folder name, without slashes; empty for the root only.
  */
-name: Array<string>, };
+name: Array<string>, 
+/**
+ * The island the folder's own files belong to; `null` for a folder
+ * split into islands that holds no file of its own.
+ */
+island: Array<number | null>, };

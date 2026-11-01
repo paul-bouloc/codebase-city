@@ -9,8 +9,9 @@
 use std::path::PathBuf;
 
 use model::{
-    AnalysisResult, Confidence, Dirs, EdgeKind, Edges, Entries, EntryReason, FORMAT_VERSION, Files,
-    Ignored, Ranked, Repo, Roles, Scope, Stats, SymbolKind, Symbols,
+    AnalysisResult, Confidence, Cycles, Dirs, EdgeKind, Edges, Entries, EntryReason,
+    FORMAT_VERSION, Files, Ignored, Islands, Links, Ranked, Repo, Roles, Scope, Stats, SymbolKind,
+    Symbols,
 };
 
 const DIRS: &[(Option<u32>, &str)] = &[
@@ -58,6 +59,8 @@ const SCOPES: &[(u32, Scope)] = &[
     (1, Scope::Config),
     (17, Scope::Test),
     (18, Scope::Test),
+    // Root tooling that the code does not import
+    (19, Scope::Build),
 ];
 
 /// File, leading comment.
@@ -122,6 +125,28 @@ const EDGES: &[(u32, u32, EdgeKind, Confidence)] = &[
     (18, 9, EdgeKind::Import, Confidence::Exact),
 ];
 
+/// Island of each folder: `src` holds all the production code, so it is
+/// split, and its own files make the `src` island. One island per folder.
+const ISLANDS: u32 = 8;
+
+/// Layer of each island, from the production imports and re-exports: `core`
+/// at the bottom, `ui` and `api` above it, `src` (`main.ts`, `app.ts`) on
+/// top; the root, `generated`, `tests` and `scripts` hold no production
+/// code.
+const LAYERS: &[Option<u32>] = &[None, Some(3), Some(1), Some(2), Some(2), None, None, None];
+
+/// Importing island, imported island, edges of [`EDGES`] between them.
+const LINKS: &[(u32, u32, u32)] = &[
+    (1, 2, 1),
+    (1, 3, 1),
+    (1, 4, 1),
+    (3, 2, 3),
+    (4, 2, 2),
+    (4, 5, 1),
+    (6, 2, 1),
+    (6, 3, 1),
+];
+
 /// The barrel of `src/core`.
 const BARREL: u32 = 4;
 
@@ -173,6 +198,7 @@ fn sample() -> AnalysisResult {
         dirs: Dirs {
             parent: DIRS.iter().map(|dir| dir.0).collect(),
             name: strings(DIRS.iter().map(|dir| dir.1)),
+            island: (0..ISLANDS).map(Some).collect(),
         },
         languages: strings(LANGUAGES.iter().copied()),
         files: Files {
@@ -239,6 +265,19 @@ fn sample() -> AnalysisResult {
                 count: vec![12, 11, 9],
             },
         },
+        islands: Islands {
+            dir: (0..ISLANDS).collect(),
+            layer: LAYERS.to_vec(),
+        },
+        links: Links {
+            from: LINKS.iter().map(|link| link.0).collect(),
+            to: LINKS.iter().map(|link| link.1).collect(),
+            imports: LINKS.iter().map(|link| link.2).collect(),
+        },
+        cycles: Cycles {
+            members: vec![vec![5, 6], vec![9, 12]],
+            shortest: vec![vec![5, 6], vec![9, 12]],
+        },
         stats: Stats {
             ignored: Ignored {
                 vendored: 3,
@@ -278,6 +317,9 @@ fn json_uses_the_names_of_the_generated_types() {
     assert_eq!(json["symbols"]["kind"][6], "interface");
     assert!(json["files"]["dependents"][0].is_null());
     assert_eq!(json["roles"]["entries"]["reasons"][0][0], "packageMain");
+    assert!(json["islands"]["layer"][0].is_null());
+    assert_eq!(json["dirs"]["island"][2], 2);
+    assert_eq!(json["cycles"]["shortest"][1][0], 9);
 }
 
 #[test]

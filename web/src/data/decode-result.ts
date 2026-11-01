@@ -1,11 +1,14 @@
 import type { AnalysisResult } from './generated/AnalysisResult'
 import type { Confidence } from './generated/Confidence'
+import type { Cycles } from './generated/Cycles'
 import type { Dirs } from './generated/Dirs'
 import type { EdgeKind } from './generated/EdgeKind'
 import type { Edges } from './generated/Edges'
 import type { Entries } from './generated/Entries'
 import type { EntryReason } from './generated/EntryReason'
 import type { Files } from './generated/Files'
+import type { Islands } from './generated/Islands'
+import type { Links } from './generated/Links'
 import type { Ranked } from './generated/Ranked'
 import type { Roles } from './generated/Roles'
 import type { Scope } from './generated/Scope'
@@ -14,7 +17,7 @@ import type { SymbolKind } from './generated/SymbolKind'
 import type { Symbols } from './generated/Symbols'
 
 // FORMAT_VERSION in crates/model; the generated sample result keeps the two in step.
-export const FORMAT_VERSION = 5
+export const FORMAT_VERSION = 6
 
 // Checked by the compiler against the generated unions: adding a variant in Rust breaks the build here.
 const EDGE_KINDS = {
@@ -117,6 +120,7 @@ const isSymbolKind = (item: unknown): item is SymbolKind =>
   typeof item === 'string' && Object.hasOwn(SYMBOL_KINDS, item)
 const isScope = (item: unknown): item is Scope =>
   typeof item === 'string' && Object.hasOwn(SCOPES, item)
+const isU32List = (item: unknown): item is number[] => Array.isArray(item) && item.every(isU32)
 const isEntryReasons = (item: unknown): item is EntryReason[] =>
   Array.isArray(item) &&
   item.every((reason) => typeof reason === 'string' && Object.hasOwn(ENTRY_REASONS, reason))
@@ -161,6 +165,7 @@ function decodeDirs(value: unknown): Dirs {
   const fields = object(value, 'dirs')
   const parent = column(fields.parent, 'dirs.parent', isU32OrNull, 'an index or null')
   const name = stringColumn(fields.name, 'dirs.name')
+  const island = column(fields.island, 'dirs.island', isU32OrNull, 'an index or null')
   sameLength('dirs.name', parent.length, name)
   if (parent[0] !== null || name[0] !== '') {
     fail('the first folder must be the root: no parent and an empty name')
@@ -173,7 +178,8 @@ function decodeDirs(value: unknown): Dirs {
     }
   }
   validNames('dirs.name', name, 1)
-  return { parent, name }
+  sameLength('dirs.island', parent.length, island)
+  return { parent, name, island }
 }
 
 function decodeFiles(value: unknown, dirCount: number, languageCount: number): Files {
@@ -348,6 +354,102 @@ function decodeRoles(value: unknown, fileCount: number, dirCount: number): Roles
   }
 }
 
+// Islands are connected parts of the folder tree, each starting at the folder it is named after.
+function decodeIslands(value: unknown, dirs: Dirs): Islands {
+  const fields = object(value, 'islands')
+  const islands: Islands = {
+    dir: u32Column(fields.dir, 'islands.dir'),
+    layer: column(fields.layer, 'islands.layer', isU32OrNull, 'an index or null'),
+  }
+  const count = islands.dir.length
+  sameLength('islands.layer', count, islands.layer)
+  inBounds('islands.dir', islands.dir, dirs.parent.length)
+  inBoundsOrNull('dirs.island', dirs.island, count)
+  for (let row = 1; row < count; row++) {
+    if ((islands.dir[row - 1] as number) >= (islands.dir[row] as number)) {
+      fail(`islands[${row}] must come after the previous island, by folder`)
+    }
+  }
+  islands.dir.forEach((dir, row) => {
+    if (dirs.island[dir] !== row) {
+      fail(`dirs.island of islands.dir[${row}] must point back to island ${row}`)
+    }
+  })
+  for (let row = 1; row < dirs.island.length; row++) {
+    const island = dirs.island[row]
+    if (island === null || island === undefined || islands.dir[island] === row) {
+      continue
+    }
+    if (dirs.island[dirs.parent[row] as number] !== island) {
+      fail(`dirs.island[${row}] must be its parent's island, or an island named after it`)
+    }
+  }
+  const layerZero = islands.layer.indexOf(0)
+  if (layerZero !== -1) {
+    fail(`islands.layer[${layerZero}] must be 1 or more`)
+  }
+  return islands
+}
+
+function decodeLinks(value: unknown, islandCount: number): Links {
+  const fields = object(value, 'links')
+  const links: Links = {
+    from: u32Column(fields.from, 'links.from'),
+    to: u32Column(fields.to, 'links.to'),
+    imports: u32Column(fields.imports, 'links.imports'),
+  }
+  sameLength('links.to', links.from.length, links.to)
+  sameLength('links.imports', links.from.length, links.imports)
+  inBounds('links.from', links.from, islandCount)
+  inBounds('links.to', links.to, islandCount)
+  for (let row = 0; row < links.from.length; row++) {
+    const from = links.from[row] as number
+    const to = links.to[row] as number
+    if (from === to) {
+      fail(`links[${row}] goes from an island to itself`)
+    }
+    if (row > 0) {
+      const previousFrom = links.from[row - 1] as number
+      const previousTo = links.to[row - 1] as number
+      if (previousFrom > from || (previousFrom === from && previousTo >= to)) {
+        fail(`links[${row}] must come after the previous link, by islands`)
+      }
+    }
+    if (links.imports[row] === 0) {
+      fail(`links.imports[${row}] must be 1 or more`)
+    }
+  }
+  return links
+}
+
+function decodeCycles(value: unknown, fileCount: number): Cycles {
+  const fields = object(value, 'cycles')
+  const cycles: Cycles = {
+    members: column(fields.members, 'cycles.members', isU32List, 'a list of indexes'),
+    shortest: column(fields.shortest, 'cycles.shortest', isU32List, 'a list of indexes'),
+  }
+  sameLength('cycles.shortest', cycles.members.length, cycles.shortest)
+  cycles.members.forEach((members, row) => {
+    inBounds('cycles.members', members, fileCount)
+    if (
+      members.length < 2 ||
+      members.some((file, i) => i > 0 && (members[i - 1] as number) >= file)
+    ) {
+      fail(`cycles.members[${row}] must hold two files or more, sorted, each once`)
+    }
+    const shortest = cycles.shortest[row] as number[]
+    const memberSet = new Set(members)
+    if (
+      shortest.length < 2 ||
+      new Set(shortest).size !== shortest.length ||
+      shortest.some((file) => !memberSet.has(file))
+    ) {
+      fail(`cycles.shortest[${row}] must go through two members or more, each once`)
+    }
+  })
+  return cycles
+}
+
 function decodeStats(value: unknown): Stats {
   const fields = object(value, 'stats')
   const ignored = object(fields.ignored, 'stats.ignored')
@@ -382,6 +484,7 @@ export function decodeResult(json: unknown): AnalysisResult {
   const dirs = decodeDirs(fields.dirs)
   const languages = stringColumn(fields.languages, 'languages')
   const files = decodeFiles(fields.files, dirs.parent.length, languages.length)
+  const islands = decodeIslands(fields.islands, dirs)
   return {
     formatVersion,
     analyzerVersion: string(fields.analyzerVersion, 'analyzerVersion'),
@@ -396,6 +499,9 @@ export function decodeResult(json: unknown): AnalysisResult {
     symbols: decodeSymbols(fields.symbols, files.dir.length),
     edges: decodeEdges(fields.edges, files.dir.length, dirs.parent.length),
     roles: decodeRoles(fields.roles, files.dir.length, dirs.parent.length),
+    islands,
+    links: decodeLinks(fields.links, islands.dir.length),
+    cycles: decodeCycles(fields.cycles, files.dir.length),
     stats: decodeStats(fields.stats),
   }
 }

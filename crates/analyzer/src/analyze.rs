@@ -3,8 +3,8 @@
 use std::collections::{BTreeMap, HashMap};
 
 use model::{
-    AnalysisResult, Confidence, Dirs, EdgeKind, Edges, FORMAT_VERSION, Files, Ignored, Repo, Roles,
-    Scope, Stats, Symbols,
+    AnalysisResult, Confidence, Cycles, Dirs, EdgeKind, Edges, FORMAT_VERSION, Files, Ignored,
+    Islands, Links, Repo, Roles, Scope, Stats, Symbols,
 };
 use rayon::prelude::*;
 
@@ -294,6 +294,7 @@ pub fn analyze_with_report(
     });
     table.barrel = barrels;
 
+    dirs.dirs.island = vec![None; dirs.dirs.parent.len()];
     let result = AnalysisResult {
         format_version: FORMAT_VERSION,
         analyzer_version: ANALYZER_VERSION.to_owned(),
@@ -309,6 +310,9 @@ pub fn analyze_with_report(
             foundations,
             conductors,
         },
+        islands: Islands::default(),
+        links: Links::default(),
+        cycles: Cycles::default(),
         stats: Stats {
             ignored,
             imports_total: report.exact + report.likely + report.external + report.unresolved,
@@ -372,6 +376,7 @@ impl DirTree {
             dirs: Dirs {
                 parent: vec![None],
                 name: vec![String::new()],
+                island: Vec::new(),
             },
             by_path: HashMap::from([(String::new(), 0)]),
         }

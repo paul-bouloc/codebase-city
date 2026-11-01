@@ -9,7 +9,8 @@ mod result;
 mod validate;
 
 pub use result::{
-    AnalysisResult, Confidence, Dirs, EdgeKind, Edges, Entries, EntryReason, FORMAT_VERSION, Files,
-    Ignored, Ranked, Repo, Roles, Scope, Stats, SymbolKind, Symbols,
+    AnalysisResult, Confidence, Cycles, Dirs, EdgeKind, Edges, Entries, EntryReason,
+    FORMAT_VERSION, Files, Ignored, Islands, Links, Ranked, Repo, Roles, Scope, Stats, SymbolKind,
+    Symbols,
 };
 pub use validate::InvalidResult;

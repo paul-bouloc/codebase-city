@@ -10,7 +10,7 @@ use ts_rs::TS;
 
 /// Version of the shape of the data. Bumped on any change the web app has to
 /// know about; a result with another version is rejected, not guessed at.
-pub const FORMAT_VERSION: u32 = 5;
+pub const FORMAT_VERSION: u32 = 6;
 
 /// One analysis of one repository at one commit.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -32,6 +32,9 @@ pub struct AnalysisResult {
     pub symbols: Symbols,
     pub edges: Edges,
     pub roles: Roles,
+    pub islands: Islands,
+    pub links: Links,
+    pub cycles: Cycles,
     pub stats: Stats,
 }
 
@@ -56,6 +59,9 @@ pub struct Dirs {
     pub parent: Vec<Option<u32>>,
     /// Folder name, without slashes; empty for the root only.
     pub name: Vec<String>,
+    /// The island the folder's own files belong to; `null` for a folder
+    /// split into islands that holds no file of its own.
+    pub island: Vec<Option<u32>>,
 }
 
 /// The files kept after ingestion, one row per file.
@@ -265,6 +271,52 @@ pub struct Ranked {
     pub dir: Vec<Option<u32>>,
     /// The measure it is ranked by, in production files.
     pub count: Vec<u32>,
+}
+
+/// The islands of the city, one row per island, sorted by folder.
+///
+/// An island is a top-level folder. A folder holding more than half of the
+/// production code is split instead: its subfolders become islands, and the
+/// files directly in it make an island of their own, under its name. Files
+/// at the root make the root island.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct Islands {
+    /// The folder the island is named after.
+    pub dir: Vec<u32>,
+    /// Layer of the island's production code, from 1 at the bottom: an
+    /// island mostly imports islands of lower layers. `null` for an island
+    /// without production code.
+    pub layer: Vec<Option<u32>>,
+}
+
+/// Imports between islands, one row per importing island and imported
+/// island, sorted by both. A link goes up when the layer of `to` is above
+/// the layer of `from`.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct Links {
+    pub from: Vec<u32>,
+    pub to: Vec<u32>,
+    /// Edges of [`Edges`] from a file of `from` to a file or package of
+    /// `to`.
+    pub imports: Vec<u32>,
+}
+
+/// Production files that import each other in a loop, one row per loop,
+/// the largest first: every file of a loop reaches every other one through
+/// plain imports and re-exports.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct Cycles {
+    /// The files of the loop, sorted; two or more.
+    pub members: Vec<Vec<u32>>,
+    /// One of the shortest loops through them, in import order: each file
+    /// imports the next, and the last one the first.
+    pub shortest: Vec<Vec<u32>>,
 }
 
 /// Counts that describe the analysis itself.

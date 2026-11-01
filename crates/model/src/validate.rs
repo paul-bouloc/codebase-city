@@ -3,7 +3,7 @@
 //! The web app runs the same checks when it decodes a result
 //! (`web/src/data/decode-result.ts`); the two lists must stay in step.
 
-use crate::result::{AnalysisResult, FORMAT_VERSION};
+use crate::result::{AnalysisResult, Cycles, FORMAT_VERSION, Links};
 
 /// Why a result is inconsistent. Columns are named as in the JSON.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -45,6 +45,24 @@ pub enum InvalidResult {
     RowTarget { table: &'static str, row: usize },
     #[error("roles.entries.reasons[{row}] is empty")]
     EntryReasons { row: usize },
+    #[error("islands[{row}] must come after the previous island, by folder")]
+    IslandOrder { row: usize },
+    #[error("dirs.island of islands.dir[{row}] must point back to island {row}")]
+    IslandDir { row: usize },
+    #[error("dirs.island[{row}] must be its parent's island, or an island named after it")]
+    IslandTree { row: usize },
+    #[error("islands.layer[{row}] must be 1 or more")]
+    Layer { row: usize },
+    #[error("links[{row}] goes from an island to itself")]
+    LinkLoop { row: usize },
+    #[error("links[{row}] must come after the previous link, by islands")]
+    LinkOrder { row: usize },
+    #[error("links.imports[{row}] must be 1 or more")]
+    LinkImports { row: usize },
+    #[error("cycles.members[{row}] must hold two files or more, sorted, each once")]
+    CycleMembers { row: usize },
+    #[error("cycles.shortest[{row}] must go through two members or more, each once")]
+    CycleShortest { row: usize },
     #[error(
         "stats.importsResolved and stats.importsExternal add up to more than stats.importsTotal"
     )]
@@ -189,6 +207,11 @@ impl AnalysisResult {
             (file_count, dir_count),
         )?;
 
+        let island_count = self.islands.dir.len();
+        islands(self, dir_count)?;
+        links(&self.links, island_count)?;
+        cycles(&self.cycles, file_count)?;
+
         let stats = &self.stats;
         if u64::from(stats.imports_resolved) + u64::from(stats.imports_external)
             > u64::from(stats.imports_total)
@@ -197,6 +220,85 @@ impl AnalysisResult {
         }
         Ok(())
     }
+}
+
+/// Islands are connected parts of the folder tree, each starting at the
+/// folder it is named after.
+fn islands(result: &AnalysisResult, dir_count: usize) -> Result<(), InvalidResult> {
+    let (dirs, islands) = (&result.dirs, &result.islands);
+    let island_count = islands.dir.len();
+    same_length("dirs.island", dir_count, dirs.island.len())?;
+    same_length("islands.layer", island_count, islands.layer.len())?;
+    in_bounds("islands.dir", &islands.dir, dir_count)?;
+    in_bounds_or_null("dirs.island", &dirs.island, island_count)?;
+    if let Some(row) = islands.dir.windows(2).position(|pair| pair[0] >= pair[1]) {
+        return Err(InvalidResult::IslandOrder { row: row + 1 });
+    }
+    for (row, &dir) in islands.dir.iter().enumerate() {
+        if dirs.island[dir as usize] != u32::try_from(row).ok() {
+            return Err(InvalidResult::IslandDir { row });
+        }
+    }
+    for (row, island) in dirs.island.iter().enumerate().skip(1) {
+        let Some(island) = *island else {
+            continue;
+        };
+        let starts = islands.dir[island as usize] as usize == row;
+        let parent = dirs.parent[row].map(|parent| dirs.island[parent as usize]);
+        if !starts && parent != Some(Some(island)) {
+            return Err(InvalidResult::IslandTree { row });
+        }
+    }
+    match islands.layer.iter().position(|&layer| layer == Some(0)) {
+        None => Ok(()),
+        Some(row) => Err(InvalidResult::Layer { row }),
+    }
+}
+
+fn links(links: &Links, island_count: usize) -> Result<(), InvalidResult> {
+    let count = links.from.len();
+    same_length("links.to", count, links.to.len())?;
+    same_length("links.imports", count, links.imports.len())?;
+    in_bounds("links.from", &links.from, island_count)?;
+    in_bounds("links.to", &links.to, island_count)?;
+    for row in 0..count {
+        if links.from[row] == links.to[row] {
+            return Err(InvalidResult::LinkLoop { row });
+        }
+        if row > 0 && (links.from[row - 1], links.to[row - 1]) >= (links.from[row], links.to[row]) {
+            return Err(InvalidResult::LinkOrder { row });
+        }
+        if links.imports[row] == 0 {
+            return Err(InvalidResult::LinkImports { row });
+        }
+    }
+    Ok(())
+}
+
+fn cycles(cycles: &Cycles, file_count: usize) -> Result<(), InvalidResult> {
+    same_length(
+        "cycles.shortest",
+        cycles.members.len(),
+        cycles.shortest.len(),
+    )?;
+    for (row, (members, shortest)) in cycles.members.iter().zip(&cycles.shortest).enumerate() {
+        in_bounds("cycles.members", members, file_count)?;
+        if members.len() < 2 || members.windows(2).any(|pair| pair[0] >= pair[1]) {
+            return Err(InvalidResult::CycleMembers { row });
+        }
+        let mut seen = shortest.clone();
+        seen.sort_unstable();
+        seen.dedup();
+        if shortest.len() < 2
+            || seen.len() != shortest.len()
+            || shortest
+                .iter()
+                .any(|file| members.binary_search(file).is_err())
+        {
+            return Err(InvalidResult::CycleShortest { row });
+        }
+    }
+    Ok(())
 }
 
 /// Rows that each point to one file or one folder, in bounds. `names` are
@@ -287,12 +389,13 @@ fn valid_names<'a>(
 mod tests {
     use super::*;
     use crate::result::{
-        Confidence, Dirs, EdgeKind, Edges, Entries, EntryReason, Files, Ranked, Repo, Roles, Scope,
-        Stats, SymbolKind, Symbols,
+        Confidence, Dirs, EdgeKind, Edges, Entries, EntryReason, Files, Islands, Ranked, Repo,
+        Roles, Scope, Stats, SymbolKind, Symbols,
     };
 
     /// Two folders, two files, an import between them and two of folders,
-    /// an entry point, a foundation and a conductor.
+    /// an entry point, a foundation and a conductor, an island per folder,
+    /// a link and a cycle.
     fn result() -> AnalysisResult {
         AnalysisResult {
             format_version: FORMAT_VERSION,
@@ -305,6 +408,7 @@ mod tests {
             dirs: Dirs {
                 parent: vec![None, Some(0)],
                 name: vec![String::new(), "src".to_owned()],
+                island: vec![Some(0), Some(1)],
             },
             languages: vec!["TypeScript".to_owned()],
             files: Files {
@@ -353,6 +457,19 @@ mod tests {
                     dir: vec![Some(1)],
                     count: vec![1],
                 },
+            },
+            islands: Islands {
+                dir: vec![0, 1],
+                layer: vec![None, Some(1)],
+            },
+            links: Links {
+                from: vec![1],
+                to: vec![0],
+                imports: vec![1],
+            },
+            cycles: Cycles {
+                members: vec![vec![0, 1]],
+                shortest: vec![vec![1, 0]],
             },
             stats: Stats {
                 imports_total: 6,
@@ -681,6 +798,127 @@ mod tests {
         assert_eq!(
             invalid(|r| r.roles.entries.reasons[0].clear()),
             InvalidResult::EntryReasons { row: 0 }
+        );
+    }
+
+    #[test]
+    fn islands_start_at_their_folder_and_follow_the_tree() {
+        assert_eq!(
+            invalid(|r| {
+                r.dirs.island.pop();
+            }),
+            InvalidResult::ColumnLength {
+                column: "dirs.island",
+                expected: 2,
+                actual: 1,
+            }
+        );
+        assert_eq!(
+            invalid(|r| r.dirs.island[1] = Some(2)),
+            InvalidResult::IndexOutOfBounds {
+                column: "dirs.island",
+                row: 1,
+                index: 2,
+                len: 2,
+            }
+        );
+        assert_eq!(
+            invalid(|r| r.islands.dir.reverse()),
+            InvalidResult::IslandOrder { row: 1 }
+        );
+        assert_eq!(
+            invalid(|r| r.dirs.island[0] = None),
+            InvalidResult::IslandDir { row: 0 }
+        );
+        // `src` in the root island, which does not start there, and the
+        // `src` island left without its folder
+        assert_eq!(
+            invalid(|r| {
+                r.islands.dir.pop();
+                r.islands.layer.pop();
+                r.links = Links::default();
+                r.dirs.island[0] = Some(0);
+                r.dirs.island[1] = None;
+                r.dirs.island.push(Some(0));
+                r.dirs.parent.push(Some(1));
+                r.dirs.name.push("lib".to_owned());
+            }),
+            InvalidResult::IslandTree { row: 2 }
+        );
+        assert_eq!(
+            invalid(|r| r.islands.layer[1] = Some(0)),
+            InvalidResult::Layer { row: 1 }
+        );
+    }
+
+    #[test]
+    fn links_join_two_islands_once() {
+        assert_eq!(
+            invalid(|r| r.links.to[0] = 1),
+            InvalidResult::LinkLoop { row: 0 }
+        );
+        assert_eq!(
+            invalid(|r| {
+                r.links.from.push(1);
+                r.links.to.push(0);
+                r.links.imports.push(3);
+            }),
+            InvalidResult::LinkOrder { row: 1 }
+        );
+        assert_eq!(
+            invalid(|r| r.links.imports[0] = 0),
+            InvalidResult::LinkImports { row: 0 }
+        );
+        assert_eq!(
+            invalid(|r| r.links.from[0] = 2),
+            InvalidResult::IndexOutOfBounds {
+                column: "links.from",
+                row: 0,
+                index: 2,
+                len: 2,
+            }
+        );
+    }
+
+    #[test]
+    fn a_cycle_loops_through_its_own_files() {
+        assert_eq!(
+            invalid(|r| r.cycles.members[0] = vec![0]),
+            InvalidResult::CycleMembers { row: 0 }
+        );
+        assert_eq!(
+            invalid(|r| r.cycles.members[0] = vec![1, 0]),
+            InvalidResult::CycleMembers { row: 0 }
+        );
+        assert_eq!(
+            invalid(|r| r.cycles.members[0] = vec![0, 2]),
+            InvalidResult::IndexOutOfBounds {
+                column: "cycles.members",
+                row: 1,
+                index: 2,
+                len: 2,
+            }
+        );
+        assert_eq!(
+            invalid(|r| r.cycles.shortest[0] = vec![1, 1]),
+            InvalidResult::CycleShortest { row: 0 }
+        );
+        // A file outside the loop
+        assert_eq!(
+            invalid(|r| r.cycles.shortest[0] = vec![0, 5]),
+            InvalidResult::CycleShortest { row: 0 }
+        );
+        assert_eq!(
+            invalid(|r| r.cycles.shortest[0] = vec![0]),
+            InvalidResult::CycleShortest { row: 0 }
+        );
+        assert_eq!(
+            invalid(|r| r.cycles.shortest.clear()),
+            InvalidResult::ColumnLength {
+                column: "cycles.shortest",
+                expected: 1,
+                actual: 0,
+            }
         );
     }
 
