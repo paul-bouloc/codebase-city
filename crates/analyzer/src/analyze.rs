@@ -4,13 +4,14 @@ use std::collections::{BTreeMap, HashMap};
 
 use model::{
     AnalysisResult, Confidence, Cycles, Dirs, EdgeKind, Edges, FORMAT_VERSION, Files, Ignored,
-    Islands, Links, Repo, Roles, Scope, Stats, Symbols,
+    Islands, Repo, Roles, Scope, Stats, Symbols,
 };
 use rayon::prelude::*;
 
 use crate::entries;
 use crate::files::{Language, SourceFile, split_path};
 use crate::graph::{self, BarrelReport, Graph, Node, strength};
+use crate::islands;
 use crate::lang::{self, Parsed};
 use crate::reach::{self, Reach, Units};
 use crate::resolve::{self, Outcome, Target};
@@ -294,7 +295,23 @@ pub fn analyze_with_report(
     });
     table.barrel = barrels;
 
-    dirs.dirs.island = vec![None; dirs.dirs.parent.len()];
+    let production: Vec<bool> = (0..files.len())
+        .map(|file| graph.is_production(index(file)))
+        .collect();
+    let islands = islands::islands(&dirs.dirs.parent, &table.dir, &production);
+    let links = islands::links(
+        &islands,
+        &table.dir,
+        table_edges
+            .from
+            .iter()
+            .zip(table_edges.to.iter().zip(&table_edges.to_dir))
+            .filter_map(|(&from, (to, to_dir))| {
+                let dir = to.map(|to| table.dir[to as usize]).or(*to_dir)?;
+                Some((from, dir))
+            }),
+    );
+    dirs.dirs.island.clone_from(&islands.of_dir);
     let result = AnalysisResult {
         format_version: FORMAT_VERSION,
         analyzer_version: ANALYZER_VERSION.to_owned(),
@@ -310,8 +327,11 @@ pub fn analyze_with_report(
             foundations,
             conductors,
         },
-        islands: Islands::default(),
-        links: Links::default(),
+        islands: Islands {
+            layer: vec![None; islands.dirs.len()],
+            dir: islands.dirs,
+        },
+        links,
         cycles: Cycles::default(),
         stats: Stats {
             ignored,

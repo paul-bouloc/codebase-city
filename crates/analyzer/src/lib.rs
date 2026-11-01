@@ -6,6 +6,7 @@ mod analyze;
 mod entries;
 pub mod files;
 pub mod graph;
+mod islands;
 pub mod lang;
 mod metrics;
 mod reach;
