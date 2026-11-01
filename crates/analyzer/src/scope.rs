@@ -50,6 +50,42 @@ fn of_segment(segment: &str, in_src: bool) -> Option<Scope> {
     Some(scope)
 }
 
+/// Tools configured by a `<tool>.config.*` file.
+const TOOLS: &[&str] = &[
+    "astro",
+    "babel",
+    "commitlint",
+    "cypress",
+    "docusaurus",
+    "drizzle",
+    "electron-builder",
+    "esbuild",
+    "eslint",
+    "jest",
+    "karma",
+    "knip",
+    "lint-staged",
+    "next",
+    "nuxt",
+    "playwright",
+    "postcss",
+    "prettier",
+    "release",
+    "remix",
+    "rollup",
+    "rspack",
+    "stylelint",
+    "svelte",
+    "tailwind",
+    "tsup",
+    "turbo",
+    "unocss",
+    "vite",
+    "vitest",
+    "vue",
+    "webpack",
+];
+
 /// The scope of a file from its name, outside any folder that sets one.
 fn of_name(name: &str) -> Scope {
     let lower = name.to_ascii_lowercase();
@@ -81,7 +117,9 @@ fn of_name(name: &str) -> Scope {
         {
             return Scope::Test;
         }
-        if tagged(&["config"])
+        // `vite.config.ts` configures a tool; `app.config.ts` is the app's
+        let tool = stem.split('.').next().unwrap_or(stem);
+        if (tagged(&["config"]) && TOOLS.contains(&tool))
             || matches!(stem, "gulpfile" | "gruntfile" | "jakefile")
             || (extension == "py" && matches!(stem, "setup" | "noxfile"))
         {
@@ -233,6 +271,8 @@ mod tests {
                 "package.json",
                 "tsconfig.base.json",
                 "vite.config.ts",
+                "vitest.config.unit.ts",
+                "webpack.config.prod.js",
                 "packages/a/jest.config.js",
                 "eslint.config.mjs",
                 "gulpfile.js",
@@ -265,6 +305,8 @@ mod tests {
                 "src/contest.py",
                 "src/latest.ts",
                 "src/configure.ts",
+                "src/app/app.config.ts",
+                "src/database.config.ts",
             ])
             .iter()
             .all(|&scope| scope == Scope::Source)
