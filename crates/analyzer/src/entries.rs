@@ -516,6 +516,10 @@ fn setup_cfg_scripts(content: &[u8]) -> Vec<(String, String)> {
         if section != "[options.entry_points]" {
             continue;
         }
+        // configparser keeps blank lines inside a value
+        if line.is_empty() {
+            continue;
+        }
         let indented = raw.starts_with([' ', '\t']);
         if !indented {
             in_scripts = false;
@@ -643,6 +647,8 @@ mod tests {
             pyproject_scripts(dotted),
             [("harbor".to_owned(), "harbor.cli:main".to_owned())]
         );
+        let spaced = b"[options.entry_points]\nconsole_scripts =\n    harbor = harbor.cli:main\n\n    dock = harbor.dock:run\n";
+        assert_eq!(setup_cfg_scripts(spaced).len(), 2);
         let setup_cfg = b"[metadata]\nname = harbor\n\n[options.entry_points]\nconsole_scripts =\n    harbor = harbor.cli:main\n    dock = harbor.dock:run\ngui_scripts =\n    view = harbor.view:main\n";
         assert_eq!(
             setup_cfg_scripts(setup_cfg),
