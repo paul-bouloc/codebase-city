@@ -292,8 +292,7 @@ pub struct Islands {
 }
 
 /// Imports between islands, one row per importing island and imported
-/// island, sorted by both. A link goes up when the layer of `to` is above
-/// the layer of `from`.
+/// island, sorted by both.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
@@ -303,6 +302,10 @@ pub struct Links {
     /// Edges of [`Edges`] from a file of `from` to a file or package of
     /// `to`.
     pub imports: Vec<u32>,
+    /// How many of them go up the layers, `to` being in a higher layer
+    /// than `from`. A barrel's re-exports do not count: it offers what it
+    /// re-exports, it does not depend on it.
+    pub upward: Vec<u32>,
 }
 
 /// Production files that import each other in a loop, one row per loop,

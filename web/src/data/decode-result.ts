@@ -391,15 +391,18 @@ function decodeIslands(value: unknown, dirs: Dirs): Islands {
   return islands
 }
 
-function decodeLinks(value: unknown, islandCount: number): Links {
+function decodeLinks(value: unknown, layers: (number | null)[]): Links {
+  const islandCount = layers.length
   const fields = object(value, 'links')
   const links: Links = {
     from: u32Column(fields.from, 'links.from'),
     to: u32Column(fields.to, 'links.to'),
     imports: u32Column(fields.imports, 'links.imports'),
+    upward: u32Column(fields.upward, 'links.upward'),
   }
   sameLength('links.to', links.from.length, links.to)
   sameLength('links.imports', links.from.length, links.imports)
+  sameLength('links.upward', links.from.length, links.upward)
   inBounds('links.from', links.from, islandCount)
   inBounds('links.to', links.to, islandCount)
   for (let row = 0; row < links.from.length; row++) {
@@ -417,6 +420,13 @@ function decodeLinks(value: unknown, islandCount: number): Links {
     }
     if (links.imports[row] === 0) {
       fail(`links.imports[${row}] must be 1 or more`)
+    }
+    const upward = links.upward[row] as number
+    const fromLayer = layers[from] ?? null
+    const toLayer = layers[to] ?? null
+    const goesUp = fromLayer !== null && toLayer !== null && toLayer > fromLayer
+    if (upward > (links.imports[row] as number) || (upward > 0 && !goesUp)) {
+      fail(`links.upward[${row}] must be at most links.imports, between layers that go up`)
     }
   }
   return links
@@ -500,7 +510,7 @@ export function decodeResult(json: unknown): AnalysisResult {
     edges: decodeEdges(fields.edges, files.dir.length, dirs.parent.length),
     roles: decodeRoles(fields.roles, files.dir.length, dirs.parent.length),
     islands,
-    links: decodeLinks(fields.links, islands.dir.length),
+    links: decodeLinks(fields.links, islands.layer),
     cycles: decodeCycles(fields.cycles, files.dir.length),
     stats: decodeStats(fields.stats),
   }

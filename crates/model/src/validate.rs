@@ -59,6 +59,8 @@ pub enum InvalidResult {
     LinkOrder { row: usize },
     #[error("links.imports[{row}] must be 1 or more")]
     LinkImports { row: usize },
+    #[error("links.upward[{row}] must be at most links.imports, between layers that go up")]
+    LinkUpward { row: usize },
     #[error("cycles.members[{row}] must hold two files or more, sorted, each once")]
     CycleMembers { row: usize },
     #[error("cycles.shortest[{row}] must go through two members or more, each once")]
@@ -207,9 +209,8 @@ impl AnalysisResult {
             (file_count, dir_count),
         )?;
 
-        let island_count = self.islands.dir.len();
         islands(self, dir_count)?;
-        links(&self.links, island_count)?;
+        links(&self.links, &self.islands.layer)?;
         cycles(&self.cycles, file_count)?;
 
         let stats = &self.stats;
@@ -255,10 +256,12 @@ fn islands(result: &AnalysisResult, dir_count: usize) -> Result<(), InvalidResul
     }
 }
 
-fn links(links: &Links, island_count: usize) -> Result<(), InvalidResult> {
+fn links(links: &Links, layers: &[Option<u32>]) -> Result<(), InvalidResult> {
+    let island_count = layers.len();
     let count = links.from.len();
     same_length("links.to", count, links.to.len())?;
     same_length("links.imports", count, links.imports.len())?;
+    same_length("links.upward", count, links.upward.len())?;
     in_bounds("links.from", &links.from, island_count)?;
     in_bounds("links.to", &links.to, island_count)?;
     for row in 0..count {
@@ -270,6 +273,14 @@ fn links(links: &Links, island_count: usize) -> Result<(), InvalidResult> {
         }
         if links.imports[row] == 0 {
             return Err(InvalidResult::LinkImports { row });
+        }
+        let layer = |island: u32| layers[island as usize];
+        let goes_up = matches!(
+            (layer(links.from[row]), layer(links.to[row])),
+            (Some(from), Some(to)) if to > from
+        );
+        if links.upward[row] > links.imports[row] || (links.upward[row] > 0 && !goes_up) {
+            return Err(InvalidResult::LinkUpward { row });
         }
     }
     Ok(())
@@ -466,6 +477,7 @@ mod tests {
                 from: vec![1],
                 to: vec![0],
                 imports: vec![1],
+                upward: vec![0],
             },
             cycles: Cycles {
                 members: vec![vec![0, 1]],
@@ -862,12 +874,36 @@ mod tests {
                 r.links.from.push(1);
                 r.links.to.push(0);
                 r.links.imports.push(3);
+                r.links.upward.push(0);
             }),
             InvalidResult::LinkOrder { row: 1 }
         );
         assert_eq!(
             invalid(|r| r.links.imports[0] = 0),
             InvalidResult::LinkImports { row: 0 }
+        );
+        // Island 0 has no layer, so nothing goes up from or to it
+        assert_eq!(
+            invalid(|r| r.links.upward[0] = 1),
+            InvalidResult::LinkUpward { row: 0 }
+        );
+        assert_eq!(
+            invalid(|r| {
+                // Both islands in layer 1: nothing goes up
+                r.islands.layer[0] = Some(1);
+                r.links.upward[0] = 1;
+            }),
+            InvalidResult::LinkUpward { row: 0 }
+        );
+        assert_eq!(
+            invalid(|r| {
+                r.links.from[0] = 0;
+                r.links.to[0] = 1;
+                r.islands.layer[0] = Some(1);
+                r.islands.layer[1] = Some(2);
+                r.links.upward[0] = 2;
+            }),
+            InvalidResult::LinkUpward { row: 0 }
         );
         assert_eq!(
             invalid(|r| r.links.from[0] = 2),

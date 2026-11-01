@@ -68,27 +68,37 @@ pub(crate) fn islands(parents: &[Option<u32>], file_dirs: &[u32], production: &[
 
 /// The imports between islands, from the edges of the result: `(importing
 /// file, imported folder)`, the folder of the imported file or the imported
-/// package.
+/// package. `layers` gives each island's layer, to count the imports that go
+/// up, barrels' re-exports left out.
 pub(crate) fn links(
     islands: &Islands,
+    layers: &[Option<u32>],
     file_dirs: &[u32],
+    barrels: &[bool],
     edges: impl Iterator<Item = (u32, u32)>,
 ) -> Links {
-    let mut counts: BTreeMap<(u32, u32), u32> = BTreeMap::new();
-    for (from, to_dir) in edges {
-        let from = islands.of_dir[file_dirs[from as usize] as usize];
+    let mut counts: BTreeMap<(u32, u32), (u32, u32)> = BTreeMap::new();
+    for (from_file, to_dir) in edges {
+        let from = islands.of_dir[file_dirs[from_file as usize] as usize];
         let to = islands.of_dir[to_dir as usize];
         if let (Some(from), Some(to)) = (from, to)
             && from != to
         {
-            *counts.entry((from, to)).or_default() += 1;
+            let up = matches!(
+                (layers[from as usize], layers[to as usize]),
+                (Some(low), Some(high)) if high > low
+            ) && !barrels[from_file as usize];
+            let count = counts.entry((from, to)).or_default();
+            count.0 += 1;
+            count.1 += u32::from(up);
         }
     }
     let mut links = Links::default();
-    for ((from, to), imports) in counts {
+    for ((from, to), (imports, upward)) in counts {
         links.from.push(from);
         links.to.push(to);
         links.imports.push(imports);
+        links.upward.push(upward);
     }
     links
 }
@@ -159,13 +169,19 @@ mod tests {
 
     #[test]
     fn links_count_imports_between_islands_only() {
+        // Files: root, a, b, and a barrel in a; `b` is above `a`
         let parents = tree(&["", "a", "b"]);
-        let islands = islands(&parents, &[0, 1, 2], &[false, true, true]);
-        // a → b twice, b → a, a → a, root → b
-        let edges = [(1, 2), (1, 2), (2, 1), (1, 1), (0, 2)];
-        let links = links(&islands, &[0, 1, 2], edges.into_iter());
+        let file_dirs = [0, 1, 2, 1];
+        let islands = islands(&parents, &file_dirs, &[false, true, true, true]);
+        let layers = [None, Some(1), Some(2)];
+        let barrels = [false, false, false, true];
+        // a → b twice and from the barrel, b → a, a → a, root → b
+        let edges = [(1, 2), (1, 2), (3, 2), (2, 1), (1, 1), (0, 2)];
+        let links = links(&islands, &layers, &file_dirs, &barrels, edges.into_iter());
         assert_eq!(links.from, [0, 1, 2]);
         assert_eq!(links.to, [2, 2, 1]);
-        assert_eq!(links.imports, [1, 2, 1]);
+        assert_eq!(links.imports, [1, 3, 1]);
+        // The barrel offers what it re-exports: it does not go up
+        assert_eq!(links.upward, [0, 2, 0]);
     }
 }

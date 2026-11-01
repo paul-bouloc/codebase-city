@@ -301,9 +301,13 @@ pub fn analyze_with_report(
         .map(|file| graph.is_production(index(file)))
         .collect();
     let islands = islands::islands(&dirs.dirs.parent, &table.dir, &production);
+    dirs.dirs.island.clone_from(&islands.of_dir);
+    let layers = island_layers(&graph, &islands, &table.dir);
     let links = islands::links(
         &islands,
+        &layers,
         &table.dir,
+        &table.barrel,
         table_edges
             .from
             .iter()
@@ -313,8 +317,6 @@ pub fn analyze_with_report(
                 Some((from, dir))
             }),
     );
-    dirs.dirs.island.clone_from(&islands.of_dir);
-    let layers = island_layers(&graph, &islands, &table.dir);
     let result = AnalysisResult {
         format_version: FORMAT_VERSION,
         analyzer_version: ANALYZER_VERSION.to_owned(),

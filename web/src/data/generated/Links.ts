@@ -2,12 +2,17 @@
 
 /**
  * Imports between islands, one row per importing island and imported
- * island, sorted by both. A link goes up when the layer of `to` is above
- * the layer of `from`.
+ * island, sorted by both.
  */
 export type Links = { from: Array<number>, to: Array<number>, 
 /**
  * Edges of [`Edges`] from a file of `from` to a file or package of
  * `to`.
  */
-imports: Array<number>, };
+imports: Array<number>, 
+/**
+ * How many of them go up the layers, `to` being in a higher layer
+ * than `from`. A barrel's re-exports do not count: it offers what it
+ * re-exports, it does not depend on it.
+ */
+upward: Array<number>, };

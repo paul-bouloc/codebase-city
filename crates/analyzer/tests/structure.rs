@@ -131,30 +131,28 @@ fn a_folder_with_most_of_the_code_is_split_into_islands() {
 #[test]
 fn links_count_every_import_between_two_islands() {
     let result = analyzed(FILES);
-    let links: Vec<(String, String, u32, bool)> = (0..result.links.from.len())
+    let links: Vec<(String, String, u32, u32)> = (0..result.links.from.len())
         .map(|row| {
             let (from, to) = (result.links.from[row], result.links.to[row]);
-            let layer = |island: u32| result.islands.layer[island as usize];
-            let upward = matches!((layer(from), layer(to)), (Some(a), Some(b)) if b > a);
             (
                 island_name(&result, from),
                 island_name(&result, to),
                 result.links.imports[row],
-                upward,
+                result.links.upward[row],
             )
         })
         .collect();
     let expected = [
-        ("scripts", "src/app", 1, false),
-        ("src", "src/app", 1, false),
-        ("src/app", "src/core", 1, false),
-        ("src/app", "src/ui", 1, false),
+        ("scripts", "src/app", 1, 0),
+        ("src", "src/app", 1, 0),
+        ("src/app", "src/core", 1, 0),
+        ("src/app", "src/ui", 1, 0),
         // `legacy.ts` goes up a layer
-        ("src/core", "src/ui", 1, true),
-        ("src/ui", "src/core", 2, false),
-        ("test", "src/core", 1, false),
+        ("src/core", "src/ui", 1, 1),
+        ("src/ui", "src/core", 2, 0),
+        ("test", "src/core", 1, 0),
     ];
-    let expected: Vec<(String, String, u32, bool)> = expected
+    let expected: Vec<(String, String, u32, u32)> = expected
         .iter()
         .map(|&(from, to, imports, upward)| (from.to_owned(), to.to_owned(), imports, upward))
         .collect();
