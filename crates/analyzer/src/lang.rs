@@ -110,9 +110,11 @@ pub fn parse(path: &str, language: Language, content: &[u8]) -> Option<Parsed> {
     // then fills in an empty, zero-width node
     symbols.retain(|symbol| !symbol.name.trim().is_empty());
     symbols.sort_by(|a, b| (a.line, &a.name).cmp(&(b.line, &b.name)));
-    // TypeScript overloads declare a function once per signature
+    // TypeScript overloads declare a function once per signature, and
+    // CommonJS can export the same function twice. A type and a value may
+    // share a name (`interface User` and `const User`): both are kept
     let mut seen = HashSet::new();
-    symbols.retain(|symbol| seen.insert(symbol.name.clone()));
+    symbols.retain(|symbol| seen.insert((symbol.name.clone(), symbol.kind)));
     Some(Parsed {
         complexity: metrics::complexity(&tree, |node| dialect.is_decision(node)),
         header: dialect.header(root, content),

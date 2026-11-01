@@ -234,6 +234,15 @@ fn a_broken_export_has_no_nameless_symbol() {
 }
 
 #[test]
+fn a_type_and_a_value_may_share_a_name() {
+    let parsed = parse_text(
+        "user.ts",
+        "export const User = z.object({})\nexport type User = z.infer<typeof User>\n",
+    );
+    assert_eq!(symbols(&parsed), [("User", Constant, 1), ("User", Type, 2)]);
+}
+
+#[test]
 fn invalid_utf8_does_not_stop_parsing() {
     let content = b"// caf\xe9\nexport const a = 1\n";
     let parsed = parse("a.js", Language::JavaScript, content).unwrap();
