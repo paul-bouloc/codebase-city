@@ -1,6 +1,8 @@
 //! Ingests and analyzes a real repository, and prints what came out, to
 //! check the filters, limits and measures by hand: `just ingest owner/repo`,
-//! plus `--out result.json` to write the result.
+//! plus `--out result.json` to write the result, and `--expect file` to
+//! compare the roles with what a person expects (`entries: [a, b]`,
+//! `foundations: […]`, `conductors: […]`, one list per line).
 //!
 //! Uses `GITHUB_TOKEN` when set, and GitHub anonymously otherwise.
 
@@ -24,13 +26,24 @@ const MB: f64 = 1024.0 * 1024.0;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    const USAGE: &str = "usage: ingest owner/repo [--out result.json]";
+    const USAGE: &str = "usage: ingest owner/repo [--out result.json] [--expect roles.yaml]";
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let (name, out) = match args.as_slice() {
-        [name] => (name, None),
-        [name, flag, path] if flag == "--out" => (name, Some(PathBuf::from(path))),
-        _ => anyhow::bail!(USAGE),
+    let Some((name, flags)) = args.split_first() else {
+        anyhow::bail!(USAGE);
     };
+    let mut out = None;
+    let mut expected = None;
+    for pair in flags.chunks(2) {
+        match pair {
+            [flag, path] if flag == "--out" => out = Some(PathBuf::from(path)),
+            [flag, path] if flag == "--expect" => {
+                let text =
+                    std::fs::read_to_string(path).with_context(|| format!("reading {path}"))?;
+                expected = Some(Expected::parse(&text));
+            }
+            _ => anyhow::bail!(USAGE),
+        }
+    }
     let repo = RepoName::parse(name)?;
     let token = std::env::var("GITHUB_TOKEN")
         .ok()
@@ -126,6 +139,7 @@ async fn main() -> anyhow::Result<()> {
     print_analysis(&result, elapsed);
     print_imports(&result, &report.imports);
     print_graph(&result, &report);
+    print_roles(&result, &report.roles, expected.as_ref());
 
     let json = serde_json::to_vec(&result)?;
     let mut gzip = GzEncoder::new(Vec::new(), Compression::default());
@@ -356,5 +370,159 @@ fn print_top(result: &AnalysisResult, label: &str, counts: &[u32]) {
     println!("{label}");
     for (count, file) in ranked.into_iter().take(TOP_SHOWN) {
         println!("  {count:>6}  {}", path(result, file));
+    }
+}
+
+/// Roles a person expects, by path; a Go package's path ends with `/`.
+#[derive(Default)]
+struct Expected {
+    entries: Vec<String>,
+    foundations: Vec<String>,
+    conductors: Vec<String>,
+}
+
+impl Expected {
+    /// Reads `key: [a, b]` lines; anything else is ignored, comments too.
+    fn parse(text: &str) -> Self {
+        let mut expected = Self::default();
+        for line in text.lines() {
+            let Some((key, list)) = line.split_once(':') else {
+                continue;
+            };
+            let list = list.split('#').next().unwrap_or_default().trim();
+            let Some(list) = list
+                .strip_prefix('[')
+                .and_then(|list| list.strip_suffix(']'))
+            else {
+                continue;
+            };
+            let paths: Vec<String> = list
+                .split(',')
+                .map(|path| {
+                    path.trim()
+                        .trim_matches(|c| c == '"' || c == '\'')
+                        .to_owned()
+                })
+                .filter(|path| !path.is_empty())
+                .collect();
+            match key.trim() {
+                "entries" => expected.entries = paths,
+                "foundations" => expected.foundations = paths,
+                "conductors" => expected.conductors = paths,
+                _ => {}
+            }
+        }
+        expected
+    }
+}
+
+/// The path of a folder, rebuilt from the folder table, with a final `/`.
+fn dir_path(result: &AnalysisResult, dir: u32) -> String {
+    let mut parts = Vec::new();
+    let mut current = dir as usize;
+    while let Some(parent) = result.dirs.parent[current] {
+        parts.push(result.dirs.name[current].as_str());
+        current = parent as usize;
+    }
+    parts.reverse();
+    format!("{}/", parts.join("/"))
+}
+
+fn target(result: &AnalysisResult, file: Option<u32>, dir: Option<u32>) -> String {
+    match (file, dir) {
+        (Some(file), _) => path(result, file as usize),
+        (_, Some(dir)) => dir_path(result, dir),
+        _ => String::new(),
+    }
+}
+
+/// How many of the first `k` paths a person expects, as "hits/k".
+fn precision(found: &[String], expected: &[String], k: usize) -> String {
+    let shown = found.len().min(k);
+    let hits = found
+        .iter()
+        .take(k)
+        .filter(|path| expected.contains(path))
+        .count();
+    format!("{hits}/{shown}")
+}
+
+fn print_roles(
+    result: &AnalysisResult,
+    report: &analyzer::RolesReport,
+    expected: Option<&Expected>,
+) {
+    let files = &result.files;
+    let counted: Vec<u32> = files.dependencies.iter().flatten().copied().collect();
+    let propagation = if counted.is_empty() {
+        0.0
+    } else {
+        100.0 * counted.iter().map(|&count| f64::from(count)).sum::<f64>()
+            / (counted.len() as f64 * counted.len() as f64)
+    };
+    println!(
+        "units         {} ({} loops, largest {}), {}, propagation cost {propagation:.1}%",
+        report.units,
+        report.loops,
+        report.largest_loop,
+        if report.counted {
+            "counted"
+        } else {
+            "too large to count"
+        }
+    );
+
+    let roles = &result.roles;
+    let entries: Vec<String> = (0..roles.entries.file.len())
+        .map(|row| target(result, roles.entries.file[row], roles.entries.dir[row]))
+        .collect();
+    println!("entries");
+    for (row, path) in entries.iter().enumerate() {
+        let reasons: Vec<String> = roles.entries.reasons[row]
+            .iter()
+            .map(|reason| format!("{reason:?}"))
+            .collect();
+        let command = roles.entries.command[row]
+            .as_deref()
+            .map(|command| format!(" `{command}`"))
+            .unwrap_or_default();
+        println!("  {path}{command}: {}", reasons.join(", "));
+    }
+    let ranked = |label: &str, ranked: &model::Ranked| -> Vec<String> {
+        println!("{label}");
+        (0..ranked.count.len())
+            .map(|row| {
+                let path = target(result, ranked.file[row], ranked.dir[row]);
+                println!("  {:>6}  {path}", ranked.count[row]);
+                path
+            })
+            .collect()
+    };
+    let foundations = ranked("foundations (dependents)", &roles.foundations);
+    let conductors = ranked("conductors (dependencies)", &roles.conductors);
+
+    if let Some(expected) = expected {
+        println!(
+            "expected      entries {} at 3, foundations {} at 5, conductors {} at 5",
+            precision(&entries, &expected.entries, 3),
+            precision(&foundations, &expected.foundations, 5),
+            precision(&conductors, &expected.conductors, 5)
+        );
+        let known: std::collections::HashSet<String> = (0..files.name.len())
+            .map(|row| path(result, row))
+            .chain(
+                (0..result.dirs.name.len())
+                    .map(|row| dir_path(result, u32::try_from(row).unwrap_or(u32::MAX))),
+            )
+            .collect();
+        for wanted in expected
+            .entries
+            .iter()
+            .chain(&expected.foundations)
+            .chain(&expected.conductors)
+            .filter(|wanted| !known.contains(*wanted))
+        {
+            println!("  not in repo {wanted}");
+        }
     }
 }
