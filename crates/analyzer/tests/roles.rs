@@ -457,3 +457,16 @@ fn only_the_name_itself_is_conventional() {
         [entry("src/main.ts", &[ConventionalName], None)]
     );
 }
+
+#[test]
+fn built_code_maps_back_to_its_source_folder_by_folder() {
+    let result = analyzed(&[
+        ("package.json", r#"{ "main": "./dist/v1.2/index.js" }"#),
+        ("src/v1.2/index.ts", "export const v = 1\n"),
+        ("src/v1.ts", "export const w = 1\n"),
+    ]);
+    assert_eq!(
+        entries(&result)[0],
+        entry("src/v1.2/index.ts", &[PackageMain], None)
+    );
+}

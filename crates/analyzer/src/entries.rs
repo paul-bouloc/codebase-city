@@ -411,8 +411,8 @@ fn locate_script(
         if !BUILT.contains(&first) {
             return None;
         }
-        let stem = rest.rsplit_once('.').map_or(rest, |(stem, _)| stem);
-        found(&format!("src/{stem}"))
+        // `found` swaps the extension of the file, and only of the file
+        found(&format!("src/{rest}"))
     })
 }
 
