@@ -29,6 +29,18 @@ pub struct Parsed {
     /// A file made of re-exports, such as an `index.ts` or an `__init__.py`
     /// that gathers its package: see [`is_barrel`].
     pub barrel: bool,
+    /// The module's `export default`, if it has one.
+    pub default_export: Option<DefaultExport>,
+}
+
+/// The default export of a module, which only an import of `default`
+/// reaches: `export *` leaves it out.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DefaultExport {
+    /// The symbol that is exported only as the default, listed under its
+    /// own name among the symbols: `Button` for `export default function
+    /// Button`. `None` when it has no name, or is also exported by name.
+    pub symbol: Option<String>,
 }
 
 /// An import as the source writes it, before resolution.
@@ -127,6 +139,15 @@ impl Dialect {
         }
     }
 
+    fn default_export(self, root: Node<'_>, source: &[u8]) -> Option<DefaultExport> {
+        match self {
+            Self::TypeScript | Self::Tsx | Self::JavaScript => {
+                javascript::default_export(root, source)
+            }
+            Self::Python | Self::Go => None,
+        }
+    }
+
     fn imports(self, path: &str, root: Node<'_>, source: &[u8]) -> Vec<Import> {
         match self {
             Self::TypeScript | Self::Tsx | Self::JavaScript => javascript::imports(root, source),
@@ -164,6 +185,7 @@ pub fn parse(path: &str, language: Language, content: &[u8]) -> Option<Parsed> {
         symbols,
         imports: dialect.imports(path, root, content),
         barrel: is_barrel(dialect.statements(path, root, content)),
+        default_export: dialect.default_export(root, content),
     })
 }
 

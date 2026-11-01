@@ -8,12 +8,14 @@
 //! `import x = require()`, and `require()` and `import()` with a literal
 //! module, wherever they are.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use model::{EdgeKind, SymbolKind};
 use tree_sitter::Node;
 
-use super::{Import, Symbol, children, has_ancestor, header, line, symbol, text, walk};
+use super::{
+    DefaultExport, Import, Symbol, children, has_ancestor, header, line, symbol, text, walk,
+};
 
 /// Nodes whose body runs when called, not when the module loads.
 const FUNCTIONS: &[&str] = &[
@@ -307,6 +309,53 @@ fn exported_property(
         }
         _ => {}
     }
+}
+
+pub(super) fn default_export(root: Node<'_>, source: &[u8]) -> Option<DefaultExport> {
+    let mut default: Option<Option<String>> = None;
+    let mut by_name = HashSet::new();
+    for node in children(root) {
+        if node.kind() != "export_statement" || node.child_by_field_name("source").is_some() {
+            continue;
+        }
+        let declaration = node.child_by_field_name("declaration");
+        if has_token(node, "default") {
+            // `export default function Button`, `export default Button`
+            let name = declaration
+                .or_else(|| node.child_by_field_name("value"))
+                .and_then(|value| match value.kind() {
+                    "identifier" => Some(value),
+                    _ => value.child_by_field_name("name"),
+                });
+            default = Some(name.map(|name| text(name, source)));
+            continue;
+        }
+        if let Some(declaration) = declaration {
+            by_name.extend(
+                declared(declaration)
+                    .into_iter()
+                    .map(|(name, _)| text(name, source)),
+            );
+            continue;
+        }
+        let clause = children(node)
+            .into_iter()
+            .find(|child| child.kind() == "export_clause");
+        for specifier in clause.map(children).unwrap_or_default() {
+            let Some(local) = specifier.child_by_field_name("name") else {
+                continue;
+            };
+            let exported = specifier.child_by_field_name("alias").unwrap_or(local);
+            if text(exported, source) == "default" {
+                default = Some(Some(text(local, source)));
+            } else {
+                by_name.insert(text(exported, source));
+            }
+        }
+    }
+    default.map(|symbol| DefaultExport {
+        symbol: symbol.filter(|name| !by_name.contains(name)),
+    })
 }
 
 pub(super) fn statements(root: Node<'_>) -> (u32, u32) {

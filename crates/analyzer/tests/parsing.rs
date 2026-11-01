@@ -491,3 +491,26 @@ fn a_file_with_code_of_its_own_is_not_a_barrel() {
         assert!(!parse_text(name, content).barrel, "{name}: {content}");
     }
 }
+
+#[test]
+fn the_default_export_is_known_by_its_own_name_unless_also_exported() {
+    let default = |content: &str| {
+        parse_text("index.ts", content)
+            .default_export
+            .map(|default| default.symbol)
+    };
+    assert_eq!(
+        default("export default function Button() {}\n"),
+        Some(Some("Button".to_owned()))
+    );
+    assert_eq!(
+        default("const Card = 1\nexport { Card as default }\n"),
+        Some(Some("Card".to_owned()))
+    );
+    assert_eq!(
+        default("export class Panel {}\nexport default Panel\n"),
+        Some(None)
+    );
+    assert_eq!(default("export default () => 1\n"), Some(None));
+    assert_eq!(default("export const x = 1\n"), None);
+}

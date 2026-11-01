@@ -11,7 +11,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use model::{Confidence, EdgeKind, Scope, Symbols};
 
 use crate::files::split_path;
-use crate::lang::Import;
+use crate::lang::{DefaultExport, Import};
 use crate::resolve::{Outcome, Target};
 use crate::scope;
 
@@ -117,6 +117,7 @@ pub(crate) struct Input<'a> {
     pub scopes: &'a [Scope],
     pub generated: &'a [bool],
     pub barrels: &'a [bool],
+    pub defaults: &'a [Option<DefaultExport>],
     pub symbols: &'a Symbols,
     pub imports: &'a [Vec<Import>],
     pub outcomes: &'a [Vec<Outcome>],
@@ -273,13 +274,27 @@ struct Exports<'a> {
 
 impl<'a> Exports<'a> {
     fn new(input: &Input<'a>) -> Self {
-        let declared = input
+        // A symbol exported only as the default answers to `default`, not
+        // to its own name
+        let only_default = |file: u32, name: &str| {
+            input.defaults[file as usize]
+                .as_ref()
+                .and_then(|default| default.symbol.as_deref())
+                == Some(name)
+        };
+        let mut declared: HashSet<(u32, &str)> = input
             .symbols
             .file
             .iter()
             .zip(&input.symbols.name)
             .map(|(&file, name)| (file, name.as_str()))
+            .filter(|&(file, name)| !only_default(file, name))
             .collect();
+        for (file, default) in input.defaults.iter().enumerate() {
+            if default.is_some() {
+                declared.insert((crate::saturating_u32(file), "default"));
+            }
+        }
         let mut named: HashMap<_, Vec<_>> = HashMap::new();
         let mut stars: HashMap<_, Vec<_>> = HashMap::new();
         let mut reexporting = HashSet::new();
@@ -408,6 +423,10 @@ impl<'e, 'a> Lookups<'e, 'a> {
                 .map_or(Lookup::Missing, |&(_, target, confidence)| {
                     Lookup::Found(target, confidence)
                 });
+        }
+        // `export *` leaves the default export out
+        if name == "default" {
+            return Lookup::Missing;
         }
         let mut found: Option<(u32, Confidence)> = None;
         for &(target, confidence) in exports.stars.get(&file).map_or(&[][..], Vec::as_slice) {

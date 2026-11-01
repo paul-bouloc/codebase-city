@@ -437,3 +437,29 @@ fn a_python_package_reexporting_by_absolute_imports_is_seen_through() {
         through(&["harbor/docks.py"])
     );
 }
+
+#[test]
+fn a_default_export_does_not_answer_to_its_name_through_export_star() {
+    let (result, report) = analyze(&[
+        (
+            "app.ts",
+            "import { Button } from './ui'\nimport Card from './ui/card'\n",
+        ),
+        (
+            "ui/index.ts",
+            "export * from './button'\nexport * from './legacy'\n",
+        ),
+        ("ui/button.ts", "export const Button = 1\n"),
+        ("ui/legacy.ts", "export default function Button() {}\n"),
+        ("ui/card/index.ts", "export { default } from './card'\n"),
+        (
+            "ui/card/card.ts",
+            "const Card = 1\nexport { Card as default }\n",
+        ),
+    ]);
+    assert_eq!(
+        edges_from(&result, &report, "app.ts"),
+        through(&["ui/button.ts", "ui/card/card.ts"])
+    );
+    assert_eq!(report.barrels.names_ambiguous, 0);
+}

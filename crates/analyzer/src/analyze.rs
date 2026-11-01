@@ -91,6 +91,7 @@ pub fn analyze_with_report(
     let mut symbols = Symbols::default();
     let mut imports = Vec::with_capacity(files.len());
     let mut barrels = Vec::with_capacity(files.len());
+    let mut defaults = Vec::with_capacity(files.len());
     for (row, (file, parsed)) in files.iter().zip(parsed).enumerate() {
         let (dir_path, name) = split_path(&file.path);
         let language = file.language.name();
@@ -108,6 +109,11 @@ pub fn analyze_with_report(
         table.generated.push(file.generated);
         table.scope.push(scope::of(&file.path));
         barrels.push(parsed.as_ref().is_some_and(|parsed| parsed.barrel));
+        defaults.push(
+            parsed
+                .as_ref()
+                .and_then(|parsed| parsed.default_export.clone()),
+        );
         match parsed {
             Some(parsed) => {
                 table.complexity.push(Some(parsed.complexity));
@@ -196,6 +202,7 @@ pub fn analyze_with_report(
         scopes: &table.scope,
         generated: &table.generated,
         barrels: &barrels,
+        defaults: &defaults,
         symbols: &symbols,
         imports: &imports,
         outcomes: &outcomes,
