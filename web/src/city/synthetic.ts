@@ -134,6 +134,7 @@ function packInRows(drafts: Draft[]): IslandLayout[] {
         path: draft.path,
         layer: draft.layer,
         plateau,
+        parcels: [],
         lots: lotsOf(draft, plateau),
       })
     })

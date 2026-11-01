@@ -67,5 +67,5 @@ export function archetypeGallery(): CityLayout {
       file: metricsFor(sample),
     })),
   )
-  return { islands: [{ path: 'gallery', layer: 1, plateau, lots }], bounds: plateau }
+  return { islands: [{ path: 'gallery', layer: 1, plateau, parcels: [], lots }], bounds: plateau }
 }

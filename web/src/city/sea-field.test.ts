@@ -4,7 +4,15 @@ import { SEA_FIELD_RANGE, type SeaField, seaField } from './sea-field'
 import { syntheticCity } from './synthetic'
 
 const square: CityLayout = {
-  islands: [{ path: 'a', layer: 1, plateau: { x: -5, y: -5, width: 10, height: 10 }, lots: [] }],
+  islands: [
+    {
+      path: 'a',
+      layer: 1,
+      plateau: { x: -5, y: -5, width: 10, height: 10 },
+      parcels: [],
+      lots: [],
+    },
+  ],
   bounds: { x: -5, y: -5, width: 10, height: 10 },
 }
 

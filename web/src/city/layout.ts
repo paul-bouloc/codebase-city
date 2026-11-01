@@ -24,6 +24,19 @@ export interface FileMetrics {
 /** A file's 2 × 2 u lot, by its centre. */
 export interface Lot extends Point {
   file: FileMetrics
+  /** Height of the ground under the lot above the plateau, in u: the parcels it stands on. */
+  base?: number
+}
+
+/** What most files of a parcel are: a park for tests, concrete for unread languages. */
+export type ParcelNature = 'normal' | 'tests' | 'unanalyzed'
+
+/** A folder inside an island: a slab that holds its subfolders' parcels and its own lots. */
+export interface ParcelLayout {
+  rect: Rect
+  /** 1 for a folder of the island, 2 for one of its subfolders, and so on. */
+  level: number
+  nature: ParcelNature
 }
 
 export interface IslandLayout {
@@ -31,6 +44,8 @@ export interface IslandLayout {
   /** 1 (foundations, lowest) to 5 (highest). */
   layer: number
   plateau: Rect
+  /** Outer parcels first, so that each parcel comes after the one it stands on. */
+  parcels: ParcelLayout[]
   lots: Lot[]
 }
 
