@@ -22,6 +22,8 @@ export interface FileMetrics {
   lines: number
   complexity: number
   test: boolean
+  /** False for a language the analyzer does not read: a bare concrete block. True if absent. */
+  analyzed?: boolean
 }
 
 /** A file's 2 × 2 u lot, by its centre. */

@@ -10,7 +10,7 @@ import {
 } from 'three'
 import { archetypeGeometry, type Vertex } from './archetype-geometry'
 import { ARCHETYPES, type Archetype, type Building, buildingFor } from './archetypes'
-import type { BuildingLanguage, CityLayout } from './layout'
+import type { BuildingLanguage, CityLayout, FileMetrics } from './layout'
 import { shadingFragmentPars, shadingUniforms, shadingVertex, shadingVertexPars } from './shading'
 import { boardToThree, layerAltitude, srgb, type Vec3 } from './units'
 
@@ -24,6 +24,8 @@ const LANGUAGE_COLOURS: Record<BuildingLanguage, Vec3> = {
   other: srgb('#B9AE9C'),
 }
 const TEST_COLOUR = srgb('#CFC7B8')
+/** Concrete faces are painted as they are; this tint only gives their edges `#8F8A80`. */
+const CONCRETE_TINT = srgb('#F6EEDC')
 /** Edges are `mix(language, black, 42 %)`, on every part of the building, never shaded. */
 const EDGE_DARKENING = 0.42
 /** Line width each face draws inside its outline, in CSS pixels: two faces make a 0.5 px edge. */
@@ -111,7 +113,7 @@ export function createBuildings(layout: CityLayout, pixelRatio: number): Group {
       placed.push({
         building,
         position: boardToThree(lot.x, lot.y, altitude + (lot.base ?? 0)),
-        tint: lot.file.test ? TEST_COLOUR : LANGUAGE_COLOURS[lot.file.language],
+        tint: tintOf(lot.file),
       })
       byArchetype.set(building.archetype, placed)
     }
@@ -125,6 +127,13 @@ export function createBuildings(layout: CityLayout, pixelRatio: number): Group {
     }
   }
   return group
+}
+
+function tintOf(file: FileMetrics): Vec3 {
+  if (file.analyzed === false) {
+    return CONCRETE_TINT
+  }
+  return file.test ? TEST_COLOUR : LANGUAGE_COLOURS[file.language]
 }
 
 function instancedArchetype(

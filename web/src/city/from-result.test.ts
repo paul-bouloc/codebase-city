@@ -23,7 +23,15 @@ describe('cityFromResult', () => {
     expect(lots).toHaveLength(result.files.dir.length)
     const main = city.islands[1]?.lots[0]
     expect(main).toMatchObject({ x: 20.9, y: 1.9, base: 0 })
-    expect(main?.file).toEqual({ language: 'typescript', lines: 60, complexity: 8, test: false })
+    expect(main?.file).toEqual({
+      language: 'typescript',
+      lines: 60,
+      complexity: 8,
+      test: false,
+      analyzed: true,
+    })
+    // `release.sh`: Shell is not analyzed
+    expect(city.islands[7]?.lots[0]?.file.analyzed).toBe(false)
     const css = lots.find((lot) => lot.file.language === 'css')
     expect(css).toBeDefined()
     const test = city.islands[6]?.lots[0]

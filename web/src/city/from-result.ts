@@ -5,6 +5,9 @@ import { slabTop } from './units'
 /** The layout is in tenths of a unit. */
 const TENTHS = 10
 
+/** The languages the analyzer reads; it reports the others' lines only. */
+const ANALYZED = new Set(['TypeScript', 'JavaScript', 'Python', 'Go'])
+
 const LANGUAGES: Record<string, BuildingLanguage> = {
   TypeScript: 'typescript',
   JavaScript: 'javascript',
@@ -61,15 +64,17 @@ export function cityFromResult(result: AnalysisResult): CityLayout {
 
   files.dir.forEach((dir, file) => {
     const scope = files.scope[file]
+    const language = result.languages[files.language[file] ?? 0] ?? ''
     const lot: Lot = {
       x: (layout.lots.x[file] ?? 0) / TENTHS,
       y: (layout.lots.y[file] ?? 0) / TENTHS,
       base: slabTop(level[dir] ?? 0),
       file: {
-        language: LANGUAGES[result.languages[files.language[file] ?? 0] ?? ''] ?? 'other',
+        language: LANGUAGES[language] ?? 'other',
         lines: files.lines[file] ?? 0,
         complexity: files.complexity[file] ?? 0,
         test: scope === 'test' || scope === 'fixture',
+        analyzed: ANALYZED.has(language),
       },
     }
     islands[dirs.island[dir] ?? 0]?.lots.push(lot)

@@ -47,6 +47,8 @@ const FLOOR_SIDES = fixedPaint(mixSrgb(WOOD, '#000000', 0.15))
 const FLOOR_TOP = fixedPaint(mixSrgb(WOOD, '#FFFFFF', 0.2))
 const POST = fixedPaint(mixSrgb(WOOD, '#000000', 0.2))
 const ROOF_EDGE = fixedPaint(mixSrgb(WOOD, '#000000', 0.1))
+const CONCRETE_WALL = fixedPaint(srgb('#D9D5CC'))
+const CONCRETE_ROOF = fixedPaint(srgb('#CFCAC0'))
 
 interface Face {
   points: Point[]
@@ -325,6 +327,11 @@ function pavilion(): Part[] {
   ]
 }
 
+/** A file the analyzer does not read: bare concrete, without kiosk or windows. */
+function concreteBlock(): Part[] {
+  return [square(ZERO, ZERO, SIDE, ZERO, HEIGHT, CONCRETE_WALL, CONCRETE_ROOF)]
+}
+
 const SHAPES: Record<Archetype, () => Part[]> = {
   pavilion,
   hall,
@@ -333,6 +340,7 @@ const SHAPES: Record<Archetype, () => Part[]> = {
   setbackBlock,
   pyramidRoof,
   towerOnPodium,
+  concreteBlock,
 }
 
 /** A vertex in three.js coordinates (y up). */

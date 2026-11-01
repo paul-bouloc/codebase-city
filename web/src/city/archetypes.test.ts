@@ -80,6 +80,16 @@ describe('buildingFor', () => {
     expect(buildingFor(file({ lines: 0, test: true })).side).toBe(0.75)
   })
 
+  it('makes a concrete block of a file the analyzer does not read, a floor per 150 lines', () => {
+    const block = (lines: number) => buildingFor(file({ lines, complexity: 30, analyzed: false }))
+    expect(block(10)).toMatchObject({ archetype: 'concreteBlock', height: 0.5 })
+    expect(block(151).height).toBe(1)
+    expect(block(3000).height).toBe(2)
+    expect(buildingFor(file({ lines: 400, test: true, analyzed: false })).archetype).toBe(
+      'concreteBlock',
+    )
+  })
+
   it('stops the walls of a House under its roof', () => {
     expect(buildingFor(file({ complexity: 3 })).height).toBeCloseTo(0.9)
   })

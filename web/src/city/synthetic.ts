@@ -175,5 +175,13 @@ function syntheticFile(seed: string): FileMetrics {
     })?.[0] ?? 'other'
   const lines = Math.round(10 * 300 ** (random() ** 1.6))
   const density = language === 'other' && random() < 0.5 ? 0.001 : 0.01 + 0.08 * random() ** 2
-  return { language, lines, complexity: Math.max(1, Math.round(lines * density)), test }
+  // A third of the `other` files are in a language the analyzer does not read: concrete
+  const analyzed = !(language === 'other' && random() < 1 / 3)
+  return {
+    language,
+    lines,
+    complexity: Math.max(1, Math.round(lines * density)),
+    test,
+    analyzed,
+  }
 }

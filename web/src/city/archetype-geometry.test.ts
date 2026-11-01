@@ -11,6 +11,7 @@ const TRIANGLES: Record<Archetype, number> = {
   setbackBlock: 30,
   pyramidRoof: 14,
   towerOnPodium: 40,
+  concreteBlock: 10,
 }
 
 /** The highest complexity that still picks each archetype. */
@@ -22,6 +23,7 @@ const MAX_COMPLEXITY: Record<Archetype, number> = {
   setbackBlock: 51,
   pyramidRoof: 117,
   towerOnPodium: 10_000,
+  concreteBlock: 0,
 }
 
 /** The largest building of an archetype. */
@@ -31,6 +33,7 @@ function largest(archetype: Archetype): Building {
     lines: archetype === 'house' ? 1869 : 3000,
     complexity: MAX_COMPLEXITY[archetype],
     test: archetype === 'pavilion',
+    analyzed: archetype !== 'concreteBlock',
   })
   expect(building.archetype).toBe(archetype)
   return building

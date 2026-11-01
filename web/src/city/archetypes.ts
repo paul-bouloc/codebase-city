@@ -9,6 +9,7 @@ export const ARCHETYPES = [
   'setbackBlock',
   'pyramidRoof',
   'towerOnPodium',
+  'concreteBlock',
 ] as const
 
 export type Archetype = (typeof ARCHETYPES)[number]
@@ -23,6 +24,9 @@ const PAVILION_MAX_SIDE = 1.54
 /** A House's walls stop a little short of their floors, under the roof. */
 const HOUSE_WALL_RATIO = 0.9
 const SETBACK_BASE_RATIO = 0.62
+/** A file the analyzer does not read rises one floor per 150 lines, up to 4. */
+const UNANALYZED_LINES_PER_FLOOR = 150
+const UNANALYZED_MAX_FLOORS = 4
 
 export function floorsFor(complexity: number): number {
   const floors = Math.round(1.2 * Math.max(complexity, 0) ** 0.55)
@@ -67,9 +71,16 @@ export interface Building {
   split: number
 }
 
-export function buildingFor({ lines, complexity, test }: FileMetrics): Building {
-  const floors = floorsFor(complexity)
+export function buildingFor({ lines, complexity, test, analyzed = true }: FileMetrics): Building {
   const side = footprintFor(lines)
+  if (!analyzed) {
+    const floors = Math.min(
+      Math.max(Math.ceil(lines / UNANALYZED_LINES_PER_FLOOR), 1),
+      UNANALYZED_MAX_FLOORS,
+    )
+    return { archetype: 'concreteBlock', side, height: floors * FLOOR_HEIGHT, split: 0 }
+  }
+  const floors = floorsFor(complexity)
   const archetype = archetypeFor(floors, side, test)
   switch (archetype) {
     case 'pavilion':
