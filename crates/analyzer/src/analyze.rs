@@ -1,43 +1,79 @@
 //! Assembling the analysis result from the files of a repository.
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
-use model::{AnalysisResult, Dirs, Edges, FORMAT_VERSION, Files, Ignored, Repo, Stats, Symbols};
+use model::{
+    AnalysisResult, Confidence, Dirs, EdgeKind, Edges, FORMAT_VERSION, Files, Ignored, Repo, Stats,
+    Symbols,
+};
 use rayon::prelude::*;
 
 use crate::files::{SourceFile, split_path};
 use crate::lang::{self, Parsed};
+use crate::resolve::{self, Outcome, Target};
 use crate::saturating_u32 as index;
 
 /// Version of the algorithms. Bumped whenever a change would give another
 /// result for the same commit, so stored results are recomputed.
-pub const ANALYZER_VERSION: &str = "0.1.0";
+pub const ANALYZER_VERSION: &str = "0.2.0";
+
+/// How the imports of an analysis were resolved, to check the resolution
+/// by hand on real repositories. Not part of the result.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ImportReport {
+    /// Imports resolved by the language's own rules.
+    pub exact: u32,
+    /// Imports resolved only by the last-resort match on the path.
+    pub likely: u32,
+    pub external: u32,
+    pub unresolved: u32,
+    /// Imports of each kind, resolved or not.
+    pub by_kind: Vec<(EdgeKind, u32)>,
+    /// Modules that could not be resolved, with how many imports name
+    /// them; the most frequent first.
+    pub unresolved_modules: Vec<(String, u32)>,
+}
 
 /// Analyzes the files of one commit. The result does not depend on the
 /// order of `files`: they are sorted by path first.
-///
-/// Imports are not resolved yet: the result has no edges.
 pub fn analyze(
+    repo: Repo,
+    sha: String,
+    files: Vec<SourceFile>,
+    ignored: Ignored,
+) -> AnalysisResult {
+    analyze_with_report(repo, sha, files, ignored).0
+}
+
+/// [`analyze`], with a report on the resolution of the imports.
+pub fn analyze_with_report(
     repo: Repo,
     sha: String,
     mut files: Vec<SourceFile>,
     ignored: Ignored,
-) -> AnalysisResult {
+) -> (AnalysisResult, ImportReport) {
     files.sort_by(|a, b| a.path.cmp(&b.path));
     // `collect` keeps the order of the files, whatever the scheduling. Each
-    // content is freed once parsed: nothing after needs it yet
+    // content is freed once parsed; the manifests keep theirs for the
+    // resolution
     let parsed: Vec<Option<Parsed>> = files
         .par_iter_mut()
         .map(|file| {
+            if !file.language.is_analyzed() {
+                return None;
+            }
             let content = file.content.take()?;
             lang::parse(&file.path, file.language, &content)
         })
         .collect();
 
+    let outcomes = resolve_imports(&files, &parsed);
+
     let mut dirs = DirTree::new();
     let mut languages: Vec<String> = Vec::new();
     let mut table = Files::default();
     let mut symbols = Symbols::default();
+    let mut imports = Vec::with_capacity(files.len());
     for (row, (file, parsed)) in files.iter().zip(parsed).enumerate() {
         let (dir_path, name) = split_path(&file.path);
         let language = file.language.name();
@@ -63,15 +99,87 @@ pub fn analyze(
                     symbols.kind.push(symbol.kind);
                     symbols.line.push(symbol.line);
                 }
+                imports.push(parsed.imports);
             }
             None => {
                 table.complexity.push(None);
                 table.header.push(None);
+                imports.push(Vec::new());
             }
         }
     }
 
-    AnalysisResult {
+    let mut report = ImportReport::default();
+    let mut by_kind: BTreeMap<u8, (EdgeKind, u32)> = BTreeMap::new();
+    let mut unresolved: HashMap<&str, u32> = HashMap::new();
+    // Importing file, then folder targets after file targets, then index
+    let mut edges: BTreeMap<(u32, bool, u32), (EdgeKind, Confidence)> = BTreeMap::new();
+    for (from, (imports, outcomes)) in imports.iter().zip(&outcomes).enumerate() {
+        let from = index(from);
+        for (import, outcome) in imports.iter().zip(outcomes) {
+            by_kind
+                .entry(strength(import.kind))
+                .or_insert((import.kind, 0))
+                .1 += 1;
+            let targets = match outcome {
+                Outcome::Resolved(targets) => targets,
+                Outcome::External => {
+                    report.external += 1;
+                    continue;
+                }
+                Outcome::Unresolved => {
+                    report.unresolved += 1;
+                    *unresolved.entry(&import.specifier).or_default() += 1;
+                    continue;
+                }
+            };
+            if targets
+                .iter()
+                .any(|(_, confidence)| *confidence == Confidence::Exact)
+            {
+                report.exact += 1;
+            } else {
+                report.likely += 1;
+            }
+            for (target, confidence) in targets {
+                let key = match target {
+                    Target::File(file) if *file == from => continue,
+                    Target::File(file) => (from, false, *file),
+                    // A package folder holds files, so the tree has it
+                    Target::Dir(path) => match dirs.by_path.get(path.as_str()) {
+                        Some(&dir) => (from, true, dir),
+                        None => continue,
+                    },
+                };
+                let edge = edges.entry(key).or_insert((import.kind, *confidence));
+                if strength(import.kind) > strength(edge.0) {
+                    edge.0 = import.kind;
+                }
+                if *confidence == Confidence::Exact {
+                    edge.1 = Confidence::Exact;
+                }
+            }
+        }
+    }
+    report.by_kind = by_kind.into_values().rev().collect();
+    report.unresolved_modules = unresolved
+        .into_iter()
+        .map(|(module, count)| (module.to_owned(), count))
+        .collect();
+    report
+        .unresolved_modules
+        .sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+
+    let mut table_edges = Edges::default();
+    for ((from, is_dir, target), (kind, confidence)) in edges {
+        table_edges.from.push(from);
+        table_edges.to.push((!is_dir).then_some(target));
+        table_edges.to_dir.push(is_dir.then_some(target));
+        table_edges.kind.push(kind);
+        table_edges.confidence.push(confidence);
+    }
+
+    let result = AnalysisResult {
         format_version: FORMAT_VERSION,
         analyzer_version: ANALYZER_VERSION.to_owned(),
         repo,
@@ -80,13 +188,50 @@ pub fn analyze(
         languages,
         files: table,
         symbols,
-        edges: Edges::default(),
+        edges: table_edges,
         stats: Stats {
             ignored,
-            imports_total: 0,
-            imports_resolved: 0,
-            imports_external: 0,
+            imports_total: report.exact + report.likely + report.external + report.unresolved,
+            imports_resolved: report.exact + report.likely,
+            imports_external: report.external,
         },
+    };
+    (result, report)
+}
+
+/// The outcome of every import of every file, in the same order.
+fn resolve_imports(files: &[SourceFile], parsed: &[Option<Parsed>]) -> Vec<Vec<Outcome>> {
+    let paths: Vec<&str> = files.iter().map(|file| file.path.as_str()).collect();
+    let manifests: HashMap<&str, &[u8]> = files
+        .iter()
+        .filter_map(|file| Some((file.path.as_str(), file.content.as_deref()?)))
+        .collect();
+    let index = resolve::Index::new(&paths);
+    let resolver = resolve::Resolver::new(&index, &manifests);
+    files
+        .par_iter()
+        .zip(parsed)
+        .map(|(file, parsed)| {
+            parsed.as_ref().map_or_else(Vec::new, |parsed| {
+                parsed
+                    .imports
+                    .iter()
+                    .map(|import| resolver.resolve(&file.path, file.language, import))
+                    .collect()
+            })
+        })
+        .collect()
+}
+
+/// Which kind an edge keeps when a file imports the same target several
+/// ways: the one that weighs most on the structure.
+fn strength(kind: EdgeKind) -> u8 {
+    match kind {
+        EdgeKind::Reexport => 4,
+        EdgeKind::Import => 3,
+        EdgeKind::Lazy => 2,
+        EdgeKind::Dynamic => 1,
+        EdgeKind::Type => 0,
     }
 }
 

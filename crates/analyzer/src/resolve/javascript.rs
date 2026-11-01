@@ -1,0 +1,438 @@
+//! TypeScript and JavaScript, with `oxc_resolver` (the rules of Node and
+//! TypeScript: extensions, `index`, `package.json`, tsconfig `paths`) on a
+//! file system held in memory.
+//!
+//! There is no `node_modules`: the file system shows the repository's own
+//! packages there instead, under their names, so the resolver reads their
+//! `exports` and `main` as Node would. A package whose entry points to a
+//! build that is not in the repository falls back on its sources.
+
+use std::collections::{HashMap, HashSet};
+use std::io;
+use std::path::{Path, PathBuf};
+
+use model::Confidence;
+use oxc_resolver::{
+    FileMetadata, FileSystem, ResolveError, ResolveOptions, ResolverGeneric, TsconfigDiscovery,
+};
+use serde::Deserialize;
+
+use super::{Index, Outcome, Target, join, under};
+use crate::files::split_path;
+
+/// Extensions tried after a path without one, in this order.
+const EXTENSIONS: &[&str] = &[
+    ".ts", ".tsx", ".d.ts", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts", ".json",
+];
+
+/// Endings tried after an import the resolver could not read: a file with
+/// one of the extensions, or a folder's `index`.
+const SUFFIX_ENDINGS: &[&str] = &[
+    ".ts",
+    ".tsx",
+    ".d.ts",
+    ".js",
+    ".jsx",
+    ".mjs",
+    ".cjs",
+    ".mts",
+    ".cts",
+    "/index.ts",
+    "/index.tsx",
+    "/index.d.ts",
+    "/index.js",
+    "/index.jsx",
+];
+
+/// Files a folder can stand for, when its `package.json` does not lead to
+/// a file of the repository.
+const FOLDER_ENTRIES: &[&str] = &[
+    "/src/index.ts",
+    "/src/index.tsx",
+    "/src/index.js",
+    "/index.ts",
+    "/index.tsx",
+    "/index.js",
+];
+
+pub(super) struct Resolver {
+    /// With the nearest `tsconfig.json`.
+    with_tsconfig: ResolverGeneric<MemoryFs>,
+    /// For files whose tsconfig cannot be read, often because it extends a
+    /// package that is not in the repository.
+    plain: ResolverGeneric<MemoryFs>,
+    /// Name and folder of each package of the repository.
+    workspace: Vec<(String, String)>,
+    /// Packages the repository's `package.json` files depend on.
+    dependencies: HashSet<String>,
+    /// Folders at the root, which a bare import may name through an alias.
+    top_dirs: HashSet<String>,
+}
+
+/// The fields of a `package.json` that resolution reads itself.
+#[derive(Deserialize, Default)]
+#[serde(default, rename_all = "camelCase")]
+struct PackageJson {
+    name: Option<String>,
+    dependencies: HashMap<String, serde::de::IgnoredAny>,
+    dev_dependencies: HashMap<String, serde::de::IgnoredAny>,
+    peer_dependencies: HashMap<String, serde::de::IgnoredAny>,
+    optional_dependencies: HashMap<String, serde::de::IgnoredAny>,
+}
+
+impl Resolver {
+    pub(super) fn new(index: &Index<'_>, manifests: &HashMap<&str, &[u8]>) -> Self {
+        let mut workspace = Vec::new();
+        let mut dependencies = HashSet::new();
+        let mut packages: Vec<(&str, &[u8])> = manifests
+            .iter()
+            .filter(|(path, _)| split_path(path).1 == "package.json")
+            .map(|(path, content)| (*path, *content))
+            .collect();
+        packages.sort_unstable();
+        for (path, content) in packages {
+            let Ok(package) = serde_json::from_slice::<PackageJson>(content) else {
+                continue;
+            };
+            if let Some(name) = package.name.filter(|name| !name.is_empty()) {
+                workspace.push((name, split_path(path).0.to_owned()));
+            }
+            for names in [
+                package.dependencies,
+                package.dev_dependencies,
+                package.peer_dependencies,
+                package.optional_dependencies,
+            ] {
+                dependencies.extend(names.into_keys());
+            }
+        }
+
+        let fs = MemoryFs::new(index, manifests, workspace.clone());
+        let options = ResolveOptions {
+            extensions: EXTENSIONS.iter().map(|&ext| ext.to_owned()).collect(),
+            // ESM written in TypeScript imports `./a.js` for `a.ts`
+            extension_alias: vec![
+                (
+                    ".js".into(),
+                    vec![".ts".into(), ".tsx".into(), ".d.ts".into(), ".js".into()],
+                ),
+                (".jsx".into(), vec![".tsx".into(), ".jsx".into()]),
+                (".mjs".into(), vec![".mts".into(), ".mjs".into()]),
+                (".cjs".into(), vec![".cts".into(), ".cjs".into()]),
+            ],
+            condition_names: ["types", "import", "require", "node", "default"]
+                .map(String::from)
+                .to_vec(),
+            main_fields: ["types", "module", "main"].map(String::from).to_vec(),
+            main_files: vec!["index".into()],
+            builtin_modules: true,
+            symlinks: false,
+            ..ResolveOptions::default()
+        };
+        let plain = ResolverGeneric::new_with_file_system(fs, options.clone());
+        let with_tsconfig = plain.clone_with_options(ResolveOptions {
+            tsconfig: Some(TsconfigDiscovery::Auto),
+            ..options
+        });
+        let top_dirs = index
+            .dirs
+            .iter()
+            .filter(|dir| !dir.is_empty() && !dir.contains('/'))
+            .map(|&dir| dir.to_owned())
+            .collect();
+        Self {
+            with_tsconfig,
+            plain,
+            workspace,
+            dependencies,
+            top_dirs,
+        }
+    }
+
+    pub(super) fn resolve(&self, index: &Index<'_>, path: &str, specifier: &str) -> Outcome {
+        let file = Path::new("/").join(path);
+        let resolved = match self.with_tsconfig.resolve_file(&file, specifier) {
+            Err(error) if is_tsconfig_error(&error) => self.plain.resolve_file(&file, specifier),
+            other => other,
+        };
+        match resolved {
+            Ok(resolution) => {
+                let found = in_repository(&self.workspace, resolution.path());
+                if let Some(row) = found.and_then(|path| index.file(&path)) {
+                    return exact(row);
+                }
+            }
+            Err(ResolveError::Builtin { .. }) => return Outcome::External,
+            Err(_) => {}
+        }
+
+        let relative = specifier.starts_with('.') || specifier.starts_with('/');
+        if relative {
+            let base = split_path(path).0;
+            let target = match specifier.strip_prefix('/') {
+                Some(absolute) => join("", absolute),
+                None => join(base, specifier),
+            };
+            return match target.and_then(|dir| folder_entry(index, &dir)) {
+                Some(row) => exact(row),
+                None => Outcome::Unresolved,
+            };
+        }
+
+        let package = package_name(specifier);
+        if let Some((name, dir)) = self.workspace_package(package) {
+            let rest = specifier[name.len()..].trim_start_matches('/');
+            if let Some(found) = package_sources(index, name, dir, rest) {
+                return Outcome::Resolved(vec![found]);
+            }
+            // A folder of the repository named like a package it depends
+            // on, such as an extension named `typescript`
+            if !self.dependencies.contains(package) {
+                return Outcome::Unresolved;
+            }
+        }
+        if self.dependencies.contains(package) {
+            return Outcome::External;
+        }
+
+        // An alias the resolver could not read: Vite, webpack, Babel. A
+        // bare name alone (`redis`) is a package far more often than a file
+        let aliased = specifier.starts_with(['~', '#']) || specifier.starts_with("@/");
+        let suffix = specifier
+            .trim_start_matches(['@', '~', '#'])
+            .trim_start_matches('/');
+        let scoped = specifier.starts_with('@') && !specifier.starts_with("@/");
+        if !scoped
+            && (aliased || suffix.contains('/'))
+            && let Some(row) = index.by_suffix(suffix, SUFFIX_ENDINGS)
+        {
+            return Outcome::Resolved(vec![(Target::File(row), Confidence::Likely)]);
+        }
+        let looks_internal = aliased || self.top_dirs.contains(package);
+        if looks_internal {
+            Outcome::Unresolved
+        } else {
+            Outcome::External
+        }
+    }
+
+    /// The package of the repository named `package`, with its folder.
+    fn workspace_package(&self, package: &str) -> Option<(&str, &str)> {
+        self.workspace
+            .iter()
+            .find(|(name, _)| name == package)
+            .map(|(name, dir)| (name.as_str(), dir.as_str()))
+    }
+}
+
+fn exact(row: u32) -> Outcome {
+    Outcome::Resolved(vec![(Target::File(row), Confidence::Exact)])
+}
+
+/// Errors that come from reading a tsconfig, rather than from the import.
+fn is_tsconfig_error(error: &ResolveError) -> bool {
+    matches!(
+        error,
+        ResolveError::TsconfigNotFound(_)
+            | ResolveError::TsconfigSelfReference(_)
+            | ResolveError::TsconfigCircularExtend(_)
+            | ResolveError::TsconfigLoadFailed { .. }
+            | ResolveError::Json(_)
+            | ResolveError::IOError(_)
+    )
+}
+
+/// `react` for `react/jsx-runtime`, `@acme/ui` for `@acme/ui/button`.
+fn package_name(specifier: &str) -> &str {
+    let mut ends = specifier.match_indices('/').map(|(at, _)| at);
+    let end = if specifier.starts_with('@') {
+        ends.nth(1)
+    } else {
+        ends.next()
+    };
+    &specifier[..end.unwrap_or(specifier.len())]
+}
+
+/// The file of the package `name`, in `dir`, that `name/rest` stands for,
+/// when its `package.json` leads to a build that is not in the repository.
+/// The sources are tried, then a file of `src` named after the import
+/// (`three` gives `src/Three.js`, `three/webgpu` gives `src/Three.WebGPU.js`),
+/// which is only likely.
+fn package_sources(
+    index: &Index<'_>,
+    name: &str,
+    dir: &str,
+    rest: &str,
+) -> Option<(Target, Confidence)> {
+    let within = |path: &str| under(dir, path);
+    let exact = if rest.is_empty() {
+        folder_entry(index, dir)
+    } else {
+        with_extension(index, &within(rest))
+            .or_else(|| with_extension(index, &within(&format!("src/{rest}"))))
+    };
+    if let Some(row) = exact {
+        return Some((Target::File(row), Confidence::Exact));
+    }
+    let last = name.rsplit('/').next().unwrap_or(name).to_lowercase();
+    let wanted = if rest.is_empty() {
+        last
+    } else {
+        format!("{last}.{}", rest.to_lowercase())
+    };
+    let mut candidates = index.files_in(&within("src")).iter().filter(|&&row| {
+        let file = split_path(index.path(row)).1.to_lowercase();
+        file.rsplit_once('.')
+            .is_some_and(|(stem, ext)| stem == wanted && matches!(ext, "ts" | "tsx" | "js" | "mjs"))
+    });
+    match (candidates.next(), candidates.next()) {
+        (Some(&row), None) => Some((Target::File(row), Confidence::Likely)),
+        _ => None,
+    }
+}
+
+/// The file a folder stands for when its `package.json` leads nowhere.
+fn folder_entry(index: &Index<'_>, dir: &str) -> Option<u32> {
+    if !index.is_dir(dir) {
+        return None;
+    }
+    FOLDER_ENTRIES
+        .iter()
+        .find_map(|entry| index.file(format!("{dir}{entry}").trim_start_matches('/')))
+}
+
+/// The file at `path`, as written or with one of the extensions.
+fn with_extension(index: &Index<'_>, path: &str) -> Option<u32> {
+    index.file(path).or_else(|| {
+        EXTENSIONS
+            .iter()
+            .find_map(|ext| index.file(&format!("{path}{ext}")))
+    })
+}
+
+/// Where a path of [`MemoryFs`] is in the repository: a path under
+/// `/node_modules` is a package of the repository, shown there by name.
+fn in_repository(workspace: &[(String, String)], path: &Path) -> Option<String> {
+    let path = path.to_str()?.strip_prefix('/')?;
+    let Some(rest) = path.strip_prefix("node_modules/") else {
+        return Some(path.to_owned());
+    };
+    workspace.iter().find_map(|(name, dir)| {
+        let inner = rest.strip_prefix(name.as_str())?;
+        if !inner.is_empty() && !inner.starts_with('/') {
+            return None;
+        }
+        Some(under(dir, inner.trim_start_matches('/')))
+    })
+}
+
+/// The repository as a read-only file system rooted at `/`, with its own
+/// packages under `/node_modules`. Only the manifests have a content; every
+/// other file is only known to exist.
+struct MemoryFs {
+    files: HashSet<PathBuf>,
+    dirs: HashSet<PathBuf>,
+    contents: HashMap<PathBuf, Vec<u8>>,
+    /// Name and folder of each package of the repository.
+    workspace: Vec<(String, String)>,
+}
+
+impl MemoryFs {
+    fn new(
+        index: &Index<'_>,
+        manifests: &HashMap<&str, &[u8]>,
+        workspace: Vec<(String, String)>,
+    ) -> Self {
+        let absolute = |path: &str| Path::new("/").join(path);
+        let mut dirs: HashSet<PathBuf> = index.dirs.iter().map(|dir| absolute(dir)).collect();
+        dirs.insert(absolute("node_modules"));
+        // `/node_modules/@scope` holds the packages of that scope
+        for (name, _) in &workspace {
+            if let Some((scope, _)) = name.split_once('/') {
+                dirs.insert(absolute(&format!("node_modules/{scope}")));
+            }
+        }
+        Self {
+            files: index.paths.iter().map(|path| absolute(path)).collect(),
+            dirs,
+            contents: manifests
+                .iter()
+                .map(|(path, content)| (absolute(path), content.to_vec()))
+                .collect(),
+            workspace,
+        }
+    }
+
+    /// The path in the repository that `path` shows.
+    fn real(&self, path: &Path) -> Option<PathBuf> {
+        let inside = in_repository(&self.workspace, path)?;
+        Some(Path::new("/").join(inside))
+    }
+
+    fn not_found() -> io::Error {
+        io::Error::from(io::ErrorKind::NotFound)
+    }
+}
+
+impl FileSystem for MemoryFs {
+    fn new() -> Self {
+        Self {
+            files: HashSet::new(),
+            dirs: HashSet::new(),
+            contents: HashMap::new(),
+            workspace: Vec::new(),
+        }
+    }
+
+    fn read(&self, path: &Path) -> io::Result<Vec<u8>> {
+        let real = self.real(path).ok_or_else(Self::not_found)?;
+        self.contents
+            .get(&real)
+            .cloned()
+            .ok_or_else(Self::not_found)
+    }
+
+    fn read_to_string(&self, path: &Path) -> io::Result<String> {
+        let bytes = self.read(path)?;
+        String::from_utf8(bytes).map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))
+    }
+
+    fn metadata(&self, path: &Path) -> io::Result<FileMetadata> {
+        if self.dirs.contains(path) {
+            return Ok(FileMetadata::new(false, true, false));
+        }
+        let real = self.real(path).ok_or_else(Self::not_found)?;
+        if self.files.contains(&real) {
+            Ok(FileMetadata::new(true, false, false))
+        } else if self.dirs.contains(&real) {
+            Ok(FileMetadata::new(false, true, false))
+        } else {
+            Err(Self::not_found())
+        }
+    }
+
+    fn symlink_metadata(&self, path: &Path) -> io::Result<FileMetadata> {
+        self.metadata(path)
+    }
+
+    fn read_link(&self, _path: &Path) -> Result<PathBuf, ResolveError> {
+        Err(io::Error::from(io::ErrorKind::InvalidInput).into())
+    }
+
+    fn canonicalize(&self, path: &Path) -> io::Result<PathBuf> {
+        self.metadata(path).map(|_| path.to_path_buf())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_package_name_keeps_its_scope() {
+        assert_eq!(package_name("react"), "react");
+        assert_eq!(package_name("react/jsx-runtime"), "react");
+        assert_eq!(package_name("@acme/ui/button"), "@acme/ui");
+        assert_eq!(package_name("@acme/ui"), "@acme/ui");
+    }
+}

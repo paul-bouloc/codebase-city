@@ -6,8 +6,9 @@ mod analyze;
 pub mod files;
 pub mod lang;
 mod metrics;
+mod resolve;
 
-pub use analyze::{ANALYZER_VERSION, analyze};
+pub use analyze::{ANALYZER_VERSION, ImportReport, analyze, analyze_with_report};
 
 /// Counts and indexes are `u32` in the result: far more than ingestion keeps.
 fn saturating_u32(value: usize) -> u32 {
