@@ -2,13 +2,16 @@
 //!
 //! A module exports the names listed in a literal `__all__`, or else its
 //! top-level functions and classes whose name does not start with `_`.
+//!
+//! Imports are `import a.b` and `from a.b import c`, relative or not,
+//! wherever they are.
 
 use std::collections::HashMap;
 
-use model::SymbolKind;
+use model::{EdgeKind, SymbolKind};
 use tree_sitter::Node;
 
-use super::{Symbol, children, header, symbol, text};
+use super::{Import, Symbol, children, has_ancestor, header, line, symbol, text, walk};
 
 pub(super) fn is_decision(node: Node<'_>) -> bool {
     match node.kind() {
@@ -187,4 +190,102 @@ fn declares_encoding(comment: &str) -> bool {
         rest.trim_start_matches([' ', '\t'])
             .starts_with(|c: char| c.is_ascii_alphanumeric() || "-_.".contains(c))
     })
+}
+
+pub(super) fn imports(path: &str, root: Node<'_>, source: &[u8]) -> Vec<Import> {
+    let in_init = path == "__init__.py" || path.ends_with("/__init__.py");
+    let mut imports = Vec::new();
+    walk(root, |node| {
+        match node.kind() {
+            "import_statement" => {
+                let kind = kind(node, source, false);
+                let mut cursor = node.walk();
+                for name in node.children_by_field_name("name", &mut cursor) {
+                    let module = match name.kind() {
+                        "aliased_import" => name.child_by_field_name("name"),
+                        _ => Some(name),
+                    };
+                    imports.extend(module.map(|module| Import {
+                        specifier: dotted(module, source),
+                        kind,
+                        line: line(node),
+                        names: Vec::new(),
+                    }));
+                }
+            }
+            "import_from_statement" => imports.extend(from_import(node, source, in_init)),
+            _ => return true,
+        }
+        false
+    });
+    imports
+}
+
+/// `from a.b import c, d as e`, `from .. import f`, `from .g import *`.
+fn from_import(node: Node<'_>, source: &[u8], in_init: bool) -> Option<Import> {
+    let module = node.child_by_field_name("module_name")?;
+    let relative = module.kind() == "relative_import";
+    let mut names = Vec::new();
+    let mut cursor = node.walk();
+    for name in node.children_by_field_name("name", &mut cursor) {
+        let name = match name.kind() {
+            "aliased_import" => name.child_by_field_name("name"),
+            _ => Some(name),
+        };
+        names.extend(name.map(|name| dotted(name, source)));
+    }
+    if children(node)
+        .iter()
+        .any(|child| child.kind() == "wildcard_import")
+    {
+        names.push("*".to_owned());
+    }
+    Some(Import {
+        specifier: dotted(module, source),
+        // A package re-exports what its `__init__.py` imports from its own modules
+        kind: kind(node, source, in_init && relative),
+        line: line(node),
+        names,
+    })
+}
+
+/// What an import statement is, from where it stands.
+fn kind(node: Node<'_>, source: &[u8], reexport: bool) -> EdgeKind {
+    if under_type_checking(node, source) {
+        EdgeKind::Type
+    } else if has_ancestor(node, &["function_definition"]) {
+        EdgeKind::Lazy
+    } else if reexport {
+        EdgeKind::Reexport
+    } else {
+        EdgeKind::Import
+    }
+}
+
+/// Inside the body of `if TYPE_CHECKING:`, which only type checkers run.
+fn under_type_checking(node: Node<'_>, source: &[u8]) -> bool {
+    let mut child = node;
+    while let Some(parent) = child.parent() {
+        if parent.kind() == "if_statement"
+            && parent.child_by_field_name("consequence") == Some(child)
+            && parent
+                .child_by_field_name("condition")
+                .is_some_and(|condition| {
+                    matches!(
+                        text(condition, source).as_str(),
+                        "TYPE_CHECKING" | "typing.TYPE_CHECKING"
+                    )
+                })
+        {
+            return true;
+        }
+        child = parent;
+    }
+    false
+}
+
+/// A module or name as written, without the spaces Python allows in it
+/// (`from . import x`, `a . b`).
+fn dotted(node: Node<'_>, source: &[u8]) -> String {
+    text(node, source).split_whitespace().collect()
 }

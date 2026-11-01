@@ -5,6 +5,7 @@
 
 use analyzer::files::Language;
 use analyzer::lang::{Parsed, parse};
+use model::EdgeKind::{Dynamic, Import, Lazy, Reexport};
 use model::SymbolKind::{self, Class, Constant, Enum, Function, Interface, Type};
 
 fn parse_text(name: &str, content: &str) -> Parsed {
@@ -296,5 +297,91 @@ fn other_languages_are_not_parsed() {
     assert_eq!(
         parse("README.md", Language::of("README.md"), b"# Title\n"),
         None
+    );
+}
+
+/// Specifier, kind, line and names of each import.
+fn imports(parsed: &Parsed) -> Vec<(&str, model::EdgeKind, u32, Vec<&str>)> {
+    parsed
+        .imports
+        .iter()
+        .map(|import| {
+            let names = import.names.iter().map(String::as_str).collect();
+            (import.specifier.as_str(), import.kind, import.line, names)
+        })
+        .collect()
+}
+
+#[test]
+fn typescript_imports_every_form_with_a_literal_module() {
+    let parsed = fixture("imports.ts");
+    let ty = model::EdgeKind::Type;
+    assert_eq!(
+        imports(&parsed),
+        [
+            ("./harbor", ty, 1, vec!["Harbor"]),
+            ("./berth", ty, 2, vec!["Berth", "Dock"]),
+            ("./tide", Import, 3, vec!["Tide", "sail"]),
+            ("./ship", Import, 4, vec!["default", "Mast"]),
+            ("./wind", Import, 5, vec!["*"]),
+            ("./polyfill", Import, 6, vec![]),
+            ("node:fs", Import, 7, vec![]),
+            ("./anchor", Reexport, 8, vec!["*"]),
+            ("./knots", Reexport, 9, vec!["*"]),
+            ("./rope", Reexport, 10, vec!["Rope"]),
+            ("./chart", ty, 11, vec!["Chart"]),
+            ("./crew", Import, 12, vec![]),
+            ("./cargo", Lazy, 15, vec![]),
+            ("./map", Dynamic, 19, vec![]),
+        ]
+    );
+}
+
+#[test]
+fn python_imports_say_where_they_run() {
+    let parsed = fixture("imports.py");
+    let ty = model::EdgeKind::Type;
+    assert_eq!(
+        imports(&parsed),
+        [
+            ("os.path", Import, 5, vec![]),
+            ("harbor.tides", Import, 5, vec![]),
+            (".", Import, 6, vec!["berth"]),
+            (".ships", Import, 7, vec!["Ship", "Mast"]),
+            ("..crew", Import, 8, vec!["*"]),
+            ("harbor.docks", Import, 9, vec!["Dock", "Crane"]),
+            ("ujson", Import, 12, vec![]),
+            ("json", Import, 14, vec![]),
+            ("harbor.charts", ty, 17, vec!["Chart"]),
+            ("harbor.cargo", Lazy, 21, vec![]),
+        ]
+    );
+}
+
+#[test]
+fn a_package_reexports_its_own_modules() {
+    let parsed = parse_text(
+        "harbor/__init__.py",
+        "from .docks import Dock\nfrom harbor.tides import Tide\n",
+    );
+    assert_eq!(
+        imports(&parsed),
+        [
+            (".docks", Reexport, 1, vec!["Dock"]),
+            ("harbor.tides", Import, 2, vec!["Tide"]),
+        ]
+    );
+}
+
+#[test]
+fn go_imports_name_packages() {
+    let parsed = fixture("imports.go");
+    assert_eq!(
+        imports(&parsed),
+        [
+            ("fmt", Import, 3, vec![]),
+            ("github.com/acme/harbor/tide", Import, 6, vec![]),
+            ("github.com/acme/harbor/internal/dock", Import, 7, vec![]),
+        ]
     );
 }

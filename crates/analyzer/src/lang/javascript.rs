@@ -3,13 +3,28 @@
 //! Exports are ES modules (`export …`, `export { … }`, `export default`)
 //! and CommonJS (`exports.x = …`, `module.exports = …`). Re-exports from
 //! another module are left to the file that declares the symbol.
+//!
+//! Imports are ES `import` and `export … from`, TypeScript's
+//! `import x = require()`, and `require()` and `import()` with a literal
+//! module, wherever they are.
 
 use std::collections::HashMap;
 
-use model::SymbolKind;
+use model::{EdgeKind, SymbolKind};
 use tree_sitter::Node;
 
-use super::{Symbol, children, header, symbol, text};
+use super::{Import, Symbol, children, has_ancestor, header, line, symbol, text, walk};
+
+/// Nodes whose body runs when called, not when the module loads.
+const FUNCTIONS: &[&str] = &[
+    "function_declaration",
+    "function_expression",
+    "function",
+    "generator_function_declaration",
+    "generator_function",
+    "arrow_function",
+    "method_definition",
+];
 
 pub(super) fn is_decision(node: Node<'_>) -> bool {
     match node.kind() {
@@ -292,4 +307,157 @@ fn exported_property(
         }
         _ => {}
     }
+}
+
+pub(super) fn imports(root: Node<'_>, source: &[u8]) -> Vec<Import> {
+    let mut imports = Vec::new();
+    walk(root, |node| match node.kind() {
+        "import_statement" => {
+            imports.extend(es_import(node, source));
+            false
+        }
+        "export_statement" if node.child_by_field_name("source").is_some() => {
+            imports.extend(reexport(node, source));
+            false
+        }
+        "call_expression" => {
+            imports.extend(call(node, source));
+            true
+        }
+        _ => true,
+    });
+    imports
+}
+
+/// `import … from "m"`, `import "m"` and `import x = require("m")`.
+fn es_import(node: Node<'_>, source: &[u8]) -> Option<Import> {
+    let require = children(node)
+        .into_iter()
+        .find(|child| child.kind() == "import_require_clause");
+    let module = match require {
+        Some(clause) => clause.child_by_field_name("source"),
+        None => node.child_by_field_name("source"),
+    }?;
+    let mut names = Vec::new();
+    // `import { type A, type B }` imports types only, like `import type`
+    let mut all_types = true;
+    let clause = children(node)
+        .into_iter()
+        .find(|child| child.kind() == "import_clause");
+    for part in clause.map(children).unwrap_or_default() {
+        match part.kind() {
+            "identifier" => {
+                names.push("default".to_owned());
+                all_types = false;
+            }
+            "namespace_import" => {
+                names.push("*".to_owned());
+                all_types = false;
+            }
+            "named_imports" => {
+                for specifier in children(part) {
+                    let Some(name) = specifier.child_by_field_name("name") else {
+                        continue;
+                    };
+                    names.push(text(name, source));
+                    all_types &= has_token(specifier, "type");
+                }
+            }
+            _ => {}
+        }
+    }
+    let kind = if has_token(node, "type") || (all_types && !names.is_empty()) {
+        EdgeKind::Type
+    } else {
+        EdgeKind::Import
+    };
+    Some(Import {
+        specifier: literal(module, source)?,
+        kind,
+        line: line(node),
+        names,
+    })
+}
+
+/// `export … from "m"`.
+fn reexport(node: Node<'_>, source: &[u8]) -> Option<Import> {
+    let module = node.child_by_field_name("source")?;
+    let mut names = Vec::new();
+    if has_token(node, "*")
+        || children(node)
+            .iter()
+            .any(|child| child.kind() == "namespace_export")
+    {
+        names.push("*".to_owned());
+    }
+    if let Some(clause) = children(node)
+        .into_iter()
+        .find(|child| child.kind() == "export_clause")
+    {
+        names.extend(
+            children(clause)
+                .into_iter()
+                .filter_map(|specifier| specifier.child_by_field_name("name"))
+                .map(|name| text(name, source)),
+        );
+    }
+    let kind = if has_token(node, "type") {
+        EdgeKind::Type
+    } else {
+        EdgeKind::Reexport
+    };
+    Some(Import {
+        specifier: literal(module, source)?,
+        kind,
+        line: line(node),
+        names,
+    })
+}
+
+/// `require("m")` and `import("m")`, with a single literal argument.
+fn call(node: Node<'_>, source: &[u8]) -> Option<Import> {
+    let function = node.child_by_field_name("function")?;
+    let arguments = children(node.child_by_field_name("arguments")?);
+    let [module] = arguments.as_slice() else {
+        return None;
+    };
+    let kind = match function.kind() {
+        "import" => EdgeKind::Dynamic,
+        "identifier" if text(function, source) == "require" => {
+            if has_ancestor(node, FUNCTIONS) {
+                EdgeKind::Lazy
+            } else {
+                EdgeKind::Import
+            }
+        }
+        _ => return None,
+    };
+    Some(Import {
+        specifier: literal(*module, source)?,
+        kind,
+        line: line(node),
+        names: Vec::new(),
+    })
+}
+
+/// The content of a string, or of a template without substitution; `None`
+/// for anything computed.
+fn literal(node: Node<'_>, source: &[u8]) -> Option<String> {
+    let computed = children(node)
+        .iter()
+        .any(|part| part.kind() == "template_substitution");
+    if !matches!(node.kind(), "string" | "template_string") || computed {
+        return None;
+    }
+    let quoted = text(node, source);
+    let content = quoted.get(1..quoted.len().checked_sub(1)?)?;
+    (!content.is_empty()).then(|| content.to_owned())
+}
+
+/// Whether the node has a direct, unnamed child of this kind, such as the
+/// `type` keyword of `import type`.
+fn has_token(node: Node<'_>, kind: &str) -> bool {
+    let mut cursor = node.walk();
+    node.children(&mut cursor)
+        .any(|child| !child.is_named() && child.kind() == kind)
 }

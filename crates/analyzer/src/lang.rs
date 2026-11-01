@@ -1,5 +1,6 @@
 //! Parsing the analyzed languages with tree-sitter: complexity, exported
-//! symbols and the header comment of each file, one module per language.
+//! symbols, the header comment and the imports of each file, one module per
+//! language.
 
 mod go;
 mod header;
@@ -8,7 +9,7 @@ mod python;
 
 use std::collections::HashSet;
 
-use model::SymbolKind;
+use model::{EdgeKind, SymbolKind};
 use tree_sitter::{Node, Parser};
 
 use crate::files::Language;
@@ -23,6 +24,23 @@ pub struct Parsed {
     pub header: Option<String>,
     /// Exported symbols, in the order of the source.
     pub symbols: Vec<Symbol>,
+    /// Imports with a literal module, in the order of the source.
+    pub imports: Vec<Import>,
+}
+
+/// An import as the source writes it, before resolution.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Import {
+    /// The module, as written: `./store`, `..models` (a relative Python
+    /// import keeps its dots), `github.com/gin-gonic/gin`.
+    pub specifier: String,
+    pub kind: EdgeKind,
+    /// Line of the import, from 1.
+    pub line: u32,
+    /// The names it takes from the module, as the module exports them:
+    /// `default` for a default import, `*` for all of them. Empty when it
+    /// binds the module itself (`require`, `import a.b`, Go).
+    pub names: Vec<String>,
 }
 
 /// A symbol a file exports.
@@ -91,6 +109,14 @@ impl Dialect {
             Self::Go => go::header(root, source),
         }
     }
+
+    fn imports(self, path: &str, root: Node<'_>, source: &[u8]) -> Vec<Import> {
+        match self {
+            Self::TypeScript | Self::Tsx | Self::JavaScript => javascript::imports(root, source),
+            Self::Python => python::imports(path, root, source),
+            Self::Go => go::imports(root, source),
+        }
+    }
 }
 
 /// Parses a file of an analyzed language; `None` for the other languages.
@@ -119,6 +145,7 @@ pub fn parse(path: &str, language: Language, content: &[u8]) -> Option<Parsed> {
         complexity: metrics::complexity(&tree, |node| dialect.is_decision(node)),
         header: dialect.header(root, content),
         symbols,
+        imports: dialect.imports(path, root, content),
     })
 }
 
@@ -139,6 +166,40 @@ fn symbol(name: Node<'_>, kind: SymbolKind, source: &[u8]) -> Symbol {
         kind,
         line: line(name),
     }
+}
+
+/// Visits the nodes under `root`, depth-first and in source order, without
+/// recursion. `visit` returns whether to go into the node's children.
+fn walk<'tree>(root: Node<'tree>, mut visit: impl FnMut(Node<'tree>) -> bool) {
+    let mut cursor = root.walk();
+    loop {
+        if visit(cursor.node()) && cursor.goto_first_child() {
+            continue;
+        }
+        loop {
+            if cursor.node() == root {
+                return;
+            }
+            if cursor.goto_next_sibling() {
+                break;
+            }
+            if !cursor.goto_parent() {
+                return;
+            }
+        }
+    }
+}
+
+/// Whether one of the node's ancestors is of one of these kinds.
+fn has_ancestor(node: Node<'_>, kinds: &[&str]) -> bool {
+    let mut current = node.parent();
+    while let Some(ancestor) = current {
+        if kinds.contains(&ancestor.kind()) {
+            return true;
+        }
+        current = ancestor.parent();
+    }
+    false
 }
 
 /// The node's named children, in order.

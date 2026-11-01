@@ -3,11 +3,13 @@
 //! A file exports its top-level functions, types, constants and variables
 //! whose name starts with an upper-case letter. Methods belong to their
 //! type and are left out.
+//!
+//! An import names a package, that is a folder; the specifier is its path.
 
-use model::SymbolKind;
+use model::{EdgeKind, SymbolKind};
 use tree_sitter::Node;
 
-use super::{Symbol, children, header, symbol, text};
+use super::{Import, Symbol, children, header, line, symbol, text};
 
 pub(super) fn is_decision(node: Node<'_>) -> bool {
     match node.kind() {
@@ -85,5 +87,30 @@ fn value_specs(declaration: Node<'_>) -> Vec<Node<'_>> {
             _ => vec![child],
         })
         .filter(|spec| matches!(spec.kind(), "const_spec" | "var_spec"))
+        .collect()
+}
+
+pub(super) fn imports(root: Node<'_>, source: &[u8]) -> Vec<Import> {
+    children(root)
+        .into_iter()
+        .filter(|node| node.kind() == "import_declaration")
+        .flat_map(children)
+        .flat_map(|child| match child.kind() {
+            "import_spec_list" => children(child),
+            _ => vec![child],
+        })
+        .filter(|spec| spec.kind() == "import_spec")
+        .filter_map(|spec| {
+            let path = spec.child_by_field_name("path")?;
+            let quoted = text(path, source);
+            let specifier = quoted.get(1..quoted.len().checked_sub(1)?)?;
+            // `import "C"` is cgo, not a package
+            (!specifier.is_empty() && specifier != "C").then(|| Import {
+                specifier: specifier.to_owned(),
+                kind: EdgeKind::Import,
+                line: line(spec),
+                names: Vec::new(),
+            })
+        })
         .collect()
 }
