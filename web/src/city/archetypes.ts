@@ -37,10 +37,11 @@ export function footprintFor(lines: number): number {
 
 /** The first archetype that fits, in this order. */
 export function archetypeFor(floors: number, side: number, test: boolean): Archetype {
-  if (test) {
-    return 'pavilion'
-  }
+  // A simple test is a Pavilion; a complex one rises like any file, in the tests' colour
   if (floors <= 2) {
+    if (test) {
+      return 'pavilion'
+    }
     return side >= HALL_MIN_SIDE ? 'hall' : 'house'
   }
   if (floors <= 5) {

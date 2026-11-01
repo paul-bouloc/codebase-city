@@ -61,8 +61,11 @@ describe('archetypeFor', () => {
     expect(archetypeFor(3, 1.7, false)).toBe('smallBlock')
   })
 
-  it('makes a Pavilion of every test, whatever its size', () => {
-    expect(archetypeFor(40, 1.7, true)).toBe('pavilion')
+  it('makes a Pavilion of a simple test, and raises a complex one like any file', () => {
+    expect(archetypeFor(1, 1.7, true)).toBe('pavilion')
+    expect(archetypeFor(2, 0.8, true)).toBe('pavilion')
+    expect(archetypeFor(3, 1.7, true)).toBe('smallBlock')
+    expect(archetypeFor(40, 1.7, true)).toBe('towerOnPodium')
   })
 })
 
