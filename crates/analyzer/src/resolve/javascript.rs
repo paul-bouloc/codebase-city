@@ -6,6 +6,10 @@
 //! packages there instead, under their names, so the resolver reads their
 //! `exports` and `main` as Node would. A package whose entry points to a
 //! build that is not in the repository falls back on its sources.
+//!
+//! A tsconfig that extends a configuration missing from the repository
+//! (`@vue/tsconfig`, `@tsconfig/node20`) would fail as a whole, its own
+//! `paths` with it: the missing parents are left out of what it extends.
 
 use std::collections::{HashMap, HashSet};
 use std::io;
@@ -315,6 +319,67 @@ fn with_extension(index: &Index<'_>, path: &str) -> Option<u32> {
     })
 }
 
+/// A TypeScript or JavaScript configuration: `tsconfig.json`,
+/// `tsconfig.app.json`, `jsconfig.json`…
+fn is_config(path: &str) -> bool {
+    let name = split_path(path).1;
+    (name.starts_with("tsconfig") || name.starts_with("jsconfig")) && name.ends_with(".json")
+}
+
+/// The configuration at `path` without the parents of its `extends` that
+/// are not in the repository; `None` when it needs no change or cannot be
+/// read (the resolver then reports it, and resolution goes on without it).
+fn without_missing_extends(
+    index: &Index<'_>,
+    workspace: &[(String, String)],
+    path: &str,
+    content: &[u8],
+) -> Option<Vec<u8>> {
+    let mut json = content
+        .strip_prefix(b"\xEF\xBB\xBF")
+        .unwrap_or(content)
+        .to_vec();
+    json_strip_comments::strip_slice(&mut json).ok()?;
+    let mut config: serde_json::Value = serde_json::from_slice(&json).ok()?;
+    let object = config.as_object_mut()?;
+    let dir = split_path(path).0;
+    let exists = |parent: &str| {
+        if parent.starts_with('.') || parent.starts_with('/') {
+            let target = match parent.strip_prefix('/') {
+                Some(absolute) => join("", absolute),
+                None => join(dir, parent),
+            };
+            target.is_some_and(|target| {
+                index.file(&target).is_some() || index.file(&format!("{target}.json")).is_some()
+            })
+        } else {
+            let package = package_name(parent);
+            workspace.iter().any(|(name, _)| name == package)
+        }
+    };
+    let kept = match object.get("extends")? {
+        serde_json::Value::String(parent) if exists(parent) => return None,
+        serde_json::Value::String(_) => None,
+        serde_json::Value::Array(parents) => {
+            let kept: Vec<_> = parents
+                .iter()
+                .filter(|parent| parent.as_str().is_some_and(exists))
+                .cloned()
+                .collect();
+            if kept.len() == parents.len() {
+                return None;
+            }
+            Some(serde_json::Value::Array(kept))
+        }
+        _ => return None,
+    };
+    match kept {
+        Some(parents) => object.insert("extends".to_owned(), parents),
+        None => object.remove("extends"),
+    };
+    serde_json::to_vec(&config).ok()
+}
+
 /// Where a path of [`MemoryFs`] is in the repository: a path under
 /// `/node_modules` is a package of the repository, shown there by name.
 fn in_repository(workspace: &[(String, String)], path: &Path) -> Option<String> {
@@ -357,13 +422,22 @@ impl MemoryFs {
                 dirs.insert(absolute(&format!("node_modules/{scope}")));
             }
         }
+        let contents = manifests
+            .iter()
+            .map(|(path, content)| {
+                let content = if is_config(path) {
+                    without_missing_extends(index, &workspace, path, content)
+                        .unwrap_or_else(|| content.to_vec())
+                } else {
+                    content.to_vec()
+                };
+                (absolute(path), content)
+            })
+            .collect();
         Self {
             files: index.paths.iter().map(|path| absolute(path)).collect(),
             dirs,
-            contents: manifests
-                .iter()
-                .map(|(path, content)| (absolute(path), content.to_vec()))
-                .collect(),
+            contents,
             workspace,
         }
     }

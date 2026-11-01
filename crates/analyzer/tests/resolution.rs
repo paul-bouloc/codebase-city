@@ -208,16 +208,38 @@ fn tsconfig_paths_are_read_through_extends() {
 }
 
 #[test]
-fn a_tsconfig_extending_a_missing_package_does_not_stop_resolution() {
-    let (result, _) = analyze(&[
+fn a_tsconfig_extending_a_missing_package_keeps_its_own_paths() {
+    let (result, report) = analyze(&[
         (
             "tsconfig.json",
-            r#"{ "extends": "@tsconfig/node20/tsconfig.json" }"#,
+            "{\n  // the parent is a package, not in the repository\n  \"extends\": \"@vue/tsconfig/tsconfig.dom.json\",\n  \"compilerOptions\": { \"baseUrl\": \".\", \"paths\": { \"@lib/*\": [\"shared/lib/*\"] } },\n}\n",
         ),
-        ("src/main.ts", "import { a } from './a'\n"),
-        ("src/a.ts", "export const a = 1\n"),
+        (
+            "apps/tsconfig.json",
+            r#"{ "extends": ["@tsconfig/strictest", "../tsconfig.base.json", "./missing.json"], "compilerOptions": { "paths": { "@apps/*": ["./*"] } } }"#,
+        ),
+        (
+            "tsconfig.base.json",
+            r#"{ "compilerOptions": { "strict": true } }"#,
+        ),
+        (
+            "src/main.ts",
+            "import { a } from '@lib/a'\nimport { b } from './b'\n",
+        ),
+        ("src/b.ts", "export const b = 1\n"),
+        ("shared/lib/a.ts", "export const a = 1\n"),
+        ("apps/web/main.ts", "import { c } from '@apps/web/c'\n"),
+        ("apps/web/c.ts", "export const c = 1\n"),
     ]);
-    assert_eq!(edges(&result), [edge("src/main.ts", "src/a.ts", Import)]);
+    assert_eq!(
+        edges(&result),
+        [
+            edge("apps/web/main.ts", "apps/web/c.ts", Import),
+            edge("src/main.ts", "shared/lib/a.ts", Import),
+            edge("src/main.ts", "src/b.ts", Import),
+        ]
+    );
+    assert_eq!((report.exact, report.external), (3, 0));
 }
 
 #[test]

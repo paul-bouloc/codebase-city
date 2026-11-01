@@ -10,6 +10,7 @@ workspace = true
 
 [dependencies]
 globset = "0.4.21"
+json-strip-comments = "3.1.2"
 model = { path = "../model" }
 oxc_resolver = "11.24.3"
 rayon = "1.12.0"

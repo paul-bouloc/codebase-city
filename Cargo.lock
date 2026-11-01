@@ -22,6 +22,7 @@ name = "analyzer"
 version = "0.1.0"
 dependencies = [
  "globset",
+ "json-strip-comments",
  "model",
  "oxc_resolver",
  "rayon",
