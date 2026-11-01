@@ -5,6 +5,8 @@ set dotenv-load
 
 # The local Postgres from docker-compose.yml, unless .env or the caller says otherwise
 export DATABASE_URL := env("DATABASE_URL", "postgres://codebase_city:codebase_city@localhost:55432/codebase_city")
+# SQL queries are checked against crates/server/.sqlx, not the live database, so the build never depends on its state
+export SQLX_OFFLINE := env("SQLX_OFFLINE", "true")
 
 default:
     @just --list
@@ -54,6 +56,11 @@ test: db-up
 # Ingest and analyze a real GitHub repository and print what came out (GITHUB_TOKEN if set); `--out file.json` writes the result
 ingest repo *args:
     cargo run --release --locked -p server --example ingest -- {{repo}} {{args}}
+
+# Refresh the query cache in crates/server/.sqlx after changing a query or a migration (needs sqlx-cli)
+sqlx-prepare: db-up
+    sqlx migrate run --source crates/server/migrations
+    cd crates/server && cargo sqlx prepare -- --all-targets --locked
 
 # Start the local Postgres and wait until it is healthy
 db-up:
