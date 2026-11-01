@@ -168,9 +168,10 @@ impl Adjacency {
         self.out[from as usize].push(to);
     }
 
-    /// Whether `to` can be reached from `from`, counting each island looked
-    /// at in `steps`.
+    /// Whether `to` can be reached from `from`, counting in `steps` each
+    /// island looked at, and the islands of the set of those seen.
     fn reaches(&self, from: u32, to: u32, steps: &mut u64) -> bool {
+        *steps += self.out.len() as u64;
         let mut seen = vec![false; self.out.len()];
         let mut todo = vec![from];
         seen[from as usize] = true;
