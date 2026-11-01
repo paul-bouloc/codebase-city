@@ -11,6 +11,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 
+use analyzer::ImportReport;
 use anyhow::Context;
 use flate2::Compression;
 use flate2::write::GzEncoder;
@@ -115,13 +116,14 @@ async fn main() -> anyhow::Result<()> {
         name: snapshot.repo.name().to_owned(),
     };
     let started = Instant::now();
-    let result = tokio::task::spawn_blocking(move || {
-        analyzer::analyze(repo, snapshot.sha, ingested.files, ingested.ignored)
+    let (result, report) = tokio::task::spawn_blocking(move || {
+        analyzer::analyze_with_report(repo, snapshot.sha, ingested.files, ingested.ignored)
     })
     .await?;
     let elapsed = started.elapsed();
     result.validate()?;
     print_analysis(&result, elapsed);
+    print_imports(&result, &report);
 
     let json = serde_json::to_vec(&result)?;
     let mut gzip = GzEncoder::new(Vec::new(), Compression::default());
@@ -213,4 +215,42 @@ fn print_analysis(result: &AnalysisResult, elapsed: std::time::Duration) {
         .map(|&(complexity, row)| format!("{} {complexity}", path(result, row)))
         .collect();
     println!("most complex  {}", top.join(", "));
+}
+
+/// How many unresolved modules to list.
+const UNRESOLVED_SHOWN: usize = 20;
+
+fn print_imports(result: &AnalysisResult, report: &ImportReport) {
+    let stats = &result.stats;
+    let internal = stats.imports_total - stats.imports_external;
+    let rate = if internal == 0 {
+        100.0
+    } else {
+        100.0 * f64::from(stats.imports_resolved) / f64::from(internal)
+    };
+    println!(
+        "imports       {} found: {} exact, {} likely, {} external, {} unresolved ({rate:.1}% of internal ones resolved)",
+        stats.imports_total, report.exact, report.likely, report.external, report.unresolved
+    );
+    let kinds: Vec<String> = report
+        .by_kind
+        .iter()
+        .map(|(kind, count)| format!("{kind:?} {count}").to_lowercase())
+        .collect();
+    println!("kinds         {}", kinds.join(", "));
+    let to_dirs = result.edges.to_dir.iter().flatten().count();
+    let likely = result
+        .edges
+        .confidence
+        .iter()
+        .filter(|&&confidence| confidence == model::Confidence::Likely)
+        .count();
+    println!(
+        "edges         {} ({} to folders, {likely} likely)",
+        result.edges.from.len(),
+        to_dirs
+    );
+    for (module, count) in report.unresolved_modules.iter().take(UNRESOLVED_SHOWN) {
+        println!("  unresolved  {module} ({count})");
+    }
 }
