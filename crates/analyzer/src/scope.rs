@@ -27,9 +27,9 @@ pub fn of_dir(dir: &str) -> Option<Scope> {
     None
 }
 
-/// A folder name that sets the scope. `build` and `integration` under
-/// `src` are taken for modules of the code, not for build output or
-/// integration tests.
+/// A folder name that sets the scope. `build`, `dist`, `out` and
+/// `integration` under `src` are taken for modules of the code, not for
+/// build output or integration tests.
 fn of_segment(segment: &str, in_src: bool) -> Option<Scope> {
     let scope = match segment.to_ascii_lowercase().as_str() {
         "test" | "tests" | "__tests__" | "__test__" | "spec" | "specs" | "e2e" => Scope::Test,
@@ -41,8 +41,7 @@ fn of_segment(segment: &str, in_src: bool) -> Option<Scope> {
         | "docs_src" => Scope::Example,
         "doc" | "docs" | "documentation" => Scope::Docs,
         "bench" | "benches" | "benchmark" | "benchmarks" => Scope::Bench,
-        "build" if !in_src => Scope::Build,
-        "dist" | "out" => Scope::Build,
+        "build" | "dist" | "out" if !in_src => Scope::Build,
         // `.github`, `.vscode`, `.husky`…
         _ if segment.starts_with('.') => Scope::Config,
         _ => return None,
@@ -113,7 +112,9 @@ fn of_name(name: &str) -> Scope {
         };
         if tagged(&["test", "spec", "e2e"])
             || stem.ends_with("_test")
-            || (extension == "py" && (stem.starts_with("test_") || stem == "conftest"))
+            // Django puts an app's tests in `tests.py`
+            || (extension == "py"
+                && (stem.starts_with("test_") || matches!(stem, "conftest" | "tests")))
         {
             return Scope::Test;
         }
@@ -127,9 +128,16 @@ fn of_name(name: &str) -> Scope {
         }
         return Scope::Source;
     }
+    // `LICENSE`, `LICENSE.APACHE`, `README`, and without an extension
+    // `LICENSE-MIT`
+    let base = match extension {
+        "" => stem.split(['-', '_']).next().unwrap_or(stem),
+        _ => stem,
+    };
     if matches!(
-        stem,
-        "license"
+        base,
+        "readme"
+            | "license"
             | "licence"
             | "copying"
             | "notice"
@@ -185,6 +193,7 @@ mod tests {
                 "pkg/test_utils.py",
                 "tests_util/conftest.py",
                 "app_test.py",
+                "polls/tests.py",
             ])
             .iter()
             .all(|&scope| scope == Scope::Test)
@@ -206,6 +215,8 @@ mod tests {
                 "LICENSE",
                 "HISTORY.md",
                 "NOTICE.txt",
+                "LICENSE-MIT",
+                "README",
                 "benchmarks/parse.js",
                 "packages/a/bench/run.ts",
             ]),
@@ -216,6 +227,8 @@ mod tests {
                 Scope::Example,
                 Scope::Example,
                 Scope::Example,
+                Scope::Docs,
+                Scope::Docs,
                 Scope::Docs,
                 Scope::Docs,
                 Scope::Docs,
@@ -251,12 +264,16 @@ mod tests {
                 "src/build/index.ts",
                 "src/vs/build/helper.ts",
                 "src/integration/slack.ts",
+                "src/out/channel.ts",
+                "packages/a/src/dist/format.ts",
             ]),
             [
                 Scope::Build,
                 Scope::Build,
                 Scope::Build,
                 Scope::Build,
+                Scope::Source,
+                Scope::Source,
                 Scope::Source,
                 Scope::Source,
                 Scope::Source,
@@ -284,6 +301,7 @@ mod tests {
                 ".github/workflows/ci.yml",
                 "pyproject.toml",
                 "requirements-dev.txt",
+                "data/history-data.json",
             ])
             .iter()
             .all(|&scope| scope == Scope::Config)
