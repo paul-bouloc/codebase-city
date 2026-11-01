@@ -96,7 +96,9 @@ fn typescript_follows_node_and_typescript_rules() {
              const later = () => import('./lazy')\n\
              import fs from 'node:fs'\n\
              import path from 'path'\n\
-             import missing from './missing'\n",
+             import missing from './missing'\n\
+             import confetti from 'https://esm.sh/canvas-confetti'\n\
+             import lib from '//cdn.example.com/lib.js'\n",
         ),
         ("src/a.ts", "export const a = 1\n"),
         ("src/b.d.ts", "export type B = string\n"),
@@ -118,8 +120,9 @@ fn typescript_follows_node_and_typescript_rules() {
     );
     assert_eq!(
         (report.exact, report.external, report.unresolved),
-        (6, 2, 1)
+        (6, 4, 1)
     );
+    assert!(report.undeclared_packages.is_empty());
     assert_eq!(report.unresolved_modules, [("./missing".to_owned(), 1)]);
     assert_eq!(
         (
@@ -127,7 +130,7 @@ fn typescript_follows_node_and_typescript_rules() {
             result.stats.imports_resolved,
             result.stats.imports_external
         ),
-        (9, 6, 2)
+        (11, 6, 4)
     );
 }
 

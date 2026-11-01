@@ -187,6 +187,11 @@ impl Resolver {
     }
 
     pub(super) fn resolve(&self, index: &Index<'_>, path: &str, specifier: &str) -> Outcome {
+        // `https://esm.sh/react`, `//cdn.example.com/lib.js`; the resolver
+        // also asserts, in debug builds, that `//` starts no path
+        if specifier.contains("://") || specifier.starts_with("//") {
+            return Outcome::External;
+        }
         let file = in_memory(path);
         let resolved = match self.with_tsconfig.resolve_file(&file, specifier) {
             Err(error) if is_tsconfig_error(&error) => self.plain.resolve_file(&file, specifier),
