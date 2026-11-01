@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM repos WHERE lower(owner) = lower($1) AND lower(name) = lower($2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "50298810000d3c0cd2dbab6464ea4aab6a8adc20ca6114fd43206a9ac2d4e9ab"
+}

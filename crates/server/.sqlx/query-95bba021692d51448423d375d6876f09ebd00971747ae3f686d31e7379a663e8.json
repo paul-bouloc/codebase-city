@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM results USING repos\n        WHERE repos.id = results.repo_id\n          AND lower(repos.owner) = lower($1) AND lower(repos.name) = lower($2)\n          AND results.sha = lower($3)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "95bba021692d51448423d375d6876f09ebd00971747ae3f686d31e7379a663e8"
+}

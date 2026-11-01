@@ -1,5 +1,7 @@
 //! Database access.
 
+pub mod results;
+
 use std::time::Duration;
 
 use sqlx::PgPool;

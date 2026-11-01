@@ -1,0 +1,54 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT results.sha, results.analyzer_version, results.body\n        FROM results JOIN repos ON repos.id = results.repo_id\n        WHERE lower(repos.owner) = lower($1) AND lower(repos.name) = lower($2)\n          AND results.format_version = $3\n        ORDER BY results.created_at DESC, results.id DESC\n        LIMIT 1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "sha",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "results",
+            "name": "sha"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "analyzer_version",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "results",
+            "name": "analyzer_version"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "body",
+        "type_info": "Bytea",
+        "origin": {
+          "Table": {
+            "table": "results",
+            "name": "body"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "e1822f0e3951c620f1d9bc48fe67cfae499a8ada47c2bc461787b957d89f4ff2"
+}

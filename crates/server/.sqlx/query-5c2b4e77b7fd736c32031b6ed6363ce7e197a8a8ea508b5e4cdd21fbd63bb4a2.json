@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM results\n        WHERE repo_id = $1\n          AND (format_version <> $2 OR id NOT IN (\n              SELECT id FROM (\n                  SELECT DISTINCT ON (sha) id, created_at\n                  FROM results\n                  WHERE repo_id = $1 AND format_version = $2\n                  ORDER BY sha, created_at DESC, id DESC\n              ) AS newest\n              ORDER BY created_at DESC, id DESC\n              LIMIT (\n                  SELECT GREATEST(1, (value #>> '{}')::bigint)\n                  FROM settings WHERE key = 'results_kept_per_repo'\n              )\n          ))\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5c2b4e77b7fd736c32031b6ed6363ce7e197a8a8ea508b5e4cdd21fbd63bb4a2"
+}

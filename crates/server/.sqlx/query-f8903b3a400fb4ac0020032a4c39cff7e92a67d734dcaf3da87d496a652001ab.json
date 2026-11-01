@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            count(*) AS \"results!\",\n            coalesce(sum(stored_size), 0)::bigint AS \"stored_bytes!\",\n            pg_database_size(current_database()) AS \"database_bytes!\"\n        FROM results\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "results!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "stored_bytes!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "database_bytes!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "f8903b3a400fb4ac0020032a4c39cff7e92a67d734dcaf3da87d496a652001ab"
+}
