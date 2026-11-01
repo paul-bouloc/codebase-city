@@ -325,12 +325,45 @@ fn condition(value: &Value) -> Option<&str> {
     }
 }
 
-/// The file a script runs with `node`, `tsx` or `ts-node`.
+/// Options of `node`, `tsx` and `ts-node` that take the next word as their
+/// value, unless written `--option=value`.
+const VALUE_OPTIONS: &[&str] = &[
+    "-r",
+    "--require",
+    "--import",
+    "--loader",
+    "--experimental-loader",
+    "--env-file",
+    "-C",
+    "--conditions",
+    "--tsconfig",
+    "-P",
+    "--project",
+    "-O",
+    "--compiler-options",
+];
+
+/// The file a script runs with `node`, `tsx` or `ts-node`, past their
+/// options and `tsx watch`; `None` when it evaluates code instead.
 fn run_target(script: &str) -> Option<&str> {
     let mut words = script.split_whitespace();
     while let Some(word) = words.next() {
-        if matches!(word, "node" | "tsx" | "ts-node") {
-            return words.find(|word| !word.starts_with('-'));
+        if !matches!(word, "node" | "tsx" | "ts-node") {
+            continue;
+        }
+        let mut first = true;
+        while let Some(word) = words.next() {
+            match word {
+                "watch" if first => {}
+                "-e" | "--eval" | "-p" | "--print" => return None,
+                "&&" | "||" | ";" | "|" => break,
+                option if VALUE_OPTIONS.contains(&option) => {
+                    words.next();
+                }
+                option if option.starts_with('-') => {}
+                file => return Some(file),
+            }
+            first = false;
         }
     }
     None
@@ -510,6 +543,20 @@ mod tests {
             Some("dist/server.js")
         );
         assert_eq!(run_target("vite"), None);
+        assert_eq!(
+            run_target("node -r dotenv/config dist/index.js"),
+            Some("dist/index.js")
+        );
+        assert_eq!(run_target("tsx watch src/index.ts"), Some("src/index.ts"));
+        assert_eq!(
+            run_target("ts-node --project tsconfig.app.json --transpile-only src/main.ts"),
+            Some("src/main.ts")
+        );
+        assert_eq!(
+            run_target("node --env-file=.env server.js"),
+            Some("server.js")
+        );
+        assert_eq!(run_target("node -e \"run()\""), None);
     }
 
     #[test]
