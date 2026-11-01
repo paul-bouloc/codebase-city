@@ -171,6 +171,24 @@ async fn gitattributes_apply_to_files_read_before_them() {
 }
 
 #[tokio::test]
+async fn a_negated_attribute_hands_the_file_back_to_detection() {
+    let ingested = ingest_files(
+        &[
+            (".gitattributes", b"*.ts linguist-generated\n"),
+            ("api/.gitattributes", b"*.ts !linguist-generated\n"),
+            ("api/user.generated.ts", b"export {}\n"),
+            ("api/user.ts", b"export {}\n"),
+        ],
+        &Limits::default(),
+    )
+    .await
+    .unwrap();
+
+    assert!(file(&ingested, "api/user.generated.ts").generated);
+    assert!(!file(&ingested, "api/user.ts").generated);
+}
+
+#[tokio::test]
 async fn every_limit_stops_the_ingestion() {
     let files: &[(&str, &[u8])] = &[
         ("src/a.ts", b"export const a = 'some content'\n"),
