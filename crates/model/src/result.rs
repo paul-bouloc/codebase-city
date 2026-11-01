@@ -322,6 +322,88 @@ pub struct Cycles {
     pub shortest: Vec<Vec<u32>>,
 }
 
+/// Where everything stands in the city: the plateau of each island, the
+/// parcel of each folder and the lot of each file.
+///
+/// Lengths are in tenths of a city unit (`u`; a lot is 2 × 2 u, so 20 × 20),
+/// x to the east and y to the north, from the south-west corner of the city.
+/// Rectangles are given by their south-west corner and their size.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct Layout {
+    pub width: u32,
+    pub height: u32,
+    /// The plateau of each island, one row per island.
+    pub islands: Rects,
+    pub parcels: Parcels,
+    pub grids: Grids,
+    /// The centre of each file's lot, one row per file.
+    pub lots: Lots,
+}
+
+/// Rectangles, one row each.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct Rects {
+    pub x: Vec<u32>,
+    pub y: Vec<u32>,
+    pub width: Vec<u32>,
+    pub height: Vec<u32>,
+}
+
+/// The parcels of the city, one row per folder inside an island, sorted by
+/// folder. A parcel holds its folder's whole subtree: the parcels of its
+/// subfolders and the grid of its own files. The folder an island is named
+/// after has no parcel: its plateau plays that part.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct Parcels {
+    pub dir: Vec<u32>,
+    pub x: Vec<u32>,
+    pub y: Vec<u32>,
+    pub width: Vec<u32>,
+    pub height: Vec<u32>,
+    pub nature: Vec<ParcelNature>,
+}
+
+/// What most files of a parcel's subtree are.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum ParcelNature {
+    Normal,
+    /// More than half are tests or test fixtures: a park.
+    Tests,
+    /// More than half are in a language the analyzer does not read.
+    Unanalyzed,
+}
+
+/// The grids of lots, one row per folder that holds files of its own,
+/// sorted by folder. A grid lies in its folder's parcel, or on the plateau
+/// for the folder an island is named after. Lots without a file stay empty.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct Grids {
+    pub dir: Vec<u32>,
+    pub x: Vec<u32>,
+    pub y: Vec<u32>,
+    pub columns: Vec<u32>,
+    pub rows: Vec<u32>,
+}
+
+/// Points, one row each.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct Lots {
+    pub x: Vec<u32>,
+    pub y: Vec<u32>,
+}
+
 /// Counts that describe the analysis itself.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
