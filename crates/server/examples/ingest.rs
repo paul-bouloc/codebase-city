@@ -3,7 +3,9 @@
 //! plus `--out result.json` to write the result, and `--expect file` to
 //! compare the roles with what a person expects (`entries: [a, b]`,
 //! `foundations: […]`, `conductors: […]`, one list per line; a Go package
-//! ends with `/`, and the one at the root is `/`).
+//! ends with `/`, and the one at the root is `/`), and the layers of the
+//! islands (`layers: [a, [b, c], d]`, from the bottom up, islands of one
+//! layer in brackets).
 //!
 //! Uses `GITHUB_TOKEN` when set, and GitHub anonymously otherwise.
 
@@ -141,6 +143,7 @@ async fn main() -> anyhow::Result<()> {
     print_imports(&result, &report.imports);
     print_graph(&result, &report);
     print_roles(&result, &report.roles, expected.as_ref());
+    print_structure(&result, expected.as_ref());
 
     let json = serde_json::to_vec(&result)?;
     let mut gzip = GzEncoder::new(Vec::new(), Compression::default());
@@ -380,6 +383,8 @@ struct Expected {
     entries: Vec<String>,
     foundations: Vec<String>,
     conductors: Vec<String>,
+    /// Islands by path, layer by layer from the bottom.
+    layers: Vec<Vec<String>>,
 }
 
 impl Expected {
@@ -391,6 +396,10 @@ impl Expected {
                 continue;
             };
             let list = list.split('#').next().unwrap_or_default().trim();
+            if key.trim() == "layers" {
+                expected.layers = parse_layers(list);
+                continue;
+            }
             let Some(list) = list
                 .strip_prefix('[')
                 .and_then(|list| list.strip_suffix(']'))
@@ -414,6 +423,169 @@ impl Expected {
             }
         }
         expected
+    }
+}
+
+/// `[a, [b, c], d]`: one layer per item, a bracketed item being several
+/// islands of the same layer.
+fn parse_layers(list: &str) -> Vec<Vec<String>> {
+    let inner = list
+        .strip_prefix('[')
+        .and_then(|list| list.strip_suffix(']'))
+        .unwrap_or_default();
+    let mut layers = Vec::new();
+    let mut current: Option<Vec<String>> = None;
+    for token in inner.split(',') {
+        let token = token.trim();
+        let opens = token.starts_with('[');
+        let closes = token.ends_with(']');
+        let path = token
+            .trim_matches(|c| c == '[' || c == ']')
+            .trim()
+            .to_owned();
+        match (&mut current, opens) {
+            (Some(group), _) => group.push(path),
+            (None, true) => current = Some(vec![path]),
+            (None, false) if !path.is_empty() => layers.push(vec![path]),
+            (None, false) => {}
+        }
+        if closes && let Some(group) = current.take() {
+            layers.push(group);
+        }
+    }
+    layers
+}
+
+/// How many islands to list, the largest first, and upward links and
+/// cycles.
+const STRUCTURE_SHOWN: usize = 12;
+
+fn print_structure(result: &AnalysisResult, expected: Option<&Expected>) {
+    let islands = &result.islands;
+    let name = |island: u32| {
+        let path = dir_path(result, islands.dir[island as usize]);
+        match path.trim_end_matches('/') {
+            "" => "/".to_owned(),
+            path => path.to_owned(),
+        }
+    };
+    let mut files = vec![0u32; islands.dir.len()];
+    let mut production = vec![0u32; islands.dir.len()];
+    for (file, &dir) in result.files.dir.iter().enumerate() {
+        if let Some(island) = result.dirs.island[dir as usize] {
+            files[island as usize] += 1;
+            if result.files.scope[file] == model::Scope::Source && !result.files.generated[file] {
+                production[island as usize] += 1;
+            }
+        }
+    }
+    let layers = islands.layer.iter().flatten().max().copied().unwrap_or(0);
+    println!("islands       {} in {layers} layers", islands.dir.len());
+    let mut order: Vec<u32> = (0..u32::try_from(islands.dir.len()).unwrap_or(u32::MAX)).collect();
+    order.sort_by_key(|&island| {
+        (
+            std::cmp::Reverse(production[island as usize]),
+            std::cmp::Reverse(files[island as usize]),
+            island,
+        )
+    });
+    for &island in order.iter().take(STRUCTURE_SHOWN) {
+        let layer = islands.layer[island as usize]
+            .map_or_else(|| "-".to_owned(), |layer| layer.to_string());
+        println!(
+            "  {:>6} files {:>6} prod  layer {layer:>2}  {}",
+            files[island as usize],
+            production[island as usize],
+            name(island)
+        );
+    }
+    for layer in 1..=layers {
+        let names: Vec<String> = (0..islands.dir.len())
+            .filter(|&island| islands.layer[island] == Some(layer))
+            .map(|island| name(u32::try_from(island).unwrap_or(u32::MAX)))
+            .collect();
+        println!("  layer {layer:>2}  {}", names.join(", "));
+    }
+
+    let links = &result.links;
+    let layer_of = |island: u32| islands.layer[island as usize];
+    let mut between = 0u32;
+    let mut upward: Vec<(u32, usize)> = Vec::new();
+    for row in 0..links.from.len() {
+        if layer_of(links.from[row]).is_some() && layer_of(links.to[row]).is_some() {
+            between += links.imports[row];
+        }
+        if links.upward[row] > 0 {
+            upward.push((links.upward[row], row));
+        }
+    }
+    let up: u32 = upward.iter().map(|&(imports, _)| imports).sum();
+    println!(
+        "links         {} pairs, {up} of {between} imports between layered islands go up ({:.2}%)",
+        links.from.len(),
+        if between == 0 {
+            0.0
+        } else {
+            100.0 * f64::from(up) / f64::from(between)
+        }
+    );
+    upward.sort_by_key(|&(imports, row)| (std::cmp::Reverse(imports), row));
+    for &(imports, row) in upward.iter().take(STRUCTURE_SHOWN / 2) {
+        println!(
+            "  up {imports:>6}  {} -> {}",
+            name(links.from[row]),
+            name(links.to[row])
+        );
+    }
+
+    let cycles = &result.cycles;
+    let in_cycles: usize = cycles.members.iter().map(Vec::len).sum();
+    println!("cycles        {} ({in_cycles} files)", cycles.members.len());
+    for (members, shortest) in cycles
+        .members
+        .iter()
+        .zip(&cycles.shortest)
+        .take(STRUCTURE_SHOWN / 2)
+    {
+        let path: Vec<String> = shortest
+            .iter()
+            .map(|&file| path(result, file as usize))
+            .collect();
+        println!("  {:>5} files, e.g. {}", members.len(), path.join(" -> "));
+    }
+
+    let Some(expected) = expected.filter(|expected| !expected.layers.is_empty()) else {
+        return;
+    };
+    let by_name: std::collections::HashMap<String, Option<u32>> = (0..islands.dir.len())
+        .map(|island| {
+            let island = u32::try_from(island).unwrap_or(u32::MAX);
+            (name(island), layer_of(island))
+        })
+        .collect();
+    let mut right = 0;
+    let mut pairs = 0;
+    for (low, lower) in expected.layers.iter().enumerate() {
+        for higher in &expected.layers[low + 1..] {
+            for a in lower {
+                for b in higher {
+                    pairs += 1;
+                    let (a, b) = (
+                        by_name.get(a).copied().flatten(),
+                        by_name.get(b).copied().flatten(),
+                    );
+                    if matches!((a, b), (Some(a), Some(b)) if a < b) {
+                        right += 1;
+                    }
+                }
+            }
+        }
+    }
+    println!("expected      layers {right}/{pairs} ordered pairs in order");
+    for wanted in expected.layers.iter().flatten() {
+        if !by_name.contains_key(wanted) {
+            println!("  not an island {wanted}");
+        }
     }
 }
 
