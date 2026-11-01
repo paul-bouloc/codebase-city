@@ -6,7 +6,7 @@
 //! ends with `/`, and the one at the root is `/`), and the layers of the
 //! islands (`layers: [a, [b, c], d]`, from the bottom up, islands of one
 //! layer in brackets). `--store` saves the result in the database of
-//! `DATABASE_URL`, retention included.
+//! `DATABASE_URL`, retention included, without applying migrations.
 //!
 //! Uses `GITHUB_TOKEN` when set, and GitHub anonymously otherwise.
 
@@ -39,17 +39,19 @@ async fn main() -> anyhow::Result<()> {
     let mut store = false;
     let mut flags = flags.iter();
     while let Some(flag) = flags.next() {
-        match (flag.as_str(), flags.clone().next()) {
-            ("--store", _) => store = true,
-            ("--out", Some(path)) => {
-                out = Some(PathBuf::from(path));
-                flags.next();
-            }
-            ("--expect", Some(path)) => {
-                let text =
-                    std::fs::read_to_string(path).with_context(|| format!("reading {path}"))?;
-                expected = Some(Expected::parse(&text));
-                flags.next();
+        match flag.as_str() {
+            "--store" => store = true,
+            "--out" | "--expect" => {
+                let Some(path) = flags.next().filter(|path| !path.starts_with("--")) else {
+                    anyhow::bail!(USAGE);
+                };
+                if flag == "--out" {
+                    out = Some(PathBuf::from(path));
+                } else {
+                    let text =
+                        std::fs::read_to_string(path).with_context(|| format!("reading {path}"))?;
+                    expected = Some(Expected::parse(&text));
+                }
             }
             _ => anyhow::bail!(USAGE),
         }
@@ -153,7 +155,12 @@ async fn main() -> anyhow::Result<()> {
     print_structure(&result, expected.as_ref());
 
     let started = Instant::now();
-    let encoded = results::encode(&result)?;
+    let (result, encoded) = tokio::task::spawn_blocking(move || {
+        let encoded = results::encode(&result);
+        (result, encoded)
+    })
+    .await?;
+    let encoded = encoded?;
     println!(
         "result        {:.1} MB JSON, {:.2} MB brotli in {:.2?}",
         encoded.raw_size() as f64 / MB,
@@ -162,8 +169,12 @@ async fn main() -> anyhow::Result<()> {
     );
     if store {
         let url = std::env::var("DATABASE_URL").context("--store needs DATABASE_URL")?;
-        let pool = server::store::connect(&url).await?;
-        let removed = results::save(&pool, &encoded).await?;
+        // No migrations from a tool that may point anywhere: the server
+        // applies them.
+        let pool = sqlx::PgPool::connect(&url).await?;
+        let removed = results::save(&pool, &encoded).await.context(
+            "saving the result (the server applies the migrations: run `just serve` once)",
+        )?;
         println!("stored        {removed} older results removed by the retention");
     }
     if let Some(path) = out {
