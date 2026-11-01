@@ -128,8 +128,16 @@ pub(crate) fn find(input: &Input<'_>) -> Entries {
         }
         match name {
             "__main__.py" => add(Node::File(file), EntryReason::MainModule, 4, None),
-            "manage.py" | "wsgi.py" | "asgi.py" => {
-                add(Node::File(file), EntryReason::Framework, 4, None);
+            "manage.py" => add(Node::File(file), EntryReason::Framework, 4, None),
+            // A Django project's, beside its `manage.py` or one folder
+            // below; a library's `wsgi.py` adapts to WSGI and starts nothing
+            "wsgi.py" | "asgi.py" => {
+                let parent = split_path(dir).0;
+                if by_path.contains_key(join(dir, "manage.py").as_str())
+                    || by_path.contains_key(join(parent, "manage.py").as_str())
+                {
+                    add(Node::File(file), EntryReason::Framework, 4, None);
+                }
             }
             _ => {}
         }

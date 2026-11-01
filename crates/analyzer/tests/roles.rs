@@ -314,6 +314,12 @@ fn python_manifests_and_conventions_give_entry_points() {
             "def tide():\n    pass\n\nif __name__ == \"__main__\":\n    tide()\n",
         ),
         ("site/manage.py", "import sys\n"),
+        ("site/site/wsgi.py", "application = None\n"),
+        // A library's adapter, not a Django project's
+        (
+            "harbor/middleware/wsgi.py",
+            "class WSGIMiddleware:\n    pass\n",
+        ),
         // Not production code
         (
             "examples/run.py",
@@ -327,6 +333,7 @@ fn python_manifests_and_conventions_give_entry_points() {
             entry("harbor/cli.py", &[PyprojectScript], Some("harbor")),
             entry("harbor/dock.py", &[SetupCfgScript], Some("dock")),
             entry("site/manage.py", &[Framework], None),
+            entry("site/site/wsgi.py", &[Framework], None),
         ]
     );
 }
