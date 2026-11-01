@@ -59,6 +59,14 @@ describe('cityFromResult', () => {
     expect(core?.lots.find((lot) => lot.x === 46.5)?.base).toBe(0.15)
   })
 
+  it('names the languages it paints in their own colour', () => {
+    const json = structuredClone(sample) as unknown as AnalysisResult
+    json.languages = ['Python', 'Go', 'JSON', 'Shell']
+    const lots = cityFromResult(decodeResult(json)).islands.flatMap((island) => island.lots)
+    const languages = new Set(lots.map((lot) => lot.file.language))
+    expect([...languages].sort()).toEqual(['go', 'other', 'python'])
+  })
+
   it('raises each level of slabs above the one it stands on', () => {
     expect(slabTop(0)).toBe(0)
     expect(slabTop(1)).toBe(0.15)

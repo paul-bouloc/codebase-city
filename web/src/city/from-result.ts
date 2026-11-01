@@ -1,15 +1,16 @@
 import type { AnalysisResult } from '../data/generated/AnalysisResult'
-import type { Language } from '../ui/Badge'
-import type { CityLayout, IslandLayout, Lot, Rect } from './layout'
+import type { BuildingLanguage, CityLayout, IslandLayout, Lot, Rect } from './layout'
 import { slabTop } from './units'
 
 /** The layout is in tenths of a unit. */
 const TENTHS = 10
 
-const LANGUAGES: Record<string, Language> = {
+const LANGUAGES: Record<string, BuildingLanguage> = {
   TypeScript: 'typescript',
   JavaScript: 'javascript',
   CSS: 'css',
+  Python: 'python',
+  Go: 'go',
 }
 
 function rect(x: number, y: number, width: number, height: number): Rect {

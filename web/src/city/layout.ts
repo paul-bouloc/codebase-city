@@ -13,9 +13,12 @@ export interface Point {
   y: number
 }
 
+/** The languages the city paints in their own colour; the others share one. */
+export type BuildingLanguage = Language | 'python' | 'go'
+
 /** What a building is made from. */
 export interface FileMetrics {
-  language: Language
+  language: BuildingLanguage
   lines: number
   complexity: number
   test: boolean

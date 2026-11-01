@@ -8,17 +8,19 @@ import {
   MeshDepthMaterial,
   ShaderMaterial,
 } from 'three'
-import type { Language } from '../ui/Badge'
 import { archetypeGeometry, type Vertex } from './archetype-geometry'
 import { ARCHETYPES, type Archetype, type Building, buildingFor } from './archetypes'
-import type { CityLayout } from './layout'
+import type { BuildingLanguage, CityLayout } from './layout'
 import { shadingFragmentPars, shadingUniforms, shadingVertex, shadingVertexPars } from './shading'
 import { boardToThree, layerAltitude, srgb, type Vec3 } from './units'
 
-const LANGUAGE_COLOURS: Record<Language, Vec3> = {
+// TypeScript, JavaScript and CSS are tuned by hand; the others take their GitHub Linguist colour.
+const LANGUAGE_COLOURS: Record<BuildingLanguage, Vec3> = {
   typescript: srgb('#5A8EDB'),
   javascript: srgb('#E2B23A'),
   css: srgb('#B57BD0'),
+  python: srgb('#3572A5'),
+  go: srgb('#00ADD8'),
   other: srgb('#B9AE9C'),
 }
 const TEST_COLOUR = srgb('#CFC7B8')
