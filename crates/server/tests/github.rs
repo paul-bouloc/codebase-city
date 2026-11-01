@@ -184,6 +184,20 @@ async fn a_rate_limit_announced_beyond_the_maximum_fails_at_once() {
 }
 
 #[tokio::test]
+async fn a_download_that_never_answers_is_retried_then_unavailable() {
+    let github = FakeGithub::start().await;
+    github.on(&tarball_path(), [Reply::Stalled]);
+
+    let error = github
+        .client(None)
+        .tarball(&repo(), SHA, &no_wait)
+        .await
+        .unwrap_err();
+    assert_eq!(error, GithubError::Unavailable);
+    assert_eq!(github.requests(&tarball_path()).len(), 3);
+}
+
+#[tokio::test]
 async fn an_error_page_is_not_taken_for_an_archive() {
     let github = FakeGithub::start().await;
     github.on(

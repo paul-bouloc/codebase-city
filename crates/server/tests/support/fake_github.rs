@@ -33,6 +33,8 @@ pub enum Reply {
     Archive(Vec<u8>),
     /// The archive in small chunks, with a pause before each.
     SlowArchive(Vec<u8>, Duration),
+    /// Accepts the request and sends nothing for an hour.
+    Stalled,
 }
 
 impl Reply {
@@ -103,6 +105,8 @@ pub fn fast_retry() -> RetryPolicy {
         backoff: Duration::from_millis(1),
         rate_limit_wait: Duration::from_millis(10),
         max_rate_limit_wait: Duration::from_secs(1),
+        // Long enough for a loaded machine, short enough for the stalled test
+        response_timeout: Duration::from_millis(500),
     }
 }
 
@@ -154,6 +158,10 @@ async fn answer(State(fake): State<Arc<Fake>>, request: Request) -> Response {
                 response.headers_mut().insert(name, value.parse().unwrap());
             }
             response
+        }
+        Some(Reply::Stalled) => {
+            tokio::time::sleep(Duration::from_secs(3600)).await;
+            StatusCode::GATEWAY_TIMEOUT.into_response()
         }
         Some(Reply::Archive(bytes)) => {
             ([(header::CONTENT_TYPE, "application/x-gzip")], bytes).into_response()

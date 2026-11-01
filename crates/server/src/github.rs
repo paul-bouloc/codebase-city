@@ -122,6 +122,9 @@ pub struct RetryPolicy {
     pub rate_limit_wait: Duration,
     /// Total wait for rate limits, beyond which the request fails.
     pub max_rate_limit_wait: Duration,
+    /// Wait for the status and headers of a response, beyond which the try
+    /// counts as a network failure. The body has its own limits.
+    pub response_timeout: Duration,
 }
 
 impl Default for RetryPolicy {
@@ -131,6 +134,7 @@ impl Default for RetryPolicy {
             backoff: Duration::from_secs(1),
             rate_limit_wait: Duration::from_secs(60),
             max_rate_limit_wait: Duration::from_secs(5 * 60),
+            response_timeout: Duration::from_secs(30),
         }
     }
 }
@@ -290,8 +294,9 @@ impl GithubClient {
         let mut failures = 0;
         let mut waited = Duration::ZERO;
         loop {
-            match request().send().await {
-                Ok(response) if is_rate_limited(&response) => {
+            let sent = tokio::time::timeout(self.retry.response_timeout, request().send()).await;
+            match sent {
+                Ok(Ok(response)) if is_rate_limited(&response) => {
                     let Some(on_wait) = on_wait else {
                         return Err(GithubError::RateLimited);
                     };
@@ -305,12 +310,12 @@ impl GithubClient {
                     tokio::time::sleep(wait).await;
                     continue;
                 }
-                Ok(response) if !response.status().is_server_error() => return Ok(response),
-                Ok(_) => {}
-                Err(error) if error.is_builder() => {
+                Ok(Ok(response)) if !response.status().is_server_error() => return Ok(response),
+                Ok(Err(error)) if error.is_builder() => {
                     return Err(GithubError::Unexpected(error.to_string()));
                 }
-                Err(_) => {}
+                // A server error, a network error, or no response in time
+                _ => {}
             }
             failures += 1;
             if failures >= self.retry.attempts {
