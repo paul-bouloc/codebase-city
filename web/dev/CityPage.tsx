@@ -1,4 +1,4 @@
-import { type ChangeEvent, useMemo, useRef, useState } from 'react'
+import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { CityView } from '../src/app/CityView'
 import { cityFromResult } from '../src/city/from-result'
 import type { CityLayout } from '../src/city/layout'
@@ -16,6 +16,13 @@ const TEXT = {
 
 const REMOUNTS = 10
 
+/** Results dropped in `web/dev/results/`, by name, to their URL: fetched only when shown. */
+const RESULTS = Object.fromEntries(
+  Object.entries(
+    import.meta.glob<string>('./results/*.json', { query: '?url', import: 'default', eager: true }),
+  ).map(([path, url]) => [path.replace(/^.*\/(.*)\.json$/, '$1'), url]),
+)
+
 /** Reads a positive integer from the query string. */
 function param(name: string, fallback: number): number {
   const value = Number(new URLSearchParams(window.location.search).get(name))
@@ -27,7 +34,7 @@ const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve))
 /**
  * A synthetic city, full screen: `?islands=12&files=2000&seed=synthetic`, or every archetype on
  * one island: `?gallery`. A result written by `just ingest owner/repo --out result.json` can be
- * loaded in its place.
+ * loaded in its place, or dropped in `web/dev/results/` to get a button: `?result=name` opens it.
  */
 export function CityPage() {
   const synthetic = useMemo(() => {
@@ -56,16 +63,37 @@ export function CityPage() {
     setRemounting(false)
   }
 
-  async function load(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    if (!file) {
-      return
-    }
+  async function show(text: Promise<string>) {
     try {
-      setLoaded(cityFromResult(decodeResult(JSON.parse(await file.text()))))
+      setLoaded(cityFromResult(decodeResult(JSON.parse(await text))))
       setError(null)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
+    }
+  }
+
+  function open(name: string) {
+    const url = RESULTS[name]
+    if (url) {
+      const query = new URLSearchParams(window.location.search)
+      query.set('result', name)
+      window.history.replaceState(null, '', `?${query}`)
+      void show(fetch(url).then((response) => response.text()))
+    }
+  }
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: opens the result of the URL once
+  useEffect(() => {
+    const name = new URLSearchParams(window.location.search).get('result')
+    if (name) {
+      open(name)
+    }
+  }, [])
+
+  async function load(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (file) {
+      await show(file.text())
     }
   }
 
@@ -73,6 +101,13 @@ export function CityPage() {
     <main className={styles.page}>
       <CityView key={mount} layout={layout} showStats />
       <div className={styles.tools}>
+        {Object.keys(RESULTS)
+          .sort()
+          .map((name) => (
+            <Button key={name} variant="secondary" onClick={() => open(name)}>
+              {name}
+            </Button>
+          ))}
         <Button variant="secondary" onClick={() => input.current?.click()}>
           {TEXT.load}
         </Button>
