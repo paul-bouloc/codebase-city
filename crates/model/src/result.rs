@@ -10,7 +10,7 @@ use ts_rs::TS;
 
 /// Version of the shape of the data. Bumped on any change the web app has to
 /// know about; a result with another version is rejected, not guessed at.
-pub const FORMAT_VERSION: u32 = 4;
+pub const FORMAT_VERSION: u32 = 5;
 
 /// One analysis of one repository at one commit.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -31,6 +31,7 @@ pub struct AnalysisResult {
     pub files: Files,
     pub symbols: Symbols,
     pub edges: Edges,
+    pub roles: Roles,
     pub stats: Stats,
 }
 
@@ -80,6 +81,16 @@ pub struct Files {
     /// The file's leading comment or docstring, verbatim, a license block
     /// skipped; `null` when there is none or the language is not analyzed.
     pub header: Vec<Option<String>>,
+    /// A facade: a file made of re-exports, such as an `index.ts` that
+    /// gathers its package. Left out of the rankings.
+    pub barrel: Vec<bool>,
+    /// Production files that depend on this one, directly or not; `null`
+    /// outside production, or when the repository was too large to count.
+    /// The files of a Go package share the package's count.
+    pub dependents: Vec<Option<u32>>,
+    /// Production files this one depends on, directly or not; `null` as for
+    /// [`Files::dependents`].
+    pub dependencies: Vec<Option<u32>>,
 }
 
 /// What part of the repository a file belongs to. Rankings only look at
@@ -179,6 +190,81 @@ pub enum Confidence {
     Exact,
     /// Matched by a heuristic, shown as "likely".
     Likely,
+}
+
+/// What the import graph says about the production code (P9): where it
+/// starts, what everything rests on, and what pulls it together.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct Roles {
+    pub entries: Entries,
+    /// The most depended on, by [`Files::dependents`]: the counts are
+    /// dependents.
+    pub foundations: Ranked,
+    /// The files that pull the most code together without being much
+    /// depended on, by [`Files::dependencies`]: the counts are dependencies.
+    pub conductors: Ranked,
+}
+
+/// Entry points, one row each, the most likely first.
+///
+/// A row targets a file, or for Go a package folder found by the graph
+/// alone, as [`Edges::to`] and [`Edges::to_dir`] do.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct Entries {
+    pub file: Vec<Option<u32>>,
+    pub dir: Vec<Option<u32>>,
+    /// Why it is an entry point, the strongest reason first; never empty.
+    pub reasons: Vec<Vec<EntryReason>>,
+    /// The name of the command it starts, when a manifest or a `cmd/`
+    /// folder gives one.
+    pub command: Vec<Option<String>>,
+}
+
+/// Why a file is taken for an entry point.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum EntryReason {
+    /// Listed in `bin` of a `package.json`.
+    PackageBin,
+    /// Listed as `main`, `module` or `exports["."]` of a `package.json`.
+    PackageMain,
+    /// Run by the `start`, `dev` or `serve` script of a `package.json`.
+    PackageScript,
+    /// A script of `pyproject.toml` (`[project.scripts]`).
+    PyprojectScript,
+    /// A `console_scripts` entry point of `setup.cfg`.
+    SetupCfgScript,
+    /// A Go `func main` in `package main`.
+    GoMain,
+    /// A Python package's `__main__.py`.
+    MainModule,
+    /// A Python `if __name__ == "__main__":`.
+    MainBlock,
+    /// `manage.py`, `wsgi.py` or `asgi.py`.
+    Framework,
+    /// A name entry points usually have (`main`, `index`, `server`, `app`,
+    /// `cli`), at the root of a package.
+    ConventionalName,
+    /// Imported by no production file, while depending on many: a guess
+    /// from the graph alone.
+    NoImporter,
+}
+
+/// A ranking, one row per place, the first first. A row targets a file,
+/// or for Go a package folder.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct Ranked {
+    pub file: Vec<Option<u32>>,
+    pub dir: Vec<Option<u32>>,
+    /// The measure it is ranked by, in production files.
+    pub count: Vec<u32>,
 }
 
 /// Counts that describe the analysis itself.

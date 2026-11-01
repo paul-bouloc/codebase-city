@@ -24,6 +24,10 @@ describe('decodeResult', () => {
     expect(result.edges.kind).toContain('reexport')
     expect(result.files.header[2]).toContain('Entry point')
     expect(result.symbols.kind).toContain('interface')
+    expect(result.files.barrel[4]).toBe(true)
+    expect(result.files.dependents[8]).toBe(11)
+    expect(result.roles.entries.reasons[0]).toEqual(['packageMain', 'conventionalName'])
+    expect(result.roles.foundations.file[0]).toBe(8)
   })
 
   it('rejects anything but an object', () => {
@@ -34,9 +38,9 @@ describe('decodeResult', () => {
   it('rejects another format version', () => {
     expect(
       decodeChanged((json) => {
-        json.formatVersion = 3
+        json.formatVersion = 4
       }),
-    ).toThrow('unsupported format version 3, expected 4')
+    ).toThrow('unsupported format version 4, expected 5')
   })
 
   it('rejects values of the wrong type', () => {
@@ -113,6 +117,21 @@ describe('decodeResult', () => {
         json.symbols.line.pop()
       }),
     ).toThrow('column symbols.line has 12 rows, expected 13')
+    expect(
+      decodeChanged((json) => {
+        json.files.dependencies.pop()
+      }),
+    ).toThrow('column files.dependencies has 19 rows, expected 20')
+    expect(
+      decodeChanged((json) => {
+        json.roles.entries.command.push(null)
+      }),
+    ).toThrow('column roles.entries.command has 2 rows, expected 1')
+    expect(
+      decodeChanged((json) => {
+        json.roles.conductors.count.pop()
+      }),
+    ).toThrow('column roles.conductors.count has 1 rows, expected 2')
   })
 
   it('rejects an index out of bounds', () => {
@@ -245,6 +264,39 @@ describe('decodeResult', () => {
         json.edges.to[2] = null
       }),
     ).toThrow('edges.toDir[2] points to row 8, but the table has 8 rows')
+  })
+
+  it('requires roles that point to one file or one folder, with reasons', () => {
+    expect(
+      decodeChanged((json) => {
+        json.roles.foundations.file[1] = 20
+      }),
+    ).toThrow('roles.foundations.file[1] points to row 20, but the table has 20 rows')
+    expect(
+      decodeChanged((json) => {
+        json.roles.conductors.dir[0] = 3
+      }),
+    ).toThrow('roles.conductors[0] must have exactly one target, in file or dir')
+    expect(
+      decodeChanged((json) => {
+        json.roles.entries.file[0] = null
+      }),
+    ).toThrow('roles.entries[0] must have exactly one target, in file or dir')
+    expect(
+      decodeChanged((json) => {
+        json.roles.entries.reasons[0] = []
+      }),
+    ).toThrow('roles.entries.reasons[0] is empty')
+    expect(
+      decodeChanged((json) => {
+        json.roles.entries.reasons[0] = ['readme']
+      }),
+    ).toThrow('roles.entries.reasons[0] is not a list of reasons')
+    const goPackage = decodeChanged((json) => {
+      json.roles.foundations.file[0] = null
+      json.roles.foundations.dir[0] = 2
+    })
+    expect(goPackage().roles.foundations.dir[0]).toBe(2)
   })
 
   it('requires edges sorted by file then target, each once', () => {

@@ -38,4 +38,20 @@ scope: Array<Scope>,
  * The file's leading comment or docstring, verbatim, a license block
  * skipped; `null` when there is none or the language is not analyzed.
  */
-header: Array<string | null>, };
+header: Array<string | null>, 
+/**
+ * A facade: a file made of re-exports, such as an `index.ts` that
+ * gathers its package. Left out of the rankings.
+ */
+barrel: Array<boolean>, 
+/**
+ * Production files that depend on this one, directly or not; `null`
+ * outside production, or when the repository was too large to count.
+ * The files of a Go package share the package's count.
+ */
+dependents: Array<number | null>, 
+/**
+ * Production files this one depends on, directly or not; `null` as for
+ * [`Files::dependents`].
+ */
+dependencies: Array<number | null>, };

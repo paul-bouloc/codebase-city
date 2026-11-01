@@ -41,6 +41,10 @@ pub enum InvalidResult {
     EdgeLoop { row: usize },
     #[error("edges[{row}] must come after the previous edge, by file then target")]
     EdgeOrder { row: usize },
+    #[error("{table}[{row}] must have exactly one target, in file or dir")]
+    RowTarget { table: &'static str, row: usize },
+    #[error("roles.entries.reasons[{row}] is empty")]
+    EntryReasons { row: usize },
     #[error(
         "stats.importsResolved and stats.importsExternal add up to more than stats.importsTotal"
     )]
@@ -79,6 +83,9 @@ impl AnalysisResult {
         same_length("files.generated", file_count, files.generated.len())?;
         same_length("files.header", file_count, files.header.len())?;
         same_length("files.scope", file_count, files.scope.len())?;
+        same_length("files.barrel", file_count, files.barrel.len())?;
+        same_length("files.dependents", file_count, files.dependents.len())?;
+        same_length("files.dependencies", file_count, files.dependencies.len())?;
         in_bounds("files.dir", &files.dir, dir_count)?;
         in_bounds("files.language", &files.language, self.languages.len())?;
         valid_names("files.name", files.name.iter(), 0)?;
@@ -128,6 +135,60 @@ impl AnalysisResult {
             previous = Some(key);
         }
 
+        let entries = &self.roles.entries;
+        let entry_count = entries.file.len();
+        same_length("roles.entries.dir", entry_count, entries.dir.len())?;
+        same_length("roles.entries.reasons", entry_count, entries.reasons.len())?;
+        same_length("roles.entries.command", entry_count, entries.command.len())?;
+        targets(
+            ["roles.entries", "roles.entries.file", "roles.entries.dir"],
+            (&entries.file, &entries.dir),
+            (file_count, dir_count),
+        )?;
+        if let Some(row) = entries.reasons.iter().position(Vec::is_empty) {
+            return Err(InvalidResult::EntryReasons { row });
+        }
+        let foundations = &self.roles.foundations;
+        same_length(
+            "roles.foundations.dir",
+            foundations.file.len(),
+            foundations.dir.len(),
+        )?;
+        same_length(
+            "roles.foundations.count",
+            foundations.file.len(),
+            foundations.count.len(),
+        )?;
+        targets(
+            [
+                "roles.foundations",
+                "roles.foundations.file",
+                "roles.foundations.dir",
+            ],
+            (&foundations.file, &foundations.dir),
+            (file_count, dir_count),
+        )?;
+        let conductors = &self.roles.conductors;
+        same_length(
+            "roles.conductors.dir",
+            conductors.file.len(),
+            conductors.dir.len(),
+        )?;
+        same_length(
+            "roles.conductors.count",
+            conductors.file.len(),
+            conductors.count.len(),
+        )?;
+        targets(
+            [
+                "roles.conductors",
+                "roles.conductors.file",
+                "roles.conductors.dir",
+            ],
+            (&conductors.file, &conductors.dir),
+            (file_count, dir_count),
+        )?;
+
         let stats = &self.stats;
         if u64::from(stats.imports_resolved) + u64::from(stats.imports_external)
             > u64::from(stats.imports_total)
@@ -135,6 +196,26 @@ impl AnalysisResult {
             return Err(InvalidResult::ImportCounts);
         }
         Ok(())
+    }
+}
+
+/// Rows that each point to one file or one folder, in bounds. `names` are
+/// the table and its two columns.
+fn targets(
+    names: [&'static str; 3],
+    (files, dirs): (&[Option<u32>], &[Option<u32>]),
+    (file_count, dir_count): (usize, usize),
+) -> Result<(), InvalidResult> {
+    let [table, file_column, dir_column] = names;
+    in_bounds_or_null(file_column, files, file_count)?;
+    in_bounds_or_null(dir_column, dirs, dir_count)?;
+    match files
+        .iter()
+        .zip(dirs)
+        .position(|(file, dir)| file.is_some() == dir.is_some())
+    {
+        None => Ok(()),
+        Some(row) => Err(InvalidResult::RowTarget { table, row }),
     }
 }
 
@@ -206,10 +287,12 @@ fn valid_names<'a>(
 mod tests {
     use super::*;
     use crate::result::{
-        Confidence, Dirs, EdgeKind, Edges, Files, Repo, Scope, Stats, SymbolKind, Symbols,
+        Confidence, Dirs, EdgeKind, Edges, Entries, EntryReason, Files, Ranked, Repo, Roles, Scope,
+        Stats, SymbolKind, Symbols,
     };
 
-    /// Two folders, two files, an import between them and two of folders.
+    /// Two folders, two files, an import between them and two of folders,
+    /// an entry point, a foundation and a conductor.
     fn result() -> AnalysisResult {
         AnalysisResult {
             format_version: FORMAT_VERSION,
@@ -233,6 +316,9 @@ mod tests {
                 generated: vec![false, false],
                 header: vec![Some("// Starts the app.".to_owned()), None],
                 scope: vec![Scope::Source, Scope::Source],
+                barrel: vec![false, false],
+                dependents: vec![Some(0), Some(1)],
+                dependencies: vec![Some(1), Some(0)],
             },
             symbols: Symbols {
                 file: vec![0, 1, 1],
@@ -246,6 +332,27 @@ mod tests {
                 to_dir: vec![None, Some(0), Some(1)],
                 kind: vec![EdgeKind::Import, EdgeKind::Import, EdgeKind::Type],
                 confidence: vec![Confidence::Exact, Confidence::Exact, Confidence::Likely],
+            },
+            roles: Roles {
+                entries: Entries {
+                    file: vec![Some(0)],
+                    dir: vec![None],
+                    reasons: vec![vec![
+                        EntryReason::PackageMain,
+                        EntryReason::ConventionalName,
+                    ]],
+                    command: vec![None],
+                },
+                foundations: Ranked {
+                    file: vec![Some(1)],
+                    dir: vec![None],
+                    count: vec![1],
+                },
+                conductors: Ranked {
+                    file: vec![None],
+                    dir: vec![Some(1)],
+                    count: vec![1],
+                },
             },
             stats: Stats {
                 imports_total: 6,
@@ -307,6 +414,38 @@ mod tests {
                 column: "files.scope",
                 expected: 2,
                 actual: 1,
+            }
+        );
+        assert_eq!(
+            invalid(|r| r.files.dependents.push(None)),
+            InvalidResult::ColumnLength {
+                column: "files.dependents",
+                expected: 2,
+                actual: 3,
+            }
+        );
+        assert_eq!(
+            invalid(|r| r.files.barrel.clear()),
+            InvalidResult::ColumnLength {
+                column: "files.barrel",
+                expected: 2,
+                actual: 0,
+            }
+        );
+        assert_eq!(
+            invalid(|r| r.roles.entries.command.clear()),
+            InvalidResult::ColumnLength {
+                column: "roles.entries.command",
+                expected: 1,
+                actual: 0,
+            }
+        );
+        assert_eq!(
+            invalid(|r| r.roles.conductors.count.push(2)),
+            InvalidResult::ColumnLength {
+                column: "roles.conductors.count",
+                expected: 1,
+                actual: 2,
             }
         );
         assert_eq!(
@@ -498,6 +637,50 @@ mod tests {
                 r.edges.to_dir[2] = Some(0);
             }),
             InvalidResult::EdgeOrder { row: 2 }
+        );
+    }
+
+    #[test]
+    fn roles_point_to_one_existing_file_or_folder() {
+        assert_eq!(
+            invalid(|r| r.roles.entries.file[0] = Some(2)),
+            InvalidResult::IndexOutOfBounds {
+                column: "roles.entries.file",
+                row: 0,
+                index: 2,
+                len: 2,
+            }
+        );
+        assert_eq!(
+            invalid(|r| r.roles.conductors.dir[0] = Some(5)),
+            InvalidResult::IndexOutOfBounds {
+                column: "roles.conductors.dir",
+                row: 0,
+                index: 5,
+                len: 2,
+            }
+        );
+        assert_eq!(
+            invalid(|r| r.roles.foundations.dir[0] = Some(1)),
+            InvalidResult::RowTarget {
+                table: "roles.foundations",
+                row: 0,
+            }
+        );
+        assert_eq!(
+            invalid(|r| r.roles.entries.file[0] = None),
+            InvalidResult::RowTarget {
+                table: "roles.entries",
+                row: 0,
+            }
+        );
+    }
+
+    #[test]
+    fn an_entry_point_has_a_reason() {
+        assert_eq!(
+            invalid(|r| r.roles.entries.reasons[0].clear()),
+            InvalidResult::EntryReasons { row: 0 }
         );
     }
 

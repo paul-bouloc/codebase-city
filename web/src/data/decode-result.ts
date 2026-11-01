@@ -3,14 +3,18 @@ import type { Confidence } from './generated/Confidence'
 import type { Dirs } from './generated/Dirs'
 import type { EdgeKind } from './generated/EdgeKind'
 import type { Edges } from './generated/Edges'
+import type { Entries } from './generated/Entries'
+import type { EntryReason } from './generated/EntryReason'
 import type { Files } from './generated/Files'
+import type { Ranked } from './generated/Ranked'
+import type { Roles } from './generated/Roles'
 import type { Scope } from './generated/Scope'
 import type { Stats } from './generated/Stats'
 import type { SymbolKind } from './generated/SymbolKind'
 import type { Symbols } from './generated/Symbols'
 
 // FORMAT_VERSION in crates/model; the generated sample result keeps the two in step.
-export const FORMAT_VERSION = 4
+export const FORMAT_VERSION = 5
 
 // Checked by the compiler against the generated unions: adding a variant in Rust breaks the build here.
 const EDGE_KINDS = {
@@ -31,6 +35,19 @@ const SCOPES = {
   build: true,
   config: true,
 } satisfies Record<Scope, true>
+const ENTRY_REASONS = {
+  packageBin: true,
+  packageMain: true,
+  packageScript: true,
+  pyprojectScript: true,
+  setupCfgScript: true,
+  goMain: true,
+  mainModule: true,
+  mainBlock: true,
+  framework: true,
+  conventionalName: true,
+  noImporter: true,
+} satisfies Record<EntryReason, true>
 const SYMBOL_KINDS = {
   class: true,
   function: true,
@@ -100,6 +117,9 @@ const isSymbolKind = (item: unknown): item is SymbolKind =>
   typeof item === 'string' && Object.hasOwn(SYMBOL_KINDS, item)
 const isScope = (item: unknown): item is Scope =>
   typeof item === 'string' && Object.hasOwn(SCOPES, item)
+const isEntryReasons = (item: unknown): item is EntryReason[] =>
+  Array.isArray(item) &&
+  item.every((reason) => typeof reason === 'string' && Object.hasOwn(ENTRY_REASONS, reason))
 
 const u32Column = (value: unknown, path: string) =>
   column(value, path, isU32, 'an unsigned 32-bit integer')
@@ -168,6 +188,14 @@ function decodeFiles(value: unknown, dirCount: number, languageCount: number): F
     generated: column(fields.generated, 'files.generated', isBoolean, 'a boolean'),
     header: column(fields.header, 'files.header', isStringOrNull, 'a string or null'),
     scope: column(fields.scope, 'files.scope', isScope, 'a scope'),
+    barrel: column(fields.barrel, 'files.barrel', isBoolean, 'a boolean'),
+    dependents: column(fields.dependents, 'files.dependents', isU32OrNull, 'an integer or null'),
+    dependencies: column(
+      fields.dependencies,
+      'files.dependencies',
+      isU32OrNull,
+      'an integer or null',
+    ),
   }
   sameLength('files.name', dir.length, files.name)
   sameLength('files.language', dir.length, files.language)
@@ -176,6 +204,9 @@ function decodeFiles(value: unknown, dirCount: number, languageCount: number): F
   sameLength('files.generated', dir.length, files.generated)
   sameLength('files.header', dir.length, files.header)
   sameLength('files.scope', dir.length, files.scope)
+  sameLength('files.barrel', dir.length, files.barrel)
+  sameLength('files.dependents', dir.length, files.dependents)
+  sameLength('files.dependencies', dir.length, files.dependencies)
   inBounds('files.dir', dir, dirCount)
   inBounds('files.language', files.language, languageCount)
   validNames('files.name', files.name, 0)
@@ -261,6 +292,62 @@ function compareKeys(a: [number, number, number], b: [number, number, number]): 
   return a[0] - b[0] || a[1] - b[1] || a[2] - b[2]
 }
 
+/** Rows of a role table that each point to one file or one folder, in bounds. */
+function targets(
+  path: string,
+  file: (number | null)[],
+  dir: (number | null)[],
+  fileCount: number,
+  dirCount: number,
+): void {
+  sameLength(`${path}.dir`, file.length, dir)
+  inBoundsOrNull(`${path}.file`, file, fileCount)
+  inBoundsOrNull(`${path}.dir`, dir, dirCount)
+  const row = file.findIndex((index, row) => (index === null) === (dir[row] === null))
+  if (row !== -1) {
+    fail(`${path}[${row}] must have exactly one target, in file or dir`)
+  }
+}
+
+function decodeEntries(value: unknown, fileCount: number, dirCount: number): Entries {
+  const fields = object(value, 'roles.entries')
+  const entries: Entries = {
+    file: column(fields.file, 'roles.entries.file', isU32OrNull, 'an index or null'),
+    dir: column(fields.dir, 'roles.entries.dir', isU32OrNull, 'an index or null'),
+    reasons: column(fields.reasons, 'roles.entries.reasons', isEntryReasons, 'a list of reasons'),
+    command: column(fields.command, 'roles.entries.command', isStringOrNull, 'a string or null'),
+  }
+  sameLength('roles.entries.reasons', entries.file.length, entries.reasons)
+  sameLength('roles.entries.command', entries.file.length, entries.command)
+  targets('roles.entries', entries.file, entries.dir, fileCount, dirCount)
+  const empty = entries.reasons.findIndex((reasons) => reasons.length === 0)
+  if (empty !== -1) {
+    fail(`roles.entries.reasons[${empty}] is empty`)
+  }
+  return entries
+}
+
+function decodeRanked(value: unknown, path: string, fileCount: number, dirCount: number): Ranked {
+  const fields = object(value, path)
+  const ranked: Ranked = {
+    file: column(fields.file, `${path}.file`, isU32OrNull, 'an index or null'),
+    dir: column(fields.dir, `${path}.dir`, isU32OrNull, 'an index or null'),
+    count: u32Column(fields.count, `${path}.count`),
+  }
+  targets(path, ranked.file, ranked.dir, fileCount, dirCount)
+  sameLength(`${path}.count`, ranked.file.length, ranked.count)
+  return ranked
+}
+
+function decodeRoles(value: unknown, fileCount: number, dirCount: number): Roles {
+  const fields = object(value, 'roles')
+  return {
+    entries: decodeEntries(fields.entries, fileCount, dirCount),
+    foundations: decodeRanked(fields.foundations, 'roles.foundations', fileCount, dirCount),
+    conductors: decodeRanked(fields.conductors, 'roles.conductors', fileCount, dirCount),
+  }
+}
+
 function decodeStats(value: unknown): Stats {
   const fields = object(value, 'stats')
   const ignored = object(fields.ignored, 'stats.ignored')
@@ -308,6 +395,7 @@ export function decodeResult(json: unknown): AnalysisResult {
     files,
     symbols: decodeSymbols(fields.symbols, files.dir.length),
     edges: decodeEdges(fields.edges, files.dir.length, dirs.parent.length),
+    roles: decodeRoles(fields.roles, files.dir.length, dirs.parent.length),
     stats: decodeStats(fields.stats),
   }
 }

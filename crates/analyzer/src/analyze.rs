@@ -3,8 +3,8 @@
 use std::collections::{BTreeMap, HashMap};
 
 use model::{
-    AnalysisResult, Confidence, Dirs, EdgeKind, Edges, FORMAT_VERSION, Files, Ignored, Repo, Stats,
-    Symbols,
+    AnalysisResult, Confidence, Dirs, EdgeKind, Edges, FORMAT_VERSION, Files, Ignored, Repo, Roles,
+    Stats, Symbols,
 };
 use rayon::prelude::*;
 
@@ -218,6 +218,10 @@ pub fn analyze_with_report(
         table_edges.confidence.push(confidence);
     }
 
+    table.barrel = barrels;
+    table.dependents = vec![None; files.len()];
+    table.dependencies = vec![None; files.len()];
+
     let result = AnalysisResult {
         format_version: FORMAT_VERSION,
         analyzer_version: ANALYZER_VERSION.to_owned(),
@@ -228,6 +232,7 @@ pub fn analyze_with_report(
         files: table,
         symbols,
         edges: table_edges,
+        roles: Roles::default(),
         stats: Stats {
             ignored,
             imports_total: report.exact + report.likely + report.external + report.unresolved,

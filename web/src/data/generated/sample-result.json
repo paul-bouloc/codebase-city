@@ -1,5 +1,5 @@
 {
-  "formatVersion": 4,
+  "formatVersion": 5,
   "analyzerVersion": "0.1.0",
   "repo": {
     "owner": "acme",
@@ -210,6 +210,72 @@
       null,
       null,
       null
+    ],
+    "barrel": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ],
+    "dependents": [
+      null,
+      null,
+      0,
+      1,
+      5,
+      7,
+      7,
+      9,
+      11,
+      4,
+      5,
+      5,
+      4,
+      0,
+      2,
+      3,
+      null,
+      null,
+      null,
+      null
+    ],
+    "dependencies": [
+      null,
+      null,
+      12,
+      11,
+      4,
+      3,
+      3,
+      0,
+      0,
+      8,
+      1,
+      0,
+      8,
+      9,
+      3,
+      1,
+      null,
+      null,
+      null,
+      null
     ]
   },
   "symbols": {
@@ -415,6 +481,56 @@
       "exact",
       "exact"
     ]
+  },
+  "roles": {
+    "entries": {
+      "file": [
+        2
+      ],
+      "dir": [
+        null
+      ],
+      "reasons": [
+        [
+          "packageMain",
+          "conventionalName"
+        ]
+      ],
+      "command": [
+        null
+      ]
+    },
+    "foundations": {
+      "file": [
+        8,
+        7,
+        5
+      ],
+      "dir": [
+        null,
+        null,
+        null
+      ],
+      "count": [
+        11,
+        9,
+        7
+      ]
+    },
+    "conductors": {
+      "file": [
+        2,
+        13
+      ],
+      "dir": [
+        null,
+        null
+      ],
+      "count": [
+        12,
+        9
+      ]
+    }
   },
   "stats": {
     "ignored": {

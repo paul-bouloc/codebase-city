@@ -9,8 +9,8 @@
 use std::path::PathBuf;
 
 use model::{
-    AnalysisResult, Confidence, Dirs, EdgeKind, Edges, FORMAT_VERSION, Files, Ignored, Repo, Scope,
-    Stats, SymbolKind, Symbols,
+    AnalysisResult, Confidence, Dirs, EdgeKind, Edges, Entries, EntryReason, FORMAT_VERSION, Files,
+    Ignored, Ranked, Repo, Roles, Scope, Stats, SymbolKind, Symbols,
 };
 
 const DIRS: &[(Option<u32>, &str)] = &[
@@ -122,6 +122,34 @@ const EDGES: &[(u32, u32, EdgeKind, Confidence)] = &[
     (18, 9, EdgeKind::Import, Confidence::Exact),
 ];
 
+/// The barrel of `src/core`.
+const BARREL: u32 = 4;
+
+/// Dependents and dependencies of each file, counted on [`EDGES`] among the
+/// production files (source, not generated); `None` for the others.
+const REACH: &[Option<(u32, u32)>] = &[
+    None,
+    None,
+    Some((0, 12)),
+    Some((1, 11)),
+    Some((5, 4)),
+    Some((7, 3)),
+    Some((7, 3)),
+    Some((9, 0)),
+    Some((11, 0)),
+    Some((4, 8)),
+    Some((5, 1)),
+    Some((5, 0)),
+    Some((4, 8)),
+    Some((0, 9)),
+    Some((2, 3)),
+    Some((3, 1)),
+    None,
+    None,
+    None,
+    None,
+];
+
 /// Imports of npm packages, not in the repository.
 const EXTERNAL_IMPORTS: u32 = 4;
 
@@ -170,6 +198,9 @@ fn sample() -> AnalysisResult {
                         .map_or(Scope::Source, |scope| scope.1)
                 })
                 .collect(),
+            barrel: (0..FILES.len()).map(|row| row == BARREL as usize).collect(),
+            dependents: REACH.iter().map(|reach| reach.map(|r| r.0)).collect(),
+            dependencies: REACH.iter().map(|reach| reach.map(|r| r.1)).collect(),
         },
         symbols: Symbols {
             file: SYMBOLS.iter().map(|symbol| symbol.0).collect(),
@@ -183,6 +214,27 @@ fn sample() -> AnalysisResult {
             to_dir: vec![None; EDGES.len()],
             kind: EDGES.iter().map(|edge| edge.2).collect(),
             confidence: EDGES.iter().map(|edge| edge.3).collect(),
+        },
+        roles: Roles {
+            entries: Entries {
+                file: vec![Some(2)],
+                dir: vec![None],
+                reasons: vec![vec![
+                    EntryReason::PackageMain,
+                    EntryReason::ConventionalName,
+                ]],
+                command: vec![None],
+            },
+            foundations: Ranked {
+                file: vec![Some(8), Some(7), Some(5)],
+                dir: vec![None; 3],
+                count: vec![11, 9, 7],
+            },
+            conductors: Ranked {
+                file: vec![Some(2), Some(13)],
+                dir: vec![None; 2],
+                count: vec![12, 9],
+            },
         },
         stats: Stats {
             ignored: Ignored {
@@ -221,6 +273,8 @@ fn json_uses_the_names_of_the_generated_types() {
     assert!(json["files"]["complexity"][0].is_null());
     assert!(json["files"]["header"][0].is_null());
     assert_eq!(json["symbols"]["kind"][6], "interface");
+    assert!(json["files"]["dependents"][0].is_null());
+    assert_eq!(json["roles"]["entries"]["reasons"][0][0], "packageMain");
 }
 
 #[test]
