@@ -6,6 +6,10 @@
 
 use analyzer::analyze;
 use analyzer::files::{Language, SourceFile, count_lines};
+use model::EntryReason::{
+    self, ConventionalName, Framework, GoMain, MainModule, NoImporter, PackageBin, PackageMain,
+    PackageScript, PyprojectScript, SetupCfgScript,
+};
 use model::{AnalysisResult, Ignored, Repo};
 
 /// Analyzes a repository given as (path, content) pairs.
@@ -219,5 +223,178 @@ fn go_packages_are_ranked_as_folders() {
     assert_eq!(
         ranking(&result, &result.roles.conductors),
         pairs(&[("cmd/harbor/", 3)])
+    );
+}
+
+/// Entry points as (path, reasons, command); a Go package's path ends with
+/// `/`.
+fn entries(result: &AnalysisResult) -> Vec<(String, Vec<EntryReason>, Option<String>)> {
+    let entries = &result.roles.entries;
+    (0..entries.file.len())
+        .map(|row| {
+            let path = match (entries.file[row], entries.dir[row]) {
+                (Some(file), _) => path_of_file(result, file),
+                (_, Some(dir)) => format!("{}/", path_of_dir(result, dir)),
+                _ => unreachable!(),
+            };
+            (
+                path,
+                entries.reasons[row].clone(),
+                entries.command[row].clone(),
+            )
+        })
+        .collect()
+}
+
+fn entry(
+    path: &str,
+    reasons: &[EntryReason],
+    command: Option<&str>,
+) -> (String, Vec<EntryReason>, Option<String>) {
+    (
+        path.to_owned(),
+        reasons.to_vec(),
+        command.map(str::to_owned),
+    )
+}
+
+#[test]
+fn package_json_names_its_commands_and_its_main_module() {
+    let result = analyzed(&[
+        (
+            "package.json",
+            r#"{
+              "name": "@acme/harbor",
+              "bin": { "harbor": "./bin/harbor.js" },
+              "main": "./dist/index.js",
+              "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+              "scripts": { "start": "node --inspect server.js", "build": "tsc" }
+            }"#,
+        ),
+        ("bin/harbor.js", "require('../dist/index.js')\n"),
+        ("server.js", "const app = require('./src/app')\n"),
+        ("src/index.ts", "export { Dock } from './dock'\n"),
+        ("src/dock.ts", "export class Dock {}\n"),
+        ("src/app.js", "module.exports = {}\n"),
+        ("test/dock.test.ts", "import { Dock } from '../src/dock'\n"),
+    ]);
+    // `dist/index.js` is not in the repository: its source is. No one
+    // imports `server.js`, which depends on the most
+    assert_eq!(
+        entries(&result),
+        [
+            entry(
+                "server.js",
+                &[PackageScript, NoImporter, ConventionalName],
+                None
+            ),
+            entry("src/index.ts", &[PackageMain, ConventionalName], None),
+            entry("bin/harbor.js", &[PackageBin], Some("harbor")),
+        ]
+    );
+}
+
+#[test]
+fn python_manifests_and_conventions_give_entry_points() {
+    let result = analyzed(&[
+        (
+            "pyproject.toml",
+            "[project]\nname = \"harbor\"\n\n[project.scripts]\nharbor = \"harbor.cli:main\"\n",
+        ),
+        (
+            "setup.cfg",
+            "[options.entry_points]\nconsole_scripts =\n    dock = harbor.dock:run\n",
+        ),
+        ("harbor/__init__.py", ""),
+        ("harbor/cli.py", "def main():\n    pass\n"),
+        ("harbor/dock.py", "def run():\n    pass\n"),
+        ("harbor/__main__.py", "from .cli import main\n\nmain()\n"),
+        (
+            "harbor/tides.py",
+            "def tide():\n    pass\n\nif __name__ == \"__main__\":\n    tide()\n",
+        ),
+        ("site/manage.py", "import sys\n"),
+        // Not production code
+        (
+            "examples/run.py",
+            "if __name__ == \"__main__\":\n    pass\n",
+        ),
+    ]);
+    assert_eq!(
+        entries(&result),
+        [
+            entry("harbor/__main__.py", &[MainModule, NoImporter], None),
+            entry("harbor/cli.py", &[PyprojectScript], Some("harbor")),
+            entry("harbor/dock.py", &[SetupCfgScript], Some("dock")),
+            entry("site/manage.py", &[Framework], None),
+        ]
+    );
+}
+
+#[test]
+fn a_go_program_is_named_after_its_cmd_folder() {
+    let result = analyzed(&[
+        ("go.mod", "module example.com/harbor\n"),
+        (
+            "cmd/harbor/main.go",
+            "package main\n\nimport \"example.com/harbor/docks\"\n\nfunc main() {}\n",
+        ),
+        ("docks/dock.go", "package docks\n"),
+    ]);
+    assert_eq!(
+        entries(&result),
+        [entry(
+            "cmd/harbor/main.go",
+            &[GoMain, NoImporter],
+            Some("harbor")
+        )]
+    );
+}
+
+#[test]
+fn without_a_manifest_the_graph_guesses_but_never_a_barrel() {
+    let result = analyzed(&[
+        ("lib/index.ts", "export * from './engine'\n"),
+        (
+            "lib/engine.ts",
+            "import { gear } from './gear'\nexport const engine = gear\n",
+        ),
+        ("lib/gear.ts", "export const gear = 1\n"),
+        ("lib/tools.ts", "import { gear } from './gear'\n"),
+    ]);
+    // The barrel depends on the most and no one imports it, but it is a
+    // facade, and what it re-exports counts as not imported. With no score
+    // of 4, the best three are kept
+    assert_eq!(
+        entries(&result),
+        [
+            entry("lib/engine.ts", &[NoImporter], None),
+            entry("lib/tools.ts", &[NoImporter], None),
+        ]
+    );
+}
+
+#[test]
+fn the_order_of_the_files_does_not_change_the_roles() {
+    let files = [
+        ("go.mod", "module example.com/harbor\n"),
+        (
+            "cmd/harbor/main.go",
+            "package main\n\nimport \"example.com/harbor/docks\"\n\nfunc main() {}\n",
+        ),
+        ("docks/dock.go", "package docks\n"),
+        ("package.json", r#"{ "main": "src/index.ts" }"#),
+        ("src/index.ts", "export * from './a'\nexport * from './b'\n"),
+        ("src/a.ts", "import { b } from './b'\nexport const a = b\n"),
+        ("src/b.ts", "import { a } from './a'\nexport const b = a\n"),
+        ("src/c.ts", "import { a } from './index'\n"),
+    ];
+    let expected = serde_json::to_string(&analyzed(&files)).unwrap();
+    let mut shuffled = files;
+    shuffled.reverse();
+    shuffled.swap(1, 5);
+    assert_eq!(
+        serde_json::to_string(&analyzed(&shuffled)).unwrap(),
+        expected
     );
 }

@@ -3,11 +3,12 @@
 use std::collections::{BTreeMap, HashMap};
 
 use model::{
-    AnalysisResult, Confidence, Dirs, EdgeKind, Edges, Entries, FORMAT_VERSION, Files, Ignored,
-    Repo, Roles, Stats, Symbols,
+    AnalysisResult, Confidence, Dirs, EdgeKind, Edges, FORMAT_VERSION, Files, Ignored, Repo, Roles,
+    Stats, Symbols,
 };
 use rayon::prelude::*;
 
+use crate::entries;
 use crate::files::{Language, SourceFile, split_path};
 use crate::graph::{self, BarrelReport, Graph, strength};
 use crate::lang::{self, Parsed};
@@ -95,6 +96,7 @@ pub fn analyze_with_report(
     let mut imports = Vec::with_capacity(files.len());
     let mut barrels = Vec::with_capacity(files.len());
     let mut defaults = Vec::with_capacity(files.len());
+    let mut mains = Vec::with_capacity(files.len());
     for (row, (file, parsed)) in files.iter().zip(parsed).enumerate() {
         let (dir_path, name) = split_path(&file.path);
         let language = file.language.name();
@@ -112,6 +114,7 @@ pub fn analyze_with_report(
         table.generated.push(file.generated);
         table.scope.push(scope::of(&file.path));
         barrels.push(parsed.as_ref().is_some_and(|parsed| parsed.barrel));
+        mains.push(parsed.as_ref().is_some_and(|parsed| parsed.main));
         defaults.push(
             parsed
                 .as_ref()
@@ -250,6 +253,21 @@ pub fn analyze_with_report(
             dir_paths: &dir_paths,
         },
     );
+    // Analyzed files gave their content to the parser: what is left is the
+    // manifests'
+    let manifests: Vec<(&str, &[u8])> = files
+        .iter()
+        .filter_map(|file| Some((file.path.as_str(), file.content.as_deref()?)))
+        .collect();
+    let entries = entries::find(&entries::Input {
+        paths: &paths,
+        dir_paths: &dir_paths,
+        manifests: &manifests,
+        mains: &mains,
+        barrels: &barrels,
+        units: &units,
+        reach: reach.as_ref(),
+    });
     table.barrel = barrels;
 
     let result = AnalysisResult {
@@ -263,7 +281,7 @@ pub fn analyze_with_report(
         symbols,
         edges: table_edges,
         roles: Roles {
-            entries: Entries::default(),
+            entries,
             foundations,
             conductors,
         },

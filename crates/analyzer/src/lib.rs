@@ -3,6 +3,7 @@
 #![forbid(unsafe_code)]
 
 mod analyze;
+mod entries;
 pub mod files;
 pub mod graph;
 pub mod lang;
