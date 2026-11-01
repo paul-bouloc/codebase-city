@@ -61,11 +61,11 @@ async fn health_is_unavailable_when_the_database_is_down(pool: PgPool) {
 
 #[sqlx::test(migrator = "server::store::MIGRATOR")]
 async fn migrations_create_the_settings_table(pool: PgPool) {
-    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM settings")
-        .fetch_one(&pool)
+    let keys: Vec<String> = sqlx::query_scalar("SELECT key FROM settings ORDER BY key")
+        .fetch_all(&pool)
         .await
         .unwrap();
-    assert_eq!(count, 0);
+    assert_eq!(keys, ["results_kept_per_repo"]);
 }
 
 #[sqlx::test(migrator = "server::store::MIGRATOR")]
