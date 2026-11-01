@@ -59,10 +59,11 @@ describe('cityFromResult', () => {
     expect(core?.lots.find((lot) => lot.x === 46.5)?.base).toBe(0.15)
   })
 
-  it('raises slabs by level, deeper ones nesting flat', () => {
+  it('raises each level of slabs above the one it stands on', () => {
     expect(slabTop(0)).toBe(0)
     expect(slabTop(1)).toBe(0.15)
     expect(slabTop(2)).toBe(0.25)
-    expect(slabTop(5)).toBe(0.25)
+    expect(slabTop(3)).toBeCloseTo(0.3)
+    expect(slabTop(5)).toBeCloseTo(0.4)
   })
 })

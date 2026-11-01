@@ -10,12 +10,21 @@ export function layerAltitude(layer: number): number {
   return 1.2 + 1.8 * (clamped - 1)
 }
 
-/** How high a parcel's slab stands above the plateau, by level; deeper levels nest flat. */
+/** How high a parcel's slab stands above the plateau: 0.15 u, then 0.1 u more on level 2. */
 const SLAB_TOPS = [0.15, 0.25]
+/**
+ * Each deeper level stands a little higher still: nested slabs at one height would share their
+ * top, and flicker where they overlap.
+ */
+const DEEPER_SLAB_STEP = 0.05
 
 /** The top of the slab of a parcel `level` folders below its island, above the plateau, in u. */
 export function slabTop(level: number): number {
-  return SLAB_TOPS[Math.min(level, SLAB_TOPS.length) - 1] ?? 0
+  if (level <= 0) {
+    return 0
+  }
+  const shallow = SLAB_TOPS[Math.min(level, SLAB_TOPS.length) - 1] ?? 0
+  return shallow + Math.max(level - SLAB_TOPS.length, 0) * DEEPER_SLAB_STEP
 }
 
 export type Vec3 = [number, number, number]
