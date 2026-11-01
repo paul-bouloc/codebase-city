@@ -132,7 +132,7 @@ pub(crate) struct Reach {
 /// Counts dependents and dependencies; `None` when that would take more
 /// than [`MAX_WORK`]. `facades` says which units are barrels.
 pub(crate) fn reach(units: &Units, facades: &[bool]) -> Option<Reach> {
-    let components = strong_components(units);
+    let components = strong_components(units.len(), |unit| units.imports(unit));
     let count = components.iter().max().map_or(0, |&last| last as usize + 1);
     let mut weights = vec![0u64; count];
     let mut user_weights = vec![0u64; count];
@@ -258,18 +258,19 @@ impl ByteSums {
     }
 }
 
-/// Strongly connected components by Tarjan's algorithm, without recursion.
-/// A component is numbered once every component it reaches has been, so
-/// imports only go to lower numbers.
-fn strong_components(units: &Units) -> Vec<u32> {
-    let mut tarjan = Tarjan::new(units.len());
-    for root in 0..crate::saturating_u32(units.len()) {
+/// Strongly connected components by Tarjan's algorithm, without recursion,
+/// over `count` nodes whose successors `imports` gives. A component is
+/// numbered once every component it reaches has been, so imports only go to
+/// lower numbers.
+pub(crate) fn strong_components<'a>(count: usize, imports: impl Fn(u32) -> &'a [u32]) -> Vec<u32> {
+    let mut tarjan = Tarjan::new(count);
+    for root in 0..crate::saturating_u32(count) {
         if tarjan.order[root as usize] != UNSEEN {
             continue;
         }
         tarjan.open(root);
         while let Some(&(unit, visited)) = tarjan.frames.last() {
-            if let Some(&to) = units.imports(unit).get(visited) {
+            if let Some(&to) = imports(unit).get(visited) {
                 if let Some(frame) = tarjan.frames.last_mut() {
                     frame.1 += 1;
                 }
@@ -348,7 +349,7 @@ impl Tarjan {
 }
 
 /// Offsets and targets of sorted `(from, to)` pairs over `count` nodes.
-fn csr(count: usize, edges: &[(u32, u32)]) -> (Vec<u32>, Vec<u32>) {
+pub(crate) fn csr(count: usize, edges: &[(u32, u32)]) -> (Vec<u32>, Vec<u32>) {
     let mut offsets = Vec::with_capacity(count + 1);
     let mut position = 0;
     for node in 0..count {
@@ -425,7 +426,7 @@ mod tests {
     #[test]
     fn loops_reach_only_lower_numbers() {
         let units = Units::from_edges(vec![1; 5], vec![(0, 1), (1, 0), (1, 2), (3, 4), (4, 2)]);
-        let components = strong_components(&units);
+        let components = strong_components(units.len(), |unit| units.imports(unit));
         assert_eq!(components[0], components[1]);
         for (from, to) in [(1, 2), (3, 4), (4, 2)] {
             assert!(components[from] > components[to]);
