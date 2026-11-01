@@ -27,11 +27,13 @@ pub fn of_dir(dir: &str) -> Option<Scope> {
     None
 }
 
-/// A folder name that sets the scope. `build` under `src` is taken for
-/// code (a module that builds something), not for build output.
+/// A folder name that sets the scope. `build` and `integration` under
+/// `src` are taken for modules of the code, not for build output or
+/// integration tests.
 fn of_segment(segment: &str, in_src: bool) -> Option<Scope> {
     let scope = match segment.to_ascii_lowercase().as_str() {
         "test" | "tests" | "__tests__" | "__test__" | "spec" | "specs" | "e2e" => Scope::Test,
+        "integration" | "integration-tests" | "integration_tests" if !in_src => Scope::Test,
         "fixture" | "fixtures" | "__fixtures__" | "testdata" | "__mocks__" | "__snapshots__" => {
             Scope::Fixture
         }
@@ -87,8 +89,25 @@ fn of_name(name: &str) -> Scope {
         }
         return Scope::Source;
     }
+    if matches!(
+        stem,
+        "license"
+            | "licence"
+            | "copying"
+            | "notice"
+            | "authors"
+            | "contributors"
+            | "changelog"
+            | "changes"
+            | "history"
+    ) {
+        return Scope::Docs;
+    }
+    if extension == "txt" && stem.starts_with("requirements") {
+        return Scope::Config;
+    }
     match extension {
-        "md" | "markdown" | "mdx" | "rst" | "adoc" => Scope::Docs,
+        "md" | "markdown" | "mdx" | "rst" | "adoc" | "txt" => Scope::Docs,
         "json" | "jsonc" | "json5" | "yaml" | "yml" | "toml" | "ini" | "cfg" | "lock" => {
             Scope::Config
         }
@@ -119,6 +138,7 @@ mod tests {
                 "packages/core/__tests__/store.ts",
                 "src/spec/view.ts",
                 "e2e/login.ts",
+                "integration/microservices/app.module.ts",
                 "src/store.test.ts",
                 "src/store.spec.tsx",
                 "src/store.test-d.ts",
@@ -145,6 +165,9 @@ mod tests {
                 "demo/index.html",
                 "docs/guide.md",
                 "documentation/conf.py",
+                "LICENSE",
+                "HISTORY.md",
+                "NOTICE.txt",
                 "benchmarks/parse.js",
                 "packages/a/bench/run.ts",
             ]),
@@ -155,6 +178,9 @@ mod tests {
                 Scope::Example,
                 Scope::Example,
                 Scope::Example,
+                Scope::Docs,
+                Scope::Docs,
+                Scope::Docs,
                 Scope::Docs,
                 Scope::Docs,
                 Scope::Bench,
@@ -186,12 +212,14 @@ mod tests {
                 // A module of the code that happens to be called `build`
                 "src/build/index.ts",
                 "src/vs/build/helper.ts",
+                "src/integration/slack.ts",
             ]),
             [
                 Scope::Build,
                 Scope::Build,
                 Scope::Build,
                 Scope::Build,
+                Scope::Source,
                 Scope::Source,
                 Scope::Source,
             ]
@@ -215,6 +243,7 @@ mod tests {
                 ".eslintrc.js",
                 ".github/workflows/ci.yml",
                 "pyproject.toml",
+                "requirements-dev.txt",
             ])
             .iter()
             .all(|&scope| scope == Scope::Config)
