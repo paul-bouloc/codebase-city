@@ -30,15 +30,34 @@ const DIRECTIVES: &[&str] = &[
     "pylint:",
     "mypy:",
     "fmt:",
+    "ruff:",
+    "pyright:",
+    "@jsx",
+    "@jest-environment",
+    "@vitest-environment",
+    "biome-ignore",
+    "deno-lint-ignore",
+    "deno-fmt-ignore",
+    "c8 ignore",
+    "v8 ignore",
 ];
 
 /// Go directives, matched on the raw line: they are written without a space
 /// after the slashes (`//go:generate`, `//line file.go:1`).
-const RAW_DIRECTIVES: &[&str] = &["//go:", "//line ", "//nolint", "//export "];
+/// TypeScript's triple-slash directives too (`/// <reference types="…" />`).
+const RAW_DIRECTIVES: &[&str] = &[
+    "//go:",
+    "//line ",
+    "//nolint",
+    "//export ",
+    "/// <reference",
+    "/// <amd-",
+];
 
 /// A block that contains one of these is a license notice.
 const LICENSE_PHRASES: &[&str] = &[
-    "copyright",
+    "copyright (c)",
+    "copyright ©",
     "spdx-license-identifier",
     "all rights reserved",
     "licensed under",
@@ -52,8 +71,9 @@ const LICENSE_PHRASES: &[&str] = &[
     "/licenses/",
 ];
 
-/// So is a block with a line that starts with one of these.
-const LICENSE_LINE_STARTS: &[&str] = &["license", "licence", "@license"];
+/// So is a block with a line that starts with one of these: a sentence
+/// that only mentions copyright (`Renders the copyright line`) is not one.
+const LICENSE_LINE_STARTS: &[&str] = &["copyright", "license", "licence", "@license"];
 
 /// The header among `comments`, the comments that come before the first
 /// statement, in order. Directives are dropped one by one, then the
@@ -68,7 +88,7 @@ pub(super) fn pick(comments: &[Node<'_>], source: &[u8]) -> Option<String> {
     blocks(&comments)
         .into_iter()
         .map(|(start, end)| text(start, end))
-        .find(|block| !is_license(block))
+        .find(|block| !is_empty(block) && !is_license(block))
         .map(|block| cap(&block))
 }
 
@@ -82,6 +102,11 @@ pub(super) fn is_license(text: &str) -> bool {
                 .iter()
                 .any(|start| line.starts_with(start))
         })
+}
+
+/// A block with markers only (`//`, `/* */`, `#`).
+fn is_empty(block: &str) -> bool {
+    block.lines().all(|line| strip_markers(line).is_empty())
 }
 
 /// Normalizes line endings and cuts the text to [`MAX_LINES`] lines and
@@ -160,6 +185,19 @@ mod tests {
         assert!(!is_license(
             "// Validates the license key entered by the user."
         ));
+        assert!(is_license(
+            "//        http://www.apache.org/licenses/LICENSE-2.0"
+        ));
+        assert!(!is_license("// Renders the copyright line of the footer."));
+        assert!(is_license(" * Copyright(c) 2009-2013 TJ Holowaychuk"));
+        assert!(is_license("// Copyright 2024 The Go Authors."));
+    }
+
+    #[test]
+    fn empty_blocks_are_recognized() {
+        assert!(is_empty("//\n//"));
+        assert!(is_empty("/* */"));
+        assert!(!is_empty("//\n// Text."));
     }
 
     #[test]
@@ -173,6 +211,22 @@ mod tests {
         assert!(!is_directive(
             "// eslint-disable-next-line\n// Parses the command line."
         ));
+        assert!(!is_directive("//"));
+        assert!(is_directive(
+            "//go:generate stringer -type=Kind\n//go:embed static"
+        ));
+        assert!(is_directive("//nolint:all"));
+        assert!(is_directive("/* global window, document */"));
+        assert!(!is_directive(
+            "// Global state shared by the store and the view."
+        ));
+        assert!(!is_directive("# Type: a harbor and its berths."));
+        assert!(!is_directive("// line 3 explains the rest"));
+        assert!(is_directive("/// <reference types=\"vite/client\" />"));
+        assert!(is_directive("/** @jsxImportSource preact */"));
+        assert!(is_directive("// @vitest-environment jsdom"));
+        assert!(is_directive("/* c8 ignore start */"));
+        assert!(is_directive("# ruff: noqa: E501"));
     }
 
     #[test]

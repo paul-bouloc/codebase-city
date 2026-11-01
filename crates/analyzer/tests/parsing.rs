@@ -212,6 +212,17 @@ fn a_python_wildcard_case_is_not_a_decision() {
 }
 
 #[test]
+fn empty_comments_and_tool_comments_are_not_headers() {
+    let parsed = parse_text("a.ts", "//\n\nexport const a = 1\n");
+    assert_eq!(parsed.header, None);
+    let parsed = parse_text(
+        "vite-env.d.ts",
+        "/// <reference types=\"vite/client\" />\n\n// Types for the env.\n\nexport {}\n",
+    );
+    assert_eq!(parsed.header.as_deref(), Some("// Types for the env."));
+}
+
+#[test]
 fn a_comment_after_the_first_statement_is_not_a_header() {
     let parsed = parse_text("a.py", "import os\n\n# Not a header.\n");
     assert_eq!(parsed.header, None);
