@@ -18,6 +18,9 @@ node_modules/
 dist/
 target/
 
+# Analysis results of real repositories, for the dev city page
+/web/dev/results/
+
 # Tooling
 .DS_Store
 *.log
