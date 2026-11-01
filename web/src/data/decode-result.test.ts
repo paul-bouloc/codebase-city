@@ -32,6 +32,8 @@ describe('decodeResult', () => {
     expect(result.dirs.island[3]).toBe(3)
     expect(result.links.imports).toContain(3)
     expect(result.cycles.shortest[0]).toEqual([5, 6])
+    expect(result.layout.grids.columns[2]).toBe(3)
+    expect(result.layout.lots.x[0]).toBe(19)
   })
 
   it('rejects anything but an object', () => {
@@ -42,9 +44,9 @@ describe('decodeResult', () => {
   it('rejects another format version', () => {
     expect(
       decodeChanged((json) => {
-        json.formatVersion = 5
+        json.formatVersion = 6
       }),
-    ).toThrow('unsupported format version 5, expected 6')
+    ).toThrow('unsupported format version 6, expected 7')
   })
 
   it('rejects values of the wrong type', () => {
@@ -425,5 +427,81 @@ describe('decodeResult', () => {
         json.cycles.members[0] = 'store'
       }),
     ).toThrow('cycles.members[0] is not a list of indexes')
+  })
+
+  it('requires a plateau per island, inside the city, apart from the others', () => {
+    expect(
+      decodeChanged((json) => {
+        json.layout.islands.width.pop()
+      }),
+    ).toThrow('column layout.islands.width has 7 rows, expected 8')
+    expect(
+      decodeChanged((json) => {
+        json.layout.width = 669
+      }),
+    ).toThrow('layout.islands[3] must have a size and lie inside its island, parcel or city')
+    expect(
+      decodeChanged((json) => {
+        json.layout.islands.width[0] = 200
+      }),
+    ).toThrow('layout.islands[1] overlaps another rectangle of the same island or parcel')
+  })
+
+  it('requires parcels below an island folder, in folder order', () => {
+    const parcel = (json: Json, dir: number) => {
+      json.layout.parcels = {
+        dir: [dir],
+        x: [200],
+        y: [2],
+        width: [10],
+        height: [10],
+        nature: ['normal'],
+      }
+    }
+    expect(decodeChanged((json) => parcel(json, 1))).toThrow(
+      'layout.parcels.dir[0] must be a folder with files, inside an island',
+    )
+    expect(
+      decodeChanged((json) => {
+        parcel(json, 1)
+        json.layout.parcels.nature[0] = 'park'
+      }),
+    ).toThrow('layout.parcels.nature[0] is not a nature')
+    expect(
+      decodeChanged((json) => {
+        json.layout.grids.dir.reverse()
+      }),
+    ).toThrow('layout.grids[1] must come after the previous row, by folder')
+  })
+
+  it('requires grids inside their island, for folders with files', () => {
+    expect(
+      decodeChanged((json) => {
+        json.layout.grids.columns[0] = 5
+      }),
+    ).toThrow('layout.grids[0] must have a size and lie inside its island, parcel or city')
+    expect(
+      decodeChanged((json) => {
+        json.layout.grids.rows[1] = 0
+      }),
+    ).toThrow('layout.grids[1] must have a size')
+  })
+
+  it('requires each file on a lot of its own on its grid', () => {
+    expect(
+      decodeChanged((json) => {
+        json.layout.lots.x[1] = 59
+      }),
+    ).toThrow("layout.lots[1] must be the centre of a lot of its folder's grid")
+    expect(
+      decodeChanged((json) => {
+        json.layout.lots.y[0] = 9
+      }),
+    ).toThrow('layout.lots[0]')
+    expect(
+      decodeChanged((json) => {
+        json.layout.lots.x[1] = 19
+      }),
+    ).toThrow('layout.lots[1] shares its lot with another file')
   })
 })

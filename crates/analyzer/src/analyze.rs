@@ -15,6 +15,7 @@ use crate::graph::{self, BarrelReport, Graph, Node, strength};
 use crate::islands;
 use crate::lang::{self, Parsed};
 use crate::layers;
+use crate::layout;
 use crate::reach::{self, Reach, Units};
 use crate::resolve::{self, Outcome, Target};
 use crate::roles::{self, RolesReport};
@@ -317,6 +318,19 @@ pub fn analyze_with_report(
                 Some((from, dir))
             }),
     );
+    let analyzed: Vec<bool> = files
+        .iter()
+        .map(|file| file.language.is_analyzed())
+        .collect();
+    let layout = layout::layout(&layout::Input {
+        parents: &dirs.dirs.parent,
+        dir_paths: &dir_paths,
+        dir_islands: &dirs.dirs.island,
+        island_dirs: &islands.dirs,
+        file_dirs: &table.dir,
+        scopes: &table.scope,
+        analyzed: &analyzed,
+    });
     let result = AnalysisResult {
         format_version: FORMAT_VERSION,
         analyzer_version: ANALYZER_VERSION.to_owned(),
@@ -338,6 +352,7 @@ pub fn analyze_with_report(
         },
         links,
         cycles: cycles::cycles(&graph),
+        layout,
         stats: Stats {
             ignored,
             imports_total: report.exact + report.likely + report.external + report.unresolved,

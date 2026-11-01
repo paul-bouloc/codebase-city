@@ -10,8 +10,8 @@ use std::path::PathBuf;
 
 use model::{
     AnalysisResult, Confidence, Cycles, Dirs, EdgeKind, Edges, Entries, EntryReason,
-    FORMAT_VERSION, Files, Ignored, Islands, Links, Ranked, Repo, Roles, Scope, Stats, SymbolKind,
-    Symbols,
+    FORMAT_VERSION, Files, Ignored, Islands, Layout, Links, Lots, Parcels, Ranked, Repo, Roles,
+    Scope, Stats, SymbolKind, Symbols,
 };
 
 const DIRS: &[(Option<u32>, &str)] = &[
@@ -181,6 +181,63 @@ const EXTERNAL_IMPORTS: u32 = 4;
 /// Imports that could not be resolved.
 const UNRESOLVED_IMPORTS: u32 = 1;
 
+/// Islands per row of the sample's archipelago.
+const ISLANDS_PER_ROW: u32 = 4;
+
+/// A simple archipelago, in tenths of a unit: each island a near-square
+/// grid of its folder's files, a 0.9 u margin, at least 10 × 6.6 u, the
+/// islands in rows of four with 9 u of water between them. The files fill
+/// each grid from its north-west lot.
+fn layout() -> Layout {
+    const LOT: u32 = 20;
+    const MARGIN: u32 = 9;
+    const CHANNEL: u32 = 90;
+    let mut layout = Layout::default();
+    let mut lots = vec![(0, 0); FILES.len()];
+    let (mut x, mut y, mut row_height) = (0, 0, 0);
+    for island in 0..ISLANDS {
+        let files: Vec<usize> = (0..FILES.len())
+            .filter(|&file| FILES[file].0 == island)
+            .collect();
+        let count = u32::try_from(files.len()).unwrap();
+        let columns = count.isqrt() + u32::from(count.isqrt().pow(2) < count);
+        let rows = count.div_ceil(columns);
+        let width = (columns * LOT + 2 * MARGIN).max(100);
+        let height = (rows * LOT + 2 * MARGIN).max(66);
+        if island > 0 && island % ISLANDS_PER_ROW == 0 {
+            (x, y) = (0, y + row_height + CHANNEL);
+            row_height = 0;
+        }
+        layout.islands.x.push(x);
+        layout.islands.y.push(y);
+        layout.islands.width.push(width);
+        layout.islands.height.push(height);
+        let (grid_x, grid_y) = (x + MARGIN, y + MARGIN);
+        layout.grids.dir.push(island);
+        layout.grids.x.push(grid_x);
+        layout.grids.y.push(grid_y);
+        layout.grids.columns.push(columns);
+        layout.grids.rows.push(rows);
+        for (lot, &file) in (0..).zip(&files) {
+            let (column, row) = (lot % columns, lot / columns);
+            lots[file] = (
+                grid_x + column * LOT + LOT / 2,
+                grid_y + (rows - 1 - row) * LOT + LOT / 2,
+            );
+        }
+        layout.width = layout.width.max(x + width);
+        layout.height = layout.height.max(y + height);
+        x += width + CHANNEL;
+        row_height = row_height.max(height);
+    }
+    layout.parcels = Parcels::default();
+    layout.lots = Lots {
+        x: lots.iter().map(|lot| lot.0).collect(),
+        y: lots.iter().map(|lot| lot.1).collect(),
+    };
+    layout
+}
+
 fn strings(values: impl IntoIterator<Item = &'static str>) -> Vec<String> {
     values.into_iter().map(str::to_owned).collect()
 }
@@ -279,6 +336,7 @@ fn sample() -> AnalysisResult {
             members: vec![vec![5, 6], vec![9, 12]],
             shortest: vec![vec![5, 6], vec![9, 12]],
         },
+        layout: layout(),
         stats: Stats {
             ignored: Ignored {
                 vendored: 3,
@@ -321,6 +379,8 @@ fn json_uses_the_names_of_the_generated_types() {
     assert!(json["islands"]["layer"][0].is_null());
     assert_eq!(json["dirs"]["island"][2], 2);
     assert_eq!(json["cycles"]["shortest"][1][0], 9);
+    assert_eq!(json["layout"]["grids"]["columns"][2], 3);
+    assert_eq!(json["layout"]["lots"]["x"][0], 19);
 }
 
 #[test]

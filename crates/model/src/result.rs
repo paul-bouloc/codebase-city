@@ -10,7 +10,7 @@ use ts_rs::TS;
 
 /// Version of the shape of the data. Bumped on any change the web app has to
 /// know about; a result with another version is rejected, not guessed at.
-pub const FORMAT_VERSION: u32 = 6;
+pub const FORMAT_VERSION: u32 = 7;
 
 /// One analysis of one repository at one commit.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -35,6 +35,7 @@ pub struct AnalysisResult {
     pub islands: Islands,
     pub links: Links,
     pub cycles: Cycles,
+    pub layout: Layout,
     pub stats: Stats,
 }
 
