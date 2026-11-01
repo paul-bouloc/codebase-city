@@ -225,15 +225,18 @@ fn sample() -> AnalysisResult {
                 ]],
                 command: vec![None],
             },
+            // As the analyzer ranks them: `events.ts` and `store.ts` tie, both
+            // imported from `core` alone, so the path decides. `app.ts` has
+            // one user, `main.ts`, as few as the 20th percentile allows
             foundations: Ranked {
-                file: vec![Some(8), Some(7), Some(5)],
-                dir: vec![None; 3],
-                count: vec![11, 9, 7],
+                file: vec![Some(8), Some(7), Some(6), Some(5)],
+                dir: vec![None; 4],
+                count: vec![11, 9, 7, 7],
             },
             conductors: Ranked {
-                file: vec![Some(2), Some(13)],
-                dir: vec![None; 2],
-                count: vec![12, 9],
+                file: vec![Some(2), Some(3), Some(13)],
+                dir: vec![None; 3],
+                count: vec![12, 11, 9],
             },
         },
         stats: Stats {

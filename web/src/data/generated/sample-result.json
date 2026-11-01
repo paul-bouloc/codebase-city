@@ -504,9 +504,11 @@
       "file": [
         8,
         7,
+        6,
         5
       ],
       "dir": [
+        null,
         null,
         null,
         null
@@ -514,20 +516,24 @@
       "count": [
         11,
         9,
+        7,
         7
       ]
     },
     "conductors": {
       "file": [
         2,
+        3,
         13
       ],
       "dir": [
+        null,
         null,
         null
       ],
       "count": [
         12,
+        11,
         9
       ]
     }

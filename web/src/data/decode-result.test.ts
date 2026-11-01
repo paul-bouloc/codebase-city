@@ -131,7 +131,7 @@ describe('decodeResult', () => {
       decodeChanged((json) => {
         json.roles.conductors.count.pop()
       }),
-    ).toThrow('column roles.conductors.count has 1 rows, expected 2')
+    ).toThrow('column roles.conductors.count has 2 rows, expected 3')
   })
 
   it('rejects an index out of bounds', () => {
