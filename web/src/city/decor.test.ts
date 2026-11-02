@@ -107,6 +107,32 @@ describe('cityDecor', () => {
     expect(trees).toBeLessThan(16_500)
   })
 
+  it('turns the empty lots of the island square into gardens, trees on them', () => {
+    // The island folder's grid on the plateau: 4 × 2 lots, files on the west column
+    const grid = { x: 1.2, y: 1.2, width: 8, height: 4 }
+    const tiny: IslandLayout = {
+      path: 'tiny',
+      layer: 1,
+      plateau: { x: 0, y: 0, width: 10.4, height: 6.6 },
+      parcels: [],
+      lots: [lot(2.2, 2.2), lot(2.2, 4.2)],
+      square: { x: 0.9, y: 0.9, width: 8.6, height: 4.6 },
+      grids: [{ rect: grid, nature: 'normal', base: 0, square: true }],
+    }
+    const decor = decorOf(city(tiny))
+    // One garden over the three empty columns, inside their lots
+    expect(decor.gardens).toEqual([
+      { rect: { x: 3.4, y: 1.4, width: 5.6, height: 3.6 }, bottom: 0.6, top: 0.75 },
+    ])
+    // A city of two files: every garden lot is wooded, and no tree stands on the paving
+    const onLots = decor.trees.filter((tree) => tree.z > layerAltitude(1))
+    expect(onLots.length).toBeGreaterThanOrEqual(6 * 2)
+    for (const tree of onLots) {
+      expect(tree.x).toBeGreaterThan(3.2)
+      expect(tree.z).toBeCloseTo(0.75)
+    }
+  })
+
   it('doubles the decor of a city under 50 files', () => {
     // Three small islands of one file, each alone or with a far one of 400 files
     const filler = island('filler', 'unanalyzed', { every: 1, x: 300 })
