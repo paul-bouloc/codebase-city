@@ -24,6 +24,8 @@ const SLAB_TOPS = [0.15, 0.25]
  * top, and flicker where they overlap.
  */
 const DEEPER_SLAB_STEP = 0.05
+/** Past this level, slabs rise no more: a folder thousands deep would make a column of them. */
+const HIGHEST_SLAB_LEVEL = 24
 
 /** The top of the slab of a parcel `level` folders below its island, above the plateau, in u. */
 export function slabTop(level: number): number {
@@ -31,7 +33,8 @@ export function slabTop(level: number): number {
     return 0
   }
   const shallow = SLAB_TOPS[Math.min(level, SLAB_TOPS.length) - 1] ?? 0
-  return shallow + Math.max(level - SLAB_TOPS.length, 0) * DEEPER_SLAB_STEP
+  const deeper = Math.min(level, HIGHEST_SLAB_LEVEL) - SLAB_TOPS.length
+  return shallow + Math.max(deeper, 0) * DEEPER_SLAB_STEP
 }
 
 export type Vec3 = [number, number, number]

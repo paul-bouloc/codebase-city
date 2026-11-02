@@ -162,5 +162,8 @@ describe('cityFromResult', () => {
     expect(slabTop(2)).toBe(0.25)
     expect(slabTop(3)).toBeCloseTo(0.3)
     expect(slabTop(5)).toBeCloseTo(0.4)
+    // Folders thousands deep stop rising
+    expect(slabTop(24)).toBeCloseTo(1.35)
+    expect(slabTop(3000)).toBeCloseTo(1.35)
   })
 })
