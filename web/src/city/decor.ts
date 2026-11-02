@@ -113,8 +113,8 @@ export function cityDecor(layout: CityLayout, shapes: readonly IslandShape[]): D
   const files = layout.islands.reduce((sum, island) => sum + island.lots.length, 0)
   const small = files < SMALL_CITY
   // First what each island has room for, then as many trees as the budget allows.
-  const plans = layout.islands.map((island) => {
-    const canals = islandCanals(island).cells
+  const plans = layout.islands.map((island, index) => {
+    const canals = (shapes[index]?.canals ?? islandCanals(island)).cells
     const altitude = layerAltitude(island.layer)
     const grids = lotGrids(island)
     const gardens: Garden[] = [

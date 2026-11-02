@@ -1,3 +1,4 @@
+import { type Canals, islandCanals } from './canals'
 import { type CityLayout, distanceToRect, type IslandLayout, type Rect } from './layout'
 import { seededRandom } from './random'
 import { clampLayer, layerAltitude } from './units'
@@ -10,7 +11,7 @@ import { clampLayer, layerAltitude } from './units'
 /** Distance between two samples along a side of the plateau, in u. */
 export const SAMPLE_STEP = 2.2
 /** Samples inside each rounded corner, between the two sides' own. */
-export const CORNER_SAMPLES = 6
+const CORNER_SAMPLES = 6
 /** The beach is the last terrace, just above the sea. */
 export const BEACH_ALTITUDE = 0.35
 /** The foam around a beach. */
@@ -70,6 +71,8 @@ export interface IslandShape {
   samples: ContourSample[]
   /** How far the beach reaches past the plateau rectangle, at most. */
   reach: number
+  /** The canals on the plateau, computed once for the terrain and the decor. */
+  canals: Canals
   /** The rings' offsets at a point of a side, `along` it from its counter-clockwise start. */
   offsetsAt(side: Side, along: number): number[]
 }
@@ -246,6 +249,7 @@ export function islandShape(island: IslandLayout, others: readonly Rect[]): Isla
     altitudes,
     samples,
     reach,
+    canals: islandCanals(island),
     // Between two samples, as the cliffs and terraces drawn from them are.
     offsetsAt(side, along) {
       const position = sides[side].start + along
@@ -275,10 +279,10 @@ function sideFactor(ahead: number): number {
 /**
  * The offsets of the plateau's edge and of each terrace, at a point of the edge where the
  * wobbles are `edgeWobble` and `ringWobbles` (0 to 1, one per terrace), each terrace about
- * `factor` u wide, the
- * nearest island `nearest` u away, and the terraces swelling out by `bulge` u in all.
+ * `factor` u wide, the nearest island `nearest` u away, and the terraces swelling out by
+ * `bulge` u in all.
  */
-export function ringOffsets(
+function ringOffsets(
   edgeWobble: number,
   ringWobbles: readonly number[],
   factor: number,

@@ -19,7 +19,7 @@ const CANAL_GAP = [1.5, 2.1] as const
 const SQUARE_REACH = 2.9
 const FOLDER_GAP = 1.8
 /** A canal at least this long gets a footbridge halfway along. */
-export const FOOTBRIDGE_RUN = 6
+const FOOTBRIDGE_RUN = 6
 /** How close two edges must be to count as touching. */
 const TOUCH = 0.01
 
