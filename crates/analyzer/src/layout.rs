@@ -160,17 +160,7 @@ pub fn of_result(result: &AnalysisResult) -> Layout {
         .files
         .language
         .iter()
-        .map(|&language| {
-            let name = &result.languages[language as usize];
-            [
-                Language::TypeScript,
-                Language::JavaScript,
-                Language::Python,
-                Language::Go,
-            ]
-            .iter()
-            .any(|analyzed| analyzed.name() == name)
-        })
+        .map(|&language| Language::analyzed_named(&result.languages[language as usize]).is_some())
         .collect();
     layout(&Input {
         parents: &dirs.parent,

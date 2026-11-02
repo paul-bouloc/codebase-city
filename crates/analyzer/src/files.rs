@@ -74,9 +74,23 @@ impl Language {
         }
     }
 
-    /// Whether the analyzer parses this language.
+    /// Every language the analyzer parses.
+    pub const ANALYZED: [Self; 4] = [Self::TypeScript, Self::JavaScript, Self::Python, Self::Go];
+
+    /// Whether the analyzer parses this language. A new language makes this
+    /// match fail to compile: add it to [`Language::ANALYZED`] too.
     pub const fn is_analyzed(self) -> bool {
-        !matches!(self, Self::Other(_))
+        match self {
+            Self::TypeScript | Self::JavaScript | Self::Python | Self::Go => true,
+            Self::Other(_) => false,
+        }
+    }
+
+    /// The analyzed language of this name, as a result names it.
+    pub fn analyzed_named(name: &str) -> Option<Self> {
+        Self::ANALYZED
+            .into_iter()
+            .find(|language| language.name() == name)
     }
 }
 
@@ -323,6 +337,10 @@ mod tests {
         assert!(Language::Go.is_analyzed());
         assert!(!Language::of("main.c").is_analyzed());
         assert_eq!(Language::of("main.c").name(), "C");
+        // The list agrees with the match, and finds a language by its name
+        assert!(Language::ANALYZED.iter().all(|language| language.is_analyzed()));
+        assert_eq!(Language::analyzed_named("Python"), Some(Language::Python));
+        assert_eq!(Language::analyzed_named("C"), None);
     }
 
     #[test]
