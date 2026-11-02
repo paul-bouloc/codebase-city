@@ -130,7 +130,8 @@ impl Tree {
 }
 
 /// Lays a result out again, from its folders, islands and files, as the
-/// analysis did: to time the layout on its own.
+/// analysis did: to time the layout on its own. The result must be valid
+/// (`AnalysisResult::validate`): its indexes are trusted.
 pub fn of_result(result: &AnalysisResult) -> Layout {
     let dirs = &result.dirs;
     let mut paths: Vec<String> = Vec::with_capacity(dirs.parent.len());

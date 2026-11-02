@@ -63,6 +63,8 @@ async fn main() -> anyhow::Result<()> {
     if name.ends_with(".json") {
         let text = std::fs::read_to_string(name).with_context(|| format!("reading {name}"))?;
         let mut result: AnalysisResult = serde_json::from_str(&text)?;
+        // Laying out an inconsistent result would index out of bounds: validate it first.
+        result.validate()?;
         result.layout = analyzer::layout::of_result(&result);
         result.validate()?;
         print_layout(&result);
