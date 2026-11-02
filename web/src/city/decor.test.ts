@@ -192,16 +192,23 @@ describe('cityDecor', () => {
       expect(altitudes.slice(1, -1)).toContain(tree.z)
       expect(tree.z).not.toBe(beach)
     }
-    // Next to another island, terraces narrow to under 0.8 u: no tree faces it, away from the
-    // corners, where they widen again toward the open sea
+    // Next to another island, terraces narrow: the trees facing it stand only where theirs is
+    // still about 0.8 u wide (measured where they stand, having slid along the contour)
     const pair = city(
       island('west', 'unanalyzed', { layer: 4, every: 1 }),
       island('east', 'unanalyzed', { layer: 4, every: 1, x: 52.2 }),
     )
+    const [west] = islandShapes(pair)
     const facing = cityDecor(pair, islandShapes(pair)).trees.filter(
       (tree) => tree.x > 42.4 && tree.x < 52.2 && tree.y > 10 && tree.y < 32,
     )
-    expect(facing).toEqual([])
+    for (const tree of facing) {
+      const ring = west?.altitudes.indexOf(tree.z) ?? 0
+      const offsets = west?.offsetsAt('east', tree.y) ?? []
+      expect((offsets[ring] ?? 0) - (offsets[ring - 1] ?? 0)).toBeGreaterThan(0.7)
+    }
+    // Most of that side is too narrow for any
+    expect(facing.length).toBeLessThan(5)
   })
 
   it('keeps the crown of a flank tree on its terrace, clear of the cliff above', () => {
@@ -225,6 +232,34 @@ describe('cityDecor', () => {
       checked++
     }
     expect(checked).toBeGreaterThan(10)
+  })
+
+  it('spreads rocks along the shore by its length, corners no denser than the sides', () => {
+    // Thirty small islands, far apart: their corners weigh much in their shores
+    const islands = Array.from({ length: 30 }, (_, n) =>
+      island(`rocky${n}`, 'unanalyzed', { columns: 5, rows: 3, every: 1, x: 100 * n }),
+    )
+    const layout = { islands, bounds: { x: 0, y: 0, width: 3000, height: 20 } }
+    const shapes = islandShapes(layout)
+    const shore = shapes.reduce((sum, shape) => {
+      const beach = shape.altitudes.length - 1
+      const ring = shape.samples.map((sample) => {
+        const o = sample.offsets[beach] ?? 0
+        return [sample.x + sample.nx * o, sample.y + sample.ny * o] as const
+      })
+      return (
+        sum +
+        ring.reduce((length, [x, y], i) => {
+          const [nx, ny] = ring[(i + 1) % ring.length] ?? [x, y]
+          return length + Math.hypot(nx - x, ny - y)
+        }, 0)
+      )
+    }, 0)
+    const rocks = cityDecor(layout, shapes).rocks.length
+    // 22 % of the points every 2.2 u
+    const expected = (0.22 * shore) / 2.2
+    expect(rocks / expected).toBeGreaterThan(0.8)
+    expect(rocks / expected).toBeLessThan(1.2)
   })
 
   it('keeps trees and rocks clear of cascades', () => {

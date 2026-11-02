@@ -1,6 +1,6 @@
 import { type CanalCell, islandCanals } from './canals'
 import { islandGardens, squareGardens } from './gardens'
-import type { IslandShape } from './island-shape'
+import { type ContourSample, type IslandShape, SAMPLE_STEP } from './island-shape'
 import type { CityLayout, IslandLayout, ParcelNature, Point, Rect } from './layout'
 import { seededRandom } from './random'
 import { LOT_SIZE, layerAltitude, slabTop } from './units'
@@ -286,13 +286,46 @@ function mouthsOf(island: IslandLayout, cells: readonly CanalCell[]): Point[] {
   })
 }
 
-/** Trees on the terraces' grass, rocks along the shore. */
+/**
+ * How much of a ring each sample stands for, where the ring is `offset` u out along its normal:
+ * half the way to each neighbour. Around a corner, eight samples share one point of the plateau
+ * and fan out: drawn alike, they would crowd the corners with trees and rocks.
+ */
+function coverage(
+  samples: readonly ContourSample[],
+  offset: (sample: ContourSample) => number,
+): number[] {
+  const points = samples.map((sample) => {
+    const o = offset(sample)
+    return { x: sample.x + sample.nx * o, y: sample.y + sample.ny * o }
+  })
+  const count = points.length
+  return points.map((point, index) => {
+    const previous = points[(index - 1 + count) % count] ?? point
+    const next = points[(index + 1) % count] ?? point
+    const half = (a: Point) => Math.hypot(a.x - point.x, a.y - point.y) / 2
+    return half(previous) + half(next)
+  })
+}
+
+/** Trees on the terraces' grass, rocks along the shore, as many per length all around. */
 function addFlanks(decor: Decor, shape: IslandShape, mouths: readonly Point[], small: boolean) {
   const { samples, altitudes, island } = shape
   const terraces = altitudes.length - 1
   const random = seededRandom(`decor/${island.path}/flanks`)
   const boost = small ? 2 : 1
-  for (const sample of samples) {
+  // The share a sample draws, from the length it stands for: about 1 along a side.
+  const along = (lengths: number[]) => lengths.map((length) => length / SAMPLE_STEP)
+  const terraceShares = Array.from({ length: terraces }, (_, ring) =>
+    along(
+      coverage(
+        samples,
+        (sample) => ((sample.offsets[ring - 1] ?? 0) + (sample.offsets[ring] ?? 0)) / 2,
+      ),
+    ),
+  )
+  const shoreShares = along(coverage(samples, (sample) => sample.offsets[terraces] ?? 0))
+  samples.forEach((sample, index) => {
     const nearCascade = mouths.some(
       (mouth) => Math.hypot(mouth.x - sample.x, mouth.y - sample.y) < CASCADE_CLEARANCE,
     )
@@ -305,7 +338,8 @@ function addFlanks(decor: Decor, shape: IslandShape, mouths: readonly Point[], s
       const outer = sample.offsets[ring] ?? inner
       const width = outer - inner
       const roll = random()
-      if (nearCascade || width < MIN_FLANK_WIDTH || roll >= FLANK_SHARE * boost) {
+      const share = FLANK_SHARE * boost * (terraceShares[ring]?.[index] ?? 1)
+      if (nearCascade || width < MIN_FLANK_WIDTH || roll >= share) {
         continue
       }
       const kind: TreeKind = random() < FLANK_CONIFERS ? 'conifer' : 'round'
@@ -332,8 +366,8 @@ function addFlanks(decor: Decor, shape: IslandShape, mouths: readonly Point[], s
       )
     }
     const roll = random()
-    if (nearCascade || roll >= ROCK_SHARE * boost) {
-      continue
+    if (nearCascade || roll >= ROCK_SHARE * boost * (shoreShares[index] ?? 1)) {
+      return
     }
     const radius = ROCK_RADII[0] + (ROCK_RADII[1] - ROCK_RADII[0]) * random()
     // At the foot of the beach, half in the water.
@@ -346,5 +380,5 @@ function addFlanks(decor: Decor, shape: IslandShape, mouths: readonly Point[], s
       angle: random() * Math.PI * 2,
       seed: random(),
     })
-  }
+  })
 }
