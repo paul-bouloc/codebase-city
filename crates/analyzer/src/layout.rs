@@ -17,6 +17,14 @@ use treemap::{Gap, LOT, Node};
 const ISLAND_MARGIN: u32 = 9;
 /// Space between the edge of a parcel and what it holds.
 const PARCEL_PADDING: u32 = 3;
+/// Parcels this many folders below their island or deeper hold their
+/// content without padding: a chain of thousands of nested folders would
+/// otherwise grow the city by 0.6 u a level.
+const PADDED_LEVELS: u32 = 8;
+/// The layout recurses once a folder level, building and dropping its tree:
+/// paths thousands of folders deep need more than a thread's usual stack.
+/// Reserved, not committed, memory.
+const LAYOUT_STACK: usize = 256 * 1024 * 1024;
 /// The smallest plateau, whichever way it is turned.
 const MIN_PLATEAU: (u32, u32) = (100, 66);
 /// The smallest island, as a share of the largest one's area.
@@ -117,7 +125,12 @@ impl Tree {
         for &child in &self.children[dir as usize] {
             if self.below[child as usize].files > 0 {
                 let content = self.content(child, level + 1);
-                items.push(Node::frame(child, PARCEL_PADDING, true, content, (0, 0)));
+                let padding = if level + 1 < PADDED_LEVELS {
+                    PARCEL_PADDING
+                } else {
+                    0
+                };
+                items.push(Node::frame(child, padding, true, content, (0, 0)));
             }
         }
         let aspect = if level == 0 {
@@ -170,8 +183,23 @@ pub fn of_result(result: &AnalysisResult) -> Layout {
     })
 }
 
-/// Lays the city out.
+/// Lays the city out, on a thread of its own with room for deep folders.
 pub(crate) fn layout(input: &Input) -> Layout {
+    std::thread::scope(|scope| {
+        let spawned = std::thread::Builder::new()
+            .stack_size(LAYOUT_STACK)
+            .spawn_scoped(scope, || layout_here(input));
+        match spawned {
+            Ok(handle) => handle
+                .join()
+                .unwrap_or_else(|panic| std::panic::resume_unwind(panic)),
+            // No thread to be had: lay it out here, which holds all but extreme depths.
+            Err(_) => layout_here(input),
+        }
+    })
+}
+
+fn layout_here(input: &Input) -> Layout {
     let dir_count = input.parents.len();
     let mut own = vec![Counts::default(); dir_count];
     let mut files_of: Vec<Vec<u32>> = vec![Vec::new(); dir_count];

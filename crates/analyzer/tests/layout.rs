@@ -268,3 +268,12 @@ fn deep_folders_nest_without_trouble() {
     let result = analyzed([format!("{deep}leaf.ts"), "main.ts".to_owned()]);
     assert_eq!(result.layout.parcels.dir.len(), 299);
 }
+
+#[test]
+fn folders_thousands_deep_neither_overflow_nor_grow_the_city() {
+    let deep: String = (0..3_000).map(|level| format!("d{level}/")).collect();
+    let result = analyzed([format!("{deep}leaf.ts"), "main.ts".to_owned()]);
+    assert_eq!(result.layout.parcels.dir.len(), 2_999);
+    // Past a few levels, parcels nest without padding: the city stays small
+    assert!(result.layout.width < 1_000 && result.layout.height < 1_000);
+}
