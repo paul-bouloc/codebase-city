@@ -338,7 +338,11 @@ mod tests {
         assert!(!Language::of("main.c").is_analyzed());
         assert_eq!(Language::of("main.c").name(), "C");
         // The list agrees with the match, and finds a language by its name
-        assert!(Language::ANALYZED.iter().all(|language| language.is_analyzed()));
+        assert!(
+            Language::ANALYZED
+                .iter()
+                .all(|language| language.is_analyzed())
+        );
         assert_eq!(Language::analyzed_named("Python"), Some(Language::Python));
         assert_eq!(Language::analyzed_named("C"), None);
     }
