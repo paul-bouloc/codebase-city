@@ -18,9 +18,24 @@ export const FOAM_WIDTH = 0.9
 /** Water left between the foams of two neighbours. */
 const FREE_WATER = 0.3
 
-/** The plateau's edge stands 0.85 u past the rectangle, plus up to 0.35 u of wobble. */
+/**
+ * The plateau's edge stands 0.85 u past the rectangle, plus a wobble of 0.35 u where room is
+ * short, up to 3.5 u on the open sea: a third of the room left before the guard.
+ */
 const EDGE_OFFSET = 0.85
-const EDGE_WOBBLE = 0.35
+const EDGE_WOBBLE = [0.35, 3.5] as const
+const EDGE_WOBBLE_SHARE = 0.35
+/**
+ * Wavelengths of the wobble along the edge, in u: a large island gets as many headlands and
+ * coves as its size allows, instead of three bumps however long its sides.
+ */
+const WOBBLE_WAVELENGTHS = [53, 29, 13] as const
+/**
+ * The terraces swell toward the middle of each side, nothing at the corners: 5 % of the side's
+ * length, 10 u at most, so that an island reads as a cushion rather than a box.
+ */
+const BULGE_SHARE = 0.05
+const BULGE_MAX = 10
 /** How far each terrace pushes out, facing the open sea or another island. */
 const OPEN_SEA_FACTOR = 1.3
 const FACING_FACTOR = 0.45
@@ -87,11 +102,14 @@ export function ringAltitudes(layer: number): number[] {
 export function islandShape(island: IslandLayout, others: readonly Rect[]): IslandShape {
   const altitudes = ringAltitudes(island.layer)
   const terraces = altitudes.length - 1
-  const wobble = edgeWobble(island.path)
   const { x: x0, y: y0, width, height } = island.plateau
   const x1 = x0 + width
   const y1 = y0 + height
   const perimeter = 2 * width + 2 * height + 4 * CORNER_LENGTH
+  // One wobble for the plateau's edge, another for the terraces: the beach does not just copy
+  // the cliff above it.
+  const edgeWobble = wobbleAlong(`island/${island.path}`, perimeter)
+  const ringWobble = wobbleAlong(`terraces/${island.path}`, perimeter)
 
   // Where each side starts along the perimeter, and the point it starts from.
   const sides: Record<Side, { start: number; from: [number, number]; normal: [number, number] }> = {
@@ -116,16 +134,17 @@ export function islandShape(island: IslandLayout, others: readonly Rect[]): Isla
     position: number
     factor: number
     nearest: number
+    bulge: number
   }
   const points: Point[] = []
-  const add = (position: number, x: number, y: number, nx: number, ny: number) => {
+  const add = (position: number, x: number, y: number, nx: number, ny: number, bulge = 0) => {
     let nearest = Number.POSITIVE_INFINITY
     let ahead = Number.POSITIVE_INFINITY
     for (const other of others) {
       nearest = Math.min(nearest, distanceToRect(x, y, other))
       ahead = Math.min(ahead, distanceAhead(x, y, nx, ny, other))
     }
-    points.push({ x, y, nx, ny, position, factor: sideFactor(ahead), nearest })
+    points.push({ x, y, nx, ny, position, factor: sideFactor(ahead), nearest, bulge })
   }
   const order: Side[] = ['south', 'east', 'north', 'west']
   for (const side of order) {
@@ -133,9 +152,17 @@ export function islandShape(island: IslandLayout, others: readonly Rect[]): Isla
     const [dx, dy] = directions[side]
     const length = side === 'south' || side === 'north' ? width : height
     const steps = Math.max(1, Math.round(length / SAMPLE_STEP))
+    const swell = Math.min(BULGE_SHARE * length, BULGE_MAX)
     for (let i = 0; i <= steps; i++) {
       const along = (length * i) / steps
-      add(start + along, from[0] + dx * along, from[1] + dy * along, normal[0], normal[1])
+      add(
+        start + along,
+        from[0] + dx * along,
+        from[1] + dy * along,
+        normal[0],
+        normal[1],
+        swell * Math.sin((Math.PI * i) / steps),
+      )
     }
     // The corner after this side turns the normal toward the next side's.
     const cornerX = from[0] + dx * length
@@ -165,7 +192,14 @@ export function islandShape(island: IslandLayout, others: readonly Rect[]): Isla
       y: point.y,
       nx: point.nx,
       ny: point.ny,
-      offsets: ringOffsets(wobble(point.position / perimeter), factor, point.nearest, terraces),
+      offsets: ringOffsets(
+        edgeWobble(point.position),
+        ringWobble(point.position),
+        factor,
+        point.nearest,
+        terraces,
+        point.bulge,
+      ),
     }
   })
 
@@ -203,23 +237,34 @@ function sideFactor(ahead: number): number {
 }
 
 /**
- * The offsets of the plateau's edge and of each terrace, at a point of the edge where the wobble
- * is `wobble` (0 to 1), each terrace `factor` u wide, and the nearest island `nearest` u away.
+ * The offsets of the plateau's edge and of each terrace, at a point of the edge where the
+ * wobbles are `edgeWobble` and `ringWobble` (0 to 1), each terrace `factor` u wide, the
+ * nearest island `nearest` u away, and the terraces swelling out by `bulge` u in all.
  */
 export function ringOffsets(
-  wobble: number,
+  edgeWobble: number,
+  ringWobble: number,
   factor: number,
   nearest: number,
   terraces: number,
+  bulge = 0,
 ): number[] {
-  const edge = EDGE_OFFSET + EDGE_WOBBLE * wobble
-  // One wobble for every ring, growing outward: rings never cross.
-  const rings = Array.from(
-    { length: terraces },
-    (_, index) => EDGE_OFFSET + (index + 1) * factor + (0.4 + 0.4 * (index + 1)) * factor * wobble,
-  )
   // Two neighbours share the water between them: each beach keeps to its half, foam included.
   const limit = nearest / 2 - FOAM_WIDTH - FREE_WATER
+  const amplitude = Math.min(
+    Math.max((limit - EDGE_OFFSET) * EDGE_WOBBLE_SHARE, EDGE_WOBBLE[0]),
+    EDGE_WOBBLE[1],
+  )
+  const edge = EDGE_OFFSET + amplitude * edgeWobble
+  // One wobble for every terrace, growing outward: rings never cross.
+  const rings = Array.from(
+    { length: terraces },
+    (_, index) =>
+      edge +
+      (index + 1) * factor +
+      (0.4 + 0.4 * (index + 1)) * factor * ringWobble +
+      (bulge * (index + 1)) / terraces,
+  )
   const beach = rings.at(-1) ?? edge
   if (beach > limit && beach > edge) {
     const scale = Math.max(0, limit - edge) / (beach - edge)
@@ -263,13 +308,18 @@ function smoothstep(distance: number): number {
   return t * t * (3 - 2 * t)
 }
 
-/** The design's edge noise, in [0, 1], over a position `t` from 0 to 1 around the island. */
-function edgeWobble(path: string): (t: number) => number {
-  const random = seededRandom(`island/${path}`)
-  const phases = [random(), random(), random()].map((value) => value * Math.PI * 2)
-  return (t) =>
-    0.5 +
-    0.25 * Math.sin(2 * Math.PI * 3 * t + (phases[0] ?? 0)) +
-    0.15 * Math.sin(2 * Math.PI * 7 * t + (phases[1] ?? 0)) +
-    0.1 * Math.sin(2 * Math.PI * 13 * t + (phases[2] ?? 0))
+/**
+ * The design's edge noise, in [0, 1], at a position `s` u along the edge: three seeded waves of
+ * about 53, 29 and 13 u, each a whole number of times around the island so that it closes.
+ */
+function wobbleAlong(seed: string, perimeter: number): (s: number) => number {
+  const random = seededRandom(seed)
+  const weights = [0.25, 0.15, 0.1]
+  const waves = WOBBLE_WAVELENGTHS.map((wavelength, index) => ({
+    k: (2 * Math.PI * Math.max(1, Math.round(perimeter / wavelength))) / perimeter,
+    phase: random() * Math.PI * 2,
+    weight: weights[index] ?? 0,
+  }))
+  return (s) =>
+    0.5 + waves.reduce((sum, wave) => sum + wave.weight * Math.sin(wave.k * s + wave.phase), 0)
 }
