@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { createBuildings } from './buildings'
+import { islandShapes } from './island-shape'
 import { boundsOf, type CityLayout } from './layout'
-import { createPlateaux } from './plateaux'
 import { createSea } from './sea'
+import { createTerrain } from './terrain'
 
 const EMPTY: CityLayout = { islands: [], bounds: boundsOf([]) }
 
@@ -10,7 +11,7 @@ const EMPTY: CityLayout = { islands: [], bounds: boundsOf([]) }
 describe('an empty city', () => {
   it('builds every layer without throwing', () => {
     expect(() => createSea(EMPTY)).not.toThrow()
-    expect(() => createPlateaux(EMPTY)).not.toThrow()
+    expect(() => createTerrain(islandShapes(EMPTY))).not.toThrow()
     expect(() => createBuildings(EMPTY, 1)).not.toThrow()
   })
 })

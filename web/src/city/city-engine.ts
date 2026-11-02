@@ -25,10 +25,12 @@ import {
   WebGLRenderer,
 } from 'three'
 import { createBuildings } from './buildings'
+import { islandShapes } from './island-shape'
 import type { CityLayout } from './layout'
 import { SUN_DIRECTION } from './light'
-import { createParcels, createPlateaux } from './plateaux'
+import { createParcels } from './plateaux'
 import { createSea, OPEN_SEA, seaSize } from './sea'
+import { createTerrain } from './terrain'
 import { boardToThree } from './units'
 
 CameraControls.install({
@@ -122,9 +124,10 @@ export class CityEngine {
       this.scene.remove(this.city)
       disposeObject(this.city)
     }
+    const shapes = islandShapes(layout)
     this.city = new Group().add(
       createSea(layout),
-      createPlateaux(layout),
+      createTerrain(shapes),
       createParcels(layout),
       createBuildings(layout, this.renderer.getPixelRatio()),
     )

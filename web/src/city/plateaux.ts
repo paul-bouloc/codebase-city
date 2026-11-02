@@ -5,7 +5,6 @@ import { shadingFragmentPars, shadingUniforms, shadingVertex, shadingVertexPars 
 import { boardToThree, layerAltitude, mixSrgb, slabTop, srgb, type Vec3 } from './units'
 
 const PAVING = srgb('#EDE3CF')
-const CLIFF = srgb('#D2AE84')
 const MEADOW = srgb('#C5DFA4')
 const MEADOW_EDGE = srgb('#A9C58A')
 const INNER_MEADOW = srgb('#D3E8B6')
@@ -40,22 +39,6 @@ interface Block {
   top: number
   topColour: Vec3
   sideColour: Vec3
-}
-
-/**
- * Every island as a flat-topped block at its layer's altitude, in one draw call: a placeholder
- * until islands get their terraces, beaches and cliffs.
- */
-export function createPlateaux(layout: CityLayout): Mesh {
-  return blocksMesh(
-    layout.islands.map(({ plateau, layer }) => ({
-      rect: plateau,
-      bottom: 0,
-      top: layerAltitude(layer),
-      topColour: PAVING,
-      sideColour: CLIFF,
-    })),
-  )
 }
 
 /** Every parcel as a flat slab on its island, nested ones higher, in one draw call. */
@@ -98,17 +81,21 @@ function blocksMesh(blocks: Block[]): Mesh {
   for (const block of geometries) {
     block.dispose()
   }
-  const material = new ShaderMaterial({
+  const mesh = new Mesh(geometry, groundMaterial())
+  mesh.castShadow = true
+  mesh.receiveShadow = true
+  return mesh
+}
+
+/** Flat colours from the vertices, shaded like the rest of the city. */
+export function groundMaterial(): ShaderMaterial {
+  return new ShaderMaterial({
     uniforms: shadingUniforms(),
     vertexShader,
     fragmentShader,
     lights: true,
     vertexColors: true,
   })
-  const mesh = new Mesh(geometry, material)
-  mesh.castShadow = true
-  mesh.receiveShadow = true
-  return mesh
 }
 
 /** One colour on top, another on the sides. */
