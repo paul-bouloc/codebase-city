@@ -648,7 +648,9 @@ function decodeLayout(value: unknown, dirs: Dirs, islands: Islands, files: Files
   for (const group of groups.values()) {
     group.sort((a, b) => a.box.x - b.box.x)
     group.forEach((item, index) => {
-      for (const other of group.slice(index + 1)) {
+      // Indexed rather than sliced: a slice copies the rest of the group on every item.
+      for (let next = index + 1; next < group.length; next++) {
+        const other = group[next] as (typeof group)[number]
         if (other.box.x >= item.box.x + item.box.width) {
           break
         }
