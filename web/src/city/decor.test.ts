@@ -183,9 +183,9 @@ describe('cityDecor', () => {
 })
 
 describe('decor models', () => {
-  it('stay within the design budget', () => {
+  it('stay within their triangle budget', () => {
     expect(DECOR_MODELS.conifer.length / 3).toBe(6)
-    // Two tiers with their tops and a four-sided trunk: 40, the design says 34
+    // Two tiers with their tops and a four-sided trunk
     expect(DECOR_MODELS.round.length / 3).toBe(40)
     expect(DECOR_MODELS.rock.length / 3).toBe(5)
   })

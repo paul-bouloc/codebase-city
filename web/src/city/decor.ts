@@ -17,7 +17,7 @@ export interface Tree {
   y: number
   z: number
   kind: TreeKind
-  /** The design's `s`, 0.7 to 1.2. */
+  /** Scale of the model, 0.7 to 1.2. */
   size: number
   /** Turn about the vertical, in radians. */
   angle: number
@@ -60,7 +60,7 @@ const LOT_ROOM = LOT_SIZE / 2 - 0.1
 /** Two crowns in one lot may overlap this much of their radii, no more. */
 const CROWN_OVERLAP = 0.7
 const PLACEMENT_TRIES = 12
-/** Conifers in lots and gardens; the design gives 60 % on the flanks only. */
+/** Conifers in lots and gardens, and on the flanks. */
 const LOT_CONIFERS = 0.3
 const FLANK_CONIFERS = 0.6
 
@@ -79,7 +79,7 @@ const CASCADE_CLEARANCE = 1.5 + 0.38
 
 /**
  * At most this many trees in the empty lots of a city's folders. The layout's stretch leaves
- * many more empty lots than the design's 13 % (vscode: 56 %, 52,000 trees and 1.5 M triangles);
+ * many more empty lots than the 13 % it draws (vscode: 56 %, 52,000 trees and 1.5 M triangles);
  * past the budget, only a share of them is wooded, the others stay meadow, clearings.
  */
 const LOT_TREE_BUDGET = 16_000

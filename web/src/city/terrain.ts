@@ -12,8 +12,8 @@ const CLIFF = srgb('#D2AE84')
 const GRASS = ['#A2C981', '#AED18A', '#B9D894', '#C3DE9E', '#CDE3A8', '#D6E8B2'].map(srgb)
 const SAND = srgb('#F2E2BE')
 const SAND_FLANK = mixSrgb('#F2E2BE', '#000000', 0.12)
-// The design's `mix(sea, white, 40 %)`, from the shallow band the beach stands in: from the
-// open sea, the foam came out darker than the water around it.
+// `mix(sea, white, 40 %)`, from the shallow band the beach stands in: mixed from the open sea,
+// the foam would be darker than the water around it.
 const FOAM = mixSrgb(SHORE_BAND, '#FFFFFF', 0.4)
 const WHITE = srgb('#FFFFFF')
 /** Just above the sea, which is drawn first and writes no depth. */

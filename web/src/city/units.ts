@@ -11,7 +11,7 @@ export function clampLayer(layer: number): number {
 
 /**
  * Height of an island's plateau above the sea, from its layer: 0.6 u to 2.4 u, five floors at
- * most. The design's 1.2 to 8.4 u (seventeen floors) looked nothing like land (Paul, T027).
+ * most, low enough to read as land rather than as towers.
  */
 export function layerAltitude(layer: number): number {
   return 0.6 + 0.45 * (clampLayer(layer) - 1)
@@ -43,7 +43,7 @@ export function boardToThree(x: number, y: number, z: number): Vec3 {
 
 /**
  * An sRGB colour as three channels in [0, 1], untouched by three.js colour management:
- * the city's shaders mix colours in sRGB, as the design does.
+ * the city's shaders mix colours in sRGB.
  */
 export function srgb(hex: string): Vec3 {
   const match = /^#([0-9a-f]{6})$/i.exec(hex)

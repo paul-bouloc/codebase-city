@@ -18,7 +18,7 @@ import { boardToThree, srgb, type Vec3 } from './units'
 
 const TRUNK = srgb('#8A6A4A')
 const ROCK = srgb('#ADA79B')
-/** The design's flanks `mix(f, black, 12 %)`, and tops a little lighter. */
+/** Flanks are `mix(f, black, 12 %)`, tops a little lighter. */
 const FLANK_DARKENING = 0.12
 const TOP_LIGHTENING = 0.14
 
