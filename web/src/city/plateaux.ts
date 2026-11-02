@@ -15,6 +15,7 @@ const TEST_PARK_EDGE = srgb('#93BC6E')
 const CONCRETE = srgb('#D9D5CC')
 /** Edges of a top are `mix(top, black, 12 %)`. */
 const CONCRETE_EDGE = mixSrgb('#D9D5CC', '#000000', 0.12)
+const PAVING_EDGE = mixSrgb('#EDE3CF', '#000000', 0.12)
 
 const vertexShader = /* glsl */ `
 ${shadingVertexPars}
@@ -62,8 +63,8 @@ export function createParcels(layout: CityLayout): Mesh {
   return blocksMesh(
     layout.islands.flatMap(({ parcels, layer }) => {
       const altitude = layerAltitude(layer)
-      return parcels.map(({ rect, level, nature }) => {
-        const [topColour, sideColour] = parcelColours(nature, level)
+      return parcels.map(({ rect, level, nature, paved }) => {
+        const [topColour, sideColour] = paved ? [PAVING, PAVING_EDGE] : parcelColours(nature, level)
         return { rect, bottom: altitude, top: altitude + slabTop(level), topColour, sideColour }
       })
     }),

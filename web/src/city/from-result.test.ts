@@ -66,11 +66,69 @@ describe('cityFromResult', () => {
     json.layout.lots.y[8] = 22
     const core = cityFromResult(decodeResult(json)).islands[2]
     expect(core?.parcels).toEqual([
-      { rect: { x: 45.2, y: 0.9, width: 2.6, height: 2.6 }, level: 1, nature: 'tests' },
+      {
+        rect: { x: 45.2, y: 0.9, width: 2.6, height: 2.6 },
+        level: 1,
+        nature: 'tests',
+        paved: false,
+      },
     ])
     expect(core?.lots.find((lot) => lot.x === 46.5)).toMatchObject({ base: 0.15, ground: 'tests' })
     // On the plateau, the ground is ordinary
     expect(core?.lots[0]?.ground).toBe('normal')
+  })
+
+  it('paves a folder with subfolders, and raises its own files on a slab', () => {
+    // In the `core` island, `src/core/sub` holds `utils.ts` and a folder, `deep`, with `index.ts`
+    const json = structuredClone(sample) as unknown as AnalysisResult
+    json.dirs.parent.push(2, 8)
+    json.dirs.name.push('sub', 'deep')
+    json.dirs.island.push(2, 2)
+    json.files.dir[7] = 8
+    json.files.dir[8] = 9
+    json.layout.islands.width[2] = 150
+    json.layout.parcels = {
+      dir: [8, 9],
+      x: [432, 464],
+      y: [6, 9],
+      width: [64, 26],
+      height: [32, 26],
+      nature: ['normal', 'normal'],
+    }
+    json.layout.grids.columns[2] = 2
+    json.layout.grids.dir.push(8, 9)
+    json.layout.grids.x.push(435, 467)
+    json.layout.grids.y.push(12, 12)
+    json.layout.grids.columns.push(1, 1)
+    json.layout.grids.rows.push(1, 1)
+    json.layout.lots.x.splice(6, 3, 399, 445, 477)
+    json.layout.lots.y.splice(6, 3, 19, 22, 22)
+    const core = cityFromResult(decodeResult(json)).islands[2]
+    expect(core?.parcels).toEqual([
+      {
+        rect: { x: 43.2, y: 0.6, width: 6.4, height: 3.2 },
+        level: 1,
+        nature: 'normal',
+        paved: true,
+      },
+      {
+        rect: { x: 46.4, y: 0.9, width: 2.6, height: 2.6 },
+        level: 2,
+        nature: 'normal',
+        paved: false,
+      },
+      // The slab of `sub`'s own files
+      {
+        rect: { x: 43.2, y: 0.9, width: 2.6, height: 2.6 },
+        level: 2,
+        nature: 'normal',
+        paved: false,
+      },
+    ])
+    expect(core?.lots.find((lot) => lot.x === 44.5)?.base).toBe(slabTop(2))
+    expect(core?.lots.find((lot) => lot.x === 47.7)?.base).toBe(slabTop(2))
+    // The island folder's own files stand in a square on the plateau
+    expect(core?.square).toEqual({ x: 38.6, y: 0.6, width: 4.6, height: 4.6 })
   })
 
   it('names the languages it paints in their own colour', () => {

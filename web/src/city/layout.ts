@@ -51,6 +51,11 @@ export interface ParcelLayout {
   /** 1 for a folder of the island, 2 for one of its subfolders, and so on. */
   level: number
   nature: ParcelNature
+  /**
+   * A folder with subfolders is paved: the gaps between their parcels are its streets. Its own
+   * files then stand on a slab of their own, one level up. False if absent.
+   */
+  paved?: boolean
 }
 
 export interface IslandLayout {
@@ -61,6 +66,8 @@ export interface IslandLayout {
   /** Outer parcels first, so that each parcel comes after the one it stands on. */
   parcels: ParcelLayout[]
   lots: Lot[]
+  /** Where the island folder's own files stand on the plateau, their lots and margin. */
+  square?: Rect
 }
 
 export interface CityLayout {
