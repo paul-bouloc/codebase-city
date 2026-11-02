@@ -145,6 +145,27 @@ describe('islandShapes', () => {
     expect(westWest).toBeGreaterThan(8)
   })
 
+  it('widens the terraces gradually around a corner, without a step', () => {
+    // A high island faces a neighbour on its east side only: around its north-east corner, the
+    // narrow terraces of that side meet the wide ones of the north side
+    const layout: CityLayout = {
+      islands: [
+        island('west', { x: 0, y: 0, width: 30, height: 20 }, 5),
+        island('east', { x: 39, y: -10, width: 30, height: 20 }, 5),
+      ],
+      bounds: { x: 0, y: -10, width: 69, height: 30 },
+    }
+    const [west] = islandShapes(layout)
+    const samples = west?.samples ?? []
+    samples.forEach((sample, index) => {
+      const next = samples[(index + 1) % samples.length] ?? sample
+      const step = Math.abs((next.offsets.at(-1) ?? 0) - (sample.offsets.at(-1) ?? 0))
+      // Within a corner, where the normal turns on one point, the beach barely moves
+      const sameCorner = next.x === sample.x && next.y === sample.y
+      expect(step).toBeLessThan(sameCorner ? 0.5 : 2)
+    })
+  })
+
   it('keeps every pair of beaches apart in a packed city', () => {
     const shapes = islandShapes(syntheticCity({ islands: 12, files: 900, seed: 'beaches' }))
     for (let a = 0; a < shapes.length; a++) {

@@ -29,6 +29,11 @@ const FACING_NEAR = 24
 const FACING_FAR = 36
 /** Each rounded corner counts as this much length when the wobble runs along the edge. */
 const CORNER_LENGTH = Math.PI / 2
+/**
+ * The terraces' width is averaged over this much of the edge, each way: around a corner, from a
+ * side facing an island to one facing the open sea, it changes gradually instead of in a step.
+ */
+const FACTOR_SMOOTHING = 8
 
 export type Side = 'south' | 'east' | 'north' | 'west'
 
@@ -101,17 +106,26 @@ export function islandShape(island: IslandLayout, others: readonly Rect[]): Isla
     west: [0, -1],
   }
 
-  const offsets = (position: number, x: number, y: number, nx: number, ny: number): number[] => {
+  // First the points around the plateau, with what each one faces.
+  interface Point {
+    x: number
+    y: number
+    nx: number
+    ny: number
+    position: number
+    factor: number
+    nearest: number
+  }
+  const points: Point[] = []
+  const add = (position: number, x: number, y: number, nx: number, ny: number) => {
     let nearest = Number.POSITIVE_INFINITY
     let ahead = Number.POSITIVE_INFINITY
     for (const other of others) {
       nearest = Math.min(nearest, distanceToRect(x, y, other))
       ahead = Math.min(ahead, distanceAhead(x, y, nx, ny, other))
     }
-    return ringOffsets(wobble(position / perimeter), ahead, nearest, terraces)
+    points.push({ x, y, nx, ny, position, factor: sideFactor(ahead), nearest })
   }
-
-  const samples: ContourSample[] = []
   const order: Side[] = ['south', 'east', 'north', 'west']
   for (const side of order) {
     const { start, from, normal } = sides[side]
@@ -120,15 +134,7 @@ export function islandShape(island: IslandLayout, others: readonly Rect[]): Isla
     const steps = Math.max(1, Math.round(length / SAMPLE_STEP))
     for (let i = 0; i <= steps; i++) {
       const along = (length * i) / steps
-      const x = from[0] + dx * along
-      const y = from[1] + dy * along
-      samples.push({
-        x,
-        y,
-        nx: normal[0],
-        ny: normal[1],
-        offsets: offsets(start + along, x, y, normal[0], normal[1]),
-      })
+      add(start + along, from[0] + dx * along, from[1] + dy * along, normal[0], normal[1])
     }
     // The corner after this side turns the normal toward the next side's.
     const cornerX = from[0] + dx * length
@@ -137,45 +143,74 @@ export function islandShape(island: IslandLayout, others: readonly Rect[]): Isla
     for (let m = 1; m <= CORNER_SAMPLES; m++) {
       const turn = m / (CORNER_SAMPLES + 1)
       const angle = base + (Math.PI / 2) * turn
-      const nx = Math.cos(angle)
-      const ny = Math.sin(angle)
-      samples.push({
-        x: cornerX,
-        y: cornerY,
-        nx,
-        ny,
-        offsets: offsets(start + length + CORNER_LENGTH * turn, cornerX, cornerY, nx, ny),
-      })
+      add(start + length + CORNER_LENGTH * turn, cornerX, cornerY, Math.cos(angle), Math.sin(angle))
     }
   }
 
+  // Then the rings, from the side factor averaged along the edge (a tent, around the island).
+  const samples: ContourSample[] = points.map((point) => {
+    let weighted = 0
+    let weights = 0
+    for (const other of points) {
+      const apart = Math.abs(other.position - point.position)
+      const distance = Math.min(apart, perimeter - apart)
+      const weight = Math.max(0, 1 - distance / FACTOR_SMOOTHING)
+      weighted += weight * other.factor
+      weights += weight
+    }
+    const factor = weights > 0 ? weighted / weights : point.factor
+    return {
+      x: point.x,
+      y: point.y,
+      nx: point.nx,
+      ny: point.ny,
+      offsets: ringOffsets(wobble(point.position / perimeter), factor, point.nearest, terraces),
+    }
+  })
+
   const reach = Math.max(0, ...samples.map((sample) => sample.offsets[terraces] ?? 0))
+  const positions = points.map((point) => point.position)
   return {
     island,
     altitudes,
     samples,
     reach,
+    // Between two samples, as the cliffs and terraces drawn from them are.
     offsetsAt(side, along) {
-      const { start, from, normal } = sides[side]
-      const [dx, dy] = directions[side]
-      const x = from[0] + dx * along
-      const y = from[1] + dy * along
-      return offsets(start + along, x, y, normal[0], normal[1])
+      const position = sides[side].start + along
+      let next = positions.findIndex((value) => value > position)
+      if (next < 0) {
+        next = 0
+      }
+      const previous = (next - 1 + positions.length) % positions.length
+      const from = positions[previous] ?? 0
+      let to = positions[next] ?? 0
+      if (to <= from) {
+        to += perimeter
+      }
+      const t = to > from ? Math.min(Math.max((position - from) / (to - from), 0), 1) : 0
+      const a = samples[previous]?.offsets ?? []
+      const b = samples[next]?.offsets ?? []
+      return a.map((value, ring) => value + ((b[ring] ?? value) - value) * t)
     },
   }
 }
 
+/** How wide the terraces are where the island ahead is `ahead` u away: narrow when it is close. */
+function sideFactor(ahead: number): number {
+  return FACING_FACTOR + (OPEN_SEA_FACTOR - FACING_FACTOR) * smoothstep(ahead)
+}
+
 /**
  * The offsets of the plateau's edge and of each terrace, at a point of the edge where the wobble
- * is `wobble` (0 to 1), the island it faces `ahead` u away, and the nearest one `nearest` u.
+ * is `wobble` (0 to 1), each terrace `factor` u wide, and the nearest island `nearest` u away.
  */
 export function ringOffsets(
   wobble: number,
-  ahead: number,
+  factor: number,
   nearest: number,
   terraces: number,
 ): number[] {
-  const factor = FACING_FACTOR + (OPEN_SEA_FACTOR - FACING_FACTOR) * smoothstep(ahead)
   const edge = EDGE_OFFSET + EDGE_WOBBLE * wobble
   // One wobble for every ring, growing outward: rings never cross.
   const rings = Array.from(
