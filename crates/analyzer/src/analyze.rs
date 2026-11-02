@@ -459,15 +459,24 @@ impl DirTree {
     /// The row of the folder at `path` (`""` for the root), added with its
     /// missing ancestors.
     fn index(&mut self, path: &str) -> u32 {
-        if let Some(&row) = self.by_path.get(path) {
-            return row;
+        // Up to the nearest known ancestor, then down: a loop, not a recursion,
+        // for paths thousands of folders deep.
+        let mut missing = Vec::new();
+        let mut current = path;
+        let mut row = loop {
+            if let Some(&row) = self.by_path.get(current) {
+                break row;
+            }
+            missing.push(current);
+            current = split_path(current).0;
+        };
+        for &path in missing.iter().rev() {
+            let parent = row;
+            row = index(self.dirs.parent.len());
+            self.dirs.parent.push(Some(parent));
+            self.dirs.name.push(split_path(path).1.to_owned());
+            self.by_path.insert(path.to_owned(), row);
         }
-        let (parent_path, name) = split_path(path);
-        let parent = self.index(parent_path);
-        let row = index(self.dirs.parent.len());
-        self.dirs.parent.push(Some(parent));
-        self.dirs.name.push(name.to_owned());
-        self.by_path.insert(path.to_owned(), row);
         row
     }
 }
