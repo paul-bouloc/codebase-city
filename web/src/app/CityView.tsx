@@ -42,7 +42,12 @@ export function CityView({ layout, showStats = false, onEngine }: CityViewProps)
   }, [engine, layout])
 
   useEffect(() => {
+    if (!engine) {
+      return
+    }
     onEngine?.(engine)
+    // Unmounted, the view renders no more: its engine is gone, and the parent must know.
+    return () => onEngine?.(null)
   }, [engine, onEngine])
 
   return (
