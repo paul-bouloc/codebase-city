@@ -474,6 +474,12 @@ function decodeCycles(value: unknown, fileCount: number): Cycles {
 
 /** Lots are 2 × 2 u, in tenths. */
 const LOT = 20
+/** A city of n files spans at most (n + 16) × 1,000 u², in tenths, as the Rust model checks. */
+const MAX_AREA_PER_FILE = 100_000
+const SLACK_FILES = 16
+/** At most 8 lots a file, and 256 more. */
+const MAX_LOTS_PER_FILE = 8
+const SLACK_LOTS = 256
 
 interface Box {
   x: number
@@ -596,6 +602,19 @@ function decodeLayout(value: unknown, dirs: Dirs, islands: Islands, files: Files
   const width = u32(fields.width, 'layout.width')
   const height = u32(fields.height, 'layout.height')
   const city = { x: 0, y: 0, width, height }
+  // However it came, a layout stays in proportion to its files: the city draws every lot and
+  // every metre of shore of it.
+  const fileCount = files.dir.length
+  if (width * height > (fileCount + SLACK_FILES) * MAX_AREA_PER_FILE) {
+    fail('the layout is too large for its files: layout.width and layout.height')
+  }
+  let lotCount = 0
+  grids.columns.forEach((columns, row) => {
+    lotCount += columns * (grids.rows[row] as number)
+  })
+  if (lotCount > MAX_LOTS_PER_FILE * fileCount + SLACK_LOTS) {
+    fail('the layout is too large for its files: layout.grids')
+  }
   // The rectangles that share a container: the islands of the city, or what
   // holds a folder's content
   const groups = new Map<number, { table: string; row: number; box: Box }[]>()

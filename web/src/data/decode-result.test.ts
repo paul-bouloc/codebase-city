@@ -487,6 +487,20 @@ describe('decodeResult', () => {
     ).toThrow('layout.grids[1] must have a size')
   })
 
+  it('rejects a layout out of proportion to its files', () => {
+    expect(
+      decodeChanged((json) => {
+        json.layout.width = 2 ** 32 - 1
+        json.layout.height = 2 ** 32 - 1
+      }),
+    ).toThrow('the layout is too large for its files: layout.width and layout.height')
+    expect(
+      decodeChanged((json) => {
+        json.layout.grids.rows[0] = 100_000
+      }),
+    ).toThrow('the layout is too large for its files: layout.grids')
+  })
+
   it('requires each file on a lot of its own on its grid', () => {
     expect(
       decodeChanged((json) => {

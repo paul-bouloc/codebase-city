@@ -84,6 +84,8 @@ pub enum InvalidResult {
     LotOutside { row: usize },
     #[error("layout.lots[{row}] shares its lot with another file")]
     LotShared { row: usize },
+    #[error("the layout is too large for its files: {what}")]
+    LayoutTooLarge { what: &'static str },
     #[error(
         "stats.importsResolved and stats.importsExternal add up to more than stats.importsTotal"
     )]
@@ -370,6 +372,13 @@ impl Rect {
 
 /// Lots are 2 × 2 u, in tenths.
 const LOT: u64 = 20;
+/// A city of n files spans at most (n + 16) × 1,000 u², in tenths: the layout gives about 20 to
+/// 60 u² a file, a minimal island 66 u².
+const MAX_AREA_PER_FILE: u64 = 100_000;
+const SLACK_FILES: u64 = 16;
+/// At most 8 lots a file, and 256 more: the layout leaves about 2.
+const MAX_LOTS_PER_FILE: u64 = 8;
+const SLACK_LOTS: u64 = 256;
 
 /// Islands lie in the city, parcels and grids in their island or parent
 /// parcel without overlapping, and each file on a lot of its folder's grid.
@@ -424,6 +433,26 @@ fn layout(result: &AnalysisResult) -> Result<(), InvalidResult> {
     }
 
     let city = Rect::new(0, 0, layout.width, layout.height);
+    // However it came, a layout stays in proportion to its files: a browser draws every lot and
+    // every metre of shore of it.
+    let files = file_count as u64;
+    if city.width * city.height > (files + SLACK_FILES) * MAX_AREA_PER_FILE {
+        return Err(InvalidResult::LayoutTooLarge {
+            what: "layout.width and layout.height",
+        });
+    }
+    let lots = grids
+        .columns
+        .iter()
+        .zip(&grids.rows)
+        .fold(0u64, |sum, (&columns, &rows)| {
+            sum.saturating_add(u64::from(columns) * u64::from(rows))
+        });
+    if lots > MAX_LOTS_PER_FILE * files + SLACK_LOTS {
+        return Err(InvalidResult::LayoutTooLarge {
+            what: "layout.grids",
+        });
+    }
     let plateau = |island: usize| {
         Rect::new(
             plateaux.x[island],
@@ -1272,6 +1301,25 @@ mod tests {
     }
 
     #[test]
+    fn a_layout_stays_in_proportion_to_its_files() {
+        assert_eq!(
+            invalid(|r| {
+                r.layout.width = u32::MAX;
+                r.layout.height = u32::MAX;
+            }),
+            InvalidResult::LayoutTooLarge {
+                what: "layout.width and layout.height"
+            }
+        );
+        assert_eq!(
+            invalid(|r| r.layout.grids.rows[0] = 100_000),
+            InvalidResult::LayoutTooLarge {
+                what: "layout.grids"
+            }
+        );
+    }
+
+    #[test]
     fn islands_lie_apart_in_the_city() {
         assert_eq!(
             invalid(|r| r.layout.width = 299),
@@ -1353,10 +1401,13 @@ mod tests {
         );
         // Its size in tenths overflows a u32: never mistaken for a smaller one
         assert_eq!(
-            invalid_parcel(|r| r.layout.grids.columns[1] = u32::MAX),
-            InvalidResult::LayoutOutside {
-                table: "layout.grids",
-                row: 1,
+            invalid_parcel(|r| {
+                r.layout.grids.columns[1] = u32::MAX / 10;
+                r.layout.grids.rows[1] = 1;
+                r.layout.grids.columns[0] = 1;
+            }),
+            InvalidResult::LayoutTooLarge {
+                what: "layout.grids"
             }
         );
         // The grid of `src` and the parcel of `src/lib` share the plateau
