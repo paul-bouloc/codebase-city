@@ -58,6 +58,16 @@ export interface ParcelLayout {
   paved?: boolean
 }
 
+/** A folder's grid of 2 × 2 u lots, some holding its files, the others left empty. */
+export interface GridLayout {
+  /** The lots alone, without the parcel's margin around them. */
+  rect: Rect
+  /** The nature of the ground the grid stands on. */
+  nature: ParcelNature
+  /** Height of that ground above the plateau, in u, as its lots' `base`. */
+  base: number
+}
+
 export interface IslandLayout {
   path: string
   /** 1 (foundations, lowest) to 5 (highest). */
@@ -68,6 +78,8 @@ export interface IslandLayout {
   lots: Lot[]
   /** Where the island folder's own files stand on the plateau, their lots and margin. */
   square?: Rect
+  /** Every grid of the island; none if absent (a city made up for development). */
+  grids?: GridLayout[]
 }
 
 export interface CityLayout {

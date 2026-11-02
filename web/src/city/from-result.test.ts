@@ -129,6 +129,12 @@ describe('cityFromResult', () => {
     expect(core?.lots.find((lot) => lot.x === 47.7)?.base).toBe(slabTop(2))
     // The island folder's own files stand in a square on the plateau
     expect(core?.square).toEqual({ x: 38.6, y: 0.6, width: 4.6, height: 4.6 })
+    // Every grid, its lots alone, at the height of the ground under them
+    expect(core?.grids).toEqual([
+      { rect: { x: 38.9, y: 0.9, width: 4, height: 4 }, nature: 'normal', base: 0 },
+      { rect: { x: 43.5, y: 1.2, width: 2, height: 2 }, nature: 'normal', base: slabTop(2) },
+      { rect: { x: 46.7, y: 1.2, width: 2, height: 2 }, nature: 'normal', base: slabTop(2) },
+    ])
   })
 
   it('names the languages it paints in their own colour', () => {

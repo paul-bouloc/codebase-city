@@ -90,6 +90,7 @@ export function cityFromResult(result: AnalysisResult): CityLayout {
     ),
     parcels: [],
     lots: [],
+    grids: [],
   }))
   const parcels = layout.parcels
   // A folder whose subfolders have parcels is paved: the gaps between them are its streets.
@@ -121,20 +122,25 @@ export function cityFromResult(result: AnalysisResult): CityLayout {
   // The own files of a paved folder stand on a slab one level up, with the margin of a parcel;
   // those of an island's folder stand on its plateau, in a square.
   const natureOf = new Map(parcels.dir.map((dir, row) => [dir, parcels.nature[row]]))
+  const groundLevel = (dir: number) => (level[dir] ?? 0) + (paved.has(dir) ? 1 : 0)
   const { grids } = layout
   grids.dir.forEach((dir, row) => {
     const island = islands[dirs.island[dir] ?? 0]
-    const lots = withMargin(
-      rect(
-        grids.x[row] ?? 0,
-        grids.y[row] ?? 0,
-        (grids.columns[row] ?? 0) * LOT_TENTHS,
-        (grids.rows[row] ?? 0) * LOT_TENTHS,
-      ),
+    const cells = rect(
+      grids.x[row] ?? 0,
+      grids.y[row] ?? 0,
+      (grids.columns[row] ?? 0) * LOT_TENTHS,
+      (grids.rows[row] ?? 0) * LOT_TENTHS,
     )
+    const lots = withMargin(cells)
     if (!island) {
       return
     }
+    island.grids?.push({
+      rect: cells,
+      nature: natureOf.get(dir) ?? 'normal',
+      base: slabTop(groundLevel(dir)),
+    })
     if (islandDirs.has(dir)) {
       island.square = lots
     } else if (paved.has(dir)) {
@@ -146,7 +152,6 @@ export function cityFromResult(result: AnalysisResult): CityLayout {
       })
     }
   })
-  const groundLevel = (dir: number) => (level[dir] ?? 0) + (paved.has(dir) ? 1 : 0)
 
   files.dir.forEach((dir, file) => {
     const scope = files.scope[file]
