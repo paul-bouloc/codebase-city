@@ -64,3 +64,13 @@ export function mixSrgb(a: string, b: string, amount: number): Vec3 {
     from[2] + (to[2] - from[2]) * amount,
   ]
 }
+
+/**
+ * The camera's near plane, from its distance to its target: 2 % of it, from 0.5 u to 50 u.
+ * Depth precision hangs on the near plane; fixed at 1 u, slabs 0.05 u apart fought for depth
+ * once the camera stood a few hundred u away (vscode as a whole). Nothing stands that close to
+ * a camera looking down on the city.
+ */
+export function nearPlane(distance: number): number {
+  return Math.min(Math.max(distance * 0.02, 0.5), 50)
+}

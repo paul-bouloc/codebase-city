@@ -31,7 +31,7 @@ import { SUN_DIRECTION } from './light'
 import { createParcels } from './plateaux'
 import { createSea, OPEN_SEA, seaSize } from './sea'
 import { createTerrain } from './terrain'
-import { boardToThree } from './units'
+import { boardToThree, nearPlane } from './units'
 
 CameraControls.install({
   THREE: {
@@ -239,6 +239,11 @@ export class CityEngine {
     this.timer.update(time)
     const moved = this.controls.update(this.timer.getDelta())
     if (moved || this.needsRender || this.continuous) {
+      const near = nearPlane(this.controls.distance)
+      if (near !== this.camera.near) {
+        this.camera.near = near
+        this.camera.updateProjectionMatrix()
+      }
       this.renderer.render(this.scene, this.camera)
       this.needsRender = false
       this.framesSince++
