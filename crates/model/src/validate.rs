@@ -491,12 +491,13 @@ fn layout(result: &AnalysisResult) -> Result<(), InvalidResult> {
         let Some(outer) = container(dir).filter(|_| own[dir as usize] > 0) else {
             return Err(InvalidResult::GridDir { row });
         };
-        let rect = Rect::new(
-            grids.x[row],
-            grids.y[row],
-            grids.columns[row].saturating_mul(LOT as u32),
-            grids.rows[row].saturating_mul(LOT as u32),
-        );
+        // In u64: a saturated size would let a huge grid pass for a smaller one.
+        let rect = Rect {
+            x: grids.x[row].into(),
+            y: grids.y[row].into(),
+            width: u64::from(grids.columns[row]) * LOT,
+            height: u64::from(grids.rows[row]) * LOT,
+        };
         if !outer.contains(rect) {
             return Err(InvalidResult::LayoutOutside {
                 table: "layout.grids",
@@ -1345,6 +1346,14 @@ mod tests {
         );
         assert_eq!(
             invalid_parcel(|r| r.layout.grids.x[1] = 270),
+            InvalidResult::LayoutOutside {
+                table: "layout.grids",
+                row: 1,
+            }
+        );
+        // Its size in tenths overflows a u32: never mistaken for a smaller one
+        assert_eq!(
+            invalid_parcel(|r| r.layout.grids.columns[1] = u32::MAX),
             InvalidResult::LayoutOutside {
                 table: "layout.grids",
                 row: 1,
