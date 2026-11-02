@@ -132,6 +132,21 @@ describe('islandCanals', () => {
     expect(shallow.footbridges).toHaveLength(1)
   })
 
+  it('runs a canal along the square of the island, centred in its cell', () => {
+    // The square stands 2.4 u from the folder east of it: farther than a canal, yet facing it
+    const square = { x: 0.9, y: 0.9, width: 8.6, height: 8.2 }
+    const east = { x: 11.9, y: 0.9, width: 9.2, height: 8.2 }
+    const canals = islandCanals(island({ x: 0, y: 0, width: 22, height: 10 }, [east], square))
+    expect(canals.cells.map((cell) => cell.rect)).toEqual([
+      { x: 10.1, y: 0.9, width: 1.8, height: 8.2 },
+    ])
+    // Farther still, it is no canal: paving
+    const far = { ...east, x: 13.1, width: 8 }
+    expect(
+      islandCanals(island({ x: 0, y: 0, width: 22, height: 10 }, [far], square)).cells,
+    ).toEqual([])
+  })
+
   it('digs no canal on an island of one folder', () => {
     const single = islandCanals(
       island({ x: 0, y: 0, width: 12, height: 8 }, [{ x: 0.9, y: 0.9, width: 10.2, height: 6.2 }]),

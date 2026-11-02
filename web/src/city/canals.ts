@@ -12,6 +12,12 @@ export const ISLAND_MARGIN = 0.9
 export const QUAY_WIDTH = 0.3
 /** Gaps of this width, in u, are canals: the layout leaves 1.8 u between two folders. */
 const CANAL_GAP = [1.5, 2.1] as const
+/**
+ * The square of an island's own files is centred in its cell: it may stand up to a lot's
+ * half more away from a folder than a canal is wide, and still face it across one.
+ */
+const SQUARE_REACH = 2.9
+const FOLDER_GAP = 1.8
 /** A canal at least this long gets a footbridge halfway along. */
 export const FOOTBRIDGE_RUN = 6
 /** How close two edges must be to count as touching. */
@@ -79,7 +85,7 @@ export function islandCanals(island: IslandLayout): Canals {
     .filter((parcel) => parcel.level === 1)
     .map((parcel) => parcel.rect)
   if (island.square) {
-    obstacles.push(island.square)
+    obstacles.push(squareToCanals(island.square, obstacles))
   }
   if (obstacles.length < 2) {
     return NONE
@@ -207,6 +213,43 @@ export function islandCanals(island: IslandLayout): Canals {
     }
   }
   return { cells, footbridges, bends }
+}
+
+/**
+ * The square, grown toward each folder it faces from farther than a canal is wide, up to the
+ * usual gap between two folders: its canals then run along it as along any folder. What it
+ * grows by stays paving.
+ */
+function squareToCanals(square: Rect, folders: readonly Rect[]): Rect {
+  // The nearest folder facing each side, if any.
+  let [west, east, south, north] = [Infinity, Infinity, Infinity, Infinity]
+  for (const folder of folders) {
+    const alongY =
+      Math.min(square.y + square.height, folder.y + folder.height) - Math.max(square.y, folder.y)
+    const alongX =
+      Math.min(square.x + square.width, folder.x + folder.width) - Math.max(square.x, folder.x)
+    if (alongY > TOUCH) {
+      const ahead = snap(folder.x - (square.x + square.width))
+      const behind = snap(square.x - (folder.x + folder.width))
+      if (ahead > -TOUCH) east = Math.min(east, ahead)
+      if (behind > -TOUCH) west = Math.min(west, behind)
+    }
+    if (alongX > TOUCH) {
+      const ahead = snap(folder.y - (square.y + square.height))
+      const behind = snap(square.y - (folder.y + folder.height))
+      if (ahead > -TOUCH) north = Math.min(north, ahead)
+      if (behind > -TOUCH) south = Math.min(south, behind)
+    }
+  }
+  const grow = (gap: number) =>
+    gap > CANAL_GAP[1] + TOUCH && gap <= SQUARE_REACH + TOUCH ? snap(gap - FOLDER_GAP) : 0
+  const [w, e, s, n] = [grow(west), grow(east), grow(south), grow(north)]
+  return {
+    x: snap(square.x - w),
+    y: snap(square.y - s),
+    width: snap(square.width + w + e),
+    height: snap(square.height + s + n),
+  }
 }
 
 /** A thin strip just past one side of a rectangle. */
