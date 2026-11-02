@@ -76,12 +76,21 @@ export function CityPage() {
     setRemounting(false)
   }
 
+  // Two results opened in quick succession: only the last one shows.
+  const latest = useRef(0)
   async function show(text: Promise<string>) {
+    const request = ++latest.current
     try {
-      setLoaded(cityFromResult(decodeResult(JSON.parse(await text))))
+      const city = cityFromResult(decodeResult(JSON.parse(await text)))
+      if (request !== latest.current) {
+        return
+      }
+      setLoaded(city)
       setError(null)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause))
+      if (request === latest.current) {
+        setError(cause instanceof Error ? cause.message : String(cause))
+      }
     }
   }
 
@@ -104,10 +113,13 @@ export function CityPage() {
   }, [])
 
   async function load(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
+    const input = event.target
+    const file = input.files?.[0]
     if (file) {
       await show(file.text())
     }
+    // The same file chosen again is a change too: to load it once more after an edit.
+    input.value = ''
   }
 
   return (
