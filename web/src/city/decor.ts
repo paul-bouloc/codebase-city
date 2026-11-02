@@ -199,16 +199,15 @@ function addLotTrees(
 
 function addGarden(decor: Decor, island: IslandLayout, garden: Garden, small: boolean): void {
   decor.gardens.push(garden)
-  // Gardens are tiled in lots, centred, as wooded as a park of tests: half the lots, 2 or 3 trees.
+  // Gardens are tiled in lots of about 2 u, spread over their exact size so that every trunk
+  // stands inside, as wooded as a park of tests: half the lots, 2 or 3 trees.
   const { rect } = garden
   const columns = Math.max(1, Math.round(rect.width / LOT_SIZE))
   const rows = Math.max(1, Math.round(rect.height / LOT_SIZE))
-  const x0 = rect.x + (rect.width - columns * LOT_SIZE) / 2
-  const y0 = rect.y + (rect.height - rows * LOT_SIZE) / 2
   for (let row = 0; row < rows; row++) {
     for (let column = 0; column < columns; column++) {
-      const x = x0 + LOT_SIZE * column + LOT_SIZE / 2
-      const y = y0 + LOT_SIZE * row + LOT_SIZE / 2
+      const x = rect.x + (rect.width * (column + 0.5)) / columns
+      const y = rect.y + (rect.height * (row + 0.5)) / rows
       const random = seededRandom(`decor/${island.path}/garden/${key(x, y)}`)
       if (!small && random() >= 0.5) {
         continue

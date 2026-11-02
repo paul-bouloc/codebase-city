@@ -133,6 +133,29 @@ describe('cityDecor', () => {
     }
   })
 
+  it('keeps every trunk of a garden inside it, whatever its width', () => {
+    // A garden 18.2 u wide: 9 lots of 2.02 u, not 9 of 2 u spilling over its sides
+    const bare: IslandLayout = {
+      path: 'bare',
+      layer: 1,
+      plateau: { x: 0, y: 0, width: 20, height: 6.8 },
+      parcels: [],
+      lots: [],
+    }
+    const decor = decorOf(city(bare))
+    expect(decor.gardens.map((garden) => garden.rect)).toEqual([
+      { x: 0.9, y: 0.9, width: 18.2, height: 5 },
+    ])
+    const onGarden = decor.trees.filter((tree) => tree.z > layerAltitude(1))
+    expect(onGarden.length).toBeGreaterThan(0)
+    for (const tree of onGarden) {
+      expect(tree.x).toBeGreaterThan(0.9)
+      expect(tree.x).toBeLessThan(19.1)
+      expect(tree.y).toBeGreaterThan(0.9)
+      expect(tree.y).toBeLessThan(5.9)
+    }
+  })
+
   it('doubles the decor of a city under 50 files', () => {
     // Three small islands of one file, each alone or with a far one of 400 files
     const filler = island('filler', 'unanalyzed', { every: 1, x: 300 })
