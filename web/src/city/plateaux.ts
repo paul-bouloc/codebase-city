@@ -1,8 +1,8 @@
-import { BoxGeometry, BufferGeometry, Float32BufferAttribute, Mesh, ShaderMaterial } from 'three'
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
+import { Mesh, ShaderMaterial } from 'three'
 import type { CityLayout, ParcelNature, Rect } from './layout'
+import { MeshBuilder } from './mesh-builder'
 import { shadingFragmentPars, shadingUniforms, shadingVertex, shadingVertexPars } from './shading'
-import { boardToThree, layerAltitude, mixSrgb, slabTop, srgb, type Vec3 } from './units'
+import { layerAltitude, mixSrgb, slabTop, srgb, type Vec3 } from './units'
 
 const PAVING = srgb('#EDE3CF')
 const MEADOW = srgb('#C5DFA4')
@@ -65,23 +65,52 @@ function parcelColours(nature: ParcelNature, level: number): [Vec3, Vec3] {
   }
 }
 
+/** Parcels have rounded corners: 0.7 u, or less on a narrow one. */
+const CORNER_RADIUS = 0.7
+/** Points inside each rounded corner, between its two ends. */
+const CORNER_STEPS = 2
+
+/**
+ * A rectangle's outline with rounded corners, counter-clockwise: each corner a few chords of
+ * its arc, always inside the rectangle.
+ */
+export function roundedOutline(rect: Rect, radius = CORNER_RADIUS): [number, number][] {
+  const r = Math.min(radius, rect.width / 2, rect.height / 2)
+  const x0 = rect.x + r
+  const x1 = rect.x + rect.width - r
+  const y0 = rect.y + r
+  const y1 = rect.y + rect.height - r
+  const corners: [number, number, number][] = [
+    [x1, y0, -Math.PI / 2],
+    [x1, y1, 0],
+    [x0, y1, Math.PI / 2],
+    [x0, y0, Math.PI],
+  ]
+  return corners.flatMap(([cx, cy, start]) =>
+    Array.from({ length: CORNER_STEPS + 1 }, (_, step): [number, number] => {
+      const angle = start + (Math.PI / 2) * (step / CORNER_STEPS)
+      return [cx + r * Math.cos(angle), cy + r * Math.sin(angle)]
+    }),
+  )
+}
+
 function blocksMesh(blocks: Block[]): Mesh {
-  const geometries = blocks.map(({ rect, bottom, top, topColour, sideColour }) => {
-    const [x, y, z] = boardToThree(
-      rect.x + rect.width / 2,
-      rect.y + rect.height / 2,
-      (bottom + top) / 2,
-    )
-    const block = new BoxGeometry(rect.width, top - bottom, rect.height).translate(x, y, z)
-    paint(block, topColour, sideColour)
-    return block
-  })
-  // An empty city has no plateau: mergeGeometries cannot merge nothing.
-  const geometry = geometries.length > 0 ? mergeGeometries(geometries) : new BufferGeometry()
-  for (const block of geometries) {
-    block.dispose()
+  const builder = new MeshBuilder()
+  for (const { rect, bottom, top, topColour, sideColour } of blocks) {
+    const outline = roundedOutline(rect)
+    const cx = rect.x + rect.width / 2
+    const cy = rect.y + rect.height / 2
+    outline.forEach(([ax, ay], index) => {
+      const [bx, by] = outline[(index + 1) % outline.length] ?? [ax, ay]
+      builder.triangle([cx, cy, top], [ax, ay, top], [bx, by, top], topColour, [0, 0, 1])
+      builder.quad([ax, ay, bottom], [bx, by, bottom], [bx, by, top], [ax, ay, top], sideColour, [
+        by - ay,
+        -(bx - ax),
+        0,
+      ])
+    })
   }
-  const mesh = new Mesh(geometry, groundMaterial())
+  const mesh = new Mesh(builder.build(), groundMaterial())
   mesh.castShadow = true
   mesh.receiveShadow = true
   return mesh
@@ -96,14 +125,4 @@ export function groundMaterial(): ShaderMaterial {
     lights: true,
     vertexColors: true,
   })
-}
-
-/** One colour on top, another on the sides. */
-function paint(geometry: BufferGeometry, top: Vec3, side: Vec3) {
-  const normals = geometry.getAttribute('normal')
-  const colors = new Float32Array(normals.count * 3)
-  for (let i = 0; i < normals.count; i++) {
-    colors.set(normals.getY(i) > 0.5 ? top : side, i * 3)
-  }
-  geometry.setAttribute('color', new Float32BufferAttribute(colors, 3))
 }
