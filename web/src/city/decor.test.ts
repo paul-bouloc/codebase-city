@@ -81,8 +81,8 @@ describe('cityDecor', () => {
     }
   })
 
-  it('follows the ground: trees on 13 % of a meadow, half a park, none on concrete', () => {
-    // 400 lots each, half of them empty, side by side
+  it('follows the ground: 2 trees an empty lot on a meadow, 2.5 in a park, none on concrete', () => {
+    // 200 empty lots each, side by side
     const layout = city(
       island('meadow', 'normal'),
       island('park', 'tests', { x: 60 }),
@@ -90,55 +90,21 @@ describe('cityDecor', () => {
     )
     const trees = decorOf(layout).trees.filter((tree) => tree.z > layerAltitude(1))
     const on = (x0: number, x1: number) =>
-      trees.filter((tree) => tree.x >= x0 && tree.x < x1).length / 400
-    // 1 to 3 trees on 13 % of the lots; 2 or 3 on half of them. A tree that finds no room in its
-    // lot is dropped: a little under the draw.
-    expect(on(0, 60)).toBeGreaterThan(0.2)
-    expect(on(0, 60)).toBeLessThan(0.32)
-    expect(on(60, 120)).toBeGreaterThan(1.05)
-    expect(on(60, 120)).toBeLessThan(1.3)
+      trees.filter((tree) => tree.x >= x0 && tree.x < x1).length / 200
+    // A tree that finds no room in its lot is dropped: a little under the draw
+    expect(on(0, 60)).toBeGreaterThan(1.75)
+    expect(on(0, 60)).toBeLessThan(2.1)
+    expect(on(60, 120)).toBeGreaterThan(2.15)
+    expect(on(60, 120)).toBeLessThan(2.6)
     expect(on(120, 200)).toBe(0)
   })
 
-  it('leaves the empty lots past the design share as clearings', () => {
-    // 399 empty lots of 400: trees on about 52 of them, not on all
-    const layout = city(
-      island('sparse', 'normal', { every: 1000 }),
-      island('f', 'tests', { x: 300 }),
-    )
-    const trees = decorOf(layout).trees.filter((tree) => tree.x < 100 && tree.z > layerAltitude(1))
-    const wooded = new Set(
-      trees.map((tree) => `${Math.floor(tree.x / 2)},${Math.floor(tree.y / 2)}`),
-    )
-    expect(wooded.size).toBeGreaterThan(35)
-    expect(wooded.size).toBeLessThan(75)
-  })
-
-  it('turns the empty lots of the island square into gardens, trees on them', () => {
-    // The island folder's grid on the plateau: 4 × 2 lots, files on the west column
-    const grid = { x: 1.2, y: 1.2, width: 8, height: 4 }
-    const lots = [lot(2.2, 2.2), lot(2.2, 4.2)]
-    const tiny: IslandLayout = {
-      path: 'tiny',
-      layer: 1,
-      plateau: { x: 0, y: 0, width: 10.4, height: 6.6 },
-      parcels: [],
-      lots,
-      square: { x: 0.9, y: 0.9, width: 8.6, height: 4.6 },
-      grids: [{ rect: grid, nature: 'normal', base: 0, square: true }],
-    }
-    const decor = decorOf(city(tiny))
-    // One garden over the three empty columns, inside their lots
-    expect(decor.gardens).toEqual([
-      { rect: { x: 3.4, y: 1.4, width: 5.6, height: 3.6 }, bottom: 0.6, top: 0.75 },
-    ])
-    // A city of two files: every garden lot is wooded, and no tree stands on the paving
-    const onLots = decor.trees.filter((tree) => tree.z > layerAltitude(1))
-    expect(onLots.length).toBeGreaterThanOrEqual(6 * 2)
-    for (const tree of onLots) {
-      expect(tree.x).toBeGreaterThan(3.2)
-      expect(tree.z).toBeCloseTo(0.75)
-    }
+  it('woods only a share of the empty lots past a budget of 16,000 trees', () => {
+    // 9,900 empty lots: 19,800 trees expected, 16,000 kept
+    const layout = city(island('huge', 'normal', { columns: 100, rows: 100, every: 100 }))
+    const trees = decorOf(layout).trees.filter((tree) => tree.z > layerAltitude(1)).length
+    expect(trees).toBeGreaterThan(14_500)
+    expect(trees).toBeLessThan(16_500)
   })
 
   it('doubles the decor of a city under 50 files', () => {

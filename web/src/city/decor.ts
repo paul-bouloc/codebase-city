@@ -77,8 +77,14 @@ const ROCK_RADII = [0.25, 0.6] as const
 /** No tree nor rock this close to a cascade, measured on the plateau's edge. */
 const CASCADE_CLEARANCE = 1.5 + 0.38
 
-/** The design's share of a grid's lots left empty for trees: 13 %, half of a park of tests. */
-const WOODED_SHARE: Record<ParcelNature, number> = { normal: 0.13, tests: 0.5, unanalyzed: 0 }
+/**
+ * At most this many trees in the empty lots of a city's folders. The layout's stretch leaves
+ * many more empty lots than the design's 13 % (vscode: 56 %, 52,000 trees and 1.5 M triangles);
+ * past the budget, only a share of them is wooded, the others stay meadow, clearings.
+ */
+const LOT_TREE_BUDGET = 16_000
+/** Trees an empty lot gets on average: 1 to 3 on a meadow, 2 or 3 in a park of tests. */
+const MEAN_TREES: Record<ParcelNature, number> = { normal: 2, tests: 2.5, unanalyzed: 0 }
 
 /**
  * A small city has twice the decor: trees on every empty lot and garden lot, one more in each
@@ -92,10 +98,18 @@ export function cityDecor(layout: CityLayout, shapes: readonly IslandShape[]): D
   const files = layout.islands.reduce((sum, island) => sum + island.lots.length, 0)
   const small = files < SMALL_CITY
   const decor: Decor = { trees: [], rocks: [], gardens: [] }
+  let expected = 0
+  for (const island of layout.islands) {
+    const lots = lotGrids(island)
+    for (const grid of lots.filter((each) => !each.grid.square)) {
+      expected += grid.empty().length * MEAN_TREES[grid.grid.nature]
+    }
+  }
+  const wooded = Math.min(1, LOT_TREE_BUDGET / Math.max(expected, 1))
   layout.islands.forEach((island, index) => {
     const canals = islandCanals(island).cells
     const altitude = layerAltitude(island.layer)
-    addLotTrees(decor, island, altitude, small)
+    addLotTrees(decor, island, altitude, small, wooded)
     for (const rect of islandGardens(island, canals)) {
       addGarden(decor, island, { rect, bottom: altitude, top: altitude + slabTop(1) }, small)
     }
@@ -121,15 +135,10 @@ function treesPerLot(nature: ParcelNature, random: () => number): number {
 
 const key = (x: number, y: number) => `${Math.round(x * 10)},${Math.round(y * 10)}`
 
-/**
- * The empty lots of the island's folders get trees, but no more of them than the design's
- * share of the grid: the layout's stretch leaves many more empty lots than it means to (vscode,
- * 56 % instead of 13 %), and the others stay meadow, clearings. The island folder's own grid,
- * on the paved plateau, turns its empty lots into gardens instead.
- */
-function addLotTrees(decor: Decor, island: IslandLayout, altitude: number, small: boolean): void {
+/** Each grid of an island, with its empty lots, by column and row and by their centres. */
+function lotGrids(island: IslandLayout) {
   const taken = new Set(island.lots.map((lot) => key(lot.x, lot.y)))
-  for (const grid of island.grids ?? []) {
+  return (island.grids ?? []).map((grid) => {
     const columns = Math.round(grid.rect.width / LOT_SIZE)
     const rows = Math.round(grid.rect.height / LOT_SIZE)
     const centre = (column: number, row: number): Point => ({
@@ -140,35 +149,50 @@ function addLotTrees(decor: Decor, island: IslandLayout, altitude: number, small
       const { x, y } = centre(column, row)
       return !taken.has(key(x, y))
     }
+    const empty = () => {
+      const centres: Point[] = []
+      for (let row = 0; row < rows; row++) {
+        for (let column = 0; column < columns; column++) {
+          if (isEmpty(column, row)) {
+            centres.push(centre(column, row))
+          }
+        }
+      }
+      return centres
+    }
+    return { grid, isEmpty, empty }
+  })
+}
+
+/**
+ * The empty lots of the island's folders get trees, `wooded` the share of them that do (the
+ * budget's). The island folder's own grid, on the paved plateau, turns its empty lots into
+ * gardens instead.
+ */
+function addLotTrees(
+  decor: Decor,
+  island: IslandLayout,
+  altitude: number,
+  small: boolean,
+  wooded: number,
+): void {
+  for (const { grid, isEmpty, empty } of lotGrids(island)) {
     if (grid.square) {
       for (const rect of squareGardens(grid.rect, isEmpty)) {
         addGarden(decor, island, { rect, bottom: altitude, top: altitude + slabTop(1) }, small)
       }
       continue
     }
-    let empty = 0
-    for (let row = 0; row < rows; row++) {
-      for (let column = 0; column < columns; column++) {
-        empty += isEmpty(column, row) ? 1 : 0
+    for (const { x, y } of empty()) {
+      const random = seededRandom(`decor/${island.path}/lot/${key(x, y)}`)
+      if (random() >= wooded) {
+        continue
       }
-    }
-    const wooded = small ? 1 : Math.min(1, (WOODED_SHARE[grid.nature] * columns * rows) / empty)
-    for (let row = 0; row < rows; row++) {
-      for (let column = 0; column < columns; column++) {
-        if (!isEmpty(column, row)) {
-          continue
-        }
-        const { x, y } = centre(column, row)
-        const random = seededRandom(`decor/${island.path}/lot/${key(x, y)}`)
-        if (random() >= wooded) {
-          continue
-        }
-        let count = treesPerLot(grid.nature, random)
-        if (count > 0 && small) {
-          count = Math.min(count + 1, MAX_LOT_TREES)
-        }
-        scatterInLot(decor.trees, { x, y }, altitude + grid.base, count, random)
+      let count = treesPerLot(grid.nature, random)
+      if (count > 0 && small) {
+        count = Math.min(count + 1, MAX_LOT_TREES)
       }
+      scatterInLot(decor.trees, { x, y }, altitude + grid.base, count, random)
     }
   }
 }
