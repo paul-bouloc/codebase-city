@@ -204,6 +204,29 @@ describe('cityDecor', () => {
     expect(facing).toEqual([])
   })
 
+  it('keeps the crown of a flank tree on its terrace, clear of the cliff above', () => {
+    const layout = city(island('high', 'unanalyzed', { layer: 5, every: 1 }))
+    const [shape] = islandShapes(layout)
+    if (!shape) {
+      throw new Error('no shape')
+    }
+    const { x, width } = shape.island.plateau
+    let checked = 0
+    for (const tree of cityDecor(layout, [shape]).trees) {
+      // Trees off the south side, away from its corners: their terrace is read where they stand
+      if (tree.y >= 0 || tree.x < x + 4 || tree.x > x + width - 4) {
+        continue
+      }
+      const ring = shape.altitudes.indexOf(tree.z)
+      const offsets = shape.offsetsAt('south', tree.x - x)
+      const crown = CROWN_RADIUS[tree.kind] * tree.size
+      expect(-tree.y - crown).toBeGreaterThanOrEqual((offsets[ring - 1] ?? 0) - 0.05)
+      expect(-tree.y + crown).toBeLessThanOrEqual((offsets[ring] ?? 0) + 0.05)
+      checked++
+    }
+    expect(checked).toBeGreaterThan(10)
+  })
+
   it('keeps trees and rocks clear of cascades', () => {
     // Two folders across a canal that pours over the south edge, at x = 21.8
     const parcel = (x: number) => ({

@@ -308,15 +308,18 @@ function addFlanks(decor: Decor, shape: IslandShape, mouths: readonly Point[], s
       if (nearCascade || width < MIN_FLANK_WIDTH || roll >= FLANK_SHARE * boost) {
         continue
       }
-      const across =
-        inner + width * (FLANK_ACROSS[0] + (FLANK_ACROSS[1] - FLANK_ACROSS[0]) * random())
-      const slide = FLANK_SLIDE * (2 * random() - 1)
       const kind: TreeKind = random() < FLANK_CONIFERS ? 'conifer' : 'round'
-      // Never wider than the terrace it stands on.
+      // Never wider than the terrace it stands on, and its crown clear of the cliff above.
       const size = Math.min(
         SIZES[0] + (SIZES[1] - SIZES[0]) * random(),
         width / (2 * CROWN_RADIUS[kind]),
       )
+      const crown = CROWN_RADIUS[kind] * size
+      const across =
+        inner +
+        crown +
+        (width - 2 * crown) * (FLANK_ACROSS[0] + (FLANK_ACROSS[1] - FLANK_ACROSS[0]) * random())
+      const slide = FLANK_SLIDE * (2 * random() - 1)
       decor.trees.push(
         treeAt(
           sample.x + sample.nx * across + tx * slide,
