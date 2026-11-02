@@ -159,7 +159,7 @@ export function createBuildings(layout: CityLayout, pixelRatio: number): Group {
     const altitude = layerAltitude(island.layer)
     for (const lot of island.lots) {
       const building = buildingFor(lot.file)
-      const { dx, dy, angle } = placementFor(building, lot.x, lot.y)
+      const { dx, dy, angle } = placementFor(building, lot.x, lot.y, lot.ground)
       const placed = byArchetype.get(building.archetype) ?? []
       placed.push({
         building,

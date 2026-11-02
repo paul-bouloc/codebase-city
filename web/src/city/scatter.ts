@@ -1,9 +1,12 @@
 import { archetypeGeometry, stretched, type Triangle } from './archetype-geometry'
 import type { Archetype, Building } from './archetypes'
+import type { ParcelNature } from './layout'
 import { seededRandom } from './random'
 
 /** Low buildings scatter in their lot; the others stand in line, centred. */
 const SCATTERED: ReadonlySet<Archetype> = new Set(['pavilion', 'house'])
+/** A low concrete block scatters too, but not on concrete ground, which stays in line. */
+const LOW_BLOCK = 1
 /** Every building, overhangs included, stays within 0.9 u of its lot's centre. */
 const HALF_LOT_ROOM = 0.9
 const MAX_TURN = (15 * Math.PI) / 180
@@ -46,11 +49,21 @@ function reach(archetype: Archetype, building: Building, angle: number): number 
 
 /**
  * Where a low building stands in the lot centred on (x, y): turned a little and moved off the
- * centre, never beyond the room its lot leaves, so neighbours stay 0.2 u apart. The same lot
- * always gives the same placement.
+ * centre, never beyond the room its lot leaves, so neighbours stay 0.2 u apart. A concrete block
+ * of one or two floors scatters too, unless its parcel is concrete ground. The same lot always
+ * gives the same placement.
  */
-export function placementFor(building: Building, x: number, y: number): Placement {
-  if (!SCATTERED.has(building.archetype)) {
+export function placementFor(
+  building: Building,
+  x: number,
+  y: number,
+  ground: ParcelNature = 'normal',
+): Placement {
+  const lowBlock =
+    building.archetype === 'concreteBlock' &&
+    building.height <= LOW_BLOCK &&
+    ground !== 'unanalyzed'
+  if (!SCATTERED.has(building.archetype) && !lowBlock) {
     return ALIGNED
   }
   const random = seededRandom(`${x.toFixed(2)},${y.toFixed(2)}`)

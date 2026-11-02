@@ -36,6 +36,17 @@ describe('placementFor', () => {
     expect(moved).toBe(400)
   })
 
+  it('scatters low concrete blocks, except on concrete ground', () => {
+    const low = buildingFor(file({ lines: 200, analyzed: false }))
+    const tall = buildingFor(file({ lines: 600, analyzed: false }))
+    const aligned = { dx: 0, dy: 0, angle: 0 }
+    expect(placementFor(low, 3, 5, 'normal')).not.toEqual(aligned)
+    expect(placementFor(low, 3, 5, 'tests')).not.toEqual(aligned)
+    expect(placementFor(low, 3, 5, 'unanalyzed')).toEqual(aligned)
+    expect(placementFor(tall, 3, 5, 'normal')).toEqual(aligned)
+    expect(placedReach(low, placementFor(low, 3, 5))).toBeLessThanOrEqual(0.9 + 1e-9)
+  })
+
   it('gives a lot the same placement every time', () => {
     const building = buildingFor(file({ test: true }))
     expect(placementFor(building, 11, 3)).toEqual(placementFor(building, 11, 3))
