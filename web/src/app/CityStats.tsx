@@ -20,7 +20,8 @@ export function CityStats({ engine }: CityStatsProps) {
   return (
     <output className={styles.stats}>
       {stats.fps} fps · {stats.drawCalls} draw calls · {(stats.triangles / 1000).toFixed(1)}k
-      triangles
+      triangles · decor {stats.decor.instances} ({(stats.decor.triangles / 1000).toFixed(1)}k
+      triangles)
     </output>
   )
 }

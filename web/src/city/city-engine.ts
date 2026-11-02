@@ -25,6 +25,8 @@ import {
   WebGLRenderer,
 } from 'three'
 import { createBuildings } from './buildings'
+import { cityDecor } from './decor'
+import { createDecor, type DecorStats, decorStats } from './decor-mesh'
 import { islandShapes } from './island-shape'
 import type { CityLayout } from './layout'
 import { SUN_DIRECTION } from './light'
@@ -67,6 +69,8 @@ export interface FrameStats {
   fps: number
   drawCalls: number
   triangles: number
+  /** Trees and rocks of the city, and their triangles at full size. */
+  decor: DecorStats
 }
 
 export interface CityEngineOptions {
@@ -89,7 +93,13 @@ export class CityEngine {
   private needsRender = true
   private framesSince = 0
   private statsSince = 0
-  private stats: FrameStats = { fps: 0, drawCalls: 0, triangles: 0 }
+  private decor: DecorStats = { instances: 0, triangles: 0 }
+  private stats: FrameStats = {
+    fps: 0,
+    drawCalls: 0,
+    triangles: 0,
+    decor: { instances: 0, triangles: 0 },
+  }
 
   constructor(container: HTMLElement, { continuous = false }: CityEngineOptions = {}) {
     this.continuous = continuous
@@ -125,14 +135,17 @@ export class CityEngine {
       disposeObject(this.city)
     }
     const shapes = islandShapes(layout)
+    const decor = cityDecor(layout, shapes)
+    this.decor = decorStats(decor)
     this.city = new Group().add(
       createSea(
         layout,
         shapes.map((shape) => shape.reach),
       ),
       createTerrain(shapes),
-      createParcels(layout),
+      createParcels(layout, decor.gardens),
       createBuildings(layout, this.renderer.getPixelRatio()),
+      createDecor(decor),
     )
     this.scene.add(this.city)
 
@@ -249,6 +262,7 @@ export class CityEngine {
       this.framesSince++
       this.stats.drawCalls = this.renderer.info.render.calls
       this.stats.triangles = this.renderer.info.render.triangles
+      this.stats.decor = this.decor
     }
     const elapsed = time - this.statsSince
     if (elapsed >= 500) {

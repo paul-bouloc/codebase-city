@@ -1,4 +1,5 @@
 import { Mesh, ShaderMaterial } from 'three'
+import type { Garden } from './decor'
 import type { CityLayout, ParcelNature, Rect } from './layout'
 import { MeshBuilder } from './mesh-builder'
 import { shadingFragmentPars, shadingUniforms, shadingVertex, shadingVertexPars } from './shading'
@@ -49,9 +50,9 @@ interface Block {
  * share its side, and flicker. The island's folders keep square corners, like the canals and
  * quays along them; the ones inside are rounded, along their streets.
  */
-export function createParcels(layout: CityLayout): Mesh {
-  return blocksMesh(
-    layout.islands.flatMap(({ parcels, layer }) => {
+export function createParcels(layout: CityLayout, gardens: readonly Garden[] = []): Mesh {
+  return blocksMesh([
+    ...layout.islands.flatMap(({ parcels, layer }) => {
       const altitude = layerAltitude(layer)
       return parcels.map(({ rect, level, nature, paved }) => {
         const [topColour, sideColour] = paved ? [PAVING, PAVING_EDGE] : parcelColours(nature, level)
@@ -65,7 +66,16 @@ export function createParcels(layout: CityLayout): Mesh {
         }
       })
     }),
-  )
+    // Gardens are meadows, rounded: no canal runs along them.
+    ...gardens.map(({ rect, bottom, top }) => ({
+      rect,
+      radius: CORNER_RADIUS,
+      bottom,
+      top,
+      topColour: MEADOW,
+      sideColour: MEADOW_EDGE,
+    })),
+  ])
 }
 
 function parcelColours(nature: ParcelNature, level: number): [Vec3, Vec3] {
