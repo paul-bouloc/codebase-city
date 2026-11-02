@@ -140,6 +140,7 @@ export function cityFromResult(result: AnalysisResult): CityLayout {
       rect: cells,
       nature: natureOf.get(dir) ?? 'normal',
       base: slabTop(groundLevel(dir)),
+      ...(islandDirs.has(dir) ? { square: true } : {}),
     })
     if (islandDirs.has(dir)) {
       island.square = lots

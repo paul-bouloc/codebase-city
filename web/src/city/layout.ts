@@ -66,6 +66,8 @@ export interface GridLayout {
   nature: ParcelNature
   /** Height of that ground above the plateau, in u, as its lots' `base`. */
   base: number
+  /** The island folder's own grid, in its square on the paved plateau. False if absent. */
+  square?: boolean
 }
 
 export interface IslandLayout {
