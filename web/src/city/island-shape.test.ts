@@ -59,8 +59,8 @@ function gapBetween(a: [number, number][], b: [number, number][]): number {
 }
 
 describe('ringAltitudes', () => {
-  it('steps down from the plateau to the beach, more terraces on higher layers', () => {
-    expect([1, 2, 3, 4, 5].map((layer) => ringAltitudes(layer).length - 1)).toEqual([1, 2, 4, 5, 6])
+  it('steps down from the plateau to the beach, one terrace per layer', () => {
+    expect([1, 2, 3, 4, 5].map((layer) => ringAltitudes(layer).length - 1)).toEqual([1, 2, 3, 4, 5])
     for (const layer of [1, 3, 5]) {
       const altitudes = ringAltitudes(layer)
       expect(altitudes[0]).toBe(layerAltitude(layer))
@@ -105,8 +105,8 @@ describe('islandShape', () => {
 
   it('opens wide terraces to the open sea', () => {
     const beachOffsets = alone.samples.map((sample) => sample.offsets.at(-1) ?? 0)
-    // Six terraces of 1.3 u, past the plateau's 0.85 u
-    expect(Math.min(...beachOffsets)).toBeGreaterThanOrEqual(0.85 + 6 * 1.3 - 1e-9)
+    // Five terraces of 1.3 u, past the plateau's 0.85 u
+    expect(Math.min(...beachOffsets)).toBeGreaterThanOrEqual(0.85 + 5 * 1.3 - 1e-9)
     expect(alone.reach).toBe(Math.max(...beachOffsets))
   })
 

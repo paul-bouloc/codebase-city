@@ -1,6 +1,6 @@
 import { type CityLayout, distanceToRect, type IslandLayout, type Rect } from './layout'
 import { seededRandom } from './random'
-import { layerAltitude } from './units'
+import { clampLayer, layerAltitude } from './units'
 
 // An island's terrain is a stack of rings around its plateau: the plateau's own edge, then one
 // ring per terrace, the last one the beach. Every ring is the plateau rectangle pushed outward
@@ -73,7 +73,8 @@ export function islandShapes(layout: CityLayout): IslandShape[] {
 /** The altitudes of an island's rings, from its plateau down to its beach. */
 export function ringAltitudes(layer: number): number[] {
   const plateau = layerAltitude(layer)
-  const terraces = Math.max(1, Math.round(plateau / 1.3))
+  // As many terraces as the layer: the last one is the beach.
+  const terraces = clampLayer(layer)
   return [
     plateau,
     ...Array.from(

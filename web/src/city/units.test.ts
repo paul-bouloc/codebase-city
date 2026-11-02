@@ -2,15 +2,15 @@ import { describe, expect, it } from 'vitest'
 import { boardToThree, layerAltitude, srgb } from './units'
 
 describe('layerAltitude', () => {
-  it('raises each layer by 1.8 u from 1.2 u', () => {
+  it('raises each layer by 0.45 u from 0.6 u', () => {
     expect([1, 2, 3, 4, 5].map(layerAltitude)).toEqual(
-      [1.2, 3, 4.8, 6.6, 8.4].map((altitude) => expect.closeTo(altitude)),
+      [0.6, 1.05, 1.5, 1.95, 2.4].map((altitude) => expect.closeTo(altitude)),
     )
   })
 
   it('keeps out-of-range layers within 1 to 5', () => {
-    expect(layerAltitude(0)).toBeCloseTo(1.2)
-    expect(layerAltitude(9)).toBeCloseTo(8.4)
+    expect(layerAltitude(0)).toBeCloseTo(0.6)
+    expect(layerAltitude(9)).toBeCloseTo(2.4)
   })
 })
 

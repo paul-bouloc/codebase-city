@@ -4,10 +4,17 @@ export const LOT_SIZE = 2
 
 export const MAX_LAYER = 5
 
-/** Height of an island's plateau above the sea, from its layer (1 at the bottom, capped at 5). */
+/** An island's layer, from 1 at the bottom to 5. */
+export function clampLayer(layer: number): number {
+  return Math.min(Math.max(Math.round(layer), 1), MAX_LAYER)
+}
+
+/**
+ * Height of an island's plateau above the sea, from its layer: 0.6 u to 2.4 u, five floors at
+ * most. The design's 1.2 to 8.4 u (seventeen floors) looked nothing like land (Paul, T027).
+ */
 export function layerAltitude(layer: number): number {
-  const clamped = Math.min(Math.max(Math.round(layer), 1), MAX_LAYER)
-  return 1.2 + 1.8 * (clamped - 1)
+  return 0.6 + 0.45 * (clampLayer(layer) - 1)
 }
 
 /** How high a parcel's slab stands above the plateau: 0.15 u, then 0.1 u more on level 2. */
