@@ -74,15 +74,30 @@ export interface IslandShape {
   offsetsAt(side: Side, along: number): number[]
 }
 
+/**
+ * Past this distance between two plateaux, neither shapes the other: the widest beach reaches
+ * 24.75 u (the edge's 4.35 u, five terraces of 2.08 u, a 10 u swell), each keeps 1.2 u of foam
+ * and water, and the terraces are at their widest from 36 u on.
+ */
+const NEIGHBOUR_REACH = 2 * (24.75 + FOAM_WIDTH + FREE_WATER)
+
 /** The terrain of every island, knowing its neighbours. */
 export function islandShapes(layout: CityLayout): IslandShape[] {
   const plateaux = layout.islands.map((island) => island.plateau)
   return layout.islands.map((island, index) =>
     islandShape(
       island,
-      plateaux.filter((_, other) => other !== index),
+      plateaux.filter(
+        (other, at) => at !== index && rectDistance(island.plateau, other) < NEIGHBOUR_REACH,
+      ),
     ),
   )
+}
+
+function rectDistance(a: Rect, b: Rect): number {
+  const dx = Math.max(a.x - (b.x + b.width), 0, b.x - (a.x + a.width))
+  const dy = Math.max(a.y - (b.y + b.height), 0, b.y - (a.y + a.height))
+  return Math.hypot(dx, dy)
 }
 
 /** The altitudes of an island's rings, from its plateau down to its beach. */
@@ -177,17 +192,33 @@ export function islandShape(island: IslandLayout, others: readonly Rect[]): Isla
   }
 
   // Then the rings, from the side factor averaged along the edge (a tent, around the island).
-  const samples: ContourSample[] = points.map((point) => {
-    let weighted = 0
-    let weights = 0
-    for (const other of points) {
-      const apart = Math.abs(other.position - point.position)
-      const distance = Math.min(apart, perimeter - apart)
-      const weight = Math.max(0, 1 - distance / FACTOR_SMOOTHING)
-      weighted += weight * other.factor
-      weights += weight
+  // Points are in order around the edge: only those within the tent are visited, both ways.
+  const count = points.length
+  const samples: ContourSample[] = points.map((point, index) => {
+    let weighted = point.factor
+    let weights = 1
+    // Back only over the points forward did not reach: a tiny edge fits whole in the tent.
+    let left = count - 1
+    for (const step of [1, -1]) {
+      for (let k = 1; k <= left; k++) {
+        const other = points[(index + step * k + count) % count]
+        if (!other) {
+          break
+        }
+        const apart = Math.abs(other.position - point.position)
+        const distance = Math.min(apart, perimeter - apart)
+        if (distance >= FACTOR_SMOOTHING) {
+          break
+        }
+        const weight = 1 - distance / FACTOR_SMOOTHING
+        weighted += weight * other.factor
+        weights += weight
+        if (step > 0) {
+          left--
+        }
+      }
     }
-    const factor = weights > 0 ? weighted / weights : point.factor
+    const factor = weighted / weights
     return {
       x: point.x,
       y: point.y,
@@ -204,7 +235,11 @@ export function islandShape(island: IslandLayout, others: readonly Rect[]): Isla
     }
   })
 
-  const reach = Math.max(0, ...samples.map((sample) => sample.offsets[terraces] ?? 0))
+  // A loop, not a spread: a huge plateau has more samples than a call takes arguments.
+  let reach = 0
+  for (const sample of samples) {
+    reach = Math.max(reach, sample.offsets[terraces] ?? 0)
+  }
   const positions = points.map((point) => point.position)
   return {
     island,

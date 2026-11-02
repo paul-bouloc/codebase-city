@@ -192,4 +192,20 @@ describe('islandShapes', () => {
       }
     }
   })
+
+  it('stays fast with hundreds of islands, each shaped by its neighbours alone', () => {
+    // 400 islands of 20 × 20 u, 10 u apart
+    const islands: IslandLayout[] = Array.from({ length: 400 }, (_, n) => ({
+      path: `island${n}`,
+      layer: 1 + (n % 5),
+      plateau: { x: 30 * (n % 20), y: 30 * Math.floor(n / 20), width: 20, height: 20 },
+      parcels: [],
+      lots: [],
+    }))
+    const layout: CityLayout = { islands, bounds: { x: 0, y: 0, width: 590, height: 590 } }
+    const start = performance.now()
+    const shapes = islandShapes(layout)
+    expect(performance.now() - start).toBeLessThan(200)
+    expect(shapes).toHaveLength(400)
+  })
 })
