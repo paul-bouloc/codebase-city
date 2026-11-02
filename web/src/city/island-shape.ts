@@ -106,10 +106,11 @@ export function islandShape(island: IslandLayout, others: readonly Rect[]): Isla
   const x1 = x0 + width
   const y1 = y0 + height
   const perimeter = 2 * width + 2 * height + 4 * CORNER_LENGTH
-  // One wobble for the plateau's edge, another for the terraces: the beach does not just copy
-  // the cliff above it.
+  // One wobble for the plateau's edge, one for each terrace: no step just copies the one above.
   const edgeWobble = wobbleAlong(`island/${island.path}`, perimeter)
-  const ringWobble = wobbleAlong(`terraces/${island.path}`, perimeter)
+  const ringWobbles = Array.from({ length: terraces }, (_, ring) =>
+    wobbleAlong(`terraces/${island.path}/${ring}`, perimeter),
+  )
 
   // Where each side starts along the perimeter, and the point it starts from.
   const sides: Record<Side, { start: number; from: [number, number]; normal: [number, number] }> = {
@@ -194,7 +195,7 @@ export function islandShape(island: IslandLayout, others: readonly Rect[]): Isla
       ny: point.ny,
       offsets: ringOffsets(
         edgeWobble(point.position),
-        ringWobble(point.position),
+        ringWobbles.map((wobble) => wobble(point.position)),
         factor,
         point.nearest,
         terraces,
@@ -238,12 +239,13 @@ function sideFactor(ahead: number): number {
 
 /**
  * The offsets of the plateau's edge and of each terrace, at a point of the edge where the
- * wobbles are `edgeWobble` and `ringWobble` (0 to 1), each terrace `factor` u wide, the
+ * wobbles are `edgeWobble` and `ringWobbles` (0 to 1, one per terrace), each terrace about
+ * `factor` u wide, the
  * nearest island `nearest` u away, and the terraces swelling out by `bulge` u in all.
  */
 export function ringOffsets(
   edgeWobble: number,
-  ringWobble: number,
+  ringWobbles: readonly number[],
   factor: number,
   nearest: number,
   terraces: number,
@@ -256,15 +258,13 @@ export function ringOffsets(
     EDGE_WOBBLE[1],
   )
   const edge = EDGE_OFFSET + amplitude * edgeWobble
-  // One wobble for every terrace, growing outward: rings never cross.
-  const rings = Array.from(
-    { length: terraces },
-    (_, index) =>
-      edge +
-      (index + 1) * factor +
-      (0.4 + 0.4 * (index + 1)) * factor * ringWobble +
-      (bulge * (index + 1)) / terraces,
-  )
+  // Each terrace its own width, 0.4 to 1.6 times the factor: never nothing, so rings never cross.
+  const rings: number[] = []
+  let ring = edge
+  for (let index = 0; index < terraces; index++) {
+    ring += factor * (0.4 + 1.2 * (ringWobbles[index] ?? 0.5)) + bulge / terraces
+    rings.push(ring)
+  }
   const beach = rings.at(-1) ?? edge
   if (beach > limit && beach > edge) {
     const scale = Math.max(0, limit - edge) / (beach - edge)

@@ -105,9 +105,23 @@ describe('islandShape', () => {
 
   it('opens wide terraces to the open sea', () => {
     const beachOffsets = alone.samples.map((sample) => sample.offsets.at(-1) ?? 0)
-    // Five terraces of 1.3 u, past the plateau's 0.85 u
-    expect(Math.min(...beachOffsets)).toBeGreaterThanOrEqual(0.85 + 5 * 1.3 - 1e-9)
+    // Five terraces of at least 0.4 × 1.3 u each, past the plateau's 0.85 u; 1.3 u on average
+    expect(Math.min(...beachOffsets)).toBeGreaterThanOrEqual(0.85 + 5 * 0.4 * 1.3 - 1e-9)
+    const mean = beachOffsets.reduce((sum, offset) => sum + offset, 0) / beachOffsets.length
+    expect(mean).toBeGreaterThan(0.85 + 5 * 1.3 * 0.8)
     expect(alone.reach).toBe(Math.max(...beachOffsets))
+  })
+
+  it('gives each terrace its own width along the edge, not a copy of the one above', () => {
+    const widths = (ring: number) =>
+      alone.samples.map((sample) => (sample.offsets[ring] ?? 0) - (sample.offsets[ring - 1] ?? 0))
+    for (let ring = 2; ring < alone.altitudes.length; ring++) {
+      const above = widths(ring - 1)
+      const below = widths(ring)
+      const spread = Math.max(...below.map((width, index) => Math.abs(width - (above[index] ?? 0))))
+      expect(spread).toBeGreaterThan(0.3)
+      expect(Math.min(...below)).toBeGreaterThan(0)
+    }
   })
 
   it('gives the same terrain to the same island', () => {
