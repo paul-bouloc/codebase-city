@@ -62,6 +62,7 @@ export function cityFromResult(result: AnalysisResult): CityLayout {
     })
   }
 
+  const natureOf = new Map(parcels.dir.map((dir, row) => [dir, parcels.nature[row]]))
   files.dir.forEach((dir, file) => {
     const scope = files.scope[file]
     const language = result.languages[files.language[file] ?? 0] ?? ''
@@ -69,6 +70,7 @@ export function cityFromResult(result: AnalysisResult): CityLayout {
       x: (layout.lots.x[file] ?? 0) / TENTHS,
       y: (layout.lots.y[file] ?? 0) / TENTHS,
       base: slabTop(level[dir] ?? 0),
+      ground: natureOf.get(dir) ?? 'normal',
       file: {
         language: LANGUAGES[language] ?? 'other',
         lines: files.lines[file] ?? 0,

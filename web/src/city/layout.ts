@@ -33,6 +33,8 @@ export interface Lot extends Point {
   file: FileMetrics
   /** Height of the ground under the lot above the plateau, in u: the parcels it stands on. */
   base?: number
+  /** The nature of the parcel the lot stands on; `normal` if absent, or on the plateau. */
+  ground?: ParcelNature
 }
 
 /** What most files of a parcel are: a park for tests, concrete for unread languages. */

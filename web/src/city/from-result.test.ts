@@ -67,7 +67,9 @@ describe('cityFromResult', () => {
     expect(core?.parcels).toEqual([
       { rect: { x: 45.2, y: 0.9, width: 2.6, height: 2.6 }, level: 1, nature: 'tests' },
     ])
-    expect(core?.lots.find((lot) => lot.x === 46.5)?.base).toBe(0.15)
+    expect(core?.lots.find((lot) => lot.x === 46.5)).toMatchObject({ base: 0.15, ground: 'tests' })
+    // On the plateau, the ground is ordinary
+    expect(core?.lots[0]?.ground).toBe('normal')
   })
 
   it('names the languages it paints in their own colour', () => {
