@@ -16,10 +16,8 @@ const SAND_FLANK = mixSrgb('#F2E2BE', '#000000', 0.12)
 // open sea, the foam came out darker than the water around it.
 const FOAM = mixSrgb(SHORE_BAND, '#FFFFFF', 0.4)
 const WHITE = srgb('#FFFFFF')
-/** The foam's white rim, at its outer edge. */
-const FOAM_RIM = 0.12
-/** Just above the sea, so that the foam never fights it for depth. */
-const FOAM_ALTITUDE = 0.03
+/** Just above the sea, which is drawn first and writes no depth. */
+const FOAM_ALTITUDE = 0.02
 
 const UP: Vec3 = [0, 0, 1]
 
@@ -33,7 +31,7 @@ const QUAY_HEIGHT = 0.04
 const WATER_HEIGHT = 0.07
 /** A cascade's sheet, and how far it stands off the cliff it runs down. */
 const FALL_WIDTH = 0.76
-const FALL_OFFSET = 0.03
+const FALL_OFFSET = 0.05
 /** The foam pool at a cascade's foot. */
 const POOL_WIDTH = 1.6
 const POOL_LENGTH = 1.5
@@ -188,7 +186,7 @@ function addMouth(builder: MeshBuilder, shape: IslandShape, cell: CanalCell, sid
     middle + POOL_WIDTH / 2,
     beach,
     beach + POOL_LENGTH,
-    FOAM_ALTITUDE + 0.01,
+    FOAM_ALTITUDE + 0.02,
     FOAM,
   )
 }
@@ -226,10 +224,9 @@ function addIsland(builder: MeshBuilder, shape: IslandShape): void {
   }
   // The beach's flank down to the sea, then the foam around it.
   band(builder, inner, altitudes[terraces] ?? 0, inner, 0, SAND_FLANK, true)
-  const foam = ring(terraces, FOAM_WIDTH - FOAM_RIM)
+  // Whitening outward: a thin white rim would shimmer once it is under a pixel wide.
   const rim = ring(terraces, FOAM_WIDTH)
-  band(builder, inner, FOAM_ALTITUDE, foam, FOAM_ALTITUDE, FOAM, false)
-  band(builder, foam, FOAM_ALTITUDE, rim, FOAM_ALTITUDE, WHITE, false)
+  band(builder, inner, FOAM_ALTITUDE, rim, FOAM_ALTITUDE, [FOAM, WHITE], false)
   addCanals(builder, shape)
 }
 
@@ -243,9 +240,10 @@ function band(
   fromZ: number,
   to: [number, number][],
   toZ: number,
-  colour: Vec3,
+  colour: Vec3 | [inner: Vec3, outer: Vec3],
   cliff: boolean,
 ): void {
+  const [fromColour, toColour] = colour.length === 2 ? colour : [colour, colour]
   const count = from.length
   for (let i = 0; i < count; i++) {
     const j = (i + 1) % count
@@ -255,6 +253,13 @@ function band(
     const [dx, dy] = to[i] ?? [0, 0]
     // Counter-clockwise outlines: the outside of a segment is to its right.
     const facing: Vec3 = cliff ? [by - ay, -(bx - ax), 0] : UP
-    builder.quad([ax, ay, fromZ], [bx, by, fromZ], [cx, cy, toZ], [dx, dy, toZ], colour, facing)
+    builder.quad(
+      [ax, ay, fromZ],
+      [bx, by, fromZ],
+      [cx, cy, toZ],
+      [dx, dy, toZ],
+      [fromColour, fromColour, toColour, toColour],
+      facing,
+    )
   }
 }

@@ -116,7 +116,11 @@ export function createSea(layout: CityLayout, reach: readonly number[] = []): Me
   const size = seaSize(layout)
   const geometry = new PlaneGeometry(size, size).rotateX(-Math.PI / 2)
   const material = new ShaderMaterial({ uniforms, vertexShader, fragmentShader, lights: true })
+  // Drawn first and without depth: nothing laid on the water (foam, pools) can fight it for depth
+  // when seen from afar, and nothing stands under it.
+  material.depthWrite = false
   const sea = new Mesh(geometry, material)
+  sea.renderOrder = -1
   sea.receiveShadow = true
   return sea
 }
