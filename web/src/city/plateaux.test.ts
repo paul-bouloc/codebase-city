@@ -50,7 +50,7 @@ describe('roundedOutline', () => {
 })
 
 describe('createParcels', () => {
-  it('draws a slab in 36 triangles', () => {
+  it('draws a slab in 36 triangles, each on its parent', () => {
     const layout: CityLayout = {
       islands: [
         {
@@ -59,13 +59,18 @@ describe('createParcels', () => {
           plateau: { x: 0, y: 0, width: 12, height: 8 },
           parcels: [
             { rect: { x: 0.9, y: 0.9, width: 10.2, height: 6.2 }, level: 1, nature: 'normal' },
+            // Flush with its parent's west edge
+            { rect: { x: 0.9, y: 1.2, width: 4, height: 4 }, level: 2, nature: 'normal' },
           ],
           lots: [],
         },
       ],
       bounds: { x: 0, y: 0, width: 12, height: 8 },
     }
-    const mesh = createParcels(layout)
-    expect(mesh.geometry.getAttribute('position').count / 3).toBe(36)
+    const position = createParcels(layout).geometry.getAttribute('position')
+    expect(position.count / 3).toBe(2 * 36)
+    // The nested slab's sides start on its parent's top (0.6 + 0.15), never on the plateau
+    const nested = Array.from({ length: 108 }, (_, index) => position.getY(108 + index))
+    expect(Math.min(...nested)).toBeCloseTo(0.75)
   })
 })

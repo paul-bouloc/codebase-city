@@ -41,14 +41,24 @@ interface Block {
   sideColour: Vec3
 }
 
-/** Every parcel as a flat slab on its island, nested ones higher, in one draw call. */
+/**
+ * Every parcel as a flat slab on its island, nested ones higher, in one draw call. Each slab
+ * starts on the one it stands on: a nested slab flush with its parent's edge would otherwise
+ * share its side, and flicker.
+ */
 export function createParcels(layout: CityLayout): Mesh {
   return blocksMesh(
     layout.islands.flatMap(({ parcels, layer }) => {
       const altitude = layerAltitude(layer)
       return parcels.map(({ rect, level, nature, paved }) => {
         const [topColour, sideColour] = paved ? [PAVING, PAVING_EDGE] : parcelColours(nature, level)
-        return { rect, bottom: altitude, top: altitude + slabTop(level), topColour, sideColour }
+        return {
+          rect,
+          bottom: altitude + slabTop(level - 1),
+          top: altitude + slabTop(level),
+          topColour,
+          sideColour,
+        }
       })
     }),
   )
