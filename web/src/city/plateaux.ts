@@ -5,7 +5,7 @@ import { MeshBuilder } from './mesh-builder'
 import { shadingFragmentPars, shadingUniforms, shadingVertex, shadingVertexPars } from './shading'
 import { layerAltitude, mixSrgb, slabTop, srgb, type Vec3 } from './units'
 
-const PAVING = srgb('#EDE3CF')
+export const PAVING = srgb('#EDE3CF')
 const MEADOW = srgb('#C5DFA4')
 const MEADOW_EDGE = srgb('#A9C58A')
 const INNER_MEADOW = srgb('#D3E8B6')

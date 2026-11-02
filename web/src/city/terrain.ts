@@ -1,15 +1,14 @@
 import { Mesh, ShapeUtils, Vector2 } from 'three'
-import { type CanalCell, ISLAND_MARGIN, islandCanals, QUAY_WIDTH } from './canals'
+import { type CanalCell, ISLAND_MARGIN, QUAY_WIDTH } from './canals'
 import { FOAM_WIDTH, type IslandShape, type Side } from './island-shape'
 import { MeshBuilder } from './mesh-builder'
-import { groundMaterial } from './plateaux'
+import { groundMaterial, PAVING } from './plateaux'
 import { SHORE_BAND } from './sea'
 import { mixSrgb, srgb, type Vec3 } from './units'
 
-const PAVING = srgb('#EDE3CF')
 const CLIFF = srgb('#D2AE84')
-/** Terraces between the plateau and the beach, from the lowest to the highest. */
-const GRASS = ['#A2C981', '#AED18A', '#B9D894', '#C3DE9E', '#CDE3A8', '#D6E8B2'].map(srgb)
+/** Terraces between the plateau and the beach, from the lowest to the highest: four at most. */
+const GRASS = ['#A2C981', '#AED18A', '#B9D894', '#C3DE9E'].map(srgb)
 const SAND = srgb('#F2E2BE')
 const SAND_FLANK = mixSrgb('#F2E2BE', '#000000', 0.12)
 // `mix(sea, white, 40 %)`, from the shallow band the beach stands in: mixed from the open sea,
@@ -98,7 +97,7 @@ function flat(
 
 /** Quays and water in every canal, a cascade at each mouth, a footbridge over long ones. */
 function addCanals(builder: MeshBuilder, shape: IslandShape): void {
-  const { cells, footbridges, bends } = islandCanals(shape.island)
+  const { cells, footbridges, bends } = shape.canals
   const plateau = shape.altitudes[0] ?? 0
   const quayZ = plateau + QUAY_HEIGHT
   for (const cell of cells) {
