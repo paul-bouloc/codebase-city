@@ -50,7 +50,7 @@ describe('roundedOutline', () => {
 })
 
 describe('createParcels', () => {
-  it('draws a slab in 36 triangles, each on its parent', () => {
+  it('draws a folder of the island square, the ones inside rounded, each on its parent', () => {
     const layout: CityLayout = {
       islands: [
         {
@@ -68,9 +68,14 @@ describe('createParcels', () => {
       bounds: { x: 0, y: 0, width: 12, height: 8 },
     }
     const position = createParcels(layout).geometry.getAttribute('position')
-    expect(position.count / 3).toBe(2 * 36)
+    // A square slab in 4 + 8 triangles, a rounded one in 12 + 24
+    expect(position.count / 3).toBe(12 + 36)
     // The nested slab's sides start on its parent's top (0.6 + 0.15), never on the plateau
-    const nested = Array.from({ length: 108 }, (_, index) => position.getY(108 + index))
+    const nested = Array.from({ length: position.count - 36 }, (_, index) =>
+      position.getY(36 + index),
+    )
     expect(Math.min(...nested)).toBeCloseTo(0.75)
+    const outer = Array.from({ length: 36 }, (_, index) => position.getY(index))
+    expect(Math.min(...outer)).toBeCloseTo(0.6)
   })
 })

@@ -35,6 +35,8 @@ void main() {
 
 interface Block {
   rect: Rect
+  /** 0 for square corners. */
+  radius: number
   bottom: number
   top: number
   topColour: Vec3
@@ -44,7 +46,8 @@ interface Block {
 /**
  * Every parcel as a flat slab on its island, nested ones higher, in one draw call. Each slab
  * starts on the one it stands on: a nested slab flush with its parent's edge would otherwise
- * share its side, and flicker.
+ * share its side, and flicker. The island's folders keep square corners, like the canals and
+ * quays along them; the ones inside are rounded, along their streets.
  */
 export function createParcels(layout: CityLayout): Mesh {
   return blocksMesh(
@@ -54,6 +57,7 @@ export function createParcels(layout: CityLayout): Mesh {
         const [topColour, sideColour] = paved ? [PAVING, PAVING_EDGE] : parcelColours(nature, level)
         return {
           rect,
+          radius: level <= 1 ? 0 : CORNER_RADIUS,
           bottom: altitude + slabTop(level - 1),
           top: altitude + slabTop(level),
           topColour,
@@ -86,6 +90,15 @@ const CORNER_STEPS = 2
  */
 export function roundedOutline(rect: Rect, radius = CORNER_RADIUS): [number, number][] {
   const r = Math.min(radius, rect.width / 2, rect.height / 2)
+  if (r <= 0) {
+    const { x, y, width, height } = rect
+    return [
+      [x, y],
+      [x + width, y],
+      [x + width, y + height],
+      [x, y + height],
+    ]
+  }
   const x0 = rect.x + r
   const x1 = rect.x + rect.width - r
   const y0 = rect.y + r
@@ -106,8 +119,8 @@ export function roundedOutline(rect: Rect, radius = CORNER_RADIUS): [number, num
 
 function blocksMesh(blocks: Block[]): Mesh {
   const builder = new MeshBuilder()
-  for (const { rect, bottom, top, topColour, sideColour } of blocks) {
-    const outline = roundedOutline(rect)
+  for (const { rect, radius, bottom, top, topColour, sideColour } of blocks) {
+    const outline = roundedOutline(rect, radius)
     const cx = rect.x + rect.width / 2
     const cy = rect.y + rect.height / 2
     outline.forEach(([ax, ay], index) => {
