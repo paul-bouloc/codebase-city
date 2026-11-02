@@ -11,6 +11,7 @@ import {
 import { archetypeGeometry, type Vertex } from './archetype-geometry'
 import { ARCHETYPES, type Archetype, type Building, buildingFor } from './archetypes'
 import type { BuildingLanguage, CityLayout, FileMetrics } from './layout'
+import { placementFor } from './scatter'
 import { shadingFragmentPars, shadingUniforms, shadingVertex, shadingVertexPars } from './shading'
 import { boardToThree, layerAltitude, srgb, type Vec3 } from './units'
 
@@ -145,6 +146,8 @@ const VERTEX_ATTRIBUTES = [
 interface Placed {
   building: Building
   position: Vec3
+  /** Turn about the vertical, in radians. */
+  angle: number
   tint: Vec3
   generated: boolean
 }
@@ -156,10 +159,12 @@ export function createBuildings(layout: CityLayout, pixelRatio: number): Group {
     const altitude = layerAltitude(island.layer)
     for (const lot of island.lots) {
       const building = buildingFor(lot.file)
+      const { dx, dy, angle } = placementFor(building, lot.x, lot.y)
       const placed = byArchetype.get(building.archetype) ?? []
       placed.push({
         building,
-        position: boardToThree(lot.x, lot.y, altitude + (lot.base ?? 0)),
+        position: boardToThree(lot.x + dx, lot.y + dy, altitude + (lot.base ?? 0)),
+        angle,
         tint: tintOf(lot.file),
         generated: lot.file.generated === true,
       })
@@ -207,8 +212,8 @@ function instancedArchetype(
   })
   const mesh = new InstancedMesh(geometry, material, placed.length)
   const matrix = new Matrix4()
-  placed.forEach(({ building, position, tint, generated: made }, index) => {
-    mesh.setMatrixAt(index, matrix.makeTranslation(...position))
+  placed.forEach(({ building, position, angle, tint, generated: made }, index) => {
+    mesh.setMatrixAt(index, matrix.makeRotationY(angle).setPosition(...position))
     sizes.set([building.side, building.height, building.split], index * 3)
     tints.set(tint, index * 3)
     generated[index] = made ? 1 : 0
