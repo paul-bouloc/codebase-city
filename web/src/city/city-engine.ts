@@ -160,6 +160,17 @@ export class CityEngine {
     this.needsRender = true
   }
 
+  /** Points the camera at a board point from `distance` u away; angles in degrees if given. */
+  lookAt(x: number, y: number, distance: number, azimuth?: number, polar?: number): void {
+    const [tx, , tz] = boardToThree(x, y, 0)
+    if (azimuth !== undefined && polar !== undefined) {
+      void this.controls.rotateTo((azimuth * Math.PI) / 180, (polar * Math.PI) / 180, false)
+    }
+    void this.controls.moveTo(tx, 0, tz, false)
+    void this.controls.dollyTo(distance, false)
+    this.needsRender = true
+  }
+
   setSize(width: number, height: number): void {
     if (width === 0 || height === 0) {
       return

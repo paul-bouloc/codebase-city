@@ -1,5 +1,6 @@
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { CityView } from '../src/app/CityView'
+import type { CityEngine } from '../src/city/city-engine'
 import { cityFromResult } from '../src/city/from-result'
 import type { CityLayout } from '../src/city/layout'
 import { syntheticCity } from '../src/city/synthetic'
@@ -35,6 +36,7 @@ const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve))
  * A synthetic city, full screen: `?islands=12&files=2000&seed=synthetic`, or every archetype on
  * one island: `?gallery`. A result written by `just ingest owner/repo --out result.json` can be
  * loaded in its place, or dropped in `web/dev/results/` to get a button: `?result=name` opens it.
+ * `?look=x,y,distance[,azimuth,polar]` points the camera at a board point, for close captures.
  */
 export function CityPage() {
   const synthetic = useMemo(() => {
@@ -51,6 +53,17 @@ export function CityPage() {
   const layout = loaded ?? synthetic
   const [mount, setMount] = useState(0)
   const [remounting, setRemounting] = useState(false)
+  const [engine, setEngine] = useState<CityEngine | null>(null)
+
+  // After the city loads (the view's effect runs first), the camera goes where `?look` says.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: again after each city loads
+  useEffect(() => {
+    const look = new URLSearchParams(window.location.search).get('look')
+    const [x, y, distance, azimuth, polar] = (look ?? '').split(',').map(Number)
+    if (engine && x !== undefined && y !== undefined && distance) {
+      engine.lookAt(x, y, distance, azimuth, polar)
+    }
+  }, [engine, layout])
 
   // Engines leaking GPU memory warn in the console when they are disposed.
   async function remount() {
@@ -99,7 +112,7 @@ export function CityPage() {
 
   return (
     <main className={styles.page}>
-      <CityView key={mount} layout={layout} showStats />
+      <CityView key={mount} layout={layout} showStats onEngine={setEngine} />
       <div className={styles.tools}>
         {Object.keys(RESULTS)
           .sort()

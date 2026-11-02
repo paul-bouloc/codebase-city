@@ -8,10 +8,12 @@ interface CityViewProps {
   layout: CityLayout
   /** Draw every frame and show the frame rate and draw calls. */
   showStats?: boolean
+  /** Called with the engine once it is mounted, and with null when it goes. */
+  onEngine?: (engine: CityEngine | null) => void
 }
 
 /** Mounts the city engine in its parent's whole box. */
-export function CityView({ layout, showStats = false }: CityViewProps) {
+export function CityView({ layout, showStats = false, onEngine }: CityViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [engine, setEngine] = useState<CityEngine | null>(null)
 
@@ -38,6 +40,10 @@ export function CityView({ layout, showStats = false }: CityViewProps) {
   useEffect(() => {
     engine?.load(layout)
   }, [engine, layout])
+
+  useEffect(() => {
+    onEngine?.(engine)
+  }, [engine, onEngine])
 
   return (
     <div ref={containerRef} className={styles.view}>
