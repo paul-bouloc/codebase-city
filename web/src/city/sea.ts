@@ -17,8 +17,11 @@ import { srgb } from './units'
 /** The open sea, past the last depth band; also the scene's background. */
 export const OPEN_SEA = '#4F9EA5'
 
+/** The shallow water along every beach. */
+export const SHORE_BAND = '#94CFCB'
+
 /** From the shore out. */
-const BAND_COLORS = ['#94CFCB', '#80C3C2', '#73BABB', '#66B1B5', '#5AA8AE']
+const BAND_COLORS = [SHORE_BAND, '#80C3C2', '#73BABB', '#66B1B5', '#5AA8AE']
 
 const GRID_SPACING = 10
 const GRID_OPACITY = 0.18

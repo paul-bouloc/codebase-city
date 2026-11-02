@@ -3,7 +3,7 @@ import { type CanalCell, ISLAND_MARGIN, islandCanals, QUAY_WIDTH } from './canal
 import { FOAM_WIDTH, type IslandShape, type Side } from './island-shape'
 import { MeshBuilder } from './mesh-builder'
 import { groundMaterial } from './plateaux'
-import { OPEN_SEA } from './sea'
+import { SHORE_BAND } from './sea'
 import { mixSrgb, srgb, type Vec3 } from './units'
 
 const PAVING = srgb('#EDE3CF')
@@ -12,7 +12,9 @@ const CLIFF = srgb('#D2AE84')
 const GRASS = ['#A2C981', '#AED18A', '#B9D894', '#C3DE9E', '#CDE3A8', '#D6E8B2'].map(srgb)
 const SAND = srgb('#F2E2BE')
 const SAND_FLANK = mixSrgb('#F2E2BE', '#000000', 0.12)
-const FOAM = mixSrgb(OPEN_SEA, '#FFFFFF', 0.4)
+// The design's `mix(sea, white, 40 %)`, from the shallow band the beach stands in: from the
+// open sea, the foam came out darker than the water around it.
+const FOAM = mixSrgb(SHORE_BAND, '#FFFFFF', 0.4)
 const WHITE = srgb('#FFFFFF')
 /** The foam's white rim, at its outer edge. */
 const FOAM_RIM = 0.12
