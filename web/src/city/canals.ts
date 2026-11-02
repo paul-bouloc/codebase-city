@@ -30,12 +30,24 @@ export interface Footbridge {
   rect: Rect
 }
 
+/**
+ * A folder's corner on a crossing, where the quays of two canals meet: the quay turns around it
+ * in a quarter circle. `sx` and `sy` point from the corner into the water.
+ */
+export interface Bend {
+  x: number
+  y: number
+  sx: 1 | -1
+  sy: 1 | -1
+}
+
 export interface Canals {
   cells: CanalCell[]
   footbridges: Footbridge[]
+  bends: Bend[]
 }
 
-const NONE: Canals = { cells: [], footbridges: [] }
+const NONE: Canals = { cells: [], footbridges: [], bends: [] }
 
 /** Rounds to a hundredth of a unit, so that edges from different folders line up. */
 const snap = (value: number) => Math.round(value * 100) / 100
@@ -170,7 +182,31 @@ export function islandCanals(island: IslandLayout): Canals {
       },
     ]
   })
-  return { cells, footbridges }
+  // Where a crossing's corner is a folder's corner, the quays of its two canals meet.
+  const bends: Bend[] = []
+  for (const { rect } of crossings) {
+    for (const [sx, sy] of [
+      [1, 1],
+      [-1, 1],
+      [1, -1],
+      [-1, -1],
+    ] as const) {
+      const x = snap(sx > 0 ? rect.x : rect.x + rect.width)
+      const y = snap(sy > 0 ? rect.y : rect.y + rect.height)
+      const cornered = obstacles.some(
+        (folder) =>
+          Math.abs((sx > 0 ? folder.x + folder.width : folder.x) - x) < TOUCH &&
+          Math.abs((sy > 0 ? folder.y + folder.height : folder.y) - y) < TOUCH,
+      )
+      const known = bends.some(
+        (bend) => Math.abs(bend.x - x) < TOUCH && Math.abs(bend.y - y) < TOUCH,
+      )
+      if (cornered && !known) {
+        bends.push({ x, y, sx, sy })
+      }
+    }
+  }
+  return { cells, footbridges, bends }
 }
 
 /** A thin strip just past one side of a rectangle. */

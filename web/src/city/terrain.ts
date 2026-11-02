@@ -26,9 +26,11 @@ const WATER = srgb('#79BFC0')
 const FALL = srgb('#DDF1F2')
 const WOOD = srgb('#B98B5E')
 const WOOD_SIDE = mixSrgb('#B98B5E', '#000000', 0.15)
-/** Above the plateau, under the parcels' slabs (0.15 u): the quay, then the water on it. */
-const QUAY_HEIGHT = 0.04
-const WATER_HEIGHT = 0.07
+/** Above the plateau, under the parcels' slabs (0.15 u): the water, then the quays on it. */
+const WATER_HEIGHT = 0.05
+const QUAY_HEIGHT = 0.08
+/** Chords in the quarter circle where a quay turns around a folder's corner. */
+const BEND_STEPS = 4
 /** A cascade's sheet, and how far it stands off the cliff it runs down. */
 const FALL_WIDTH = 0.76
 const FALL_OFFSET = 0.05
@@ -96,23 +98,36 @@ function flat(
 
 /** Quays and water in every canal, a cascade at each mouth, a footbridge over long ones. */
 function addCanals(builder: MeshBuilder, shape: IslandShape): void {
-  const { cells, footbridges } = islandCanals(shape.island)
+  const { cells, footbridges, bends } = islandCanals(shape.island)
   const plateau = shape.altitudes[0] ?? 0
+  const quayZ = plateau + QUAY_HEIGHT
   for (const cell of cells) {
     const { x, y, width, height } = cell.rect
-    flat(builder, x, y, x + width, y + height, plateau + QUAY_HEIGHT, QUAY)
-    const inset = (side: Side) => (cell.quays[side] ? QUAY_WIDTH : 0)
-    flat(
-      builder,
-      x + inset('west'),
-      y + inset('south'),
-      x + width - inset('east'),
-      y + height - inset('north'),
-      plateau + WATER_HEIGHT,
-      WATER,
-    )
+    const x1 = x + width
+    const y1 = y + height
+    flat(builder, x, y, x1, y1, plateau + WATER_HEIGHT, WATER)
+    // Quays along the folders, over the water's edge.
+    const q = QUAY_WIDTH
+    if (cell.quays.west) flat(builder, x, y, x + q, y1, quayZ, QUAY)
+    if (cell.quays.east) flat(builder, x1 - q, y, x1, y1, quayZ, QUAY)
+    if (cell.quays.south) flat(builder, x, y, x1, y + q, quayZ, QUAY)
+    if (cell.quays.north) flat(builder, x, y1 - q, x1, y1, quayZ, QUAY)
     if (cell.mouth) {
       addMouth(builder, shape, cell, cell.mouth)
+    }
+  }
+  // Around a folder's corner on a crossing, the quay turns in a quarter circle.
+  for (const { x, y, sx, sy } of bends) {
+    for (let step = 0; step < BEND_STEPS; step++) {
+      const a0 = (Math.PI / 2) * (step / BEND_STEPS)
+      const a1 = (Math.PI / 2) * ((step + 1) / BEND_STEPS)
+      builder.triangle(
+        [x, y, quayZ],
+        [x + sx * QUAY_WIDTH * Math.cos(a0), y + sy * QUAY_WIDTH * Math.sin(a0), quayZ],
+        [x + sx * QUAY_WIDTH * Math.cos(a1), y + sy * QUAY_WIDTH * Math.sin(a1), quayZ],
+        QUAY,
+        UP,
+      )
     }
   }
   for (const { rect } of footbridges) {
@@ -155,8 +170,9 @@ function addMouth(builder: MeshBuilder, shape: IslandShape, cell: CanalCell, sid
       UP,
     )
 
-  strip(a0, a1, -ISLAND_MARGIN, edge, plateau + QUAY_HEIGHT, QUAY)
-  strip(water0, water1, -ISLAND_MARGIN, edge + FALL_OFFSET, plateau + WATER_HEIGHT, WATER)
+  strip(a0, a1, -ISLAND_MARGIN, edge + FALL_OFFSET, plateau + WATER_HEIGHT, WATER)
+  strip(a0, water0, -ISLAND_MARGIN, edge, plateau + QUAY_HEIGHT, QUAY)
+  strip(water1, a1, -ISLAND_MARGIN, edge, plateau + QUAY_HEIGHT, QUAY)
 
   const f0 = middle - FALL_WIDTH / 2
   const f1 = middle + FALL_WIDTH / 2

@@ -56,6 +56,19 @@ describe('islandCanals', () => {
     expect(tee?.quays).toEqual({ west: false, east: false, south: false, north: true })
   })
 
+  it("turns the quays around the folders' corners on each crossing", () => {
+    // Under C, the corners of A and B; over B, those of C and D
+    expect(canals.bends).toEqual(
+      expect.arrayContaining([
+        { x: 14.1, y: 9.1, sx: 1, sy: 1 },
+        { x: 15.9, y: 9.1, sx: -1, sy: 1 },
+        { x: 20.1, y: 10.9, sx: 1, sy: -1 },
+        { x: 21.9, y: 10.9, sx: -1, sy: -1 },
+      ]),
+    )
+    expect(canals.bends).toHaveLength(4)
+  })
+
   it('spans each long canal with a footbridge, never over a crossing', () => {
     // Between A and B, C and D, A and C, B and D; not between B and C (4.2 u)
     expect(canals.footbridges).toHaveLength(4)
@@ -123,6 +136,6 @@ describe('islandCanals', () => {
     const single = islandCanals(
       island({ x: 0, y: 0, width: 12, height: 8 }, [{ x: 0.9, y: 0.9, width: 10.2, height: 6.2 }]),
     )
-    expect(single).toEqual({ cells: [], footbridges: [] })
+    expect(single).toEqual({ cells: [], footbridges: [], bends: [] })
   })
 })
