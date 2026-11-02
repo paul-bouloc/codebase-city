@@ -57,7 +57,8 @@ describe('islandCanals', () => {
   })
 
   it('spans each long canal with a footbridge, never over a crossing', () => {
-    expect(canals.footbridges).toHaveLength(3)
+    // Between A and B, C and D, A and C, B and D; not between B and C (4.2 u)
+    expect(canals.footbridges).toHaveLength(4)
     for (const { rect } of canals.footbridges) {
       expect(Math.min(rect.width, rect.height)).toBeCloseTo(0.6)
       expect(Math.max(rect.width, rect.height)).toBeCloseTo(1.8)
@@ -65,6 +66,40 @@ describe('islandCanals', () => {
         expect(overlap(rect, folder)).toBeCloseTo(0, 9)
       }
     }
+  })
+
+  it('joins canals that do not line up, in one stretch of water each', () => {
+    // The gap of the top row is 0.9 u east of the bottom row's
+    //   C (0.9 to 15.0) | D (16.8 to 29.1)
+    //   A (0.9 to 14.1) | B (15.9 to 29.1)
+    const offset = islandCanals(
+      island({ x: 0, y: 0, width: 30, height: 20 }, [
+        folders[0] as Rect,
+        folders[1] as Rect,
+        { x: 0.9, y: 10.9, width: 14.1, height: 8.2 },
+        { x: 16.8, y: 10.9, width: 12.3, height: 8.2 },
+      ]),
+    )
+    // Every point of the canal along x is water, and only one cell spans each canal's width
+    const water = (x: number, y: number) =>
+      offset.cells.some(
+        ({ rect, quays }) =>
+          x >= rect.x + (quays.west ? 0.3 : 0) &&
+          x <= rect.x + rect.width - (quays.east ? 0.3 : 0) &&
+          y >= rect.y + (quays.south ? 0.3 : 0) &&
+          y <= rect.y + rect.height - (quays.north ? 0.3 : 0),
+      )
+    for (let x = 1.5; x < 28.5; x += 0.1) {
+      expect(water(x, 10)).toBe(true)
+    }
+    const mouths = offset.cells.filter((cell) => cell.mouth)
+    expect(mouths.map((cell) => [cell.mouth, cell.rect.width])).toEqual(
+      expect.arrayContaining([
+        ['south', 1.8],
+        ['north', 1.8],
+      ]),
+    )
+    expect(mouths).toHaveLength(4)
   })
 
   it('leaves strips along a grid and dead ends paved', () => {
