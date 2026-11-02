@@ -277,3 +277,19 @@ fn folders_thousands_deep_neither_overflow_nor_grow_the_city() {
     // Past a few levels, parcels nest without padding: the city stays small
     assert!(result.layout.width < 1_000 && result.layout.height < 1_000);
 }
+
+#[test]
+fn a_folder_of_one_subfolder_takes_any_shape() {
+    // `src/a` holds no file of its own, only `b`: a frame around a frame
+    let paths = (0..40)
+        .map(|file| format!("src/a/b/f{file}.ts"))
+        .chain((0..40).map(|file| format!("src/c/g{file}.ts")));
+    let result = analyzed(paths);
+    let parcels = &result.layout.parcels;
+    for row in 0..parcels.dir.len() {
+        let (width, height) = (parcels.width[row], parcels.height[row]);
+        let ratio = f64::from(width.max(height)) / f64::from(width.min(height));
+        let path = dir_path(&result, parcels.dir[row]);
+        assert!(ratio < 4.0, "{path} is {width} × {height}");
+    }
+}

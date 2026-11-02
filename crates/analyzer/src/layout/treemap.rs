@@ -296,20 +296,16 @@ impl Node {
 
     /// The shape that wastes the least room in a row: see [`Row::waste`].
     fn fit(&self, row: &Row) -> u32 {
-        let candidates: Vec<u32> = match &self.kind {
+        // A shape goes through every frame to what they hold: a folder of one
+        // subfolder and no files of its own is a frame around a frame.
+        let (inner, padding) = self.innermost();
+        let candidates: Vec<u32> = match &inner.kind {
             Kind::Grid { lots } => {
-                let rows = (row.height / LOT).clamp(1, *lots);
+                let rows = (row.height.saturating_sub(2 * padding) / LOT).clamp(1, *lots);
                 vec![rows, (rows + 1).min(*lots)]
             }
-            Kind::Frame { padding, child, .. } => match &child.kind {
-                Kind::Grid { lots } => {
-                    let inner = row.height.saturating_sub(2 * padding);
-                    let rows = (inner / LOT).clamp(1, *lots);
-                    vec![rows, (rows + 1).min(*lots)]
-                }
-                Kind::Frame { .. } | Kind::Pack { .. } => (0..child.shape_count()).collect(),
-            },
             Kind::Pack { shapes, .. } => (0..).take(shapes.len()).collect(),
+            Kind::Frame { .. } => Vec::new(),
         };
         let mut best = (self.preferred(), f64::INFINITY);
         for choice in candidates {
@@ -321,13 +317,20 @@ impl Node {
         best.0
     }
 
-    /// How many shapes a pack, or a frame around one, has.
-    fn shape_count(&self) -> u32 {
-        match &self.kind {
-            Kind::Grid { .. } => 1,
-            Kind::Frame { child, .. } => child.shape_count(),
-            Kind::Pack { shapes, .. } => crate::saturating_u32(shapes.len()),
+    /// What the frames around a grid or a pack hold, and their padding in all.
+    fn innermost(&self) -> (&Self, u32) {
+        let mut node = self;
+        let mut padding = 0u32;
+        while let Kind::Frame {
+            padding: own,
+            child,
+            ..
+        } = &node.kind
+        {
+            padding = padding.saturating_add(*own);
+            node = child;
         }
+        (node, padding)
     }
 
     /// Places the tree with its south-west corner at the origin, in its
