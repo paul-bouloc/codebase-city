@@ -632,7 +632,6 @@ fn print_structure(result: &AnalysisResult, expected: Option<&Expected>) {
     }
 }
 
-/// The path of a folder, rebuilt from the folder table, with a final `/`.
 /// The longest water between two islands that still makes them
 /// neighbours, in tenths of a unit: the widest channel.
 const NEIGHBOURS: i64 = 240;
@@ -717,6 +716,7 @@ fn print_layout(result: &AnalysisResult) {
     }
 }
 
+/// The path of a folder, rebuilt from the folder table, with a final `/`.
 fn dir_path(result: &AnalysisResult, dir: u32) -> String {
     let mut parts = Vec::new();
     let mut current = dir as usize;
