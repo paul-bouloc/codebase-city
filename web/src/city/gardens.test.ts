@@ -66,4 +66,28 @@ describe('islandGardens', () => {
     const gardens = islandGardens(island, islandCanals(island).cells)
     expect(gardens).toEqual([{ x: 11.8, y: 0.9, width: 17.3, height: 10.2 }])
   })
+
+  it('stays fast on an island of thousands of folders', () => {
+    // 4,096 folders, 64 × 64, offset row by row so that their edges never line up
+    const parcels = Array.from({ length: 4096 }, (_, n) => ({
+      rect: {
+        x: 0.9 + 5 * (n % 64) + (n % 7) * 0.1,
+        y: 0.9 + 5 * Math.floor(n / 64),
+        width: 3,
+        height: 3,
+      },
+      level: 1,
+      nature: 'normal' as const,
+    }))
+    const island: IslandLayout = {
+      path: 'many',
+      layer: 1,
+      plateau: { x: 0, y: 0, width: 5 * 64 + 1.8, height: 5 * 64 + 1.8 },
+      parcels,
+      lots: [],
+    }
+    const start = performance.now()
+    islandGardens(island, [])
+    expect(performance.now() - start).toBeLessThan(250)
+  })
 })

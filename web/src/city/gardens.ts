@@ -56,12 +56,14 @@ export function islandGardens(island: IslandLayout, canals: readonly CanalCell[]
   const ys = cuts(inner.y, inner.height, (rect) => [rect.y, rect.y + rect.height])
   const columns = xs.length - 1
   const rows = ys.length - 1
-  const free: boolean[] = []
-  for (let row = 0; row < rows; row++) {
-    for (let column = 0; column < columns; column++) {
-      const cx = ((xs[column] ?? 0) + (xs[column + 1] ?? 0)) / 2
-      const cy = ((ys[row] ?? 0) + (ys[row + 1] ?? 0)) / 2
-      free.push(!obstacles.some((rect) => contains(rect, cx, cy)))
+  // Each obstacle covers the cells between its edges, found by bisection: testing every cell
+  // against every obstacle grows as the cube of an island's folders.
+  const free = new Array<boolean>(columns * rows).fill(true)
+  for (const rect of obstacles) {
+    const [c0, c1] = [firstAtOrAbove(xs, rect.x), firstAtOrAbove(xs, rect.x + rect.width)]
+    const [r0, r1] = [firstAtOrAbove(ys, rect.y), firstAtOrAbove(ys, rect.y + rect.height)]
+    for (let row = r0; row < Math.min(r1, rows); row++) {
+      free.fill(false, row * columns + c0, row * columns + Math.min(c1, columns))
     }
   }
 
@@ -163,6 +165,20 @@ export function squareGardens(
     }
   }
   return gardens
+}
+
+/** The index of the first cut at or past `value`, give or take the snapping of cuts. */
+function firstAtOrAbove(cuts: readonly number[], value: number): number {
+  let [low, high] = [0, cuts.length]
+  while (low < high) {
+    const middle = (low + high) >> 1
+    if ((cuts[middle] ?? 0) < snap(value) - TOUCH) {
+      low = middle + 1
+    } else {
+      high = middle
+    }
+  }
+  return low
 }
 
 function contains(rect: Rect, x: number, y: number): boolean {
