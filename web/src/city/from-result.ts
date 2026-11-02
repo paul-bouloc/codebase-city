@@ -79,8 +79,21 @@ export function cityFromResult(result: AnalysisResult): CityLayout {
     }
   })
 
+  // The full path, not the name: two islands may share a name (`test` and `src/test`), and an
+  // island's path seeds its coast and its decor.
+  const pathOf = (dir: number): string => {
+    const names: string[] = []
+    for (let at: number | null | undefined = dir; at !== null && at !== undefined; ) {
+      const name = dirs.name[at]
+      if (name) {
+        names.unshift(name)
+      }
+      at = dirs.parent[at]
+    }
+    return names.join('/') || '/'
+  }
   const islands: IslandLayout[] = result.islands.dir.map((dir, island) => ({
-    path: dirs.name[dir] || '/',
+    path: pathOf(dir),
     layer: result.islands.layer[island] ?? 1,
     plateau: rect(
       layout.islands.x[island] ?? 0,

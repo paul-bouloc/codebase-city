@@ -137,6 +137,17 @@ describe('cityFromResult', () => {
     ])
   })
 
+  it('names each island by its full path, so that two of one name differ', () => {
+    // `src/core` becomes an island named `src` too, under `src`
+    const json = structuredClone(sample) as unknown as AnalysisResult
+    const core = json.islands.dir[2] ?? 0
+    json.dirs.name[core] = 'src'
+    const city = cityFromResult(decodeResult(json))
+    const paths = city.islands.map((island) => island.path)
+    expect(paths).toContain('src/src')
+    expect(new Set(paths).size).toBe(paths.length)
+  })
+
   it('names the languages it paints in their own colour', () => {
     const json = structuredClone(sample) as unknown as AnalysisResult
     json.languages = ['Python', 'Go', 'JSON', 'Shell']
