@@ -156,6 +156,44 @@ describe('cityDecor', () => {
     }
   })
 
+  it('counts gardens in the budget, however large the square', () => {
+    // One file on a square of 300 × 300 lots: 90,000 garden lots, 140,000 trees without a budget
+    const square: IslandLayout = {
+      path: 'square',
+      layer: 1,
+      plateau: { x: 0, y: 0, width: 602.4, height: 602.4 },
+      parcels: [],
+      lots: [lot(2.2, 2.2)],
+      square: { x: 0.9, y: 0.9, width: 600.6, height: 600.6 },
+      grids: [
+        {
+          rect: { x: 1.2, y: 1.2, width: 600, height: 600 },
+          nature: 'normal',
+          base: 0,
+          square: true,
+        },
+      ],
+    }
+    const filler = island('filler', 'unanalyzed', { every: 1, x: 1000 })
+    const trees = decorOf(city(square, filler)).trees.filter((tree) => tree.z > layerAltitude(1))
+    expect(trees.length).toBeLessThan(16_000 * 1.05)
+  })
+
+  it('never draws more than 40,000 trees and 10,000 rocks', () => {
+    // An island 4 u wide and 40,000 u long: a shore without end
+    const thin: IslandLayout = {
+      path: 'thin',
+      layer: 5,
+      plateau: { x: 0, y: 0, width: 40_000, height: 4 },
+      parcels: [],
+      lots: [],
+    }
+    const decor = decorOf(city(thin))
+    expect(decor.trees.length).toBeLessThanOrEqual(40_000)
+    expect(decor.rocks.length).toBeLessThanOrEqual(10_000)
+    expect(decor.rocks.length).toBeGreaterThan(5_000)
+  })
+
   it('doubles the decor of a city under 50 files', () => {
     // Three small islands of one file, each alone or with a far one of 400 files
     const filler = island('filler', 'unanalyzed', { every: 1, x: 300 })
