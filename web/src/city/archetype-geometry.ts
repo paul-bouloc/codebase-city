@@ -47,8 +47,9 @@ const FLOOR_SIDES = fixedPaint(mixSrgb(WOOD, '#000000', 0.15))
 const FLOOR_TOP = fixedPaint(mixSrgb(WOOD, '#FFFFFF', 0.2))
 const POST = fixedPaint(mixSrgb(WOOD, '#000000', 0.2))
 const ROOF_EDGE = fixedPaint(mixSrgb(WOOD, '#000000', 0.1))
-const CONCRETE_WALL = fixedPaint(srgb('#D9D5CC'))
-const CONCRETE_ROOF = fixedPaint(srgb('#CFCAC0'))
+// Concrete takes the instance's tint, a shade of concrete; its roof is a little darker.
+const CONCRETE_WALL: Paint = { colour: WHITE, amount: 0 }
+const CONCRETE_ROOF: Paint = { colour: srgb('#000000'), amount: 0.045 }
 
 interface Face {
   points: Point[]

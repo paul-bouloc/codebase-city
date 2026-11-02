@@ -33,8 +33,9 @@ describe('cityFromResult', () => {
     })
     // `schema.ts` is generated
     expect(city.islands[5]?.lots[0]?.file.generated).toBe(true)
-    // `release.sh`: Shell is not analyzed
-    expect(city.islands[7]?.lots[0]?.file.analyzed).toBe(false)
+    // `release.sh`: Shell is not analyzed, and takes the scripts' concrete
+    expect(city.islands[7]?.lots[0]?.file).toMatchObject({ analyzed: false, family: 'scripts' })
+    expect(city.islands[0]?.lots[0]?.file.family).toBe('data')
     const css = lots.find((lot) => lot.file.language === 'css')
     expect(css).toBeDefined()
     const test = city.islands[6]?.lots[0]

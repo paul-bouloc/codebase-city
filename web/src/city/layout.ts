@@ -16,6 +16,9 @@ export interface Point {
 /** The languages the city paints in their own colour; the others share one. */
 export type BuildingLanguage = Language | 'python' | 'go'
 
+/** What a file the analyzer does not read holds: each family has its shade of concrete. */
+export type ConcreteFamily = 'docs' | 'markup' | 'data' | 'styles' | 'scripts'
+
 /** What a building is made from. */
 export interface FileMetrics {
   language: BuildingLanguage
@@ -24,6 +27,8 @@ export interface FileMetrics {
   test: boolean
   /** False for a language the analyzer does not read: a bare concrete block. True if absent. */
   analyzed?: boolean
+  /** The shade of a concrete block; `docs` if absent. */
+  family?: ConcreteFamily
   /** Made by a tool: pale concrete walls and three bars on the roof. False if absent. */
   generated?: boolean
 }

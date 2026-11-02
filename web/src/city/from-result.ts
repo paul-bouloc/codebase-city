@@ -1,5 +1,12 @@
 import type { AnalysisResult } from '../data/generated/AnalysisResult'
-import type { BuildingLanguage, CityLayout, IslandLayout, Lot, Rect } from './layout'
+import type {
+  BuildingLanguage,
+  CityLayout,
+  ConcreteFamily,
+  IslandLayout,
+  Lot,
+  Rect,
+} from './layout'
 import { slabTop } from './units'
 
 /** The layout is in tenths of a unit. */
@@ -7,6 +14,26 @@ const TENTHS = 10
 
 /** The languages the analyzer reads; it reports the others' lines only. */
 const ANALYZED = new Set(['TypeScript', 'JavaScript', 'Python', 'Go'])
+
+/** Languages the analyzer does not read, by the shade of concrete they take; docs otherwise. */
+const FAMILIES: Record<string, ConcreteFamily> = {
+  HTML: 'markup',
+  XML: 'markup',
+  SVG: 'markup',
+  Vue: 'markup',
+  Svelte: 'markup',
+  JSON: 'data',
+  YAML: 'data',
+  TOML: 'data',
+  SQL: 'data',
+  'Protocol Buffers': 'data',
+  CSS: 'styles',
+  SCSS: 'styles',
+  Less: 'styles',
+  Shell: 'scripts',
+  Dockerfile: 'scripts',
+  Makefile: 'scripts',
+}
 
 const LANGUAGES: Record<string, BuildingLanguage> = {
   TypeScript: 'typescript',
@@ -77,6 +104,7 @@ export function cityFromResult(result: AnalysisResult): CityLayout {
         complexity: files.complexity[file] ?? 0,
         test: scope === 'test' || scope === 'fixture',
         analyzed: ANALYZED.has(language),
+        ...(ANALYZED.has(language) ? {} : { family: FAMILIES[language] ?? 'docs' }),
         generated: files.generated[file] ?? false,
       },
     }

@@ -10,7 +10,7 @@ import {
 } from 'three'
 import { archetypeGeometry, type Vertex } from './archetype-geometry'
 import { ARCHETYPES, type Archetype, type Building, buildingFor } from './archetypes'
-import type { BuildingLanguage, CityLayout, FileMetrics } from './layout'
+import type { BuildingLanguage, CityLayout, ConcreteFamily, FileMetrics } from './layout'
 import { placementFor } from './scatter'
 import { shadingFragmentPars, shadingUniforms, shadingVertex, shadingVertexPars } from './shading'
 import { boardToThree, layerAltitude, srgb, type Vec3 } from './units'
@@ -25,8 +25,14 @@ const LANGUAGE_COLOURS: Record<BuildingLanguage, Vec3> = {
   other: srgb('#B9AE9C'),
 }
 const TEST_COLOUR = srgb('#CFC7B8')
-/** Concrete faces are painted as they are; this tint only gives their edges `#8F8A80`. */
-const CONCRETE_TINT = srgb('#F6EEDC')
+/** Shades of concrete, close enough to read as one material: docs keep the design's `#D9D5CC`. */
+const CONCRETE_TINTS: Record<ConcreteFamily, Vec3> = {
+  docs: srgb('#D9D5CC'),
+  markup: srgb('#DED3C3'),
+  data: srgb('#CFD4D3'),
+  styles: srgb('#DCCFD0'),
+  scripts: srgb('#D3D2C0'),
+}
 /** Edges are `mix(language, black, 42 %)`, on every part of the building, never shaded. */
 const EDGE_DARKENING = 0.42
 /** Line width each face draws inside its outline, in CSS pixels: two faces make a 0.5 px edge. */
@@ -184,7 +190,7 @@ export function createBuildings(layout: CityLayout, pixelRatio: number): Group {
 
 function tintOf(file: FileMetrics): Vec3 {
   if (file.analyzed === false) {
-    return CONCRETE_TINT
+    return CONCRETE_TINTS[file.family ?? 'docs']
   }
   return file.test ? TEST_COLOUR : LANGUAGE_COLOURS[file.language]
 }
