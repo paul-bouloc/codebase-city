@@ -36,6 +36,14 @@ describe('seaField', () => {
     expect(field.data).toHaveLength(field.columns * field.rows)
   })
 
+  it('starts from the beach when the island reaches past its plateau', () => {
+    const beach = seaField(square, [4])
+    // 3 u off the plateau is still the beach; further out, everything is 4 u closer
+    expect(sample(beach, 8, 0)).toBe(0)
+    expect(sample(beach, 15.5, 0)).toBeCloseTo(sample(field, 15.5, 0) - 4, 0)
+    expect(beach.originX).toBeLessThanOrEqual(-5 - 4 - SEA_FIELD_RANGE)
+  })
+
   it('is zero on the plateau and grows away from it', () => {
     expect(sample(field, 0, 0)).toBe(0)
     expect(sample(field, 15, 0)).toBeGreaterThan(sample(field, 8, 0))
@@ -55,7 +63,7 @@ describe('seaField', () => {
   })
 
   it('keeps big cities within the texel budget', () => {
-    const big = seaField(syntheticCity({ islands: 30, files: 60_000 }), 256)
+    const big = seaField(syntheticCity({ islands: 30, files: 60_000 }), [], 256)
     expect(big.columns).toBeLessThanOrEqual(256)
     expect(big.rows).toBeLessThanOrEqual(256)
     expect(big.texel).toBeGreaterThan(1)
@@ -63,7 +71,7 @@ describe('seaField', () => {
 
   it('matches the nearest plateau computed texel by texel', () => {
     const city = syntheticCity({ islands: 9, files: 900 })
-    const sparse = seaField(city, 128)
+    const sparse = seaField(city, [], 128)
     for (let row = 0; row < sparse.rows; row += 3) {
       for (let column = 0; column < sparse.columns; column += 3) {
         const x = sparse.originX + (column + 0.5) * sparse.texel

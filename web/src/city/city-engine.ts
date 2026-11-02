@@ -126,7 +126,10 @@ export class CityEngine {
     }
     const shapes = islandShapes(layout)
     this.city = new Group().add(
-      createSea(layout),
+      createSea(
+        layout,
+        shapes.map((shape) => shape.reach),
+      ),
       createTerrain(shapes),
       createParcels(layout),
       createBuildings(layout, this.renderer.getPixelRatio()),

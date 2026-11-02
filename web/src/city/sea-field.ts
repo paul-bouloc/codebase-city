@@ -9,7 +9,7 @@ const BAND_NOISE = 3
 export const SEA_FIELD_RANGE = 48
 
 /**
- * Distance to the nearest plateau, plus a smooth ±3 u wobble, sampled on a grid around the
+ * Distance to the nearest beach, plus a smooth ±3 u wobble, sampled on a grid around the
  * city once per city: the sea shader reads its depth bands from it.
  */
 export interface SeaField {
@@ -24,8 +24,17 @@ export interface SeaField {
   texel: number
 }
 
-export function seaField(layout: CityLayout, maxTexels = 512): SeaField {
-  const margin = SEA_FIELD_RANGE + BAND_NOISE
+/**
+ * `reach` tells, island by island, how far its beach stands past its plateau: the bands are
+ * measured from there, without tracing the beach's own outline.
+ */
+export function seaField(
+  layout: CityLayout,
+  reach: readonly number[] = [],
+  maxTexels = 512,
+): SeaField {
+  const farthest = Math.max(0, ...reach)
+  const margin = SEA_FIELD_RANGE + BAND_NOISE + farthest
   const width = layout.bounds.width + 2 * margin
   const height = layout.bounds.height + 2 * margin
   const texel = Math.max(1, Math.max(width, height) / maxTexels)
@@ -35,19 +44,22 @@ export function seaField(layout: CityLayout, maxTexels = 512): SeaField {
   const originY = layout.bounds.y - margin
   const wobble = noise2d('sea')
   const plateaux = layout.islands.map((island) => island.plateau)
+  const field = SEA_FIELD_RANGE + BAND_NOISE
 
-  // Each plateau only reaches the texels within `margin` of it: further out, the field saturates.
+  // Each island only reaches the texels within `field` of its beach: further out, it saturates.
   const distances = new Float32Array(columns * rows).fill(Number.POSITIVE_INFINITY)
-  for (const plateau of plateaux) {
-    const firstColumn = Math.max(0, Math.floor((plateau.x - margin - originX) / texel))
+  plateaux.forEach((plateau, island) => {
+    const shore = reach[island] ?? 0
+    const around = field + shore
+    const firstColumn = Math.max(0, Math.floor((plateau.x - around - originX) / texel))
     const lastColumn = Math.min(
       columns - 1,
-      Math.ceil((plateau.x + plateau.width + margin - originX) / texel),
+      Math.ceil((plateau.x + plateau.width + around - originX) / texel),
     )
-    const firstRow = Math.max(0, Math.floor((plateau.y - margin - originY) / texel))
+    const firstRow = Math.max(0, Math.floor((plateau.y - around - originY) / texel))
     const lastRow = Math.min(
       rows - 1,
-      Math.ceil((plateau.y + plateau.height + margin - originY) / texel),
+      Math.ceil((plateau.y + plateau.height + around - originY) / texel),
     )
     for (let row = firstRow; row <= lastRow; row++) {
       const y = originY + (row + 0.5) * texel
@@ -56,11 +68,11 @@ export function seaField(layout: CityLayout, maxTexels = 512): SeaField {
         const index = row * columns + column
         distances[index] = Math.min(
           distances[index] ?? Number.POSITIVE_INFINITY,
-          distanceToRect(x, y, plateau),
+          Math.max(distanceToRect(x, y, plateau) - shore, 0),
         )
       }
     }
-  }
+  })
 
   const data = new Uint8Array(columns * rows).fill(255)
   for (let row = 0; row < rows; row++) {
@@ -68,11 +80,11 @@ export function seaField(layout: CityLayout, maxTexels = 512): SeaField {
     for (let column = 0; column < columns; column++) {
       const index = row * columns + column
       const distance = distances[index] ?? Number.POSITIVE_INFINITY
-      if (distance >= margin) {
+      if (distance >= field) {
         continue
       }
       const x = originX + (column + 0.5) * texel
-      // No wobble on the shore itself: the first band always starts at the plateau.
+      // No wobble on the shore itself: the first band always starts at the beach.
       const wobbled = distance + BAND_NOISE * wobble(x, y) * Math.min(distance / BAND_NOISE, 1)
       const clamped = Math.min(Math.max(wobbled, 0), SEA_FIELD_RANGE)
       data[index] = Math.round((clamped / SEA_FIELD_RANGE) * 255)

@@ -78,9 +78,12 @@ void main() {
 }
 `
 
-/** A chart-like sea: depth bands around the archipelago and a grid, at altitude 0. */
-export function createSea(layout: CityLayout): Mesh {
-  const field = seaField(layout)
+/**
+ * A chart-like sea: depth bands around the archipelago and a grid, at altitude 0. `reach` is how
+ * far each island's beach stands past its plateau.
+ */
+export function createSea(layout: CityLayout, reach: readonly number[] = []): Mesh {
+  const field = seaField(layout, reach)
   const texture = new DataTexture(
     field.data,
     field.columns,
