@@ -154,7 +154,8 @@ export const KIT: Readonly<Record<VariantArchetype, Kit>> = {
           width: [0.14, 0, 0, 0],
           'offset along ridge': [0, 0.3, 0, 0],
           'offset across ridge': [0, -0.12, 0, 0],
-          'above ridge': [0.25, 0, 0, 0],
+          // Lower than the design's 0.25 u, which stood too tall over the roofs
+          'above ridge': [0.15, 0, 0, 0],
         },
       },
     ],
