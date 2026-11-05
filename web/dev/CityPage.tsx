@@ -8,6 +8,7 @@ import { decodeResult } from '../src/data/decode-result'
 import { Button } from '../src/ui/Button'
 import { archetypeGallery } from './archetype-gallery'
 import styles from './CityPage.module.css'
+import { variantGallery } from './variant-gallery'
 
 const TEXT = {
   remount: 'Remount × 10',
@@ -34,13 +35,16 @@ const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve))
 
 /**
  * A synthetic city, full screen: `?islands=12&files=2000&seed=synthetic`, or every archetype on
- * one island: `?gallery`. A result written by `just ingest owner/repo --out result.json` can be
+ * one island: `?gallery`, or every combination of the low buildings' pieces: `?variants`. A result written by `just ingest owner/repo --out result.json` can be
  * loaded in its place, or dropped in `web/dev/results/` to get a button: `?result=name` opens it.
  * `?look=x,y,distance[,azimuth,polar]` points the camera at a board point, for close captures.
  */
 export function CityPage() {
   const synthetic = useMemo(() => {
     const query = new URLSearchParams(window.location.search)
+    if (query.has('variants')) {
+      return variantGallery()
+    }
     if (query.has('gallery')) {
       return archetypeGallery()
     }
