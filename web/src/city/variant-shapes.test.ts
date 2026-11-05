@@ -150,6 +150,20 @@ describe('variant shapes', () => {
     }
   })
 
+  it('shows the bars on the rim panel of a concrete block, which covers its top', () => {
+    let panels = 0
+    for (const building of everyBuilding('concreteBlock')) {
+      // The panel is the only face painted 12 % towards ink
+      for (const triangle of buildingGeometry(building)) {
+        if (Math.abs(triangle[0].paint[3] - 0.12) < 1e-9) {
+          panels++
+          expect(triangle[0].stamped, building.pieces.join('.')).toBe(1)
+        }
+      }
+    }
+    expect(panels).toBeGreaterThan(0)
+  })
+
   it('raises a pavilion of two floors to 1 u under its roof', () => {
     const low = cornersOf(buildingOf('pavilion', ['BW', 'D', 'F'], 1.2, 1))
     const high = cornersOf(buildingOf('pavilion', ['BW', 'D', 'F'], 1.2, 2))

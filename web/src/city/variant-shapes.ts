@@ -660,7 +660,9 @@ function concreteBlock(pieces: readonly string[]): Part[] {
       parts.push({
         faces: [
           {
+            // The panel covers the top: the bars go on it
             paint: PANEL,
+            stamp: true,
             points: [
               [plus(x0, rim), plus(y0, rim), z],
               [minus(x1, rim), plus(y0, rim), z],
