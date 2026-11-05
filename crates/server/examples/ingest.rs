@@ -145,8 +145,11 @@ async fn main() -> anyhow::Result<()> {
         ingested.kept_bytes as f64 / MB
     );
     println!(
-        "ignored       {} vendored, {} minified, {} binary",
-        ingested.ignored.vendored, ingested.ignored.minified, ingested.ignored.binary
+        "ignored       {} vendored, {} minified, {} binary, {} too deep",
+        ingested.ignored.vendored,
+        ingested.ignored.minified,
+        ingested.ignored.binary,
+        ingested.ignored.deep
     );
     let top: Vec<String> = languages
         .iter()
