@@ -150,6 +150,19 @@ describe('variant shapes', () => {
     }
   })
 
+  it('stamps every face of a combination around one centre, so its three bars line up', () => {
+    for (const archetype of ARCHETYPES) {
+      for (const building of everyBuilding(archetype)) {
+        const centres = new Set(
+          buildingGeometry(building)
+            .filter((triangle) => triangle[0].stamped === 1)
+            .map((triangle) => triangle[0].stampCentre.map((value) => value.toFixed(6)).join(',')),
+        )
+        expect(centres.size, building.pieces.join('.')).toBe(1)
+      }
+    }
+  })
+
   it('shows the bars on the rim panel of a concrete block, which covers its top', () => {
     let panels = 0
     for (const building of everyBuilding('concreteBlock')) {

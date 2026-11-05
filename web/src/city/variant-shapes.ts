@@ -603,6 +603,8 @@ function pavilion(pieces: readonly string[]): Part[] {
 }
 
 const PANEL: Paint = { colour: INK.colour, amount: 0.12 }
+/** The bars of a block of several volumes run across them all, from the middle of its mass. */
+const BLOCK_CENTRE = [ZERO, ZERO] as const
 
 function concreteBlock(pieces: readonly string[]): Part[] {
   const has = (id: string) => pieces.includes(id)
@@ -652,6 +654,7 @@ function concreteBlock(pieces: readonly string[]): Part[] {
       cuboid(volume.corners, ZERO, level, CONCRETE_WALL, CONCRETE_ROOF, {
         omit: volume.against ? ['y-'] : [],
         stamp: true,
+        stampCentre: BLOCK_CENTRE,
       }),
     )
     if (top === 'R') {
@@ -663,6 +666,7 @@ function concreteBlock(pieces: readonly string[]): Part[] {
             // The panel covers the top: the bars go on it
             paint: PANEL,
             stamp: true,
+            stampCentre: BLOCK_CENTRE,
             points: [
               [plus(x0, rim), plus(y0, rim), z],
               [minus(x1, rim), plus(y0, rim), z],
@@ -739,6 +743,12 @@ export function variantParts(archetype: VariantArchetype, pieces: readonly strin
   const move = ([x, y, z]: Point): Point => [plus(x, shift[0]), plus(y, shift[1]), z]
   return parts.map(({ faces, centre }) => ({
     centre: move(centre),
-    faces: faces.map((face) => ({ ...face, points: face.points.map(move) })),
+    faces: faces.map(({ stampCentre, ...face }) => ({
+      ...face,
+      points: face.points.map(move),
+      ...(stampCentre
+        ? { stampCentre: [plus(stampCentre[0], shift[0]), plus(stampCentre[1], shift[1])] as const }
+        : {}),
+    })),
   }))
 }

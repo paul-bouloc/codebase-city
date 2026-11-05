@@ -75,6 +75,8 @@ export interface Face {
   paint: Paint
   /** The face a generated file's three bars are stamped on. */
   stamp?: boolean
+  /** Where its bars are centred, on the board; the middle of its corners if absent. */
+  stampCentre?: readonly [Length, Length]
 }
 
 /** Faces that close around `centre`: it tells their outside. */
@@ -118,7 +120,11 @@ export function cuboid(
   top: Level,
   wall: Paint,
   roof: Paint,
-  { omit = [], stamp = false }: { omit?: readonly Side[]; stamp?: boolean } = {},
+  {
+    omit = [],
+    stamp = false,
+    stampCentre,
+  }: { omit?: readonly Side[]; stamp?: boolean; stampCentre?: readonly [Length, Length] } = {},
 ): Part {
   const ends = (level: Level): readonly [Length, Length] =>
     level.length === 2 ? level : [level, level]
@@ -128,6 +134,7 @@ export function cuboid(
     top: {
       paint: roof,
       stamp,
+      ...(stampCentre ? { stampCentre } : {}),
       points: [
         [x0, y0, a0],
         [x1, y0, a0],

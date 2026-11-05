@@ -1,6 +1,7 @@
 import type { Archetype, Building } from './archetypes'
 import {
   box,
+  type Face,
   HEIGHT,
   INK,
   type Length,
@@ -240,9 +241,11 @@ interface Stamp {
 const UNSTAMPED: Stamp = { stamped: 0, stampCentre: [0, 0, 0, 0] }
 const CENTRED: Stamp = { stamped: 1, stampCentre: [0, 0, 0, 0] }
 
-function stampOf(points: Point[]): Stamp {
+function stampOf({ points, stampCentre }: Face): Stamp {
   const average = (axis: 0 | 1, k: 0 | 1) =>
-    points.reduce((sum, point) => sum + point[axis][k], 0) / points.length
+    stampCentre
+      ? stampCentre[axis][k]
+      : points.reduce((sum, point) => sum + point[axis][k], 0) / points.length
   // Board y is three.js −z
   return { stamped: 1, stampCentre: [average(0, 0), average(0, 1), -average(1, 0), -average(1, 1)] }
 }
@@ -306,7 +309,7 @@ function trianglesOf(parts: Part[], marked: boolean): Triangle[] {
       // Bars on a face of one model stay centred on the building, as they always were
       const stamp = marked
         ? face.stamp
-          ? stampOf(face.points)
+          ? stampOf(face)
           : UNSTAMPED
         : normal[2] > 0.5
           ? CENTRED
