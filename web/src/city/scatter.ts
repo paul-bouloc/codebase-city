@@ -1,7 +1,8 @@
 import { buildingGeometry, stretched } from './archetype-geometry'
 import type { Archetype, Building } from './archetypes'
-import type { ParcelNature } from './layout'
+import type { ParcelNature, Rect } from './layout'
 import { seededRandom } from './random'
+import { quarterTurnsFor } from './variants'
 
 /** Low buildings scatter in their lot; the others stand in line, centred. */
 const SCATTERED: ReadonlySet<Archetype> = new Set(['pavilion', 'house'])
@@ -10,6 +11,7 @@ const LOW_BLOCK = 1
 /** Every building, overhangs included, stays within 0.9 u of its lot's centre. */
 const HALF_LOT_ROOM = 0.9
 const MAX_TURN = (15 * Math.PI) / 180
+const QUARTER = Math.PI / 2
 
 /** How a building stands in its lot: an offset from the centre, in u, and a turn about z. */
 export interface Placement {
@@ -34,8 +36,43 @@ function reach(building: Building, angle: number): number {
 }
 
 /**
- * Where a low building stands in the lot centred on (x, y): turned a little and moved off the
- * centre, never beyond the room its lot leaves, so neighbours stay 0.2 u apart. A
+ * The turn that points a building's front (the board's y+) along (x, y), one of the four sides.
+ * `makeRotationY(angle)` takes three.js −z, the board's y+, to (−sin, −cos).
+ */
+function turnTowards(x: number, y: number): number {
+  return Math.atan2(-x, y)
+}
+
+/**
+ * The turn a building starts from, before it scatters: a house faces the nearest side of its
+ * grid, its street; a pavilion or a concrete block makes the quarter turns its path draws.
+ */
+export function baseTurnFor(building: Building, path: string, x: number, y: number, grid?: Rect) {
+  if (building.archetype === 'house') {
+    if (!grid) {
+      return 0
+    }
+    const sides: [number, number, number][] = [
+      [y - grid.y, 0, -1],
+      [grid.y + grid.height - y, 0, 1],
+      [x - grid.x, -1, 0],
+      [grid.x + grid.width - x, 1, 0],
+    ]
+    // Nearest first; a tie goes to the front, then the back, then the sides
+    const [, dx, dy] = sides.reduce((nearest, side) =>
+      side[0] < nearest[0] - 1e-9 ? side : nearest,
+    )
+    return turnTowards(dx, dy)
+  }
+  if (building.archetype === 'pavilion' || building.archetype === 'concreteBlock') {
+    return quarterTurnsFor(path) * QUARTER
+  }
+  return 0
+}
+
+/**
+ * Where a low building stands in the lot centred on (x, y): turned a little from `turn` and
+ * moved off the centre, never beyond the room its lot leaves, so neighbours stay 0.2 u apart. A
  * concrete block of one or two floors scatters too, unless its parcel is concrete ground. The
  * same lot always gives the same placement.
  */
@@ -44,20 +81,21 @@ export function placementFor(
   x: number,
   y: number,
   ground: ParcelNature = 'normal',
+  turn = 0,
 ): Placement {
   const lowBlock =
     building.archetype === 'concreteBlock' &&
     building.height <= LOW_BLOCK &&
     ground !== 'unanalyzed'
   if (!SCATTERED.has(building.archetype) && !lowBlock) {
-    return { dx: 0, dy: 0, angle: 0 }
+    return { dx: 0, dy: 0, angle: turn }
   }
   const random = seededRandom(`${x.toFixed(2)},${y.toFixed(2)}`)
-  let angle = (random() * 2 - 1) * MAX_TURN
+  let angle = turn + (random() * 2 - 1) * MAX_TURN
   let room = HALF_LOT_ROOM - reach(building, angle)
   if (room < 0) {
-    angle = 0
-    room = Math.max(HALF_LOT_ROOM - reach(building, 0), 0)
+    angle = turn
+    room = Math.max(HALF_LOT_ROOM - reach(building, turn), 0)
   }
   return { dx: (random() * 2 - 1) * room, dy: (random() * 2 - 1) * room, angle }
 }
