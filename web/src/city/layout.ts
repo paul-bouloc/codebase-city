@@ -42,6 +42,8 @@ export interface Lot extends Point {
   base?: number
   /** The nature of the parcel the lot stands on; `normal` if absent, or on the plateau. */
   ground?: ParcelNature
+  /** The lots of its folder's grid, without their margin; none in a city made up for development. */
+  grid?: Rect
 }
 
 /** What most files of a parcel are: a park for tests, concrete for unread languages. */

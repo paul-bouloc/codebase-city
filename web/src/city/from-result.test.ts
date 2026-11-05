@@ -37,6 +37,17 @@ describe('cityFromResult', () => {
     // `release.sh`: Shell is not analyzed, and takes the scripts' concrete
     expect(city.islands[7]?.lots[0]?.file).toMatchObject({ analyzed: false, family: 'scripts' })
     expect(city.islands[0]?.lots[0]?.file.family).toBe('data')
+    // Every lot knows its folder's grid, which holds it
+    for (const lot of lots) {
+      const grid = lot.grid
+      expect(grid).toBeDefined()
+      if (grid) {
+        expect(lot.x).toBeGreaterThan(grid.x)
+        expect(lot.x).toBeLessThan(grid.x + grid.width)
+        expect(lot.y).toBeGreaterThan(grid.y)
+        expect(lot.y).toBeLessThan(grid.y + grid.height)
+      }
+    }
     // A file at the root has no folder in its path
     expect(city.islands[0]?.lots.map((lot) => lot.file.path)).toContain('package.json')
     const css = lots.find((lot) => lot.file.language === 'css')

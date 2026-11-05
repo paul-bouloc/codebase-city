@@ -137,6 +137,7 @@ export function cityFromResult(result: AnalysisResult): CityLayout {
   const natureOf = new Map(parcels.dir.map((dir, row) => [dir, parcels.nature[row]]))
   const groundLevel = (dir: number) => (level[dir] ?? 0) + (paved.has(dir) ? 1 : 0)
   const { grids } = layout
+  const gridOf = new Map<number, Rect>()
   grids.dir.forEach((dir, row) => {
     const island = islands[dirs.island[dir] ?? 0]
     const cells = rect(
@@ -145,6 +146,7 @@ export function cityFromResult(result: AnalysisResult): CityLayout {
       (grids.columns[row] ?? 0) * LOT_TENTHS,
       (grids.rows[row] ?? 0) * LOT_TENTHS,
     )
+    gridOf.set(dir, cells)
     const lots = withMargin(cells)
     if (!island) {
       return
@@ -186,6 +188,7 @@ export function cityFromResult(result: AnalysisResult): CityLayout {
       y: (layout.lots.y[file] ?? 0) / TENTHS,
       base: slabTop(groundLevel(dir)),
       ground: natureOf.get(dir) ?? 'normal',
+      ...(gridOf.has(dir) ? { grid: gridOf.get(dir) } : {}),
       file: {
         path: filePath(dir, file),
         language: LANGUAGES[language] ?? 'other',

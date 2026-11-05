@@ -10,14 +10,7 @@ import {
 } from 'three'
 import { buildingGeometry, type Shape, shapeKey, type Vertex } from './archetype-geometry'
 import { ARCHETYPES, type Building, buildingFor } from './archetypes'
-import type {
-  BuildingLanguage,
-  CityLayout,
-  ConcreteFamily,
-  FileMetrics,
-  GridLayout,
-  Lot,
-} from './layout'
+import type { BuildingLanguage, CityLayout, ConcreteFamily, FileMetrics } from './layout'
 import { baseTurnFor, placementFor } from './scatter'
 import { shadingFragmentPars, shadingUniforms, shadingVertex, shadingVertexPars } from './shading'
 import { boardToThree, layerAltitude, srgb, type Vec3 } from './units'
@@ -173,17 +166,6 @@ interface Placed {
   generated: boolean
 }
 
-/** The grid a lot belongs to: the one whose rectangle holds its centre. */
-function gridOf(lot: Lot, grids: readonly GridLayout[]): GridLayout | undefined {
-  return grids.find(
-    ({ rect }) =>
-      lot.x >= rect.x &&
-      lot.x <= rect.x + rect.width &&
-      lot.y >= rect.y &&
-      lot.y <= rect.y + rect.height,
-  )
-}
-
 /**
  * Every building, in one instanced draw call per shape: an archetype of one model, or one
  * combination of a low building's pieces. Edges are sized for `pixelRatio`.
@@ -194,8 +176,7 @@ export function createBuildings(layout: CityLayout, pixelRatio: number): Group {
     const altitude = layerAltitude(island.layer)
     for (const lot of island.lots) {
       const building = buildingFor(lot.file)
-      const grid = building.archetype === 'house' ? gridOf(lot, island.grids ?? []) : undefined
-      const turn = baseTurnFor(building, lot.file.path ?? '', lot.x, lot.y, grid?.rect)
+      const turn = baseTurnFor(building, lot.file.path ?? '', lot.x, lot.y, lot.grid)
       const { dx, dy, angle } = placementFor(building, lot.x, lot.y, lot.ground, turn)
       const key = shapeKey(building)
       const entry = byShape.get(key) ?? { shape: building, placed: [] }
