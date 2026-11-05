@@ -370,6 +370,7 @@ fn count(ignored: &mut Ignored, skip: Skip) {
         Skip::Vendored => &mut ignored.vendored,
         Skip::Minified => &mut ignored.minified,
         Skip::Binary => &mut ignored.binary,
+        Skip::TooDeep => &mut ignored.deep,
     };
     *counter = counter.saturating_add(1);
 }

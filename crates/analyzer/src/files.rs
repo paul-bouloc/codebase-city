@@ -3,8 +3,9 @@
 //!
 //! The rules follow GitHub Linguist where it matters for a map of the code:
 //! vendored, minified and binary files are skipped, generated files are kept
-//! but marked. Classification runs in two steps so a caller reading an
-//! archive can skip a file from its path alone, before reading its bytes.
+//! but marked. Files too deep to index are skipped as well. Classification
+//! runs in two steps so a caller reading an archive can skip a file from its
+//! path alone, before reading its bytes.
 
 mod attributes;
 
@@ -114,6 +115,8 @@ pub enum Skip {
     Vendored,
     Minified,
     Binary,
+    /// More than [`MAX_DEPTH`] folders deep.
+    TooDeep,
 }
 
 /// What to do with a file.
@@ -197,9 +200,18 @@ pub const HEAD_BYTES: usize = 8000;
 /// Average line length above which JavaScript or CSS counts as minified.
 const MINIFIED_LINE_LENGTH: u64 = 110;
 
+/// The deepest folder a kept file may sit in. Folders are indexed by their
+/// full path, so the cost of a chain of folders grows with the square of its
+/// depth; real repositories stay far below (11 for vscode).
+pub const MAX_DEPTH: usize = 64;
+
 /// Classifies a file from its path alone. A file kept here may still be
 /// skipped by [`classify_content`].
 pub fn classify_path(path: &str) -> Verdict {
+    // First, so a huge path is never split.
+    if path.bytes().filter(|&byte| byte == b'/').count() > MAX_DEPTH {
+        return Verdict::Skip(Skip::TooDeep);
+    }
     let (dirs, name) = split_path(path);
     let mut dirs = dirs.split('/');
     if dirs.clone().any(|dir| VENDORED_DIRS.contains(&dir)) {
@@ -357,6 +369,19 @@ mod tests {
         // A file named like a vendored folder is not one.
         assert_eq!(classify_path("src/vendor.ts"), KEEP);
         assert_eq!(classify_path("src/distance.ts"), KEEP);
+    }
+
+    #[test]
+    fn files_deeper_than_the_limit_are_skipped() {
+        let at = |depth: usize| format!("{}a.ts", "d/".repeat(depth));
+        assert_eq!(classify_path("a.ts"), KEEP);
+        assert_eq!(classify_path(&at(MAX_DEPTH)), KEEP);
+        let too_deep = Verdict::Skip(Skip::TooDeep);
+        assert_eq!(classify_path(&at(MAX_DEPTH + 1)), too_deep);
+        assert_eq!(classify_path(&at(3000)), too_deep);
+        // The depth comes first, even under a vendored folder.
+        let vendored = format!("node_modules/{}", at(MAX_DEPTH));
+        assert_eq!(classify_path(&vendored), too_deep);
     }
 
     #[test]

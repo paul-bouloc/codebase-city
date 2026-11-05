@@ -537,6 +537,19 @@ mod tests {
     }
 
     #[test]
+    fn the_deepest_kept_file_is_analyzed() {
+        let path = format!("{}a.ts", "d/".repeat(crate::files::MAX_DEPTH));
+        assert_eq!(
+            crate::files::classify_path(&path),
+            crate::files::Verdict::Keep { generated: false }
+        );
+        let result = result(vec![file(&path, Some("export const a = 1\n"))]);
+        assert_eq!(result.validate(), Ok(()));
+        assert_eq!(result.dirs.name.len(), crate::files::MAX_DEPTH + 1);
+        assert_eq!(result.files.name, ["a.ts"]);
+    }
+
+    #[test]
     fn folders_come_after_their_parent() {
         let result = result(repo_files());
         let paths: Vec<String> = (0..result.dirs.name.len())

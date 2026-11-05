@@ -9,7 +9,7 @@ mod fake_github;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use analyzer::files::{Language, SourceFile};
+use analyzer::files::{Language, MAX_DEPTH, SourceFile};
 use fake_github::{FakeGithub, Reply, SHA, repo, tarball, tarball_path};
 use model::Ignored;
 use server::ingest::{IngestError, Ingested, Limits, Progress, ingest};
@@ -74,6 +74,33 @@ async fn files_come_with_their_language_lines_and_content() {
     assert!(ingested.archive_bytes > 0);
     assert!(ingested.unpacked_bytes > ingested.archive_bytes);
     assert_eq!(ingested.ignored, Ignored::default());
+}
+
+#[tokio::test]
+async fn files_too_deep_to_index_are_counted_apart() {
+    let at = |depth: usize| format!("{}a.ts", "d/".repeat(depth));
+    let deepest = at(MAX_DEPTH);
+    let too_deep = at(MAX_DEPTH + 1);
+    let far_too_deep = at(3000);
+    let ingested = ingest_files(
+        &[
+            (deepest.as_str(), b"export const a = 1\n"),
+            (too_deep.as_str(), b"export const b = 2\n"),
+            (far_too_deep.as_str(), b"export const c = 3\n"),
+        ],
+        &Limits::default(),
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(paths(&ingested), [deepest.as_str()]);
+    assert_eq!(
+        ingested.ignored,
+        Ignored {
+            deep: 2,
+            ..Ignored::default()
+        }
+    );
 }
 
 #[tokio::test]
