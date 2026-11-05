@@ -1,5 +1,7 @@
 import type { FileMetrics } from './layout'
 import { FLOOR_HEIGHT } from './units'
+import { pickVariant } from './variants'
+import { PAVILION_HEIGHTS } from './variants-kit'
 
 export const ARCHETYPES = [
   'pavilion',
@@ -69,32 +71,62 @@ export interface Building {
   height: number
   /** Top of the Setback block's base, in u; 0 for the others. */
   split: number
+  /** The pieces a house, a pavilion or a concrete block is made of; none for the others. */
+  pieces: readonly string[]
 }
 
-export function buildingFor({ lines, complexity, test, analyzed = true }: FileMetrics): Building {
+export function buildingFor({
+  path = '',
+  lines,
+  complexity,
+  test,
+  analyzed = true,
+}: FileMetrics): Building {
   const side = footprintFor(lines)
   if (!analyzed) {
     const floors = Math.min(
       Math.max(Math.ceil(lines / UNANALYZED_LINES_PER_FLOOR), 1),
       UNANALYZED_MAX_FLOORS,
     )
-    return { archetype: 'concreteBlock', side, height: floors * FLOOR_HEIGHT, split: 0 }
+    return {
+      archetype: 'concreteBlock',
+      side,
+      height: floors * FLOOR_HEIGHT,
+      split: 0,
+      pieces: pickVariant('concreteBlock', path, { side, floors }),
+    }
   }
   const floors = floorsFor(complexity)
   const archetype = archetypeFor(floors, side, test)
   switch (archetype) {
-    case 'pavilion':
-      return { archetype, side: Math.min(side, PAVILION_MAX_SIDE), height: 0, split: 0 }
+    case 'pavilion': {
+      const pavilionSide = Math.min(side, PAVILION_MAX_SIDE)
+      return {
+        archetype,
+        side: pavilionSide,
+        // The height under the roof
+        height: PAVILION_HEIGHTS[floors >= 2 ? 1 : 0],
+        split: 0,
+        pieces: pickVariant(archetype, path, { side: pavilionSide, floors }),
+      }
+    }
     case 'house':
-      return { archetype, side, height: floors * FLOOR_HEIGHT * HOUSE_WALL_RATIO, split: 0 }
+      return {
+        archetype,
+        side,
+        height: floors * FLOOR_HEIGHT * HOUSE_WALL_RATIO,
+        split: 0,
+        pieces: pickVariant(archetype, path, { side, floors }),
+      }
     case 'setbackBlock':
       return {
         archetype,
         side,
         height: floors * FLOOR_HEIGHT,
         split: Math.round(floors * SETBACK_BASE_RATIO) * FLOOR_HEIGHT,
+        pieces: [],
       }
     default:
-      return { archetype, side, height: floors * FLOOR_HEIGHT, split: 0 }
+      return { archetype, side, height: floors * FLOOR_HEIGHT, split: 0, pieces: [] }
   }
 }

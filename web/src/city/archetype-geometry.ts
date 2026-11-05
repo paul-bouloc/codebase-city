@@ -1,21 +1,15 @@
 import type { Archetype, Building } from './archetypes'
 import {
   box,
-  CONCRETE_ROOF,
-  CONCRETE_WALL,
-  FLOOR_SIDES,
-  FLOOR_TOP,
   HEIGHT,
   INK,
   type Length,
   length,
   type Paint,
   type Part,
-  POST,
   type Point,
   plus,
   ROOF,
-  ROOF_EDGE,
   SIDE,
   SPLIT,
   square,
@@ -25,62 +19,10 @@ import {
   ZERO,
 } from './parts'
 import type { Vec3 } from './units'
+import { variantParts } from './variant-shapes'
+import type { VariantArchetype } from './variants-kit'
 
 // Every archetype is one geometry shared by all its instances, made of the parts in `parts.ts`.
-
-function house(): Part[] {
-  const depth = times(SIDE, 0.74)
-  const roofWidth = plus(SIDE, length(0.08))
-  const roofDepth = plus(depth, length(0.08))
-  // 40° pitch: the roof's height follows the depth, never the length.
-  const ridge = plus(HEIGHT, times(depth, 0.42))
-  const x0 = times(roofWidth, -0.5)
-  const x1 = times(roofWidth, 0.5)
-  const y0 = times(roofDepth, -0.5)
-  const y1 = times(roofDepth, 0.5)
-  return [
-    box(ZERO, ZERO, SIDE, depth, ZERO, HEIGHT, WALL, ROOF),
-    {
-      centre: [ZERO, ZERO, plus(HEIGHT, times(depth, 0.42 * 0.3))],
-      faces: [
-        {
-          paint: ROOF,
-          points: [
-            [x0, y0, HEIGHT],
-            [x1, y0, HEIGHT],
-            [x1, ZERO, ridge],
-            [x0, ZERO, ridge],
-          ],
-        },
-        {
-          paint: ROOF,
-          points: [
-            [x1, y1, HEIGHT],
-            [x0, y1, HEIGHT],
-            [x0, ZERO, ridge],
-            [x1, ZERO, ridge],
-          ],
-        },
-        {
-          paint: WALL,
-          points: [
-            [x1, y0, HEIGHT],
-            [x1, y1, HEIGHT],
-            [x1, ZERO, ridge],
-          ],
-        },
-        {
-          paint: WALL,
-          points: [
-            [x0, y1, HEIGHT],
-            [x0, y0, HEIGHT],
-            [x0, ZERO, ridge],
-          ],
-        },
-      ],
-    },
-  ]
-}
 
 function smallBlock(): Part[] {
   return [
@@ -209,51 +151,23 @@ function hall(): Part[] {
   ]
 }
 
-function pavilion(): Part[] {
-  const floor = length(0.06)
-  const eaves = length(1.5 * 0.5)
-  const post = (x: number) =>
-    square(
-      plus(times(SIDE, x * 0.5), length(-x * 0.08)),
-      plus(times(SIDE, 0.5), length(-0.08)),
-      length(0.07),
-      floor,
-      eaves,
-      POST,
-      ROOF,
-    )
-  return [
-    square(ZERO, ZERO, SIDE, ZERO, floor, FLOOR_SIDES, FLOOR_TOP),
-    box(
-      ZERO,
-      plus(times(SIDE, -0.5), length(0.09)),
-      plus(SIDE, length(-0.1)),
-      length(0.18),
-      floor,
-      eaves,
-      WALL,
-      ROOF,
-    ),
-    post(-1),
-    post(1),
-    square(ZERO, ZERO, plus(SIDE, length(0.26)), eaves, plus(eaves, length(0.09)), ROOF_EDGE, ROOF),
-  ]
-}
-
-/** A file the analyzer does not read: bare concrete, without kiosk or windows. */
-function concreteBlock(): Part[] {
-  return [square(ZERO, ZERO, SIDE, ZERO, HEIGHT, CONCRETE_WALL, CONCRETE_ROOF)]
-}
-
-const SHAPES: Record<Archetype, () => Part[]> = {
-  pavilion,
+/** The archetypes of one model each; the low ones are assembled from their pieces. */
+const SHAPES: Record<Exclude<Archetype, VariantArchetype>, () => Part[]> = {
   hall,
-  house,
   smallBlock,
   setbackBlock,
   pyramidRoof,
   towerOnPodium,
-  concreteBlock,
+}
+
+/** What a geometry depends on: buildings of one shape share one draw call. */
+export type Shape = Pick<Building, 'archetype' | 'pieces'>
+
+export const shapeKey = ({ archetype, pieces }: Shape): string =>
+  pieces.length > 0 ? `${archetype}:${pieces.join('.')}` : archetype
+
+function isVariant(archetype: Archetype): archetype is VariantArchetype {
+  return archetype === 'house' || archetype === 'pavilion' || archetype === 'concreteBlock'
 }
 
 /** A vertex in three.js coordinates (y up). */
@@ -273,6 +187,10 @@ export interface Vertex {
    * its face (a diagonal of the fan) keeps 1 at every vertex, so it never draws a line.
    */
   edge: Vec3
+  /** 1 on the face a generated file's three bars are stamped on, 0 elsewhere. */
+  stamped: number
+  /** The middle of that face, in three.js x and z: fixed, then per u of side. */
+  stampCentre: [number, number, number, number]
 }
 
 export type Triangle = [Vertex, Vertex, Vertex]
@@ -290,7 +208,7 @@ function withEdges(
   })) as Triangle
 }
 
-const TYPICAL: Building = { archetype: 'smallBlock', side: 1.4, height: 3, split: 2 }
+const TYPICAL: Building = { archetype: 'smallBlock', side: 1.4, height: 3, split: 2, pieces: [] }
 
 function evaluate(value: Length, { side, height, split }: Building): number {
   return value[0] + value[1] * side + value[2] * height + value[3] * split
@@ -313,7 +231,23 @@ function windingNormal(points: Vec3[]): Vec3 {
   return [normal[0] / size, normal[1] / size, normal[2] / size]
 }
 
-function vertex([x, y, z]: Point, normal: Vec3, paint: Paint): Corner {
+/** Where the bars of a stamped face are centred: on the middle of its corners. */
+interface Stamp {
+  stamped: number
+  stampCentre: [number, number, number, number]
+}
+
+const UNSTAMPED: Stamp = { stamped: 0, stampCentre: [0, 0, 0, 0] }
+const CENTRED: Stamp = { stamped: 1, stampCentre: [0, 0, 0, 0] }
+
+function stampOf(points: Point[]): Stamp {
+  const average = (axis: 0 | 1, k: 0 | 1) =>
+    points.reduce((sum, point) => sum + point[axis][k], 0) / points.length
+  // Board y is three.js −z
+  return { stamped: 1, stampCentre: [average(0, 0), average(0, 1), -average(1, 0), -average(1, 1)] }
+}
+
+function vertex([x, y, z]: Point, normal: Vec3, paint: Paint, stamp: Stamp): Corner {
   if (x[2] !== 0 || x[3] !== 0 || y[2] !== 0 || y[3] !== 0) {
     throw new Error('A footprint cannot follow the height')
   }
@@ -324,13 +258,34 @@ function vertex([x, y, z]: Point, normal: Vec3, paint: Paint): Corner {
     heightFactor: [z[2], z[3]],
     normal: [normal[0], normal[2], -normal[1]],
     paint: [...paint.colour, paint.amount],
+    ...stamp,
   }
 }
 
-/** The archetype's triangles, each turned outwards. */
-export function archetypeGeometry(archetype: Archetype): Triangle[] {
+const geometries = new Map<string, Triangle[]>()
+
+/** The triangles of a shape, each turned outwards; built once per shape. */
+export function buildingGeometry(shape: Shape): Triangle[] {
+  const key = shapeKey(shape)
+  const known = geometries.get(key)
+  if (known) {
+    return known
+  }
+  const { archetype, pieces } = shape
+  const triangles = isVariant(archetype)
+    ? trianglesOf(variantParts(archetype, pieces), true)
+    : trianglesOf(SHAPES[archetype](), false)
+  geometries.set(key, triangles)
+  return triangles
+}
+
+/**
+ * The parts' triangles. `marked`: the parts mark the face a generated file is stamped on;
+ * otherwise every face turned up is.
+ */
+function trianglesOf(parts: Part[], marked: boolean): Triangle[] {
   const triangles: Triangle[] = []
-  for (const part of SHAPES[archetype]()) {
+  for (const part of parts) {
     const centre = at(part.centre, TYPICAL)
     for (const face of part.faces) {
       const corners = face.points.map((point) => at(point, TYPICAL))
@@ -348,7 +303,15 @@ export function archetypeGeometry(archetype: Archetype): Triangle[] {
         rest = rest.reverse()
         normal = [-normal[0], -normal[1], -normal[2]]
       }
-      const apex = vertex(first, normal, face.paint)
+      // Bars on a face of one model stay centred on the building, as they always were
+      const stamp = marked
+        ? face.stamp
+          ? stampOf(face.points)
+          : UNSTAMPED
+        : normal[2] > 0.5
+          ? CENTRED
+          : UNSTAMPED
+      const apex = vertex(first, normal, face.paint, stamp)
       rest.forEach((point, i) => {
         const next = rest[i + 1]
         if (next) {
@@ -356,7 +319,11 @@ export function archetypeGeometry(archetype: Archetype): Triangle[] {
           // for the first and last triangles.
           triangles.push(
             withEdges(
-              [apex, vertex(point, normal, face.paint), vertex(next, normal, face.paint)],
+              [
+                apex,
+                vertex(point, normal, face.paint, stamp),
+                vertex(next, normal, face.paint, stamp),
+              ],
               [true, i + 2 === rest.length, i === 0],
             ),
           )

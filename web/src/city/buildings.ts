@@ -8,8 +8,8 @@ import {
   MeshDepthMaterial,
   ShaderMaterial,
 } from 'three'
-import { archetypeGeometry, type Vertex } from './archetype-geometry'
-import { ARCHETYPES, type Archetype, type Building, buildingFor } from './archetypes'
+import { buildingGeometry, type Shape, shapeKey, type Vertex } from './archetype-geometry'
+import { ARCHETYPES, type Building, buildingFor } from './archetypes'
 import type { BuildingLanguage, CityLayout, ConcreteFamily, FileMetrics } from './layout'
 import { placementFor } from './scatter'
 import { shadingFragmentPars, shadingUniforms, shadingVertex, shadingVertexPars } from './shading'
@@ -74,12 +74,15 @@ attribute vec4 paint;
 attribute vec3 tint;
 attribute vec3 edge;
 attribute float generated;
+attribute float stamped;
+attribute vec4 stampCentre;
 varying vec3 vColor;
 varying vec3 vEdge;
 varying vec3 vEdgeColor;
 varying vec3 vLocal;
 varying float vSide;
 varying float vRoof;
+varying vec2 vStampCentre;
 varying vec3 vTint;
 void main() {
   vColor = mix(tint, paint.rgb, paint.a);
@@ -91,8 +94,9 @@ void main() {
       vColor = mix(tint, ${glslColour(GENERATED_WALL)}, ${GENERATED_WALL_SHARE.toFixed(6)});
     }
     vEdgeColor = mix(tint, ${glslColour(GENERATED_EDGE)}, ${GENERATED_EDGE_SHARE.toFixed(6)});
-    vRoof = normal.y > 0.5 ? 1.0 : 0.0;
+    vRoof = stamped;
   }
+  vStampCentre = stampCentre.xz + stampCentre.yw * building.x;
   vEdge = edge;
   vSide = building.x;
   vTint = tint;
@@ -110,13 +114,15 @@ varying vec3 vEdgeColor;
 varying vec3 vLocal;
 varying float vSide;
 varying float vRoof;
+varying vec2 vStampCentre;
 varying vec3 vTint;
 void main() {
   vec3 colour = vColor;
   if (vRoof > 0.5) {
-    float across = abs(vLocal.x);
+    float across = abs(vLocal.x - vStampCentre.x);
     float bar = min(across, abs(across - ${BAR_SPACING.toFixed(6)} * vSide));
-    if (bar < ${(BAR_WIDTH / 2).toFixed(6)} && abs(vLocal.z) < ${(BAR_LENGTH / 2).toFixed(6)} * vSide) {
+    float along = abs(vLocal.z - vStampCentre.y);
+    if (bar < ${(BAR_WIDTH / 2).toFixed(6)} && along < ${(BAR_LENGTH / 2).toFixed(6)} * vSide) {
       colour = vTint * ${(1 - GENERATED_BAR_DARKENING).toFixed(6)};
     }
   }
@@ -147,6 +153,8 @@ const VERTEX_ATTRIBUTES = [
   'normal',
   'paint',
   'edge',
+  'stamped',
+  'stampCentre',
 ] as const satisfies readonly (keyof Vertex)[]
 
 interface Placed {
@@ -158,31 +166,38 @@ interface Placed {
   generated: boolean
 }
 
-/** Every building, in one instanced draw call per archetype; edges are sized for `pixelRatio`. */
+/**
+ * Every building, in one instanced draw call per shape: an archetype of one model, or one
+ * combination of a low building's pieces. Edges are sized for `pixelRatio`.
+ */
 export function createBuildings(layout: CityLayout, pixelRatio: number): Group {
-  const byArchetype = new Map<Archetype, Placed[]>()
+  const byShape = new Map<string, { shape: Shape; placed: Placed[] }>()
   for (const island of layout.islands) {
     const altitude = layerAltitude(island.layer)
     for (const lot of island.lots) {
       const building = buildingFor(lot.file)
       const { dx, dy, angle } = placementFor(building, lot.x, lot.y, lot.ground)
-      const placed = byArchetype.get(building.archetype) ?? []
-      placed.push({
+      const key = shapeKey(building)
+      const group = byShape.get(key) ?? { shape: building, placed: [] }
+      group.placed.push({
         building,
         position: boardToThree(lot.x + dx, lot.y + dy, altitude + (lot.base ?? 0)),
         angle,
         tint: tintOf(lot.file),
         generated: lot.file.generated === true,
       })
-      byArchetype.set(building.archetype, placed)
+      byShape.set(key, group)
     }
   }
 
   const group = new Group()
-  for (const archetype of ARCHETYPES) {
-    const placed = byArchetype.get(archetype)
-    if (placed) {
-      group.add(instancedArchetype(archetype, placed, EDGE_WIDTH * pixelRatio))
+  // Archetype by archetype, then shape by shape: the same city draws in the same order
+  const order = (key: string) => ARCHETYPES.indexOf(byShape.get(key)?.shape.archetype ?? 'hall')
+  const keys = [...byShape.keys()].sort((a, b) => order(a) - order(b) || (a < b ? -1 : 1))
+  for (const key of keys) {
+    const entry = byShape.get(key)
+    if (entry) {
+      group.add(instancedShape(entry.shape, entry.placed, EDGE_WIDTH * pixelRatio))
     }
   }
   return group
@@ -195,12 +210,8 @@ function tintOf(file: FileMetrics): Vec3 {
   return file.test ? TEST_COLOUR : LANGUAGE_COLOURS[file.language]
 }
 
-function instancedArchetype(
-  archetype: Archetype,
-  placed: Placed[],
-  edgeWidth: number,
-): InstancedMesh {
-  const vertices = archetypeGeometry(archetype).flat()
+function instancedShape(shape: Shape, placed: Placed[], edgeWidth: number): InstancedMesh {
+  const vertices = buildingGeometry(shape).flat()
   const geometry = new BufferGeometry()
   for (const name of VERTEX_ATTRIBUTES) {
     const values = vertices.flatMap((vertex) => vertex[name])

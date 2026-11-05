@@ -52,4 +52,18 @@ describe('placementFor', () => {
     expect(placementFor(building, 11, 3)).toEqual(placementFor(building, 11, 3))
     expect(placementFor(building, 11, 3)).not.toEqual(placementFor(building, 13, 3))
   })
+
+  it('keeps every variant of a low building in its room', () => {
+    for (const metrics of [{ test: false }, { test: true }, { analyzed: false }]) {
+      for (const lines of [0, 50, 200, 400, 900, 1500, 1869]) {
+        for (let lot = 0; lot < 40; lot++) {
+          const building = buildingFor(file({ ...metrics, lines, path: `src/part-${lot}.ts` }))
+          const placement = placementFor(building, lot * 2 + 1, 7)
+          expect(placedReach(building, placement), building.pieces.join('.')).toBeLessThanOrEqual(
+            0.9 + 1e-9,
+          )
+        }
+      }
+    }
+  })
 })
