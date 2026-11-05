@@ -384,13 +384,14 @@ function house(pieces: readonly string[]): Part[] {
 }
 
 /**
- * A dormer on the front slope of a simple house's roof: only on one floor and a side of 1.1 u
- * or more, so its heights are fitted on those sides.
+ * A dormer on the front slope of a simple house's roof: only on one floor and from the side
+ * its rule sets, so its heights are fitted on those sides.
  */
 function dormer(roof: string, centreX: Length): Part {
   const e = HOUSE_EAVE
-  const DEPTH = 0.74
-  const rise = roof === 'H' ? 0.36 : 0.42
+  // The simple body's depth per u of side, the roof's rise per u of depth: both from the kit
+  const DEPTH = onSide(size('house', 'S', 'depth'), 1)
+  const rise = onSide(size('house', roof, 'rise', SIDE), 1)
   const setBack = onSide(size('house', 'dm', 'set back from wall'), 0)
   // The front slope's height above the walls, at a distance from the middle of the roof
   const slope = (side: number) => {
@@ -409,7 +410,8 @@ function dormer(roof: string, centreX: Length): Part {
     const { high, run } = slope(side)
     return run * (1 - head(side) / high)
   }
-  const [from, to] = [1.1, SIDES.house[1]]
+  const smallest = KIT.house.pieces.find(({ id }) => id === 'dm')?.rule.sMin ?? SIDES.house[0]
+  const [from, to] = [smallest, SIDES.house[1]]
   const zf = plus(HEIGHT, fitSide(foot, from, to))
   const zt = plus(HEIGHT, fitSide(head, from, to))
   const yb = fitSide(back, from, to)
