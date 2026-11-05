@@ -167,6 +167,17 @@ export function cityFromResult(result: AnalysisResult): CityLayout {
     }
   })
 
+  const dirPaths = new Map<number, string>()
+  const filePath = (dir: number, file: number): string => {
+    let folder = dirPaths.get(dir)
+    if (folder === undefined) {
+      folder = pathOf(dir)
+      dirPaths.set(dir, folder)
+    }
+    const name = files.name[file] ?? ''
+    return folder === '/' ? name : `${folder}/${name}`
+  }
+
   files.dir.forEach((dir, file) => {
     const scope = files.scope[file]
     const language = result.languages[files.language[file] ?? 0] ?? ''
@@ -176,6 +187,7 @@ export function cityFromResult(result: AnalysisResult): CityLayout {
       base: slabTop(groundLevel(dir)),
       ground: natureOf.get(dir) ?? 'normal',
       file: {
+        path: filePath(dir, file),
         language: LANGUAGES[language] ?? 'other',
         lines: files.lines[file] ?? 0,
         complexity: files.complexity[file] ?? 0,

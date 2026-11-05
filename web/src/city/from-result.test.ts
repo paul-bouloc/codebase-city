@@ -24,6 +24,7 @@ describe('cityFromResult', () => {
     const main = city.islands[1]?.lots[0]
     expect(main).toMatchObject({ x: 20.9, y: 1.9, base: 0 })
     expect(main?.file).toEqual({
+      path: 'src/main.ts',
       language: 'typescript',
       lines: 60,
       complexity: 8,
@@ -36,6 +37,8 @@ describe('cityFromResult', () => {
     // `release.sh`: Shell is not analyzed, and takes the scripts' concrete
     expect(city.islands[7]?.lots[0]?.file).toMatchObject({ analyzed: false, family: 'scripts' })
     expect(city.islands[0]?.lots[0]?.file.family).toBe('data')
+    // A file at the root has no folder in its path
+    expect(city.islands[0]?.lots.map((lot) => lot.file.path)).toContain('package.json')
     const css = lots.find((lot) => lot.file.language === 'css')
     expect(css).toBeDefined()
     const test = city.islands[6]?.lots[0]

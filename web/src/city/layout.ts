@@ -21,6 +21,8 @@ export type ConcreteFamily = 'docs' | 'markup' | 'data' | 'styles' | 'scripts'
 
 /** What a building is made from. */
 export interface FileMetrics {
+  /** Path from the repository root: it seeds the building's variant. Empty if absent. */
+  path?: string
   language: BuildingLanguage
   lines: number
   complexity: number
