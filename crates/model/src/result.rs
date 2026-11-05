@@ -433,3 +433,20 @@ pub struct Ignored {
     /// More folders deep than the analyzer indexes.
     pub deep: u32,
 }
+
+impl Ignored {
+    /// All the files dropped, whatever the reason.
+    pub fn total(&self) -> u32 {
+        // Every field named, so a new reason cannot be left out of the sum.
+        let Self {
+            vendored,
+            minified,
+            binary,
+            deep,
+        } = *self;
+        vendored
+            .saturating_add(minified)
+            .saturating_add(binary)
+            .saturating_add(deep)
+    }
+}

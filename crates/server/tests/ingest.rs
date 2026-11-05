@@ -82,13 +82,24 @@ async fn files_too_deep_to_index_are_counted_apart() {
     let deepest = at(MAX_DEPTH);
     let too_deep = at(MAX_DEPTH + 1);
     let far_too_deep = at(3000);
-    let ingested = ingest_files(
-        &[
+    let github = FakeGithub::start().await;
+    github.on(
+        &tarball_path(),
+        [Reply::Archive(tarball(&[
             (deepest.as_str(), b"export const a = 1\n"),
             (too_deep.as_str(), b"export const b = 2\n"),
             (far_too_deep.as_str(), b"export const c = 3\n"),
-        ],
+        ]))],
+    );
+    let events = Arc::new(Mutex::new(Vec::new()));
+    let recorded = Arc::clone(&events);
+    let on_progress = Arc::new(move |progress| recorded.lock().unwrap().push(progress));
+    let ingested = ingest(
+        &github.client(None),
+        &repo(),
+        SHA,
         &Limits::default(),
+        on_progress,
     )
     .await
     .unwrap();
@@ -100,6 +111,18 @@ async fn files_too_deep_to_index_are_counted_apart() {
             deep: 2,
             ..Ignored::default()
         }
+    );
+    // The progress counts them among the skipped files.
+    let events = events.lock().unwrap();
+    let last_reading = events
+        .iter()
+        .rfind(|event| matches!(event, Progress::Reading { .. }));
+    assert_eq!(
+        last_reading,
+        Some(&Progress::Reading {
+            kept: 1,
+            skipped: 2
+        })
     );
 }
 

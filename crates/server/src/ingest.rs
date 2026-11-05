@@ -378,10 +378,7 @@ fn count(ignored: &mut Ignored, skip: Skip) {
 fn reading(kept: u32, ignored: &Ignored) -> Progress {
     Progress::Reading {
         kept,
-        skipped: ignored
-            .vendored
-            .saturating_add(ignored.minified)
-            .saturating_add(ignored.binary),
+        skipped: ignored.total(),
     }
 }
 
