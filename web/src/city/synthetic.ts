@@ -178,6 +178,8 @@ function syntheticFile(seed: string): FileMetrics {
   // A third of the `other` files are in a language the analyzer does not read: concrete
   const analyzed = !(language === 'other' && random() < 1 / 3)
   return {
+    // The seed names the file: its building draws its own pieces
+    path: seed,
     language,
     lines,
     complexity: Math.max(1, Math.round(lines * density)),

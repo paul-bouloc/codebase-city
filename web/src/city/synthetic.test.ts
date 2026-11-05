@@ -72,6 +72,13 @@ describe('syntheticCity', () => {
     expect([...archetypes].sort()).toEqual([...ARCHETYPES].sort())
   })
 
+  it('gives each file a path of its own, so its building draws its own pieces', () => {
+    const files = city.islands.flatMap((island) => island.lots.map((lot) => lot.file))
+    expect(new Set(files.map((file) => file.path)).size).toBe(files.length)
+    const houses = files.map(buildingFor).filter((building) => building.archetype === 'house')
+    expect(new Set(houses.map((house) => house.pieces.join('.'))).size).toBeGreaterThan(5)
+  })
+
   it('centres the city on the origin', () => {
     const { bounds } = city
     expect(bounds).toEqual(boundsOf(city.islands.map((island) => island.plateau)))
