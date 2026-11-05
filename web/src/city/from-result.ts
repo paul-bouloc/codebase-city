@@ -203,5 +203,11 @@ export function cityFromResult(result: AnalysisResult): CityLayout {
     islands[dirs.island[dir] ?? 0]?.lots.push(lot)
   })
 
-  return { islands, bounds: rect(0, 0, layout.width, layout.height) }
+  const links = result.links.from.map((from, row) => ({
+    from,
+    to: result.links.to[row] ?? from,
+    imports: result.links.imports[row] ?? 0,
+    upward: result.links.upward[row] ?? 0,
+  }))
+  return { islands, bounds: rect(0, 0, layout.width, layout.height), links }
 }

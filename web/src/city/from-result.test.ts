@@ -18,6 +18,11 @@ describe('cityFromResult', () => {
     expect(city.bounds).toEqual({ x: 0, y: 0, width: 67, height: 22.2 })
   })
 
+  it('keeps the imports between islands, by island', () => {
+    expect(city.links).toHaveLength(result.links.from.length)
+    expect(city.links?.[3]).toEqual({ from: 3, to: 2, imports: 3, upward: 0 })
+  })
+
   it('puts every file on its lot, with its metrics', () => {
     const lots = city.islands.flatMap((island) => island.lots)
     expect(lots).toHaveLength(result.files.dir.length)

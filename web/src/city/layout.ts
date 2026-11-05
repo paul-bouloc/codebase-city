@@ -88,10 +88,21 @@ export interface IslandLayout {
   grids?: GridLayout[]
 }
 
+/** Imports from the files of one island to those of another, by the islands' indices. */
+export interface IslandLink {
+  from: number
+  to: number
+  imports: number
+  /** How many of them go up the layers. */
+  upward: number
+}
+
 export interface CityLayout {
   islands: IslandLayout[]
   /** The union of the plateaux. */
   bounds: Rect
+  /** Imports between islands; none if absent. */
+  links?: IslandLink[]
 }
 
 export function boundsOf(rects: readonly Rect[]): Rect {
