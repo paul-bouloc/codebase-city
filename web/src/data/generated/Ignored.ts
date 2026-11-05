@@ -3,4 +3,8 @@
 /**
  * Files dropped at ingestion, by reason.
  */
-export type Ignored = { vendored: number, minified: number, binary: number, };
+export type Ignored = { vendored: number, minified: number, binary: number, 
+/**
+ * More folders deep than the analyzer indexes.
+ */
+deep: number, };

@@ -101,6 +101,7 @@ async fn skipped_files_are_counted_by_reason() {
             vendored: 2,
             minified: 2,
             binary: 2,
+            deep: 0,
         }
     );
 }

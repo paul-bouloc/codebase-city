@@ -1,5 +1,5 @@
 {
-  "formatVersion": 7,
+  "formatVersion": 8,
   "analyzerVersion": "0.1.0",
   "repo": {
     "owner": "acme",
@@ -790,7 +790,8 @@
     "ignored": {
       "vendored": 3,
       "minified": 1,
-      "binary": 2
+      "binary": 2,
+      "deep": 1
     },
     "importsTotal": 31,
     "importsResolved": 26,

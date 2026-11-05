@@ -44,9 +44,9 @@ describe('decodeResult', () => {
   it('rejects another format version', () => {
     expect(
       decodeChanged((json) => {
-        json.formatVersion = 6
+        json.formatVersion = 7
       }),
-    ).toThrow('unsupported format version 6, expected 7')
+    ).toThrow('unsupported format version 7, expected 8')
   })
 
   it('rejects values of the wrong type', () => {
@@ -95,6 +95,11 @@ describe('decodeResult', () => {
         Reflect.deleteProperty(json.stats, 'ignored')
       }),
     ).toThrow('stats.ignored is not an object')
+    expect(
+      decodeChanged((json) => {
+        Reflect.deleteProperty(json.stats.ignored, 'deep')
+      }),
+    ).toThrow('stats.ignored.deep')
   })
 
   it('rejects columns of different lengths', () => {

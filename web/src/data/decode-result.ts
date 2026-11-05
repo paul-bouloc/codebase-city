@@ -22,7 +22,7 @@ import type { SymbolKind } from './generated/SymbolKind'
 import type { Symbols } from './generated/Symbols'
 
 // FORMAT_VERSION in crates/model; the generated sample result keeps the two in step.
-export const FORMAT_VERSION = 7
+export const FORMAT_VERSION = 8
 
 // Checked by the compiler against the generated unions: adding a variant in Rust breaks the build here.
 const EDGE_KINDS = {
@@ -716,6 +716,7 @@ function decodeStats(value: unknown): Stats {
       vendored: u32(ignored.vendored, 'stats.ignored.vendored'),
       minified: u32(ignored.minified, 'stats.ignored.minified'),
       binary: u32(ignored.binary, 'stats.ignored.binary'),
+      deep: u32(ignored.deep, 'stats.ignored.deep'),
     },
     importsTotal: u32(fields.importsTotal, 'stats.importsTotal'),
     importsResolved: u32(fields.importsResolved, 'stats.importsResolved'),

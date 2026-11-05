@@ -342,6 +342,7 @@ fn sample() -> AnalysisResult {
                 vendored: 3,
                 minified: 1,
                 binary: 2,
+                deep: 1,
             },
             imports_total: imports_resolved + EXTERNAL_IMPORTS + UNRESOLVED_IMPORTS,
             imports_resolved,
