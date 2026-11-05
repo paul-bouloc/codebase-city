@@ -18,11 +18,13 @@ export type Archetype = (typeof ARCHETYPES)[number]
 
 const MAX_FLOORS = 40
 const MAX_LINES = 3000
-const MIN_SIDE = 0.75
+export const MIN_SIDE = 0.75
 const SIDE_RANGE = 0.95
-const HALL_MIN_SIDE = 1.5
+export const MAX_SIDE = MIN_SIDE + SIDE_RANGE
+/** From this side, a low building is a Hall rather than a House. */
+export const HALL_MIN_SIDE = 1.5
 /** The Pavilion's roof overhangs by 0.13 u on each side: this keeps it inside 1.8 u. */
-const PAVILION_MAX_SIDE = 1.54
+export const PAVILION_MAX_SIDE = 1.54
 /** A House's walls stop a little short of their floors, under the roof. */
 const HOUSE_WALL_RATIO = 0.9
 const SETBACK_BASE_RATIO = 0.62

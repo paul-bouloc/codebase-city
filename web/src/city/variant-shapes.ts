@@ -1,3 +1,4 @@
+import { HALL_MIN_SIDE, MAX_SIDE, MIN_SIDE, PAVILION_MAX_SIDE } from './archetypes'
 import {
   CONCRETE_ROOF,
   CONCRETE_WALL,
@@ -48,9 +49,9 @@ function size(archetype: VariantArchetype, piece: string, name: string, depth = 
 
 /** The sides each archetype takes, so lengths the design defines by ratios fit them best. */
 const SIDES: Record<VariantArchetype, readonly [number, number]> = {
-  house: [0.75, 1.5],
-  pavilion: [0.75, 1.54],
-  concreteBlock: [0.75, 1.7],
+  house: [MIN_SIDE, HALL_MIN_SIDE],
+  pavilion: [MIN_SIDE, PAVILION_MAX_SIDE],
+  concreteBlock: [MIN_SIDE, MAX_SIDE],
 }
 
 /** The value of a length on the side `s`, without height: footprints never follow it. */
