@@ -7,6 +7,8 @@ export const BRIDGE_STONE = '#E9DDC7'
 // The railings: the stone mixed with 45 % black.
 export const BRIDGE_RAIL = mixHex(BRIDGE_STONE, '#000000', 0.45)
 export const FERRY_WAKE = '#FFFFFF'
+// Imports that go up the layers, and nothing else: the city's only red.
+export const UPWARD = '#D1435B'
 // The quay of a canal and of a port.
 export const QUAY = '#C9B894'
 export const CANAL_WATER = '#79BFC0'
