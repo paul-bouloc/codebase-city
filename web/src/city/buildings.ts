@@ -198,15 +198,15 @@ export function createBuildings(layout: CityLayout, pixelRatio: number): Group {
       const turn = baseTurnFor(building, lot.file.path ?? '', lot.x, lot.y, grid?.rect)
       const { dx, dy, angle } = placementFor(building, lot.x, lot.y, lot.ground, turn)
       const key = shapeKey(building)
-      const group = byShape.get(key) ?? { shape: building, placed: [] }
-      group.placed.push({
+      const entry = byShape.get(key) ?? { shape: building, placed: [] }
+      entry.placed.push({
         building,
         position: boardToThree(lot.x + dx, lot.y + dy, altitude + (lot.base ?? 0)),
         angle,
         tint: tintOf(lot.file),
         generated: lot.file.generated === true,
       })
-      byShape.set(key, group)
+      byShape.set(key, entry)
     }
   }
 
