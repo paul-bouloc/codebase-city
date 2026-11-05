@@ -93,7 +93,10 @@ export interface FolderSheetData {
 export interface AboutData {
   analyzedFiles: number
   generatedFiles: number
-  skipped: readonly { reason: 'vendored' | 'minified' | 'binary' | 'too large'; files: number }[]
+  skipped: readonly {
+    reason: 'vendored' | 'minified' | 'binary' | 'too large' | 'too deep'
+    files: number
+  }[]
   languages: readonly { language: Language; files: number }[]
   // Share of imports resolved to a file; absent when no language is analyzed.
   resolvedImports?: number
