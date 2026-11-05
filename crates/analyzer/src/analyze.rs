@@ -58,7 +58,10 @@ pub struct ImportReport {
 }
 
 /// Analyzes the files of one commit. The result does not depend on the
-/// order of `files`: they are sorted by path first.
+/// order of `files`: they are sorted by path first. The files are those kept
+/// by [`crate::files::classify_path`]: folders are indexed by their full path,
+/// so a file deeper than [`crate::files::MAX_DEPTH`] costs memory with the
+/// square of its depth.
 pub fn analyze(
     repo: Repo,
     sha: String,
