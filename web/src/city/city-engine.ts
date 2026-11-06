@@ -24,12 +24,15 @@ import {
   Vector4,
   WebGLRenderer,
 } from 'three'
+import { createBridges } from './bridges'
 import { createBuildings } from './buildings'
 import { cityDecor } from './decor'
 import { createDecor, type DecorStats, decorStats } from './decor-mesh'
+import { createFerries } from './ferries'
 import { islandShapes } from './island-shape'
 import type { CityLayout } from './layout'
 import { SUN_DIRECTION } from './light'
+import { cityLinks } from './links'
 import { createParcels } from './plateaux'
 import { createSea, OPEN_SEA, seaSize } from './sea'
 import { createTerrain } from './terrain'
@@ -69,9 +72,22 @@ export interface FrameStats {
   fps: number
   drawCalls: number
   triangles: number
-  /** Trees and rocks of the city, and their triangles at full size. */
+  /** Trees, rocks and boats of the city, and their triangles at full size. */
   decor: DecorStats
+  links: LinkStats
 }
+
+/** How the imports between islands are drawn. */
+export interface LinkStats {
+  bridges: number
+  ferries: number
+  /** Links gathered at a port, not drawn. */
+  inPorts: number
+  /** Links too small to draw while nothing is selected. */
+  hidden: number
+}
+
+const NO_LINKS: LinkStats = { bridges: 0, ferries: 0, inPorts: 0, hidden: 0 }
 
 export interface CityEngineOptions {
   /** Draw every frame, even when nothing moves: to measure the frame rate. */
@@ -94,11 +110,13 @@ export class CityEngine {
   private framesSince = 0
   private statsSince = 0
   private decor: DecorStats = { instances: 0, triangles: 0 }
+  private links: LinkStats = NO_LINKS
   private stats: FrameStats = {
     fps: 0,
     drawCalls: 0,
     triangles: 0,
     decor: { instances: 0, triangles: 0 },
+    links: NO_LINKS,
   }
 
   constructor(container: HTMLElement, { continuous = false }: CityEngineOptions = {}) {
@@ -136,7 +154,15 @@ export class CityEngine {
     }
     const shapes = islandShapes(layout)
     const decor = cityDecor(layout, shapes)
-    this.decor = decorStats(decor)
+    const links = cityLinks(layout, shapes)
+    this.decor = decorStats(decor, links.boats)
+    this.links = {
+      bridges: links.bridges.length,
+      ferries: links.ferries.length,
+      inPorts: links.ports.reduce((sum, port) => sum + port.links, 0),
+      hidden: links.hidden,
+    }
+    const pixelRatio = this.renderer.getPixelRatio()
     this.city = new Group().add(
       createSea(
         layout,
@@ -144,8 +170,10 @@ export class CityEngine {
       ),
       createTerrain(shapes),
       createParcels(layout, decor.gardens),
-      createBuildings(layout, this.renderer.getPixelRatio()),
-      createDecor(decor),
+      createBridges(links),
+      createFerries(links.ferries, pixelRatio),
+      createBuildings(layout, pixelRatio),
+      createDecor(decor, links.boats),
     )
     this.scene.add(this.city)
 
@@ -263,6 +291,7 @@ export class CityEngine {
       this.stats.drawCalls = this.renderer.info.render.calls
       this.stats.triangles = this.renderer.info.render.triangles
       this.stats.decor = this.decor
+      this.stats.links = this.links
     }
     const elapsed = time - this.statsSince
     if (elapsed >= 500) {

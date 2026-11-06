@@ -8,7 +8,7 @@ interface CityStatsProps {
   engine: CityEngine
 }
 
-/** Frame rate, draw calls and triangles, for development. */
+/** Frame rate, draw calls, triangles and links between islands, for development. */
 export function CityStats({ engine }: CityStatsProps) {
   const [stats, setStats] = useState<FrameStats>(() => ({ ...engine.getStats() }))
 
@@ -21,7 +21,8 @@ export function CityStats({ engine }: CityStatsProps) {
     <output className={styles.stats}>
       {stats.fps} fps · {stats.drawCalls} draw calls · {(stats.triangles / 1000).toFixed(1)}k
       triangles · decor {stats.decor.instances} ({(stats.decor.triangles / 1000).toFixed(1)}k
-      triangles)
+      triangles) · {stats.links.bridges} bridges · {stats.links.ferries} ferries ·{' '}
+      {stats.links.inPorts} in ports · {stats.links.hidden} hidden
     </output>
   )
 }
