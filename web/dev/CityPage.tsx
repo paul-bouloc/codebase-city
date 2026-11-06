@@ -1,11 +1,15 @@
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { CityView } from '../src/app/CityView'
+import { type CityCards, cityCards } from '../src/city/city-cards'
 import type { CityEngine } from '../src/city/city-engine'
+import type { CityHover, CityItem } from '../src/city/city-interaction'
 import { cityFromResult } from '../src/city/from-result'
 import type { CityLayout } from '../src/city/layout'
 import { syntheticCity } from '../src/city/synthetic'
 import { decodeResult } from '../src/data/decode-result'
 import { Button } from '../src/ui/Button'
+import { AreaTooltip } from '../src/ui/city/AreaTooltip'
+import { FileTooltip } from '../src/ui/city/FileTooltip'
 import { archetypeGallery } from './archetype-gallery'
 import styles from './CityPage.module.css'
 import { variantGallery } from './variant-gallery'
@@ -58,6 +62,24 @@ export function CityPage() {
   const [mount, setMount] = useState(0)
   const [remounting, setRemounting] = useState(false)
   const [engine, setEngine] = useState<CityEngine | null>(null)
+  const [cards, setCards] = useState<CityCards | null>(null)
+  const [hover, setHover] = useState<CityHover | null>(null)
+  const [selection, setSelection] = useState<CityItem | null>(null)
+
+  useEffect(() => {
+    engine?.setListeners({ hover: setHover, select: setSelection })
+  }, [engine])
+
+  // Esc clears the selection, as on the city screen once no panel is open.
+  useEffect(() => {
+    const clear = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        engine?.clearSelection()
+      }
+    }
+    window.addEventListener('keydown', clear)
+    return () => window.removeEventListener('keydown', clear)
+  }, [engine])
 
   // After the city loads (the view's effect runs first), the camera goes where `?look` says.
   // biome-ignore lint/correctness/useExhaustiveDependencies: again after each city loads
@@ -85,11 +107,15 @@ export function CityPage() {
   async function show(text: Promise<string>) {
     const request = ++latest.current
     try {
-      const city = cityFromResult(decodeResult(JSON.parse(await text)))
+      const result = decodeResult(JSON.parse(await text))
+      const city = cityFromResult(result)
       if (request !== latest.current) {
         return
       }
       setLoaded(city)
+      setCards(cityCards(result))
+      setHover(null)
+      setSelection(null)
       setError(null)
     } catch (cause) {
       if (request === latest.current) {
@@ -151,7 +177,19 @@ export function CityPage() {
           onChange={load}
         />
         {error && <p className={styles.error}>{error}</p>}
+        {selection && <p className={styles.selection}>{selection.path}</p>}
       </div>
+      {hover && cards && <HoverCard hover={hover} cards={cards} />}
     </main>
   )
+}
+
+/** The card of what the pointer rests on, read from the result. */
+function HoverCard({ hover, cards }: { hover: CityHover; cards: CityCards }) {
+  if (hover.target.kind === 'building') {
+    const card = cards.file(hover.path)
+    return card ? <FileTooltip {...card} pointer={hover.pointer} /> : null
+  }
+  const card = cards.folder(hover.path)
+  return card ? <AreaTooltip {...card} pointer={hover.pointer} /> : null
 }

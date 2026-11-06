@@ -28,3 +28,10 @@
   color: var(--feedback-error-fg);
   text-align: right;
 }
+
+.selection {
+  margin: 0;
+  flex-basis: 100%;
+  font-family: var(--font-family-mono);
+  text-align: right;
+}
