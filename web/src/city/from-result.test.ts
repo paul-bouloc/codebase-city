@@ -88,6 +88,7 @@ describe('cityFromResult', () => {
     expect(core?.parcels).toEqual([
       {
         rect: { x: 45.2, y: 0.9, width: 2.6, height: 2.6 },
+        path: 'src/core/sub',
         level: 1,
         nature: 'tests',
         paved: false,
@@ -129,12 +130,14 @@ describe('cityFromResult', () => {
     expect(core?.parcels).toEqual([
       {
         rect: { x: 43.2, y: 0.6, width: 6.4, height: 3.2 },
+        path: 'src/core/sub',
         level: 1,
         nature: 'normal',
         paved: true,
       },
       {
         rect: { x: 46.4, y: 0.9, width: 2.6, height: 2.6 },
+        path: 'src/core/sub/deep',
         level: 2,
         nature: 'normal',
         paved: false,

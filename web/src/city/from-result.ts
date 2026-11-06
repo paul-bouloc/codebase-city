@@ -126,6 +126,7 @@ export function cityFromResult(result: AnalysisResult): CityLayout {
         parcels.width[row] ?? 0,
         parcels.height[row] ?? 0,
       ),
+      path: pathOf(dir),
       level: level[dir] ?? 1,
       nature: parcels.nature[row] ?? 'normal',
       paved: paved.has(dir),

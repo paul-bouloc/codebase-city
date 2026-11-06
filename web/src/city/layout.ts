@@ -52,6 +52,8 @@ export type ParcelNature = 'normal' | 'tests' | 'unanalyzed'
 /** A folder inside an island: a slab that holds its subfolders' parcels and its own lots. */
 export interface ParcelLayout {
   rect: Rect
+  /** The folder's path from the repository root; none for a slab under a folder's own files. */
+  path?: string
   /** 1 for a folder of the island, 2 for one of its subfolders, and so on. */
   level: number
   nature: ParcelNature
