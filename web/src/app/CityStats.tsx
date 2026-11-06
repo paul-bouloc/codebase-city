@@ -22,7 +22,8 @@ export function CityStats({ engine }: CityStatsProps) {
       {stats.fps} fps · {stats.drawCalls} draw calls · {(stats.triangles / 1000).toFixed(1)}k
       triangles · decor {stats.decor.instances} ({(stats.decor.triangles / 1000).toFixed(1)}k
       triangles) · {stats.links.bridges} bridges · {stats.links.ferries} ferries ·{' '}
-      {stats.links.inPorts} in ports · {stats.links.hidden} hidden
+      {stats.links.inPorts} in ports · {stats.links.hidden} hidden · pick {stats.pickMs.toFixed(2)}{' '}
+      ms
     </output>
   )
 }
