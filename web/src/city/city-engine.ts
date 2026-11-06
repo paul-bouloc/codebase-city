@@ -171,7 +171,7 @@ export class CityEngine {
       createTerrain(shapes),
       createParcels(layout, decor.gardens),
       createBridges(links),
-      createFerries(links.ferries, pixelRatio),
+      createFerries(links.ferries),
       createBuildings(layout, pixelRatio),
       createDecor(decor, links.boats),
     )

@@ -16,7 +16,7 @@ const DASH = { dash: 1.2, gap: 0.8 }
 const UPWARD_DASH = { dash: 0.6, gap: 0.5 }
 
 /** Every ferry line of the city, one draw call each: their widths differ. */
-export function createFerries(ferries: readonly Ferry[], pixelRatio: number): Group {
+export function createFerries(ferries: readonly Ferry[]): Group {
   const group = new Group()
   for (const ferry of ferries) {
     const geometry = new LineGeometry()
@@ -24,8 +24,8 @@ export function createFerries(ferries: readonly Ferry[], pixelRatio: number): Gr
     const dashes = ferry.upward ? UPWARD_DASH : DASH
     const material = new LineMaterial({
       color: new Color(ferry.upward ? UPWARD : FERRY_WAKE),
-      // The viewport is in device pixels.
-      linewidth: ferry.pixels * pixelRatio,
+      // In CSS pixels: the line takes the renderer's viewport, which is.
+      linewidth: ferry.pixels,
       worldUnits: false,
       dashed: true,
       dashSize: dashes.dash,
