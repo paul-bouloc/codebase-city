@@ -28,6 +28,12 @@ const ASPECTS: [f64; 33] = [
 /// pack.
 const ROW_FITS: usize = 4;
 
+/// How much longer than wide a parcel or a grid may be stretched, unless
+/// its own shape is longer: past that, the rest of its place is left as
+/// free ground. A small folder alone in a wide row would otherwise become
+/// a strip of empty lots.
+const MAX_STRETCH: u32 = 4;
+
 /// The worst aspect ratio a last row keeps before it joins the row above.
 const LAST_ROW_RATIO: f64 = 3.0;
 
@@ -152,7 +158,7 @@ pub struct Audit {
     pub levels: Vec<AuditLevel>,
 }
 
-/// One depth of an [`Audit`]. The first five sum to the area placed at
+/// One depth of an [`Audit`]. The first six sum to the area placed at
 /// that depth; the last three say where room was lost, and end up as
 /// extra lots, larger gaps and frames deeper down.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -167,6 +173,8 @@ pub struct AuditLevel {
     pub padding: u64,
     /// Around frames that keep their own size.
     pub water: u64,
+    /// Beside parcels and grids that would be stretched too long.
+    pub ground: u64,
     /// Items shorter than their row, across the row.
     pub shorter: u64,
     /// Rows narrower than their pack.
@@ -182,6 +190,22 @@ impl Audit {
             self.levels.resize(depth + 1, AuditLevel::default());
         }
         &mut self.levels[depth]
+    }
+}
+
+/// `rect`, from its west or north end, at most [`MAX_STRETCH`] times
+/// longer than wide, or as long as `natural` if that is longer.
+fn bounded(rect: Rect, natural: (u32, u32)) -> Rect {
+    if rect.width >= rect.height {
+        let width = rect.width.min((MAX_STRETCH * rect.height).max(natural.0));
+        Rect { width, ..rect }
+    } else {
+        let height = rect.height.min((MAX_STRETCH * rect.width).max(natural.1));
+        Rect {
+            y: rect.y + rect.height - height,
+            height,
+            ..rect
+        }
     }
 }
 
@@ -396,6 +420,15 @@ impl Node {
     /// Places the node, in shape `choice`, in `rect`, which is at least
     /// that big, `depth` frames below the root.
     fn place_in(&self, choice: u32, rect: Rect, placed: &mut Placed, depth: usize) {
+        let rect = match &self.kind {
+            Kind::Grid { .. } | Kind::Frame { stretch: true, .. } => {
+                let bounded = bounded(rect, self.size(choice));
+                placed.audit.at(depth).ground +=
+                    area(rect.width, rect.height) - area(bounded.width, bounded.height);
+                bounded
+            }
+            _ => rect,
+        };
         match &self.kind {
             Kind::Grid { lots } => {
                 let asked = u64::from(*lots) * area(LOT, LOT);
@@ -1120,7 +1153,14 @@ mod tests {
             .audit
             .levels
             .iter()
-            .map(|level| level.lots + level.extra_lots + level.gaps + level.padding + level.water)
+            .map(|level| {
+                level.lots
+                    + level.extra_lots
+                    + level.gaps
+                    + level.padding
+                    + level.water
+                    + level.ground
+            })
             .sum();
         assert_eq!(accounted, area(city.width(), city.height()));
         assert_eq!(
@@ -1173,6 +1213,56 @@ mod tests {
         assert_eq!(children.len(), 2);
         assert!(matches!(children[1], Shape::Split { axis: Axis::Y, .. }));
         assert!(row.extent(&size_of, Axis::X) < alone.extent(&size_of, Axis::X));
+    }
+
+    #[test]
+    fn a_stretched_parcel_stays_within_four_times_its_width() {
+        let natural = (2 * LOT, LOT);
+        let wide = Rect {
+            x: 10,
+            y: 20,
+            width: 30 * LOT,
+            height: LOT,
+        };
+        assert_eq!(
+            bounded(wide, natural),
+            Rect {
+                width: 4 * LOT,
+                ..wide
+            }
+        );
+        // Kept at the north end of a tall place
+        let tall = Rect {
+            x: 10,
+            y: 20,
+            width: LOT,
+            height: 30 * LOT,
+        };
+        assert_eq!(
+            bounded(tall, natural),
+            Rect {
+                y: 20 + 26 * LOT,
+                height: 4 * LOT,
+                ..tall
+            }
+        );
+        // A shape longer on its own keeps its length
+        assert_eq!(
+            bounded(wide, (6 * LOT, LOT)),
+            Rect {
+                width: 6 * LOT,
+                ..wide
+            }
+        );
+
+        let folder = |id: u32, lots: u32| Node::frame(id, 3, true, Node::grid(id, lots), (0, 0));
+        let mut items = vec![folder(0, 120), folder(1, 90)];
+        items.extend((2..12).map(|id| folder(id, 1)));
+        let placed = Node::pack(99, items, 1.0, Gap::Fixed(9)).place();
+        for &(id, rect, _) in &placed.frames {
+            let (long, short) = (rect.width.max(rect.height), rect.width.min(rect.height));
+            assert!(long <= MAX_STRETCH * short, "parcel {id}: {rect:?}");
+        }
     }
 
     #[test]
