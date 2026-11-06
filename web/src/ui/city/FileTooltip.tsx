@@ -24,6 +24,8 @@ interface FileTooltipProps {
   // Full path from the repository root, file name included.
   path: string
   language: Language
+  // The language's own name, for one the city does not paint in its own colour ("Python").
+  languageName?: string
   lines: number
   // Absent for a file the analysis does not read.
   complexity?: number
@@ -42,6 +44,7 @@ interface FileTooltipProps {
 export function FileTooltip({
   path,
   language,
+  languageName,
   lines,
   complexity,
   complexityTop,
@@ -56,7 +59,7 @@ export function FileTooltip({
   // The folder gives way first; the name keeps at least 24 characters (CSS).
   const shortFolder = shortenFolder(folder, PATH_CHARS - name.length)
   const facts = [
-    LANGUAGE_LABELS[language],
+    languageName ?? LANGUAGE_LABELS[language],
     TEXT.lines(lines),
     complexity !== undefined && TEXT.complexity(complexity),
   ].filter(Boolean)

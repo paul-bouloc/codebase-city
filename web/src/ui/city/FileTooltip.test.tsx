@@ -30,6 +30,22 @@ describe('FileTooltip', () => {
     expect(html).toContain('imports 38')
   })
 
+  it('names a language the city does not paint in its own colour', () => {
+    const html = renderToStaticMarkup(
+      <FileTooltip
+        path="app/main.py"
+        language="other"
+        languageName="Python"
+        lines={120}
+        complexity={9}
+        incoming={0}
+        outgoing={3}
+        pointer={{ x: 0, y: 0 }}
+      />,
+    )
+    expect(html).toContain('Python · 120 lines · complexity 9')
+  })
+
   it('shows the role badge, always likely, only for a file with a role', () => {
     expect(file(PATH, true)).toContain('Conductor · likely')
     expect(file(PATH, false)).not.toContain('Conductor')
