@@ -34,6 +34,8 @@ export interface WaterGrid {
   shore: Float32Array
   /** Cost of crossing a cell, per u. */
   cost: Float32Array
+  /** The search's own state, allocated once and reset after each route. */
+  scratch: { spent: Float64Array; cameFrom: Int32Array; done: Uint8Array }
 }
 
 /** The outline of an island's land, its beach's outer edge, pushed `margin` u further out. */
@@ -84,7 +86,12 @@ export function waterGrid(shapes: readonly IslandShape[], inner: Rect): WaterGri
       cost[cell] = (cost[cell] ?? 1) + CHANNEL_COST - 1
     }
   }
-  return { x0, y0, columns, rows, land, shore, cost }
+  const scratch = {
+    spent: new Float64Array(columns * rows).fill(Number.POSITIVE_INFINITY),
+    cameFrom: new Int32Array(columns * rows).fill(-1),
+    done: new Uint8Array(columns * rows),
+  }
+  return { x0, y0, columns, rows, land, shore, cost, scratch }
 }
 
 /** Distance from each cell to the nearest land cell, in u: a two-pass chamfer (3-4). */
@@ -267,11 +274,28 @@ export function waterRoute(grid: WaterGrid, from: Point, to: Point): Point[] | n
 
 /** A* over the cells, eight ways, never cutting a corner of land. */
 function search(grid: WaterGrid, start: number, goal: number): number[] | null {
+  const { spent, cameFrom, done } = grid.scratch
+  // Only the cells this search reached are put back.
+  const touched: number[] = []
+  try {
+    return searchFrom(grid, start, goal, touched)
+  } finally {
+    for (const cell of touched) {
+      spent[cell] = Number.POSITIVE_INFINITY
+      cameFrom[cell] = -1
+      done[cell] = 0
+    }
+  }
+}
+
+function searchFrom(
+  grid: WaterGrid,
+  start: number,
+  goal: number,
+  touched: number[],
+): number[] | null {
   const { columns, rows, land, cost } = grid
-  const size = columns * rows
-  const spent = new Float64Array(size).fill(Number.POSITIVE_INFINITY)
-  const cameFrom = new Int32Array(size).fill(-1)
-  const done = new Uint8Array(size)
+  const { spent, cameFrom, done } = grid.scratch
   const heap = new MinHeap()
   const goalColumn = goal % columns
   const goalRow = Math.floor(goal / columns)
@@ -282,6 +306,7 @@ function search(grid: WaterGrid, start: number, goal: number): number[] | null {
     return CELL * (Math.max(dx, dy) + (Math.SQRT2 - 1) * Math.min(dx, dy))
   }
   spent[start] = 0
+  touched.push(start)
   heap.push(start, estimate(start))
   while (heap.size > 0) {
     const cell = heap.pop()
@@ -316,6 +341,9 @@ function search(grid: WaterGrid, start: number, goal: number): number[] | null {
         (diagonal ? Math.SQRT2 : 1) * CELL * (((cost[cell] ?? 1) + (cost[next] ?? 1)) / 2)
       const total = (spent[cell] ?? 0) + step
       if (total < (spent[next] ?? Number.POSITIVE_INFINITY)) {
+        if (spent[next] === Number.POSITIVE_INFINITY) {
+          touched.push(next)
+        }
         spent[next] = total
         cameFrom[next] = cell
         heap.push(next, total + estimate(next))

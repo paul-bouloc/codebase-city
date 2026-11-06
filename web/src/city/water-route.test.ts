@@ -87,6 +87,15 @@ describe('waterRoute', () => {
     expect(farthest).toBeGreaterThan(4)
   })
 
+  it('leaves the grid as it found it, for the next route', () => {
+    const fresh = waterGrid(shapes, layout.bounds)
+    const second = waterRoute(fresh, { x: 6, y: -15 }, { x: 68, y: 70 })
+    waterRoute(grid, { x: -12, y: 45 }, { x: 86, y: 45 })
+    expect(waterRoute(grid, { x: 6, y: -15 }, { x: 68, y: 70 })).toEqual(second)
+    expect(grid.scratch.done.every((cell) => cell === 0)).toBe(true)
+    expect(grid.scratch.cameFrom.every((cell) => cell === -1)).toBe(true)
+  })
+
   it('sails straight when nothing is in the way', () => {
     const route = waterRoute(grid, { x: -20, y: -20 }, { x: -20, y: 100 })
     expect(route).toHaveLength(2)
