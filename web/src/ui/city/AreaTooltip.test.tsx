@@ -26,6 +26,17 @@ describe('AreaTooltip', () => {
     expect(html).toContain('15,212 files · layer 1')
   })
 
+  it('leaves the layer out for an island without one', () => {
+    const html = renderToStaticMarkup(
+      <AreaTooltip path="docs" files={40} pointer={{ x: 0, y: 0 }} />,
+    )
+    expect(html).toContain('>40 files</p>')
+    const parcel = renderToStaticMarkup(
+      <AreaTooltip path="docs/guide" files={12} island="docs" pointer={{ x: 0, y: 0 }} />,
+    )
+    expect(parcel).toContain('12 files · in docs<')
+  })
+
   it('shortens a deep folder from its start, the name kept whole', () => {
     const path = 'packages/platform/services/workspace/internal/indexing/backends/sqlite/schema'
     const html = renderToStaticMarkup(

@@ -7,7 +7,7 @@ import { useTooltipPlacement } from './use-tooltip-placement'
 
 const TEXT = {
   files: (count: number) => `${exactCount(count)} ${count === 1 ? 'file' : 'files'}`,
-  inIsland: (island: string, layer: number) => `in ${island}, layer ${layer}`,
+  inIsland: (island: string) => `in ${island}`,
   layer: (layer: number) => `layer ${layer}`,
 }
 
@@ -18,7 +18,8 @@ interface AreaTooltipProps {
   // Folder path from the repository root, without a trailing slash.
   path: string
   files: number
-  layer: number
+  // Absent for an island without production code, which has no layer.
+  layer?: number
   // The island a parcel stands on. Absent when the card is about the island itself.
   island?: string
   pointer: Point
@@ -31,7 +32,10 @@ export function AreaTooltip({ path, files, layer, island, pointer, obstacles }: 
   const { folder, name } = splitPath(path)
   // The folder gives way first, from its start, as on a file's card.
   const shortFolder = shortenFolder(folder, PATH_CHARS - name.length)
-  const where = island ? TEXT.inIsland(island, layer) : TEXT.layer(layer)
+  const where = [
+    island !== undefined && TEXT.inIsland(island),
+    layer !== undefined && TEXT.layer(layer),
+  ].filter(Boolean)
 
   return (
     <Glass
@@ -50,7 +54,9 @@ export function AreaTooltip({ path, files, layer, island, pointer, obstacles }: 
           {name}
         </span>
       </p>
-      <p className={styles.summary}>{`${TEXT.files(files)} · ${where}`}</p>
+      <p className={styles.summary}>
+        {[TEXT.files(files), where.join(', ')].filter(Boolean).join(' · ')}
+      </p>
     </Glass>
   )
 }
