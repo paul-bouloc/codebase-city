@@ -11,6 +11,7 @@ mod treemap;
 use model::{AnalysisResult, Grids, Layout, Lots, ParcelNature, Parcels, Rects, Scope};
 
 use crate::files::Language;
+pub use treemap::{Audit, AuditLevel};
 use treemap::{Gap, LOT, Node};
 
 /// Space between the content of an island and the edge of its plateau.
@@ -146,6 +147,12 @@ impl Tree {
 /// analysis did: to time the layout on its own. The result must be valid
 /// (`AnalysisResult::validate`): its indexes are trusted.
 pub fn of_result(result: &AnalysisResult) -> Layout {
+    audited(result).0
+}
+
+/// Lays a result out again, as [`of_result`] does, and says where its area
+/// went.
+pub fn audited(result: &AnalysisResult) -> (Layout, Audit) {
     let dirs = &result.dirs;
     let mut paths: Vec<String> = Vec::with_capacity(dirs.parent.len());
     for (parent, name) in dirs.parent.iter().zip(&dirs.name) {
@@ -162,7 +169,7 @@ pub fn of_result(result: &AnalysisResult) -> Layout {
         .iter()
         .map(|&language| Language::analyzed_named(&result.languages[language as usize]).is_some())
         .collect();
-    layout(&Input {
+    layout_audited(&Input {
         parents: &dirs.parent,
         dir_paths: &dir_paths,
         dir_islands: &dirs.island,
@@ -175,6 +182,10 @@ pub fn of_result(result: &AnalysisResult) -> Layout {
 
 /// Lays the city out, on a thread of its own with room for deep folders.
 pub(crate) fn layout(input: &Input) -> Layout {
+    layout_audited(input).0
+}
+
+fn layout_audited(input: &Input) -> (Layout, Audit) {
     std::thread::scope(|scope| {
         let spawned = std::thread::Builder::new()
             .stack_size(LAYOUT_STACK)
@@ -189,7 +200,7 @@ pub(crate) fn layout(input: &Input) -> Layout {
     })
 }
 
-fn layout_here(input: &Input) -> Layout {
+fn layout_here(input: &Input) -> (Layout, Audit) {
     let dir_count = input.parents.len();
     let mut own = vec![Counts::default(); dir_count];
     let mut files_of: Vec<Vec<u32>> = vec![Vec::new(); dir_count];
@@ -297,7 +308,7 @@ fn layout_here(input: &Input) -> Layout {
             layout.lots.y[file as usize] = y + (rows - 1 - row) * LOT + LOT / 2;
         }
     }
-    layout
+    (layout, placed.audit)
 }
 
 /// The plateau area of an island holding `content`.

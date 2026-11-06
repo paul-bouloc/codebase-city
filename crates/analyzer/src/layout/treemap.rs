@@ -153,6 +153,52 @@ pub(crate) struct Placed {
     pub grids: Vec<(u32, u32, u32, u32, u32)>,
     /// Id, rectangle, and whether the frame stretches.
     pub frames: Vec<(u32, Rect, bool)>,
+    pub audit: Audit,
+}
+
+/// Where the area of a placed tree went, by depth: the tree's root is at
+/// depth 0, and what a frame holds one deeper than the frame. Areas in
+/// square tenths of a unit.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Audit {
+    pub levels: Vec<AuditLevel>,
+}
+
+/// One depth of an [`Audit`]. The first five sum to the area placed at
+/// that depth; the last three say where room was lost, and end up as
+/// extra lots, larger gaps and frames deeper down.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct AuditLevel {
+    /// The lots the grids asked for.
+    pub lots: u64,
+    /// Grid area beyond those lots: more lots, and edges thinner than a lot.
+    pub extra_lots: u64,
+    /// Space between neighbours.
+    pub gaps: u64,
+    /// The padding of frames.
+    pub padding: u64,
+    /// Around frames that keep their own size.
+    pub water: u64,
+    /// Items shorter than their row, across the row.
+    pub shorter: u64,
+    /// Rows narrower than their pack.
+    pub narrower: u64,
+    /// Items in a larger shape than their preferred one, or grids with
+    /// more lots than asked for; negative when the shapes are smaller.
+    pub reshaped: i64,
+}
+
+impl Audit {
+    fn at(&mut self, depth: usize) -> &mut AuditLevel {
+        if self.levels.len() <= depth {
+            self.levels.resize(depth + 1, AuditLevel::default());
+        }
+        &mut self.levels[depth]
+    }
+}
+
+fn area(width: u32, height: u32) -> u64 {
+    u64::from(width) * u64::from(height)
 }
 
 impl Node {
@@ -354,15 +400,20 @@ impl Node {
                 height,
             },
             &mut placed,
+            0,
         );
         placed
     }
 
     /// Places the node, in shape `choice`, in `rect`, which is at least
-    /// that big.
-    fn place_in(&self, choice: u32, rect: Rect, placed: &mut Placed) {
+    /// that big, `depth` frames below the root.
+    fn place_in(&self, choice: u32, rect: Rect, placed: &mut Placed, depth: usize) {
         match &self.kind {
-            Kind::Grid { .. } => {
+            Kind::Grid { lots } => {
+                let asked = u64::from(*lots) * area(LOT, LOT);
+                let level = placed.audit.at(depth);
+                level.lots += asked;
+                level.extra_lots += area(rect.width, rect.height) - asked;
                 let (columns, rows) = (rect.width / LOT, rect.height / LOT);
                 placed.grids.push((
                     self.id,
@@ -382,6 +433,8 @@ impl Node {
                     rect
                 } else {
                     let (width, height) = self.size(choice);
+                    placed.audit.at(depth).water +=
+                        area(rect.width, rect.height) - area(width, height);
                     Rect {
                         x: rect.x + (rect.width - width) / 2,
                         y: rect.y + (rect.height - height) / 2,
@@ -390,16 +443,15 @@ impl Node {
                     }
                 };
                 placed.frames.push((self.id, rect, *stretch));
-                child.place_in(
-                    choice,
-                    Rect {
-                        x: rect.x + padding,
-                        y: rect.y + padding,
-                        width: rect.width - 2 * padding,
-                        height: rect.height - 2 * padding,
-                    },
-                    placed,
-                );
+                let inner = Rect {
+                    x: rect.x + padding,
+                    y: rect.y + padding,
+                    width: rect.width - 2 * padding,
+                    height: rect.height - 2 * padding,
+                };
+                let level = placed.audit.at(depth);
+                level.padding += area(rect.width, rect.height) - area(inner.width, inner.height);
+                child.place_in(choice, inner, placed, depth + 1);
             }
             Kind::Pack { items, shapes, .. } => {
                 // The shape that fills `rect` best, of those that fit in it
@@ -412,7 +464,24 @@ impl Node {
                 }
                 let shape = &shapes[best.0 as usize];
                 let item = |index: usize| (&items[index], shape.choices[index]);
-                shape.rows.place_in(&item, rect, placed);
+                let size_of = |index: usize| items[index].size(shape.choices[index]);
+                let level = placed.audit.at(depth);
+                let (shorter, narrower) = shape.rows.slack(&size_of);
+                level.shorter += shorter;
+                level.narrower += narrower;
+                for (node, &choice) in items.iter().zip(&shape.choices) {
+                    let (width, height) = node.size(choice);
+                    let needed = match node.innermost().0.kind {
+                        Kind::Grid { lots } if node.innermost().1 == 0 => {
+                            u64::from(lots) * area(LOT, LOT)
+                        }
+                        _ => node.weight,
+                    };
+                    #[allow(clippy::cast_possible_wrap)]
+                    let change = area(width, height) as i64 - needed as i64;
+                    level.reshaped += change;
+                }
+                shape.rows.place_in(&item, rect, placed, depth);
             }
         }
     }
@@ -508,6 +577,33 @@ impl Shape {
         }
     }
 
+    /// The room the shape leaves empty at its own size: under the items
+    /// shorter than their row, and beside the rows narrower than the shape.
+    fn slack(&self, size_of: &impl Fn(usize) -> (u32, u32)) -> (u64, u64) {
+        let Self::Split {
+            axis,
+            children,
+            width,
+            height,
+            ..
+        } = self
+        else {
+            return (0, 0);
+        };
+        let (mut shorter, mut narrower) = (0, 0);
+        for child in children {
+            let (child_width, child_height) = child.size(size_of);
+            match axis {
+                Axis::X => shorter += area(child_width, height - child_height),
+                Axis::Y => narrower += area(width - child_width, child_height),
+            }
+            let (inner_shorter, inner_narrower) = child.slack(size_of);
+            shorter += inner_shorter;
+            narrower += inner_narrower;
+        }
+        (shorter, narrower)
+    }
+
     /// Places the shape in `rect`, which is at least its size: each child
     /// gets the whole of `rect` across, and its share of the room along.
     /// `item` gives each item and the shape it takes.
@@ -516,6 +612,7 @@ impl Shape {
         item: &impl Fn(usize) -> (&'a Node, u32),
         rect: Rect,
         placed: &mut Placed,
+        depth: usize,
     ) {
         let size_of = |index: usize| {
             let (node, choice) = item(index);
@@ -524,7 +621,7 @@ impl Shape {
         let (axis, gaps, children) = match self {
             Self::Item(index) => {
                 let (node, choice) = item(*index);
-                return node.place_in(choice, rect, placed);
+                return node.place_in(choice, rect, placed, depth);
             }
             Self::Split {
                 axis,
@@ -569,8 +666,14 @@ impl Shape {
                     height: length,
                 },
             };
-            child.place_in(item, cell, placed);
-            cursor += length + gaps.get(index).copied().unwrap_or(0);
+            child.place_in(item, cell, placed, depth);
+            let gap = gaps.get(index).copied().unwrap_or(0);
+            placed.audit.at(depth).gaps += u64::from(gap)
+                * u64::from(match axis {
+                    Axis::X => rect.height,
+                    Axis::Y => rect.width,
+                });
+            cursor += length + gap;
         }
     }
 }
@@ -872,10 +975,65 @@ mod tests {
     }
 
     #[test]
-    fn one_item_or_none() {
+    fn the_audit_accounts_for_the_whole_area() {
+        let folder = |id: u32, sizes: &[u32]| {
+            let grids = sizes
+                .iter()
+                .zip(0..)
+                .map(|(&lots, index)| Node::grid(id * 10 + index, lots))
+                .collect();
+            Node::frame(
+                id,
+                3,
+                true,
+                Node::pack(id, grids, 1.0, Gap::Fixed(4)),
+                (0, 0),
+            )
+        };
+        let island = Node::pack(
+            0,
+            vec![
+                folder(1, &[7, 2, 1]),
+                folder(2, &[30]),
+                folder(3, &[3, 3, 5, 1]),
+            ],
+            1.3,
+            Gap::Fixed(18),
+        );
+        let islands = vec![
+            Node::frame(0, 9, false, island, (100, 66)),
+            Node::frame(1, 9, false, Node::grid(9, 2), (100, 66)),
+        ];
+        let city = Node::pack(u32::MAX, islands, 1.6, Gap::Channel);
+        let placed = city.place();
+        let accounted: u64 = placed
+            .audit
+            .levels
+            .iter()
+            .map(|level| level.lots + level.extra_lots + level.gaps + level.padding + level.water)
+            .sum();
+        assert_eq!(accounted, area(city.width(), city.height()));
         assert_eq!(
-            Node::pack(7, Vec::new(), 1.0, Gap::Fixed(9)).place(),
-            Placed::default()
+            placed
+                .audit
+                .levels
+                .iter()
+                .map(|level| level.lots)
+                .sum::<u64>(),
+            54 * 400
+        );
+    }
+
+    #[test]
+    fn one_item_or_none() {
+        let empty = Node::pack(7, Vec::new(), 1.0, Gap::Fixed(9)).place();
+        assert!(empty.grids.is_empty() && empty.frames.is_empty());
+        assert!(
+            empty
+                .audit
+                .levels
+                .iter()
+                .all(|level| *level == AuditLevel::default())
         );
         let grid = Node::grid(3, 5);
         assert_eq!(Node::pack(7, vec![grid.clone()], 1.0, Gap::Fixed(9)), grid);
