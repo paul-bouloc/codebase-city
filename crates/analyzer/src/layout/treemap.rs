@@ -667,17 +667,45 @@ impl Shape {
 }
 
 /// Lays `items`, heaviest first, out in rows about `width` wide, from the
-/// north. A row takes items while that makes its worst item squarer, as
-/// the squarified treemap does; each item then takes the shape closest to
-/// the row's height.
+/// north: see [`lay_rows`].
 fn rows(items: &[Node], width: f64, gap: Gap) -> PackShape {
-    let weights: Vec<f64> = items.iter().map(|item| item.weight as f64).collect();
+    let order: Vec<usize> = (0..items.len()).collect();
+    let mut choices = vec![0; items.len()];
+    let rows = lay_rows(items, &order, width, gap, gap != Gap::Channel, &mut choices);
+    let size_of = |index: usize| items[index].size(choices[index]);
+    let (width, height) = rows.size(&size_of);
+    PackShape {
+        rows,
+        choices,
+        width,
+        height,
+    }
+}
+
+/// Lays the items of `order`, heaviest first, out in rows about `width`
+/// wide, from the north, and writes the shape each one takes in `choices`.
+/// A row takes items while that makes its worst item squarer, as the
+/// squarified treemap does; each item then takes the shape closest to the
+/// row's height. With `stack`, the items much smaller than their row may
+/// share one place in it: see [`stacked_row`].
+fn lay_rows(
+    items: &[Node],
+    order: &[usize],
+    width: f64,
+    gap: Gap,
+    stack: bool,
+    choices: &mut [u32],
+) -> Shape {
+    let weights: Vec<f64> = order
+        .iter()
+        .map(|&index| items[index].weight as f64)
+        .collect();
     let mut ranges: Vec<std::ops::Range<usize>> = Vec::new();
     let mut start = 0;
-    while start < items.len() {
+    while start < order.len() {
         let mut end = start + 1;
         let mut worst = row_ratio(&weights[start..end], width, gap);
-        while end < items.len() {
+        while end < order.len() {
             let next = row_ratio(&weights[start..=end], width, gap);
             if next > worst {
                 break;
@@ -704,79 +732,173 @@ fn rows(items: &[Node], width: f64, gap: Gap) -> PackShape {
         }
     }
 
-    let mut choices = vec![0; items.len()];
-    for range in &ranges {
-        // Shapes come in steps: the row may come out wider than the pack. A
-        // taller row makes narrower items
-        let mut height = row_height(&weights[range.clone()], width, gap);
-        for _ in 0..ROW_FITS {
-            for index in range.clone() {
-                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-                let row = Row {
-                    height: height.round() as u32,
-                    width: width.round() as u32,
-                    expected: (weights[index] / height.max(1.0)).round() as u32,
-                };
-                choices[index] = items[index].fit(&row);
-            }
-            let built: u32 = range
-                .clone()
-                .map(|index| items[index].size(choices[index]).0)
-                .sum::<u32>()
-                + (range.start..range.end - 1)
-                    .map(|index| {
-                        let (a, b) = (
-                            items[index].size(choices[index]),
-                            items[index + 1].size(choices[index + 1]),
-                        );
-                        gap.between(a.1.min(b.1))
-                    })
-                    .sum::<u32>();
-            // A row too narrow is stretched over: flattening it would make
-            // thin strips
-            let ratio = f64::from(built) / width.max(1.0);
-            if ratio < 1.03 {
-                break;
-            }
-            height *= ratio;
-        }
+    let mut rows: Vec<Shape> = Vec::with_capacity(ranges.len());
+    for range in ranges {
+        let members = &order[range.clone()];
+        let height = fit_row(items, members, &weights[range], width, gap, choices);
+        let stacked = if stack {
+            stacked_row(items, members, (width, height), gap, choices)
+        } else {
+            None
+        };
+        rows.push(stacked.unwrap_or_else(|| {
+            let children = members.iter().map(|&index| Shape::Item(index)).collect();
+            side_by_side(items, children, gap, choices)
+        }));
     }
     let size_of = |index: usize| items[index].size(choices[index]);
-    let mut rows: Vec<Shape> = ranges
-        .into_iter()
-        .map(|range| {
-            if range.len() == 1 {
-                Shape::Item(range.start)
-            } else {
-                let gaps = (range.start..range.end - 1)
-                    .map(|a| gap.between(size_of(a).1.min(size_of(a + 1).1)))
-                    .collect();
-                Shape::split(&size_of, Axis::X, gaps, range.map(Shape::Item).collect())
-            }
+    if rows.len() == 1 {
+        return rows.pop().unwrap_or(Shape::Item(order[0]));
+    }
+    let gaps = rows
+        .windows(2)
+        .map(|pair| {
+            gap.between(
+                pair[0]
+                    .extent(&size_of, Axis::X)
+                    .min(pair[1].extent(&size_of, Axis::X)),
+            )
         })
         .collect();
-    let rows = if rows.len() == 1 {
-        rows.pop().unwrap_or(Shape::Item(0))
-    } else {
-        let gaps = rows
-            .windows(2)
-            .map(|pair| {
-                gap.between(
-                    pair[0]
-                        .extent(&size_of, Axis::X)
-                        .min(pair[1].extent(&size_of, Axis::X)),
-                )
-            })
-            .collect();
-        Shape::split(&size_of, Axis::Y, gaps, rows)
-    };
-    let (width, height) = rows.size(&size_of);
-    PackShape {
-        rows,
-        choices,
-        width,
-        height,
+    Shape::split(&size_of, Axis::Y, gaps, rows)
+}
+
+/// Fits the items of a row to its height, and returns that height. Shapes
+/// come in steps: the row may come out wider than the pack, and a taller
+/// row makes narrower items.
+fn fit_row(
+    items: &[Node],
+    members: &[usize],
+    weights: &[f64],
+    width: f64,
+    gap: Gap,
+    choices: &mut [u32],
+) -> f64 {
+    let mut height = row_height(weights, width, gap);
+    for _ in 0..ROW_FITS {
+        for (&index, &weight) in members.iter().zip(weights) {
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            let row = Row {
+                height: height.round() as u32,
+                width: width.round() as u32,
+                expected: (weight / height.max(1.0)).round() as u32,
+            };
+            choices[index] = items[index].fit(&row);
+        }
+        let children = members.iter().map(|&index| Shape::Item(index)).collect();
+        let built = side_by_side(items, children, gap, choices);
+        let size_of = |index: usize| items[index].size(choices[index]);
+        // A row too narrow is stretched over: flattening it would make
+        // thin strips
+        let ratio = f64::from(built.extent(&size_of, Axis::X)) / width.max(1.0);
+        if ratio < 1.03 {
+            break;
+        }
+        height *= ratio;
     }
+    height
+}
+
+/// `children` side by side, west to east.
+fn side_by_side(items: &[Node], mut children: Vec<Shape>, gap: Gap, choices: &[u32]) -> Shape {
+    let size_of = |index: usize| items[index].size(choices[index]);
+    if children.len() == 1 {
+        return children.pop().unwrap_or(Shape::Item(0));
+    }
+    let gaps = children
+        .windows(2)
+        .map(|pair| {
+            gap.between(
+                pair[0]
+                    .extent(&size_of, Axis::Y)
+                    .min(pair[1].extent(&size_of, Axis::Y)),
+            )
+        })
+        .collect();
+    Shape::split(&size_of, Axis::X, gaps, children)
+}
+
+/// How wide, against the area its items need, the stack at the end of a
+/// row is first tried: narrower stacks are taller.
+const STACK_WIDTHS: [f64; 4] = [0.8, 1.0, 1.25, 1.6];
+
+/// The row of `members`, `height` tall, with its smallest items stacked in
+/// rows of their own in a single place at its east end, when that loses
+/// less room than leaving each one alone across the whole height. A small
+/// folder beside a large one then keeps a square shape instead of a tall
+/// strip, or a grid of empty lots. `None` when stacking gains nothing.
+fn stacked_row(
+    items: &[Node],
+    members: &[usize],
+    (width, height): (f64, f64),
+    gap: Gap,
+    choices: &mut [u32],
+) -> Option<Shape> {
+    // Heaviest first: the small items are the last ones
+    let first = members
+        .iter()
+        .position(|&index| (items[index].weight as f64).sqrt() * 2.0 <= height)?;
+    let (large, small) = members.split_at(first);
+    if small.len() < 2 {
+        return None;
+    }
+    let need: f64 = small.iter().map(|&index| items[index].weight as f64).sum();
+    let alone: Vec<u32> = small.iter().map(|&index| choices[index]).collect();
+    let extent = |choices: &[u32], indexes: &[usize], axis: Axis| -> f64 {
+        let size_of = |index: usize| items[index].size(choices[index]);
+        let children = indexes.iter().map(|&index| Shape::Item(index)).collect();
+        f64::from(side_by_side(items, children, gap, choices).extent(&size_of, axis))
+    };
+    let large_width = if large.is_empty() {
+        0.0
+    } else {
+        extent(choices, large, Axis::X)
+    };
+    // A row narrower than the pack leaves room beside it
+    let between = if large.is_empty() {
+        0.0
+    } else {
+        f64::from(gap.between(LOT))
+    };
+    let beside = |small_width: f64, row_height: f64| {
+        (width - large_width - between - small_width).max(0.0) * row_height
+    };
+    // Alone, each small item takes the whole height of the row
+    let alone_width = extent(choices, small, Axis::X);
+    let mut best = (
+        alone_width * height - need + beside(alone_width, height),
+        None,
+    );
+    for factor in STACK_WIDTHS {
+        let stack_width = (need / height.max(1.0) * factor).max(f64::from(LOT));
+        let stack = lay_rows(items, small, stack_width, gap, false, choices);
+        let size_of = |index: usize| items[index].size(choices[index]);
+        let (stack_width, stack_height) = stack.size(&size_of);
+        let (stack_width, stack_height) = (f64::from(stack_width), f64::from(stack_height));
+        // A stack taller than the row makes the whole row taller
+        let cost = stack_width * stack_height.max(height) - need
+            + (stack_height - height).max(0.0) * large_width
+            + beside(stack_width, stack_height.max(height));
+        if cost < best.0 {
+            let taken = small
+                .iter()
+                .map(|&index| choices[index])
+                .collect::<Vec<_>>();
+            best = (cost, Some((stack, taken)));
+        }
+    }
+    let Some((stack, taken)) = best.1 else {
+        for (&index, choice) in small.iter().zip(alone) {
+            choices[index] = choice;
+        }
+        return None;
+    };
+    for (&index, choice) in small.iter().zip(taken) {
+        choices[index] = choice;
+    }
+    let mut children: Vec<Shape> = large.iter().map(|&index| Shape::Item(index)).collect();
+    children.push(stack);
+    Some(side_by_side(items, children, gap, choices))
 }
 
 /// The height of a row of items of `weights` across `width`, gaps between
@@ -1010,6 +1132,47 @@ mod tests {
                 .sum::<u64>(),
             54 * 400
         );
+    }
+
+    #[test]
+    fn small_items_beside_a_large_one_are_stacked() {
+        let mut items = vec![Node::grid(0, 64)];
+        items.extend((1..=6).map(|id| Node::grid(id, 2)));
+        let members: Vec<usize> = (0..items.len()).collect();
+        let mut choices = vec![0; items.len()];
+        let height = f64::from(8 * LOT);
+        let weights: Vec<f64> = items.iter().map(|item| item.weight as f64).collect();
+        let width = f64::from(16 * LOT);
+        fit_row(
+            &items,
+            &members,
+            &weights,
+            width,
+            Gap::Fixed(9),
+            &mut choices,
+        );
+        let alone = side_by_side(
+            &items,
+            members.iter().map(|&index| Shape::Item(index)).collect(),
+            Gap::Fixed(9),
+            &choices,
+        );
+        let row = stacked_row(
+            &items,
+            &members,
+            (width, height),
+            Gap::Fixed(9),
+            &mut choices,
+        )
+        .expect("the small grids are stacked");
+        let size_of = |index: usize| items[index].size(choices[index]);
+        // The large grid, then one place holding the six small ones in rows
+        let Shape::Split { children, .. } = &row else {
+            panic!("not a row: {row:?}");
+        };
+        assert_eq!(children.len(), 2);
+        assert!(matches!(children[1], Shape::Split { axis: Axis::Y, .. }));
+        assert!(row.extent(&size_of, Axis::X) < alone.extent(&size_of, Axis::X));
     }
 
     #[test]
