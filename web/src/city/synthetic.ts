@@ -4,6 +4,7 @@ import {
   type CityLayout,
   type FileMetrics,
   type IslandLayout,
+  type IslandLink,
   type Lot,
   type Rect,
 } from './layout'
@@ -80,7 +81,35 @@ export function syntheticCity({
   return {
     islands: centred,
     bounds: { ...bounds, x: bounds.x + shiftX, y: bounds.y + shiftY },
+    links: syntheticLinks(centred, seed),
   }
+}
+
+/** Shares of island pairs that import each other: down the layers, within one, and up. */
+const LINK_SHARES = { down: 0.3, level: 0.2, up: 0.04 }
+
+/** Imports mostly down the layers, some within a layer, a few up: every kind of link. */
+function syntheticLinks(islands: readonly IslandLayout[], seed: string): IslandLink[] {
+  const random = seededRandom(`${seed}/links`)
+  const links: IslandLink[] = []
+  islands.forEach((from, a) => {
+    islands.forEach((to, b) => {
+      if (a === b) {
+        return
+      }
+      const share =
+        from.layer > to.layer
+          ? LINK_SHARES.down
+          : from.layer === to.layer
+            ? LINK_SHARES.level / 2
+            : LINK_SHARES.up
+      if (random() < share) {
+        const imports = Math.max(1, Math.round(300 * random() ** 3))
+        links.push({ from: a, to: b, imports, upward: from.layer < to.layer ? imports : 0 })
+      }
+    })
+  })
+  return links
 }
 
 /** Uneven shares that add up to `files`, at least one each. */

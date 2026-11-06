@@ -26,6 +26,18 @@ describe('syntheticCity', () => {
     expect(syntheticCity({ islands: 12, files: 2_000, seed: 'other' })).not.toEqual(city)
   })
 
+  it('links islands down the layers, within one, and a few up', () => {
+    const links = city.links ?? []
+    const layer = (island: number) => city.islands[island]?.layer ?? 0
+    expect(links.some((link) => layer(link.from) > layer(link.to) && link.upward === 0)).toBe(true)
+    expect(links.some((link) => layer(link.from) === layer(link.to))).toBe(true)
+    for (const link of links) {
+      expect(link.from).not.toBe(link.to)
+      expect(link.imports).toBeGreaterThan(0)
+      expect(link.upward).toBe(layer(link.from) < layer(link.to) ? link.imports : 0)
+    }
+  })
+
   it('gives every file one lot', () => {
     expect(city.islands).toHaveLength(12)
     expect(city.islands.reduce((sum, island) => sum + island.lots.length, 0)).toBe(2_000)
