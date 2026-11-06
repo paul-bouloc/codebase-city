@@ -30,6 +30,13 @@ const PORT_QUAY = { width: 1.4, length: 3.4 }
 const QUAY_ROOT = 0.8
 /** Boats moored on each side of a quay, this far from its axis, this far out. */
 const MOORING = { across: 0.85, out: 1.5 }
+/**
+ * A quay keeps to its half of the water ahead, and the line's room in the middle: it may shrink
+ * to this, past the beach. Boats moor only at a quay that reaches this far.
+ */
+const QUAY_MIN = 0.8
+const MOORING_MIN = 2
+const MID_CHANNEL = 0.5
 /** A city this small gets a quay and two boats even without ferries. */
 const SMALL_CITY = 50
 
@@ -141,6 +148,7 @@ export function cityLinks(layout: CityLayout, shapes: readonly IslandShape[]): C
   const pairs = linkPairs(layout.links ?? [])
   const largest = pairs[0]?.imports ?? 0
   const outlines = shapes.map((shape) => landOutline(shape))
+  const plateaux = layout.islands.map((island) => island.plateau)
   const result: CityLinks = { bridges: [], ferries: [], quays: [], ports: [], boats: [], hidden: 0 }
 
   const perSide = new Map<string, number>()
@@ -210,7 +218,7 @@ export function cityLinks(layout: CityLayout, shapes: readonly IslandShape[]): C
     }
     items.forEach((item, index) => {
       const port = item === 'port'
-      const quay = quayAt(shape, island, side, (index + 1) / (items.length + 1), port)
+      const quay = quayAt(shape, island, side, (index + 1) / (items.length + 1), port, plateaux)
       result.quays.push(quay)
       if (port) {
         result.ports.push({ island, links: portLinks.get(island) ?? 0, quay })
@@ -221,7 +229,7 @@ export function cityLinks(layout: CityLayout, shapes: readonly IslandShape[]): C
   }
 
   if (sailing.length > 0) {
-    const grid = waterGrid(shapes, boundsOf(layout.islands.map((island) => island.plateau)))
+    const grid = waterGrid(shapes, boundsOf(plateaux))
     for (const pair of sailing) {
       const from = piers.get(`${pair.a}/${ferrySide(pair)}`)
       const to = piers.get(`${pair.b}/${ferrySide(pair)}`)
@@ -530,6 +538,7 @@ function quayAt(
   side: Side,
   share: number,
   port: boolean,
+  plateaux: readonly Rect[],
 ): Quay {
   const { plateau } = shape.island
   const vertical = side === 'east' || side === 'west'
@@ -557,6 +566,27 @@ function quayAt(
     west: plateau.x,
     east: plateau.x + plateau.width,
   }[side]
+  // The water ahead, up to the next plateau facing this point of the side.
+  let ahead = Number.POSITIVE_INFINITY
+  plateaux.forEach((other, index) => {
+    if (index === island) {
+      return
+    }
+    const [o0, o1] = vertical ? [other.y, other.y + other.height] : [other.x, other.x + other.width]
+    if (along < o0 || along > o1) {
+      return
+    }
+    const gap = {
+      west: plateau.x - (other.x + other.width),
+      east: other.x - (plateau.x + plateau.width),
+      south: plateau.y - (other.y + other.height),
+      north: other.y - (plateau.y + plateau.height),
+    }[side]
+    if (gap > 0) {
+      ahead = Math.min(ahead, gap)
+    }
+  })
+  const reach = Math.min(size.length, Math.max(QUAY_MIN, ahead / 2 - MID_CHANNEL - beach))
   return {
     island,
     side,
@@ -564,7 +594,7 @@ function quayAt(
     y: vertical ? along : edge + ny * out,
     nx,
     ny,
-    length: QUAY_ROOT + size.length,
+    length: QUAY_ROOT + reach,
     width: size.width,
     port,
   }
@@ -613,13 +643,23 @@ function loneQuay(layout: CityLayout, shapes: readonly IslandShape[]): Quay | nu
   }
   const sides: Side[] = ['west', 'south', 'east', 'north']
   const side = sides.reduce((best, candidate) => (open(candidate) > open(best) ? candidate : best))
-  return quayAt(shape, largest, side, 0.5, false)
+  return quayAt(
+    shape,
+    largest,
+    side,
+    0.5,
+    false,
+    layout.islands.map((island) => island.plateau),
+  )
 }
 
 /** Two boats moored at every quay, and along each ferry line one per order of magnitude. */
 function boats(links: CityLinks, layout: CityLayout): Boat[] {
   const boats: Boat[] = []
   for (const quay of links.quays) {
+    if (quay.length - QUAY_ROOT < MOORING_MIN) {
+      continue
+    }
     const random = seededRandom(
       `boat/${layout.islands[quay.island]?.path ?? ''}/${quay.side}/${quay.x},${quay.y}`,
     )

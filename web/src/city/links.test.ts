@@ -239,6 +239,30 @@ describe('cityLinks', () => {
     ])
   })
 
+  it('keeps each pier to its half of a narrow channel, without boats', () => {
+    // West and East face each other across 9 u, each with a pier on that side.
+    const links = linksOf(
+      city(
+        [
+          { plateau: { x: 0, y: 0, width: 20, height: 20 }, layer: 1 },
+          { plateau: { x: 29, y: 0, width: 20, height: 20 }, layer: 3 },
+          { plateau: { x: 0, y: 80, width: 20, height: 20 }, layer: 5 },
+        ],
+        // West imports up (its east side), East imports down (its west side)
+        [link(0, 2, 10, 10), link(1, 2, 10)],
+      ),
+    )
+    const tip = (island: number) => {
+      const quay = links.quays.find((q) => q.island === island && q.side !== 'south')
+      return quay ? tipOf(quay) : null
+    }
+    expect(tip(0)?.x).toBeLessThan(24.5)
+    expect(tip(1)?.x).toBeGreaterThan(24.5)
+    // Too short to moor at: boats only along the two lines (and the far island's pier)
+    const moored = links.boats.filter((boat) => boat.y < 22 && boat.x > 18 && boat.x < 31)
+    expect(moored).toHaveLength(0)
+  })
+
   it('sails links that go up on the east side, the others on the west', () => {
     const links = linksOf(city(ring, [link(1, 0, 10), link(0, 2, 10, 2)]))
     const sideOf = (island: number) =>
