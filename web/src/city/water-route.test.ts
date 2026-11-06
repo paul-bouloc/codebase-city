@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { islandShapes } from './island-shape'
 import { boundsOf, type CityLayout, type Point, type Rect } from './layout'
-import { insidePolygon, landOutline, onLand, waterGrid, waterRoute } from './water-route'
+import {
+  insidePolygon,
+  landOutline,
+  onLand,
+  seaWay,
+  seaWays,
+  smoothed,
+  waterGrid,
+} from './water-route'
 
 function city(plateaux: Rect[]): CityLayout {
   return {
@@ -30,74 +38,77 @@ function along(route: readonly Point[]): Point[] {
   return points
 }
 
-describe('waterRoute', () => {
-  // A wall of an island between two small ones, west and east of it.
+describe('seaWay', () => {
+  // Two long islands, a channel 14 u wide between them.
   const layout = city([
-    { x: 0, y: 40, width: 12, height: 10 },
-    { x: 30, y: 0, width: 14, height: 90 },
-    { x: 62, y: 40, width: 12, height: 10 },
+    { x: 0, y: 0, width: 20, height: 80 },
+    { x: 34, y: 0, width: 20, height: 80 },
   ])
   const shapes = islandShapes(layout)
   const grid = waterGrid(shapes, layout.bounds)
   const beaches = shapes.map((shape) => landOutline(shape))
+  const land = boundsOf(beaches.flat().map((point) => ({ ...point, width: 0, height: 0 })))
+  const open = { x: land.x - 2, y: land.y - 2, width: land.width + 4, height: land.height + 4 }
+  const ways = seaWays(grid, open)
 
   it('closes the land and leaves the sea open', () => {
-    expect(onLand(grid, { x: 37, y: 45 })).toBe(true)
-    expect(onLand(grid, { x: 6, y: 45 })).toBe(true)
-    expect(onLand(grid, { x: 20, y: -30 })).toBe(false)
+    expect(onLand(grid, { x: 10, y: 40 })).toBe(true)
+    expect(onLand(grid, { x: 27, y: 40 })).toBe(false)
     // Off the grid counts as land: nothing sails there.
     expect(onLand(grid, { x: -500, y: 0 })).toBe(true)
   })
 
-  it('goes round an island in the way, and never touches a beach', () => {
-    const from = { x: -12, y: 45 }
-    const to = { x: 86, y: 45 }
-    const route = waterRoute(grid, from, to)
-    expect(route).not.toBeNull()
-    expect(route?.[0]).toEqual(from)
-    expect(route?.at(-1)).toEqual(to)
-    for (const point of along(route ?? [])) {
+  it('leaves a channel by its middle for the open sea, never touching a beach', () => {
+    const from = { x: 27, y: 40 }
+    const way = seaWay(ways, from)
+    expect(way?.[0]).toEqual(from)
+    const end = way?.at(-1) ?? from
+    expect(end.y > open.y + open.height || end.y < open.y).toBe(true)
+    for (const point of along(way ?? [])) {
       for (const beach of beaches) {
         expect(insidePolygon(point, beach)).toBe(false)
       }
+      if (point.y > 10 && point.y < 70) {
+        expect(Math.abs(point.x - 27)).toBeLessThan(2)
+      }
     }
-    // Round the wall's north or south end, not through it.
-    const ys = (route ?? []).map((point) => point.y)
-    expect(Math.max(...ys) > 90 || Math.min(...ys) < 0).toBe(true)
   })
 
   it('is the same from one call to the next', () => {
-    const a = waterRoute(grid, { x: -12, y: 45 }, { x: 86, y: 45 })
-    const b = waterRoute(waterGrid(shapes, layout.bounds), { x: -12, y: 45 }, { x: 86, y: 45 })
-    expect(a).toEqual(b)
+    const again = seaWay(seaWays(waterGrid(shapes, layout.bounds), open), { x: 27, y: 30 })
+    expect(seaWay(ways, { x: 27, y: 30 })).toEqual(again)
   })
 
-  it('keeps off a shore it could hug, when the sea leaves room', () => {
-    const long = city([{ x: 0, y: 0, width: 100, height: 12 }])
-    const [shape] = islandShapes(long)
-    const beach = shape ? landOutline(shape) : []
-    const top = Math.max(...beach.map((point) => point.y))
-    // Both ends just off the north beach: a straight line would run along it.
-    const route = waterRoute(
-      waterGrid(islandShapes(long), long.bounds),
-      { x: 10, y: top + 1.5 },
-      { x: 90, y: top + 1.5 },
-    )
-    const farthest = Math.max(...(route ?? []).map((point) => point.y - top))
-    expect(farthest).toBeGreaterThan(4)
+  it('leads two ferries out of one channel along the same line', () => {
+    const a = seaWay(ways, { x: 27, y: 25 }) ?? []
+    const b = seaWay(ways, { x: 27.5, y: 32 }) ?? []
+    // The last 20 points, out to the sea, are the same
+    expect(a.slice(-20)).toEqual(b.slice(-20))
   })
 
-  it('leaves the grid as it found it, for the next route', () => {
-    const fresh = waterGrid(shapes, layout.bounds)
-    const second = waterRoute(fresh, { x: 6, y: -15 }, { x: 68, y: 70 })
-    waterRoute(grid, { x: -12, y: 45 }, { x: 86, y: 45 })
-    expect(waterRoute(grid, { x: 6, y: -15 }, { x: 68, y: 70 })).toEqual(second)
-    expect(grid.scratch.done.every((cell) => cell === 0)).toBe(true)
-    expect(grid.scratch.cameFrom.every((cell) => cell === -1)).toBe(true)
+  it('has nowhere to go from the open sea already', () => {
+    expect(open.x).toBeGreaterThan(-36)
+    expect(seaWay(ways, { x: -37, y: 40 })).toHaveLength(2)
+  })
+})
+
+describe('smoothed', () => {
+  const grid = waterGrid(islandShapes(city([{ x: 0, y: 0, width: 10, height: 10 }])), {
+    x: 0,
+    y: 0,
+    width: 10,
+    height: 10,
   })
 
-  it('sails straight when nothing is in the way', () => {
-    const route = waterRoute(grid, { x: -20, y: -20 }, { x: -20, y: 100 })
-    expect(route).toHaveLength(2)
+  it('rounds corners on open water, from the same start to the same end', () => {
+    const line = smoothed(grid, [
+      { x: -30, y: -30 },
+      { x: -30, y: 40 },
+      { x: 40, y: 40 },
+    ])
+    expect(line[0]).toEqual({ x: -30, y: -30 })
+    expect(line.at(-1)).toEqual({ x: 40, y: 40 })
+    expect(line).not.toContainEqual({ x: -30, y: 40 })
+    expect(line.length).toBeGreaterThan(10)
   })
 })

@@ -1,8 +1,17 @@
 import type { IslandShape, Side } from './island-shape'
 import { boundsOf, type CityLayout, type IslandLink, type Point, type Rect } from './layout'
 import { seededRandom } from './random'
+import { arcLength, ring, ringArc, ringParam } from './sea-ring'
 import { layerAltitude } from './units'
-import { insidePolygon, landOutline, waterGrid, waterRoute } from './water-route'
+import {
+  insidePolygon,
+  landOutline,
+  seaWay,
+  seaWays,
+  smoothed,
+  type WaterGrid,
+  waterGrid,
+} from './water-route'
 
 // Imports between islands become works the city always shows. Two neighbours at most one layer
 // apart, face to face across one channel, get a stone bridge; every other pair a ferry line on
@@ -40,6 +49,16 @@ const MID_CHANNEL = 0.5
 /** A city this small gets a quay and two boats even without ferries. */
 const SMALL_CITY = 50
 
+/** A ferry leaves for the open sea past every shore by this much. */
+const EXIT_MARGIN = 2
+/** The ring ferries sail around the archipelago: its first lane, its corners, between lanes. */
+const RING_GAP = 6
+const RING_RADIUS = 14
+const LANE_GAP = 1.6
+/** Points along a ring's arc, this far apart. */
+const ARC_STEP = 2
+/** The last points of a way out that turn onto the ring. */
+const JOIN = 4
 /** A ferry line's width on the water, in u: `0.3 + 0.9 × √(n ÷ max)`. */
 const FERRY_WIDTH = [0.3, 0.9] as const
 
@@ -204,30 +223,21 @@ export function cityLinks(layout: CityLayout, shapes: readonly IslandShape[]): C
     sailing.push(pair)
   }
 
-  // The quays: one pier on each side of an island its ferries leave from, and its port on the
-  // west side, spread along their side.
-  const bySide = new Map<string, { island: number; side: Side; items: ('pier' | 'port')[] }>()
-  const slot = (island: number, side: Side, item: 'pier' | 'port') => {
-    const key = `${island}/${side}`
-    const entry = bySide.get(key) ?? { island, side, items: [] }
-    if (!entry.items.includes(item)) {
-      entry.items.push(item)
-    }
-    bySide.set(key, entry)
-  }
-  for (const pair of sailing) {
-    slot(pair.a, ferrySide(pair), 'pier')
-    slot(pair.b, ferrySide(pair), 'pier')
-  }
-  for (const island of [...portLinks.keys()].sort((p, q) => p - q)) {
-    slot(island, 'west', 'port')
-  }
-  const piers = new Map<string, Quay>()
-  for (const { island, side, items } of bySide.values()) {
+  // The quays: one pier on each island its ferries leave from, and its port beside it, on the
+  // side that looks out the farthest.
+  const sailingFrom = new Set(sailing.flatMap((pair) => [pair.a, pair.b]))
+  const harbours = [...new Set([...sailingFrom, ...portLinks.keys()])].sort((p, q) => p - q)
+  const piers = new Map<number, Quay>()
+  for (const island of harbours) {
     const shape = shapes[island]
     if (!shape) {
       continue
     }
+    const side = openSide(plateaux, island)
+    const items = [
+      ...(sailingFrom.has(island) ? ['pier' as const] : []),
+      ...(portLinks.has(island) ? ['port' as const] : []),
+    ]
     const taken = [...mouthsOn(shape, side), ...decksOn(result.bridges, island, side)]
     items.forEach((item, index) => {
       const port = item === 'port'
@@ -238,7 +248,7 @@ export function cityLinks(layout: CityLayout, shapes: readonly IslandShape[]): C
       if (port) {
         result.ports.push({ island, links: portLinks.get(island) ?? 0, quay })
       } else {
-        piers.set(`${island}/${side}`, quay)
+        piers.set(island, quay)
       }
     })
   }
@@ -246,15 +256,13 @@ export function cityLinks(layout: CityLayout, shapes: readonly IslandShape[]): C
   if (sailing.length > 0) {
     const grid = waterGrid(shapes, boundsOf(plateaux))
     const sailed = new Set<Quay>()
-    for (const pair of sailing) {
-      const from = piers.get(`${pair.a}/${ferrySide(pair)}`)
-      const to = piers.get(`${pair.b}/${ferrySide(pair)}`)
-      const path = from && to ? waterRoute(grid, tipOf(from), tipOf(to)) : null
-      if (!from || !to || !path) {
+    for (const ferry of sailAround(sailing, piers, grid, outlines)) {
+      if (!ferry) {
         result.hidden++
         continue
       }
-      sailed.add(from).add(to)
+      const { pair, path } = ferry
+      sailed.add(piers.get(pair.a) as Quay).add(piers.get(pair.b) as Quay)
       result.ferries.push({
         ...pair,
         path,
@@ -276,9 +284,142 @@ export function cityLinks(layout: CityLayout, shapes: readonly IslandShape[]): C
   return result
 }
 
-/** Links that go up the layers sail east of the archipelago; the others west. */
-function ferrySide(pair: Pair): Side {
-  return pair.upward ? 'east' : 'west'
+/**
+ * Each ferry's way: out of its island to the open sea, the shorter way round the archipelago on
+ * a lane of its own, and in to the other island. Lanes nest: the shorter arcs sail inside the
+ * longer ones. Null for a ferry with no way out.
+ */
+function sailAround(
+  sailing: readonly Pair[],
+  piers: ReadonlyMap<number, Quay>,
+  grid: WaterGrid,
+  outlines: readonly Point[][],
+): ({ pair: Pair; path: Point[] } | null)[] {
+  const land = boundsOf(
+    outlines.flatMap((outline) => (outline.length > 0 ? [boundsOfPoints(outline)] : [])),
+  )
+  const open = grow(land, EXIT_MARGIN)
+  const ways = seaWays(grid, open)
+  const exits = new Map<number, Point[] | null>()
+  for (const [island, pier] of piers) {
+    exits.set(island, seaWay(ways, tipOf(pier)))
+  }
+  const base = ring(grow(land, RING_GAP), RING_RADIUS)
+  const plans = sailing.map((pair) => {
+    const a = exits.get(pair.a)
+    const b = exits.get(pair.b)
+    const endA = a?.at(-1)
+    const endB = b?.at(-1)
+    if (!a || !b || !endA || !endB) {
+      return null
+    }
+    const sA = ringParam(base, endA)
+    const sB = ringParam(base, endB)
+    const forward = arcLength(base, sA, sB, true) <= arcLength(base, sA, sB, false)
+    const span = arcLength(base, sA, sB, forward)
+    return { pair, a, b, forward, start: forward ? sA : sB, span, lane: 0 }
+  })
+
+  // Lanes, the shortest arcs first: each takes the innermost lane where it meets no other.
+  const lanes: { start: number; span: number }[][] = []
+  const order = plans
+    .flatMap((plan) => (plan ? [plan] : []))
+    .sort(
+      (p, q) =>
+        p.span - q.span ||
+        q.pair.imports - p.pair.imports ||
+        p.pair.a - q.pair.a ||
+        p.pair.b - q.pair.b,
+    )
+  const meets = (p: { start: number; span: number }, q: { start: number; span: number }) =>
+    arcLength(base, p.start, q.start, true) < p.span ||
+    arcLength(base, q.start, p.start, true) < q.span
+  for (const plan of order) {
+    let lane = lanes.findIndex((taken) => taken.every((other) => !meets(plan, other)))
+    if (lane < 0) {
+      lane = lanes.length
+      lanes.push([])
+    }
+    lanes[lane]?.push(plan)
+    plan.lane = lane
+  }
+
+  return plans.map((plan) => {
+    if (!plan) {
+      return null
+    }
+    const { pair, forward, lane } = plan
+    const lap = ring(grow(land, RING_GAP + lane * LANE_GAP), RING_RADIUS + lane * LANE_GAP)
+    const exitA = plan.a
+    const exitB = plan.b
+    const endA = exitA.at(-1) as Point
+    const endB = exitB.at(-1) as Point
+    const arc = ringArc(lap, ringParam(lap, endA), ringParam(lap, endB), forward, ARC_STEP)
+    // The ways out and the arc are smooth already: only their turns onto each other are rounded.
+    const turn = Math.min(2, Math.floor(arc.length / 2))
+    const tail = (way: readonly Point[]) => Math.max(1, way.length - JOIN)
+    const back = [...exitB].reverse()
+    const path = [
+      ...exitA.slice(0, tail(exitA)),
+      ...smoothed(grid, [...exitA.slice(tail(exitA)), ...arc.slice(0, turn)]),
+      ...arc.slice(turn, arc.length - turn),
+      ...smoothed(grid, [
+        ...arc.slice(arc.length - turn),
+        ...back.slice(0, back.length - tail(exitB)),
+      ]),
+      ...back.slice(back.length - tail(exitB)),
+    ]
+    return { pair, path }
+  })
+}
+
+function boundsOfPoints(points: readonly Point[]): Rect {
+  let minX = Number.POSITIVE_INFINITY
+  let minY = Number.POSITIVE_INFINITY
+  let maxX = Number.NEGATIVE_INFINITY
+  let maxY = Number.NEGATIVE_INFINITY
+  for (const { x, y } of points) {
+    minX = Math.min(minX, x)
+    minY = Math.min(minY, y)
+    maxX = Math.max(maxX, x)
+    maxY = Math.max(maxY, y)
+  }
+  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY }
+}
+
+/**
+ * The side of an island that looks out the farthest: open sea if one does, else the widest
+ * channel; the west first when two look alike.
+ */
+function openSide(plateaux: readonly Rect[], island: number): Side {
+  const plateau = plateaux[island]
+  if (!plateau) {
+    return 'west'
+  }
+  const ahead = (side: Side) => {
+    let nearest = Number.POSITIVE_INFINITY
+    plateaux.forEach((other, index) => {
+      if (index === island) {
+        return
+      }
+      const gap = {
+        west: plateau.x - (other.x + other.width),
+        east: other.x - (plateau.x + plateau.width),
+        south: plateau.y - (other.y + other.height),
+        north: other.y - (plateau.y + plateau.height),
+      }[side]
+      const across =
+        side === 'west' || side === 'east'
+          ? other.y < plateau.y + plateau.height && plateau.y < other.y + other.height
+          : other.x < plateau.x + plateau.width && plateau.x < other.x + other.width
+      if (gap > 0 && across) {
+        nearest = Math.min(nearest, gap)
+      }
+    })
+    return nearest
+  }
+  const sides: Side[] = ['west', 'east', 'south', 'north']
+  return sides.reduce((best, side) => (ahead(side) > ahead(best) ? side : best))
 }
 
 function bridgeSides(bridge: Bridge): string[] {
@@ -565,7 +706,7 @@ const NORMALS: Record<Side, [number, number]> = {
  * keeps 2 u from every stretch `taken` (a canal's mouth, where a cascade pours into a pool; a
  * bridge's deck; another quay), without leaving the side.
  */
-function quayAt(
+export function quayAt(
   shape: IslandShape,
   island: number,
   side: Side,
@@ -671,31 +812,10 @@ function loneQuay(
   if (!shape) {
     return null
   }
-  const { plateau } = shape.island
-  const others = layout.islands
-    .filter((_, index) => index !== largest)
-    .map((island) => island.plateau)
-  const open = (side: Side) => {
-    let nearest = Number.POSITIVE_INFINITY
-    for (const other of others) {
-      const ahead = {
-        west: plateau.x - (other.x + other.width),
-        east: other.x - (plateau.x + plateau.width),
-        south: plateau.y - (other.y + other.height),
-        north: other.y - (plateau.y + plateau.height),
-      }[side]
-      const across =
-        side === 'west' || side === 'east'
-          ? other.y < plateau.y + plateau.height && plateau.y < other.y + other.height
-          : other.x < plateau.x + plateau.width && plateau.x < other.x + other.width
-      if (ahead > 0 && across) {
-        nearest = Math.min(nearest, ahead)
-      }
-    }
-    return nearest
-  }
-  const sides: Side[] = ['west', 'south', 'east', 'north']
-  const side = sides.reduce((best, candidate) => (open(candidate) > open(best) ? candidate : best))
+  const side = openSide(
+    layout.islands.map((island) => island.plateau),
+    largest,
+  )
   return quayAt(
     shape,
     largest,

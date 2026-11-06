@@ -1,19 +1,16 @@
 import type { IslandShape } from './island-shape'
 import type { Point, Rect } from './layout'
 
-// Ferries sail on a grid of water cells: every cell whose centre stands on an island's land
-// (its plateau, terraces and beach, a little more for the line's own width) is closed. The open
-// sea around the archipelago is cheaper than its channels, so that a ferry goes round by the
-// open sea when the detour is short, and through the channels otherwise. Water near a shore
-// costs more too: a line that hugged the beaches would read as the islands' outline. The path
-// found is then pulled straight where it can, and rounded.
+// Ferries leave their island for the open sea on a grid of water cells: every cell whose centre
+// stands on an island's land (its plateau, terraces and beach, a little more for the wake's own
+// width) is closed. Water near a shore costs more, so that a way out through a channel keeps to
+// its middle. The ways out of every cell are found at once, as a tree grown from the open sea:
+// two ferries that leave by one channel follow the same cells, and draw a single line there.
 
 /** Side of a cell, in u. */
 const CELL = 1
 /** Open water kept around the archipelago, past the widest beach. */
 const SEA_MARGIN = 40
-/** A cell among the islands costs this much more than one on the open sea. */
-const CHANNEL_COST = 3
 /** Within this distance of land, in u, water costs up to this much more. */
 const SHORE_REACH = 6
 const SHORE_COST = 4
@@ -21,7 +18,9 @@ const SHORE_COST = 4
 const LAND_CLEARANCE = 0.3
 /** How far a quay's tip may stand from free water, in cells. */
 const START_SEARCH = 12
-const CHAIKIN_ROUNDS = 3
+const CHAIKIN_ROUNDS = 4
+/** A way out is smoothed over this many cells each way. */
+const SMOOTHING = 3
 
 export interface WaterGrid {
   x0: number
@@ -34,8 +33,6 @@ export interface WaterGrid {
   shore: Float32Array
   /** Cost of crossing a cell, per u. */
   cost: Float32Array
-  /** The search's own state, allocated once and reset after each route. */
-  scratch: { spent: Float64Array; cameFrom: Int32Array; done: Uint8Array }
 }
 
 /** The outline of an island's land, its beach's outer edge, pushed `margin` u further out. */
@@ -77,21 +74,7 @@ export function waterGrid(shapes: readonly IslandShape[], inner: Rect): WaterGri
   for (let cell = 0; cell < cost.length; cell++) {
     cost[cell] = 1 + SHORE_COST * Math.max(0, 1 - (shore[cell] ?? 0) / SHORE_REACH)
   }
-  const fromColumn = Math.max(0, Math.floor((inner.x - x0) / CELL))
-  const toColumn = Math.min(columns, Math.ceil((inner.x + inner.width - x0) / CELL))
-  const fromRow = Math.max(0, Math.floor((inner.y - y0) / CELL))
-  const toRow = Math.min(rows, Math.ceil((inner.y + inner.height - y0) / CELL))
-  for (let row = fromRow; row < toRow; row++) {
-    for (let cell = row * columns + fromColumn; cell < row * columns + toColumn; cell++) {
-      cost[cell] = (cost[cell] ?? 1) + CHANNEL_COST - 1
-    }
-  }
-  const scratch = {
-    spent: new Float64Array(columns * rows).fill(Number.POSITIVE_INFINITY),
-    cameFrom: new Int32Array(columns * rows).fill(-1),
-    done: new Uint8Array(columns * rows),
-  }
-  return { x0, y0, columns, rows, land, shore, cost, scratch }
+  return { x0, y0, columns, rows, land, shore, cost }
 }
 
 /** Distance from each cell to the nearest land cell, in u: a two-pass chamfer (3-4). */
@@ -254,69 +237,42 @@ const NEIGHBOURS = [
   [-1, -1],
 ] as const
 
-/**
- * The cheapest way by water from `from` to `to`, rounded, from one point to the other; null if
- * none. Every point and segment of it stays off the land.
- */
-export function waterRoute(grid: WaterGrid, from: Point, to: Point): Point[] | null {
-  const start = nearestWater(grid, from)
-  const goal = nearestWater(grid, to)
-  if (start < 0 || goal < 0) {
-    return null
-  }
-  const cells = search(grid, start, goal)
-  if (!cells) {
-    return null
-  }
-  const points = [from, ...cells.map((cell) => centreOf(grid, cell)), to]
-  return rounded(grid, pulled(grid, points))
+/** The way to the open sea from every water cell inside `open`: each cell's next one. */
+export interface SeaWays {
+  grid: WaterGrid
+  open: Rect
+  /** The next cell toward the open sea; -1 past `open`, or where none leads out. */
+  toward: Int32Array
 }
 
-/** A* over the cells, eight ways, never cutting a corner of land. */
-function search(grid: WaterGrid, start: number, goal: number): number[] | null {
-  const { spent, cameFrom, done } = grid.scratch
-  // Only the cells this search reached are put back.
-  const touched: number[] = []
-  try {
-    return searchFrom(grid, start, goal, touched)
-  } finally {
-    for (const cell of touched) {
-      spent[cell] = Number.POSITIVE_INFINITY
-      cameFrom[cell] = -1
-      done[cell] = 0
+/** The cheapest ways out of `open` to the open sea, grown from the sea inward. */
+export function seaWays(grid: WaterGrid, open: Rect): SeaWays {
+  const { columns, rows, land, cost } = grid
+  const size = columns * rows
+  const toward = new Int32Array(size).fill(-1)
+  const spent = new Float64Array(size).fill(Number.POSITIVE_INFINITY)
+  const done = new Uint8Array(size)
+  const inside = insideOf(grid, open)
+  const heap = new MinHeap()
+  // From the water just past `open`, all around it.
+  for (let cell = 0; cell < size; cell++) {
+    if (land[cell] === 1 || inside(cell)) {
+      continue
+    }
+    const column = cell % columns
+    const row = Math.floor(cell / columns)
+    const borders = NEIGHBOURS.some(([dx, dy]) => {
+      const c = column + dx
+      const r = row + dy
+      return c >= 0 && r >= 0 && c < columns && r < rows && inside(r * columns + c)
+    })
+    if (borders) {
+      spent[cell] = 0
+      heap.push(cell, 0)
     }
   }
-}
-
-function searchFrom(
-  grid: WaterGrid,
-  start: number,
-  goal: number,
-  touched: number[],
-): number[] | null {
-  const { columns, rows, land, cost } = grid
-  const { spent, cameFrom, done } = grid.scratch
-  const heap = new MinHeap()
-  const goalColumn = goal % columns
-  const goalRow = Math.floor(goal / columns)
-  // The open sea's cost: the heuristic never overestimates.
-  const estimate = (cell: number) => {
-    const dx = Math.abs((cell % columns) - goalColumn)
-    const dy = Math.abs(Math.floor(cell / columns) - goalRow)
-    return CELL * (Math.max(dx, dy) + (Math.SQRT2 - 1) * Math.min(dx, dy))
-  }
-  spent[start] = 0
-  touched.push(start)
-  heap.push(start, estimate(start))
   while (heap.size > 0) {
     const cell = heap.pop()
-    if (cell === goal) {
-      const path: number[] = []
-      for (let at = goal; at >= 0; at = cameFrom[at] ?? -1) {
-        path.push(at)
-      }
-      return path.reverse()
-    }
     if (done[cell] === 1) {
       continue
     }
@@ -330,7 +286,7 @@ function searchFrom(
         continue
       }
       const next = r * columns + c
-      if (land[next] === 1) {
+      if (land[next] === 1 || !inside(next) || done[next] === 1) {
         continue
       }
       const diagonal = dx !== 0 && dy !== 0
@@ -341,49 +297,70 @@ function searchFrom(
         (diagonal ? Math.SQRT2 : 1) * CELL * (((cost[cell] ?? 1) + (cost[next] ?? 1)) / 2)
       const total = (spent[cell] ?? 0) + step
       if (total < (spent[next] ?? Number.POSITIVE_INFINITY)) {
-        if (spent[next] === Number.POSITIVE_INFINITY) {
-          touched.push(next)
-        }
         spent[next] = total
-        cameFrom[next] = cell
-        heap.push(next, total + estimate(next))
+        toward[next] = cell
+        heap.push(next, total)
       }
     }
   }
-  return null
+  return { grid, open, toward }
+}
+
+/** Whether a cell lies inside a rectangle of the board. */
+function insideOf(grid: WaterGrid, rect: Rect): (cell: number) => boolean {
+  const c0 = Math.floor((rect.x - grid.x0) / CELL)
+  const c1 = Math.floor((rect.x + rect.width - grid.x0) / CELL)
+  const r0 = Math.floor((rect.y - grid.y0) / CELL)
+  const r1 = Math.floor((rect.y + rect.height - grid.y0) / CELL)
+  return (cell) => {
+    const column = cell % grid.columns
+    const row = Math.floor(cell / grid.columns)
+    return column >= c0 && column <= c1 && row >= r0 && row <= r1
+  }
 }
 
 /**
- * Keeps only the turns: each point goes as far ahead as a straight line on water reaches, never
- * closer to a shore than the path it replaces.
+ * The way from `from` out to the open sea, smoothed, from the point itself to the first cell
+ * past `open`; null if none leads out.
  */
-function pulled(grid: WaterGrid, points: readonly Point[]): Point[] {
-  const first = points[0]
-  if (!first) {
-    return []
+export function seaWay(ways: SeaWays, from: Point): Point[] | null {
+  const { grid, toward } = ways
+  const start = nearestWater(grid, from)
+  if (start < 0) {
+    return null
   }
-  const kept = [first]
-  let at = 0
-  while (at < points.length - 1) {
-    let next = at + 1
-    let low = Math.min(shoreAt(grid, points[at] as Point), shoreAt(grid, points[next] as Point))
-    while (next + 1 < points.length) {
-      const ahead = points[next + 1] as Point
-      const lowAhead = Math.min(low, shoreAt(grid, ahead))
-      if (!clear(grid, points[at] as Point, ahead, Math.min(lowAhead, SHORE_REACH) - CELL)) {
-        break
-      }
-      low = lowAhead
-      next++
+  const inside = insideOf(grid, ways.open)
+  const cells = [start]
+  for (let at = start; inside(at); ) {
+    const next = toward[at] ?? -1
+    if (next < 0) {
+      return null
     }
-    kept.push(points[next] as Point)
+    cells.push(next)
     at = next
   }
-  return kept
+  const centres = cells.map((cell) => centreOf(grid, cell))
+  // A moving average over the cells: it depends on the cells alone, so two ways that share
+  // cells share their smoothed points too.
+  const smooth = centres.map((point, index) => {
+    if (index === 0 || index === centres.length - 1) {
+      return point
+    }
+    const reach = Math.min(SMOOTHING, index, centres.length - 1 - index)
+    let x = 0
+    let y = 0
+    for (let k = index - reach; k <= index + reach; k++) {
+      x += centres[k]?.x ?? 0
+      y += centres[k]?.y ?? 0
+    }
+    const average = { x: x / (2 * reach + 1), y: y / (2 * reach + 1) }
+    return onLand(grid, average) ? point : average
+  })
+  return [from, ...smooth]
 }
 
 /** Chaikin's corner cutting, a few rounds; a corner whose cut would touch land stays sharp. */
-function rounded(grid: WaterGrid, points: Point[]): Point[] {
+export function smoothed(grid: WaterGrid, points: Point[]): Point[] {
   let line = points
   for (let round = 0; round < CHAIKIN_ROUNDS; round++) {
     const next: Point[] = [line[0] as Point]
