@@ -832,7 +832,7 @@ fn fit_row(
     choices: &mut [u32],
 ) -> f64 {
     let mut height = row_height(weights, width, gap);
-    for _ in 0..ROW_FITS {
+    for fit in 1..=ROW_FITS {
         for (&index, &weight) in members.iter().zip(weights) {
             #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
             let row = Row {
@@ -848,7 +848,8 @@ fn fit_row(
         // A row too narrow is stretched over: flattening it would make
         // thin strips
         let ratio = f64::from(built.extent(&size_of, Axis::X)) / width.max(1.0);
-        if ratio < 1.03 {
+        // The last fit stands: the height returned is the one the items took
+        if ratio < 1.03 || fit == ROW_FITS {
             break;
         }
         height *= ratio;
@@ -1209,6 +1210,37 @@ mod tests {
                 .sum::<u64>(),
             54 * 400
         );
+    }
+
+    #[test]
+    fn a_row_is_fitted_to_the_height_it_returns() {
+        // A row too narrow for its items: every correction runs out
+        let items: Vec<Node> = (0..5).map(|id| Node::grid(id, 2 + id)).collect();
+        let members: Vec<usize> = (0..items.len()).collect();
+        let weights: Vec<f64> = items.iter().map(|item| item.weight as f64).collect();
+        let mut choices = vec![0; items.len()];
+        let width = f64::from(8 * LOT);
+        let height = fit_row(
+            &items,
+            &members,
+            &weights,
+            width,
+            Gap::Fixed(9),
+            &mut choices,
+        );
+        for (&index, &weight) in members.iter().zip(&weights) {
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            let row = Row {
+                height: height.round() as u32,
+                width: width.round() as u32,
+                expected: (weight / height.max(1.0)).round() as u32,
+            };
+            assert_eq!(
+                items[index].fit(&row),
+                choices[index],
+                "item {index} at {height}"
+            );
+        }
     }
 
     #[test]
