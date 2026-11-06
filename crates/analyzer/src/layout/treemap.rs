@@ -193,6 +193,21 @@ impl Audit {
     }
 }
 
+/// The fewest and the most rows a grid of `lots` lots can have without
+/// being longer than [`MAX_STRETCH`] times its width either way.
+fn compact_rows(lots: u32) -> (u32, u32) {
+    let fewest = (1..=lots)
+        .find(|&rows| lots.div_ceil(rows) <= MAX_STRETCH * rows)
+        .unwrap_or(1);
+    // rows ≤ 4 ⌈lots ÷ rows⌉ < 4 (lots ÷ rows + 1) bounds rows by 2 + 2 √(1 + lots)
+    let bound = lots.min(3 + 2 * (lots + 1).isqrt());
+    let most = (1..=bound)
+        .rev()
+        .find(|&rows| rows <= MAX_STRETCH * lots.div_ceil(rows))
+        .unwrap_or(lots);
+    (fewest, most)
+}
+
 /// `rect`, from its west or north end, at most [`MAX_STRETCH`] times
 /// longer than wide, or as long as `natural` if that is longer.
 fn bounded(rect: Rect, natural: (u32, u32)) -> Rect {
@@ -365,14 +380,7 @@ impl Node {
         let (inner, padding) = self.innermost();
         let candidates: Vec<u32> = match &inner.kind {
             Kind::Grid { lots } => {
-                // No longer than `MAX_STRETCH` either way
-                let fewest = (1..=*lots)
-                    .find(|&rows| lots.div_ceil(rows) <= MAX_STRETCH * rows)
-                    .unwrap_or(1);
-                let most = (1..=*lots)
-                    .rev()
-                    .find(|&rows| rows <= MAX_STRETCH * lots.div_ceil(rows))
-                    .unwrap_or(*lots);
+                let (fewest, most) = compact_rows(*lots);
                 let rows = (row.height.saturating_sub(2 * padding) / LOT).clamp(fewest, most);
                 // As many columns, no row more than the lots need
                 let tight = lots.div_ceil(lots.div_ceil(rows)).max(fewest);
@@ -1210,6 +1218,19 @@ mod tests {
                 .sum::<u64>(),
             54 * 400
         );
+    }
+
+    #[test]
+    fn a_compact_grid_has_the_rows_a_full_search_finds() {
+        for lots in 1..3000u32 {
+            let fits = |rows: u32| {
+                let columns = lots.div_ceil(rows);
+                columns <= MAX_STRETCH * rows && rows <= MAX_STRETCH * columns
+            };
+            let fewest = (1..=lots).find(|&rows| fits(rows)).unwrap();
+            let most = (1..=lots).rev().find(|&rows| fits(rows)).unwrap();
+            assert_eq!(compact_rows(lots), (fewest, most), "{lots} lots");
+        }
     }
 
     #[test]
