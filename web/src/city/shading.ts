@@ -50,12 +50,17 @@ uniform float shadowOpacity;
 varying vec3 vWorldNormal;
 
 // The same formula as lightFactor() in light.ts, which the tests check: change both together.
-vec3 shade(vec3 color, vec3 normal) {
+// Cast shadows take the given share of their usual strength.
+vec3 shade(vec3 color, vec3 normal, float shadows) {
   float nDotL = dot(normal, sunDirection);
   vec3 lit = color * (${glslFloat(AMBIENT)} + ${glslFloat(DIFFUSE)} * max(nDotL, 0.0))
     / ${glslFloat(NORMALIZER)};
   // Faces turned from the sun are dark already: only the faces it reaches take cast shadows.
   float shadow = nDotL > 0.0 ? 1.0 - getShadowMask() : 0.0;
-  return mix(lit, shadowColor, shadowOpacity * shadow);
+  return mix(lit, shadowColor, shadowOpacity * shadows * shadow);
+}
+
+vec3 shade(vec3 color, vec3 normal) {
+  return shade(color, normal, 1.0);
 }
 `
