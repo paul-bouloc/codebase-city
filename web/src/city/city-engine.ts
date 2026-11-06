@@ -172,7 +172,7 @@ export class CityEngine {
       createParcels(layout, decor.gardens),
       createBridges(links),
       createFerries(links.ferries),
-      createBuildings(layout, pixelRatio),
+      createBuildings(layout, pixelRatio).group,
       createDecor(decor, links.boats),
     )
     this.scene.add(this.city)

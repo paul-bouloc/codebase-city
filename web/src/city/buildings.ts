@@ -4,16 +4,17 @@ import {
   Group,
   InstancedBufferAttribute,
   InstancedMesh,
+  type IUniform,
   Matrix4,
   MeshDepthMaterial,
   ShaderMaterial,
 } from 'three'
 import { buildingGeometry, type Shape, shapeKey, type Vertex } from './archetype-geometry'
-import { ARCHETYPES, type Building, buildingFor } from './archetypes'
+import { ARCHETYPES } from './archetypes'
 import type { BuildingLanguage, CityLayout, ConcreteFamily, FileMetrics } from './layout'
-import { baseTurnFor, placementFor } from './scatter'
+import { type PlacedBuilding, placeBuildings } from './placed-buildings'
 import { shadingFragmentPars, shadingUniforms, shadingVertex, shadingVertexPars } from './shading'
-import { boardToThree, layerAltitude, srgb, type Vec3 } from './units'
+import { srgb, type Vec3 } from './units'
 
 // TypeScript, JavaScript and CSS are tuned by hand; the others take their GitHub Linguist colour.
 const LANGUAGE_COLOURS: Record<BuildingLanguage, Vec3> = {
@@ -62,6 +63,18 @@ const BAR_WIDTH = 0.09
 const BAR_LENGTH = 0.86
 const BAR_SPACING = 0.3
 
+/** How a building stands out: hovered faces are lighter, a selected one keeps its colours. */
+export const Highlight = { none: 0, hovered: 1, selected: 2 } as const
+export type Highlight = (typeof Highlight)[keyof typeof Highlight]
+
+/** A hovered building's faces: 10 % toward white. */
+const HOVER_LIGHTENING = 0.1
+/** A dimmed building: 72 % toward a pale stone, its edges at 70 %, its cast shadows halved. */
+export const DIMMED = '#E6E1D6'
+export const DIM_SHARE = 0.72
+const DIMMED_EDGES = 0.7
+const DIMMED_SHADOWS = 0.5
+
 const glslColour = (hex: string) =>
   `vec3(${srgb(hex)
     .map((c) => c.toFixed(6))
@@ -76,6 +89,9 @@ attribute vec3 edge;
 attribute float generated;
 attribute float stamped;
 attribute vec4 stampCentre;
+attribute float highlight;
+attribute float kept;
+uniform float dim;
 varying vec3 vColor;
 varying vec3 vEdge;
 varying vec3 vEdgeColor;
@@ -84,8 +100,12 @@ varying float vSide;
 varying float vRoof;
 varying vec2 vStampCentre;
 varying vec3 vTint;
+varying float vHovered;
+varying float vDim;
 void main() {
   vColor = mix(tint, paint.rgb, paint.a);
+  vHovered = highlight > 0.5 && highlight < 1.5 ? 1.0 : 0.0;
+  vDim = dim * (1.0 - kept);
   vEdgeColor = tint * ${(1 - EDGE_DARKENING).toFixed(6)};
   vRoof = 0.0;
   if (generated > 0.5) {
@@ -108,6 +128,8 @@ void main() {
 const fragmentShader = /* glsl */ `
 ${shadingFragmentPars}
 uniform float edgeWidth;
+varying float vHovered;
+varying float vDim;
 varying vec3 vColor;
 varying vec3 vEdge;
 varying vec3 vEdgeColor;
@@ -126,13 +148,17 @@ void main() {
       colour = vTint * ${(1 - GENERATED_BAR_DARKENING).toFixed(6)};
     }
   }
+  colour = mix(colour, vec3(1.0), ${HOVER_LIGHTENING.toFixed(6)} * vHovered);
+  colour = mix(colour, ${glslColour(DIMMED)}, ${DIM_SHARE.toFixed(6)} * vDim);
   // Distance to each side in pixels; a side without a line stays far away.
   vec3 perPixel = sqrt(dFdx(vEdge) * dFdx(vEdge) + dFdy(vEdge) * dFdy(vEdge));
   vec3 toSide = vEdge / max(perPixel, 1e-6);
   float d = min(min(toSide.x, toSide.y), toSide.z);
   // The share of this pixel covered by the line: a sub-pixel line is a lighter pixel.
   float cover = clamp(min(edgeWidth, d + 0.5) - max(0.0, d - 0.5), 0.0, 1.0);
-  gl_FragColor = vec4(mix(shade(colour, normalize(vWorldNormal)), vEdgeColor, cover), 1.0);
+  cover *= mix(1.0, ${DIMMED_EDGES.toFixed(6)}, vDim);
+  float shadows = mix(1.0, ${DIMMED_SHADOWS.toFixed(6)}, vDim);
+  gl_FragColor = vec4(mix(shade(colour, normalize(vWorldNormal), shadows), vEdgeColor, cover), 1.0);
 }
 `
 
@@ -157,51 +183,85 @@ const VERTEX_ATTRIBUTES = [
   'stampCentre',
 ] as const satisfies readonly (keyof Vertex)[]
 
-interface Placed {
-  building: Building
-  position: Vec3
-  /** Turn about the vertical, in radians. */
-  angle: number
-  tint: Vec3
-  generated: boolean
+/** The buildings of a city, and how to make some of them stand out. */
+export interface CityBuildings {
+  group: Group
+  /** Every building, in the order the city's islands and lots come. */
+  placed: readonly PlacedBuilding[]
+  /** Makes the building at this index of `placed` stand out, or not. */
+  setHighlight(index: number, highlight: Highlight): void
+  /** The buildings that keep their colours while the city is dimmed; all of them if null. */
+  setKept(kept: ((index: number) => boolean) | null): void
+  /** How dimmed the buildings not kept are, from 0 to 1. */
+  dim: IUniform<number>
+}
+
+/** Where a building is drawn: its shape's mesh and its instance there. */
+interface Slot {
+  mesh: InstancedMesh
+  instance: number
 }
 
 /**
  * Every building, in one instanced draw call per shape: an archetype of one model, or one
  * combination of a low building's pieces. Edges are sized for `pixelRatio`.
  */
-export function createBuildings(layout: CityLayout, pixelRatio: number): Group {
-  const byShape = new Map<string, { shape: Shape; placed: Placed[] }>()
-  for (const island of layout.islands) {
-    const altitude = layerAltitude(island.layer)
-    for (const lot of island.lots) {
-      const building = buildingFor(lot.file)
-      const turn = baseTurnFor(building, lot.file.path ?? '', lot.x, lot.y, lot.grid)
-      const { dx, dy, angle } = placementFor(building, lot.x, lot.y, lot.ground, turn)
-      const key = shapeKey(building)
-      const entry = byShape.get(key) ?? { shape: building, placed: [] }
-      entry.placed.push({
-        building,
-        position: boardToThree(lot.x + dx, lot.y + dy, altitude + (lot.base ?? 0)),
-        angle,
-        tint: tintOf(lot.file),
-        generated: lot.file.generated === true,
-      })
-      byShape.set(key, entry)
-    }
-  }
+export function createBuildings(layout: CityLayout, pixelRatio: number): CityBuildings {
+  const placed = placeBuildings(layout)
+  const byShape = new Map<string, { shape: Shape; members: number[] }>()
+  placed.forEach(({ building }, index) => {
+    const key = shapeKey(building)
+    const entry = byShape.get(key) ?? { shape: building, members: [] }
+    entry.members.push(index)
+    byShape.set(key, entry)
+  })
 
   const group = new Group()
+  const dim: IUniform<number> = { value: 0 }
+  const slots: Slot[] = []
   // Archetype by archetype, then shape by shape: the same city draws in the same order
   const order = (key: string) => ARCHETYPES.indexOf(byShape.get(key)?.shape.archetype ?? 'hall')
   const keys = [...byShape.keys()].sort((a, b) => order(a) - order(b) || (a < b ? -1 : 1))
   for (const key of keys) {
     const entry = byShape.get(key)
     if (entry) {
-      group.add(instancedShape(entry.shape, entry.placed, EDGE_WIDTH * pixelRatio))
+      const members = entry.members.map((index) => placed[index] as PlacedBuilding)
+      const mesh = instancedShape(entry.shape, members, EDGE_WIDTH * pixelRatio, dim)
+      entry.members.forEach((index, instance) => {
+        slots[index] = { mesh, instance }
+      })
+      group.add(mesh)
     }
   }
-  return group
+
+  const attribute = (mesh: InstancedMesh, name: string) =>
+    mesh.geometry.getAttribute(name) as InstancedBufferAttribute
+  return {
+    group,
+    placed,
+    dim,
+    setHighlight(index, highlight) {
+      const slot = slots[index]
+      if (slot) {
+        const values = attribute(slot.mesh, 'highlight')
+        values.setX(slot.instance, highlight)
+        values.addUpdateRange(slot.instance, 1)
+        values.needsUpdate = true
+      }
+    },
+    setKept(kept) {
+      const touched = new Set<InstancedMesh>()
+      slots.forEach(({ mesh, instance }, index) => {
+        attribute(mesh, 'kept').setX(instance, kept === null || kept(index) ? 1 : 0)
+        touched.add(mesh)
+      })
+      for (const mesh of touched) {
+        const values = attribute(mesh, 'kept')
+        values.clearUpdateRanges()
+        values.needsUpdate = true
+      }
+    },
+  }
 }
 
 function tintOf(file: FileMetrics): Vec3 {
@@ -211,7 +271,12 @@ function tintOf(file: FileMetrics): Vec3 {
   return file.test ? TEST_COLOUR : LANGUAGE_COLOURS[file.language]
 }
 
-function instancedShape(shape: Shape, placed: Placed[], edgeWidth: number): InstancedMesh {
+function instancedShape(
+  shape: Shape,
+  placed: readonly PlacedBuilding[],
+  edgeWidth: number,
+  dim: IUniform<number>,
+): InstancedMesh {
   const vertices = buildingGeometry(shape).flat()
   const geometry = new BufferGeometry()
   for (const name of VERTEX_ATTRIBUTES) {
@@ -223,22 +288,30 @@ function instancedShape(shape: Shape, placed: Placed[], edgeWidth: number): Inst
   const tints = new Float32Array(placed.length * 3)
   const generated = new Float32Array(placed.length)
   const material = new ShaderMaterial({
-    uniforms: { ...shadingUniforms(), edgeWidth: { value: edgeWidth } },
+    uniforms: { ...shadingUniforms(), edgeWidth: { value: edgeWidth }, dim },
     vertexShader,
     fragmentShader,
     lights: true,
   })
   const mesh = new InstancedMesh(geometry, material, placed.length)
   const matrix = new Matrix4()
-  placed.forEach(({ building, position, angle, tint, generated: made }, index) => {
+  placed.forEach(({ building, position, angle, file }, index) => {
     mesh.setMatrixAt(index, matrix.makeRotationY(angle).setPosition(...position))
     sizes.set([building.side, building.height, building.split], index * 3)
-    tints.set(tint, index * 3)
-    generated[index] = made ? 1 : 0
+    tints.set(tintOf(file), index * 3)
+    generated[index] = file.generated === true ? 1 : 0
   })
   geometry.setAttribute('building', new InstancedBufferAttribute(sizes, 3))
   geometry.setAttribute('tint', new InstancedBufferAttribute(tints, 3))
   geometry.setAttribute('generated', new InstancedBufferAttribute(generated, 1))
+  geometry.setAttribute(
+    'highlight',
+    new InstancedBufferAttribute(new Float32Array(placed.length), 1),
+  )
+  geometry.setAttribute(
+    'kept',
+    new InstancedBufferAttribute(new Float32Array(placed.length).fill(1), 1),
+  )
 
   mesh.customDepthMaterial = stretchedDepthMaterial()
   mesh.castShadow = true
