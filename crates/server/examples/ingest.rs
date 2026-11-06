@@ -676,8 +676,9 @@ const NEIGHBOURS: i64 = 240;
 fn print_layout(result: &AnalysisResult) {
     let layout = &result.layout;
     let started = Instant::now();
-    let (again, audit) = analyzer::layout::audited(result);
+    let again = analyzer::layout::of_result(result);
     let elapsed = started.elapsed();
+    let (_, audit) = analyzer::layout::audited(result);
     let grids = &layout.grids;
     let lots: u64 = (0..grids.dir.len())
         .map(|row| u64::from(grids.columns[row]) * u64::from(grids.rows[row]))
