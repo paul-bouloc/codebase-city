@@ -103,7 +103,8 @@ varying float vDim;
 void main() {
   vColor = mix(tint, paint.rgb, paint.a);
   vHovered = state.y > 0.5 && state.y < 1.5 ? 1.0 : 0.0;
-  vDim = dim * (1.0 - state.z);
+  // Hovered beats faded: the building under the pointer shows its colours.
+  vDim = dim * (1.0 - max(state.z, vHovered));
   vEdgeColor = tint * ${(1 - EDGE_DARKENING).toFixed(6)};
   vRoof = 0.0;
   if (state.x > 0.5) {
