@@ -26,6 +26,9 @@ fn aspects() -> impl Iterator<Item = f64> {
     (0..SHAPES).map(move |index| 12f64.powf((index as f64 - middle) / middle))
 }
 
+/// The proportions, width over height, the archipelago may take.
+const ARCHIPELAGO_RATIOS: (f64, f64) = (1.2, 2.2);
+
 /// How many times a row's height is corrected to make it as wide as its
 /// pack.
 const ROW_FITS: usize = 4;
@@ -306,12 +309,32 @@ impl Node {
         };
         let (mut shapes, mut preferred) = shapes_of(true);
         if gap == Gap::Channel {
-            // Islands keep their own size, and what a stack leaves around them
-            // is water: for the archipelago's few islands, the smaller city of
-            // the two ways
-            let (flat, flat_preferred) = shapes_of(false);
-            if area_of(&flat[flat_preferred as usize]) < area_of(&shapes[preferred as usize]) {
-                (shapes, preferred) = (flat, flat_preferred);
+            // Islands keep their own size, and what a pack leaves around them
+            // is water. The archipelago has few islands: of both ways, stacked
+            // or not, the smallest city in a fair range of proportions, not
+            // the one closest to `aspect`, which may be much larger
+            let (flat, _) = shapes_of(false);
+            let fair = |shape: &PackShape| {
+                let ratio = f64::from(shape.width) / f64::from(shape.height.max(1));
+                (ARCHIPELAGO_RATIOS.0..=ARCHIPELAGO_RATIOS.1).contains(&ratio)
+            };
+            let stacked_best = (0..)
+                .zip(&shapes)
+                .filter(|(_, shape)| fair(shape))
+                .min_by_key(|(_, shape)| area_of(shape))
+                .map(|(index, shape)| (index, area_of(shape)));
+            let flat_best = (0..)
+                .zip(&flat)
+                .filter(|(_, shape)| fair(shape))
+                .min_by_key(|(_, shape)| area_of(shape))
+                .map(|(index, shape)| (index, area_of(shape)));
+            match (stacked_best, flat_best) {
+                (Some((_, stacked_area)), Some((index, flat_area))) if flat_area < stacked_area => {
+                    (shapes, preferred) = (flat, index);
+                }
+                (Some((index, _)), _) => preferred = index,
+                (None, Some((index, _))) => (shapes, preferred) = (flat, index),
+                (None, None) => {}
             }
         }
         Self::new(
@@ -1327,6 +1350,32 @@ mod tests {
                 choices[index],
                 "item {index} at {height}"
             );
+        }
+    }
+
+    #[test]
+    fn the_archipelago_takes_its_smallest_fair_shape() {
+        let island =
+            |id: u32, lots: u32| Node::frame(id, 9, false, Node::grid(id, lots), (100, 66));
+        let islands = [2000, 30, 20, 10, 5, 3, 2, 1, 1, 1, 1, 1]
+            .into_iter()
+            .zip(0..)
+            .map(|(lots, id)| island(id, lots))
+            .collect();
+        let city = Node::pack(u32::MAX, islands, 1.6, Gap::Channel);
+        let Kind::Pack {
+            shapes, preferred, ..
+        } = &city.kind
+        else {
+            panic!("not a pack");
+        };
+        let ratio = |shape: &PackShape| f64::from(shape.width) / f64::from(shape.height);
+        let chosen = &shapes[*preferred as usize];
+        assert!((ARCHIPELAGO_RATIOS.0..=ARCHIPELAGO_RATIOS.1).contains(&ratio(chosen)));
+        for shape in shapes {
+            if (ARCHIPELAGO_RATIOS.0..=ARCHIPELAGO_RATIOS.1).contains(&ratio(shape)) {
+                assert!(area_of(chosen) <= area_of(shape));
+            }
         }
     }
 
