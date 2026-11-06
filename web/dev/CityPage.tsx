@@ -114,8 +114,6 @@ export function CityPage() {
       }
       setLoaded(city)
       setCards(cityCards(result))
-      setHover(null)
-      setSelection(null)
       setError(null)
     } catch (cause) {
       if (request === latest.current) {
