@@ -11,6 +11,7 @@ import {
 } from 'three'
 import { buildingGeometry, type Shape, shapeKey, type Vertex } from './archetype-geometry'
 import { ARCHETYPES } from './archetypes'
+import { createFading, dimmingFragmentPars, type Fading } from './dimming'
 import type { BuildingLanguage, CityLayout, ConcreteFamily, FileMetrics } from './layout'
 import { type PlacedBuilding, placeBuildings } from './placed-buildings'
 import { shadingFragmentPars, shadingUniforms, shadingVertex, shadingVertexPars } from './shading'
@@ -69,11 +70,8 @@ export type Highlight = (typeof Highlight)[keyof typeof Highlight]
 
 /** A hovered building's faces: 10 % toward white. */
 const HOVER_LIGHTENING = 0.1
-/** A dimmed building: 72 % toward a pale stone, its edges at 70 %, its cast shadows halved. */
-export const DIMMED = '#E6E1D6'
-export const DIM_SHARE = 0.72
+/** A dimmed building's edges keep 70 % of their strength. */
 const DIMMED_EDGES = 0.7
-const DIMMED_SHADOWS = 0.5
 
 const glslColour = (hex: string) =>
   `vec3(${srgb(hex)
@@ -127,6 +125,7 @@ void main() {
 
 const fragmentShader = /* glsl */ `
 ${shadingFragmentPars}
+${dimmingFragmentPars}
 uniform float edgeWidth;
 varying float vHovered;
 varying float vDim;
@@ -149,7 +148,7 @@ void main() {
     }
   }
   colour = mix(colour, vec3(1.0), ${HOVER_LIGHTENING.toFixed(6)} * vHovered);
-  colour = mix(colour, ${glslColour(DIMMED)}, ${DIM_SHARE.toFixed(6)} * vDim);
+  colour = dimmed(colour, vDim);
   // Distance to each side in pixels; a side without a line stays far away.
   vec3 perPixel = sqrt(dFdx(vEdge) * dFdx(vEdge) + dFdy(vEdge) * dFdy(vEdge));
   vec3 toSide = vEdge / max(perPixel, 1e-6);
@@ -157,8 +156,8 @@ void main() {
   // The share of this pixel covered by the line: a sub-pixel line is a lighter pixel.
   float cover = clamp(min(edgeWidth, d + 0.5) - max(0.0, d - 0.5), 0.0, 1.0);
   cover *= mix(1.0, ${DIMMED_EDGES.toFixed(6)}, vDim);
-  float shadows = mix(1.0, ${DIMMED_SHADOWS.toFixed(6)}, vDim);
-  gl_FragColor = vec4(mix(shade(colour, normalize(vWorldNormal), shadows), vEdgeColor, cover), 1.0);
+  vec3 lit = shade(colour, normalize(vWorldNormal), dimmedShadows(vDim));
+  gl_FragColor = vec4(mix(lit, vEdgeColor, cover), 1.0);
 }
 `
 
@@ -190,10 +189,8 @@ export interface CityBuildings {
   placed: readonly PlacedBuilding[]
   /** Makes the building at this index of `placed` stand out, or not. */
   setHighlight(index: number, highlight: Highlight): void
-  /** The buildings that keep their colours while the city is dimmed; all of them if null. */
+  /** The buildings that keep their colours while the city fades; all of them if null. */
   setKept(kept: ((index: number) => boolean) | null): void
-  /** How dimmed the buildings not kept are, from 0 to 1. */
-  dim: IUniform<number>
 }
 
 /** Where a building is drawn: its shape's mesh and its instance there. */
@@ -206,7 +203,11 @@ interface Slot {
  * Every building, in one instanced draw call per shape: an archetype of one model, or one
  * combination of a low building's pieces. Edges are sized for `pixelRatio`.
  */
-export function createBuildings(layout: CityLayout, pixelRatio: number): CityBuildings {
+export function createBuildings(
+  layout: CityLayout,
+  pixelRatio: number,
+  { dim }: Fading = createFading(),
+): CityBuildings {
   const placed = placeBuildings(layout)
   const byShape = new Map<string, { shape: Shape; members: number[] }>()
   placed.forEach(({ building }, index) => {
@@ -217,7 +218,6 @@ export function createBuildings(layout: CityLayout, pixelRatio: number): CityBui
   })
 
   const group = new Group()
-  const dim: IUniform<number> = { value: 0 }
   const slots: Slot[] = []
   // Archetype by archetype, then shape by shape: the same city draws in the same order
   const order = (key: string) => ARCHETYPES.indexOf(byShape.get(key)?.shape.archetype ?? 'hall')
@@ -239,7 +239,6 @@ export function createBuildings(layout: CityLayout, pixelRatio: number): CityBui
   return {
     group,
     placed,
-    dim,
     setHighlight(index, highlight) {
       const slot = slots[index]
       if (slot) {
