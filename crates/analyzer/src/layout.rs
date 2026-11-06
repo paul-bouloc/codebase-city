@@ -148,12 +148,17 @@ impl Tree {
 /// analysis did: to time the layout on its own. The result must be valid
 /// (`AnalysisResult::validate`): its indexes are trusted.
 pub fn of_result(result: &AnalysisResult) -> Layout {
-    audited(result).0
+    again(result, false).0
 }
 
 /// Lays a result out again, as [`of_result`] does, and says where its area
 /// went.
 pub fn audited(result: &AnalysisResult) -> (Layout, Audit) {
+    let (layout, audit) = again(result, true);
+    (layout, audit.unwrap_or_default())
+}
+
+fn again(result: &AnalysisResult, audit: bool) -> (Layout, Option<Audit>) {
     let dirs = &result.dirs;
     let mut paths: Vec<String> = Vec::with_capacity(dirs.parent.len());
     for (parent, name) in dirs.parent.iter().zip(&dirs.name) {
@@ -170,7 +175,7 @@ pub fn audited(result: &AnalysisResult) -> (Layout, Audit) {
         .iter()
         .map(|&language| Language::analyzed_named(&result.languages[language as usize]).is_some())
         .collect();
-    layout_audited(&Input {
+    let input = Input {
         parents: &dirs.parent,
         dir_paths: &dir_paths,
         dir_islands: &dirs.island,
@@ -178,30 +183,33 @@ pub fn audited(result: &AnalysisResult) -> (Layout, Audit) {
         file_dirs: &result.files.dir,
         scopes: &result.files.scope,
         analyzed: &analyzed,
-    })
+    };
+    on_large_stack(|| layout_here(&input, audit))
 }
 
 /// Lays the city out, on a thread of its own with room for deep folders.
 pub(crate) fn layout(input: &Input) -> Layout {
-    layout_audited(input).0
+    on_large_stack(|| layout_here(input, false)).0
 }
 
-fn layout_audited(input: &Input) -> (Layout, Audit) {
+/// Runs `work` on a thread with room for deep folders, or here when no
+/// thread is to be had, which holds all but extreme depths.
+fn on_large_stack<T: Send>(work: impl Fn() -> T + Sync) -> T {
     std::thread::scope(|scope| {
         let spawned = std::thread::Builder::new()
             .stack_size(LAYOUT_STACK)
-            .spawn_scoped(scope, || layout_here(input));
+            .spawn_scoped(scope, &work);
         match spawned {
             Ok(handle) => handle
                 .join()
                 .unwrap_or_else(|panic| std::panic::resume_unwind(panic)),
-            // No thread to be had: lay it out here, which holds all but extreme depths.
-            Err(_) => layout_here(input),
+            Err(_) => work(),
         }
     })
 }
 
-fn layout_here(input: &Input) -> (Layout, Audit) {
+/// The layout, and where its area went if `audit` is set.
+fn layout_here(input: &Input, audit: bool) -> (Layout, Option<Audit>) {
     let dir_count = input.parents.len();
     let mut own = vec![Counts::default(); dir_count];
     let mut files_of: Vec<Vec<u32>> = vec![Vec::new(); dir_count];
@@ -250,7 +258,11 @@ fn layout_here(input: &Input) -> (Layout, Audit) {
         })
         .collect();
     let city = Node::pack(u32::MAX, islands, ARCHIPELAGO_ASPECT, Gap::Channel);
-    let placed = city.place();
+    let placed = if audit {
+        city.place_audited()
+    } else {
+        city.place()
+    };
 
     // Islands are the frames that do not stretch, named by their row;
     // parcels are named by their folder

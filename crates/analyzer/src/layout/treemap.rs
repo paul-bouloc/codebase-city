@@ -147,7 +147,15 @@ pub(crate) struct Placed {
     pub grids: Vec<(u32, u32, u32, u32, u32)>,
     /// Id, rectangle, and whether the frame stretches.
     pub frames: Vec<(u32, Rect, bool)>,
-    pub audit: Audit,
+    /// Where the area went, when asked for: see [`Node::place_audited`].
+    pub audit: Option<Audit>,
+}
+
+impl Placed {
+    /// The audit of `depth`, if the placement is audited.
+    fn audit_at(&mut self, depth: usize) -> Option<&mut AuditLevel> {
+        self.audit.as_mut().map(|audit| audit.at(depth))
+    }
 }
 
 /// Where the area of a placed tree went, by depth: the tree's root is at
@@ -432,7 +440,18 @@ impl Node {
     /// Places the tree with its south-west corner at the origin, in its
     /// preferred shape.
     pub(crate) fn place(&self) -> Placed {
-        let mut placed = Placed::default();
+        self.place_with(Placed::default())
+    }
+
+    /// Places the tree as [`Node::place`] does, and says where its area went.
+    pub(crate) fn place_audited(&self) -> Placed {
+        self.place_with(Placed {
+            audit: Some(Audit::default()),
+            ..Placed::default()
+        })
+    }
+
+    fn place_with(&self, mut placed: Placed) -> Placed {
         let choice = self.preferred();
         let (width, height) = self.size(choice);
         self.place_in(
@@ -455,18 +474,21 @@ impl Node {
         let rect = match &self.kind {
             Kind::Grid { .. } | Kind::Frame { stretch: true, .. } => {
                 let bounded = bounded(rect, self.size(choice));
-                placed.audit.at(depth).ground +=
-                    area(rect.width, rect.height) - area(bounded.width, bounded.height);
+                if let Some(level) = placed.audit_at(depth) {
+                    level.ground +=
+                        area(rect.width, rect.height) - area(bounded.width, bounded.height);
+                }
                 bounded
             }
             _ => rect,
         };
         match &self.kind {
             Kind::Grid { lots } => {
-                let asked = u64::from(*lots) * area(LOT, LOT);
-                let level = placed.audit.at(depth);
-                level.lots += asked;
-                level.extra_lots += area(rect.width, rect.height) - asked;
+                if let Some(level) = placed.audit_at(depth) {
+                    let asked = u64::from(*lots) * area(LOT, LOT);
+                    level.lots += asked;
+                    level.extra_lots += area(rect.width, rect.height) - asked;
+                }
                 let (columns, rows) = (rect.width / LOT, rect.height / LOT);
                 placed.grids.push((
                     self.id,
@@ -486,8 +508,9 @@ impl Node {
                     rect
                 } else {
                     let (width, height) = self.size(choice);
-                    placed.audit.at(depth).water +=
-                        area(rect.width, rect.height) - area(width, height);
+                    if let Some(level) = placed.audit_at(depth) {
+                        level.water += area(rect.width, rect.height) - area(width, height);
+                    }
                     Rect {
                         x: rect.x + (rect.width - width) / 2,
                         y: rect.y + (rect.height - height) / 2,
@@ -502,8 +525,10 @@ impl Node {
                     width: rect.width - 2 * padding,
                     height: rect.height - 2 * padding,
                 };
-                let level = placed.audit.at(depth);
-                level.padding += area(rect.width, rect.height) - area(inner.width, inner.height);
+                if let Some(level) = placed.audit_at(depth) {
+                    level.padding +=
+                        area(rect.width, rect.height) - area(inner.width, inner.height);
+                }
                 child.place_in(choice, inner, placed, depth + 1);
             }
             Kind::Pack { items, shapes, .. } => {
@@ -517,22 +542,27 @@ impl Node {
                 }
                 let shape = &shapes[best.0 as usize];
                 let item = |index: usize| (&items[index], shape.choices[index]);
-                let size_of = |index: usize| items[index].size(shape.choices[index]);
-                let level = placed.audit.at(depth);
-                let (shorter, narrower) = shape.rows.slack(&size_of);
-                level.shorter += shorter;
-                level.narrower += narrower;
-                for (node, &choice) in items.iter().zip(&shape.choices) {
-                    let (width, height) = node.size(choice);
-                    let needed = match node.innermost().0.kind {
-                        Kind::Grid { lots } if node.innermost().1 == 0 => {
-                            u64::from(lots) * area(LOT, LOT)
-                        }
-                        _ => node.weight,
-                    };
-                    #[allow(clippy::cast_possible_wrap)]
-                    let change = area(width, height) as i64 - needed as i64;
-                    level.reshaped += change;
+                if let Some(level) = placed.audit_at(depth) {
+                    let size_of = |index: usize| items[index].size(shape.choices[index]);
+                    let (shorter, narrower) = shape.rows.slack(&size_of);
+                    level.shorter += shorter;
+                    level.narrower += narrower;
+                    for (node, &choice) in items.iter().zip(&shape.choices) {
+                        let (width, height) = node.size(choice);
+                        let needed = match node.innermost() {
+                            (
+                                Self {
+                                    kind: Kind::Grid { lots },
+                                    ..
+                                },
+                                0,
+                            ) => u64::from(*lots) * area(LOT, LOT),
+                            _ => node.weight,
+                        };
+                        #[allow(clippy::cast_possible_wrap)]
+                        let change = area(width, height) as i64 - needed as i64;
+                        level.reshaped += change;
+                    }
                 }
                 shape.rows.place_in(&item, rect, placed, depth);
             }
@@ -721,11 +751,15 @@ impl Shape {
             };
             child.place_in(item, cell, placed, depth);
             let gap = gaps.get(index).copied().unwrap_or(0);
-            placed.audit.at(depth).gaps += u64::from(gap)
-                * u64::from(match axis {
-                    Axis::X => rect.height,
-                    Axis::Y => rect.width,
-                });
+            if let Some(level) = placed.audit_at(depth) {
+                level.gaps += area(
+                    gap,
+                    match axis {
+                        Axis::X => rect.height,
+                        Axis::Y => rect.width,
+                    },
+                );
+            }
             cursor += length + gap;
         }
     }
@@ -1194,9 +1228,17 @@ mod tests {
             Node::frame(1, 9, false, Node::grid(9, 2), (100, 66)),
         ];
         let city = Node::pack(u32::MAX, islands, 1.6, Gap::Channel);
-        let placed = city.place();
-        let accounted: u64 = placed
-            .audit
+        let placed = city.place_audited();
+        let audit = placed.audit.clone().unwrap();
+        // The placement itself does not depend on the audit
+        assert_eq!(
+            Placed {
+                audit: None,
+                ..placed
+            },
+            city.place()
+        );
+        let accounted: u64 = audit
             .levels
             .iter()
             .map(|level| {
@@ -1210,12 +1252,7 @@ mod tests {
             .sum();
         assert_eq!(accounted, area(city.width(), city.height()));
         assert_eq!(
-            placed
-                .audit
-                .levels
-                .iter()
-                .map(|level| level.lots)
-                .sum::<u64>(),
+            audit.levels.iter().map(|level| level.lots).sum::<u64>(),
             54 * 400
         );
     }
@@ -1359,9 +1396,12 @@ mod tests {
     fn one_item_or_none() {
         let empty = Node::pack(7, Vec::new(), 1.0, Gap::Fixed(9)).place();
         assert!(empty.grids.is_empty() && empty.frames.is_empty());
+        assert_eq!(empty.audit, None);
+        let audited = Node::pack(7, Vec::new(), 1.0, Gap::Fixed(9)).place_audited();
         assert!(
-            empty
+            audited
                 .audit
+                .unwrap()
                 .levels
                 .iter()
                 .all(|level| *level == AuditLevel::default())
