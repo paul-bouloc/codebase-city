@@ -695,7 +695,7 @@ fn print_layout(result: &AnalysisResult) {
             ", NOT REPRODUCIBLE"
         }
     );
-    print_audit(result, &audit);
+    print_audit(result, &again, &audit);
     let parcels = &layout.parcels;
     let ratio = |width: u32, height: u32| {
         f64::from(width.max(height)) / f64::from(width.min(height).max(1))
@@ -751,12 +751,11 @@ fn print_layout(result: &AnalysisResult) {
     }
 }
 
-/// Where the area of the city went: what it ends as, then where room was
-/// lost, by depth (0: the archipelago, 1: inside the islands, then one more
+/// Where the area of `layout`, the city the audit measured, went: what it
+/// ends as, then where room was lost, by depth (0: the archipelago, 1: inside the islands, then one more
 /// a parcel level), in shares of the city's area.
-fn print_audit(result: &AnalysisResult, audit: &analyzer::layout::Audit) {
+fn print_audit(result: &AnalysisResult, layout: &model::Layout, audit: &analyzer::layout::Audit) {
     const LOT_AREA: f64 = 400.0;
-    let layout = &result.layout;
     let city = f64::from(layout.width) * f64::from(layout.height);
     let share = |area: f64| 100.0 * area / city.max(1.0);
     let sum = |field: fn(&analyzer::layout::AuditLevel) -> u64| {
