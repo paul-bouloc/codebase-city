@@ -389,12 +389,17 @@ export class CityEngine {
     this.renderer.domElement.remove()
   }
 
-  /** Forgets the hover and the selection of the city on show, quietly. */
+  /** Forgets the hover and the selection of the city on show, and says so. */
   private dropInteraction(): void {
-    if (this.interaction) {
-      this.scene.remove(this.interaction.overlay)
-      this.interaction.dispose()
+    const interaction = this.interaction
+    if (interaction) {
+      const selected = interaction.getSelection() !== null
+      this.scene.remove(interaction.overlay)
+      interaction.dispose()
       this.interaction = null
+      if (selected) {
+        this.listeners.select?.(null)
+      }
     }
     this.picker = null
   }

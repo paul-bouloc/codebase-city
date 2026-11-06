@@ -155,6 +155,7 @@ export class CityInteraction {
     return true
   }
 
+  /** Lets go of the marks; a card still shown is withdrawn. */
   dispose(): void {
     this.timing.clear()
     this.hoveredBuilding.dispose()
