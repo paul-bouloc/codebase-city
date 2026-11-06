@@ -228,9 +228,10 @@ describe('cityLinks', () => {
       expect(tips).toContainEqual(ferry.path[0])
       expect(tips).toContainEqual(ferry.path.at(-1))
     }
-    // Two boats at each pier, and 4, 2 and 2 along the lines.
-    expect(links.quays).toHaveLength(6)
-    expect(links.boats).toHaveLength(2 * 6 + 4 + 2 + 2)
+    // One pier on each island, the hub's shared by its three lines; two boats at each pier, and
+    // 4, 2 and 2 along the lines.
+    expect(links.quays).toHaveLength(4)
+    expect(links.boats).toHaveLength(2 * 4 + 4 + 2 + 2)
     expect(links.ferries.map((ferry) => ferry.pixels)).toEqual([
       5.9,
       1.4 + 4.5 * Math.sqrt(0.012),

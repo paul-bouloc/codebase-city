@@ -184,18 +184,20 @@ export function cityLinks(layout: CityLayout, shapes: readonly IslandShape[]): C
     sailing.push(pair)
   }
 
-  // The quays: on each island, a side's piers and its port spread along that side.
-  const bySide = new Map<string, { island: number; side: Side; items: (Pair | 'port')[] }>()
-  const slot = (island: number, side: Side, item: Pair | 'port') => {
+  // The quays: one pier on each side of an island its ferries leave from, and its port on the
+  // west side, spread along their side.
+  const bySide = new Map<string, { island: number; side: Side; items: ('pier' | 'port')[] }>()
+  const slot = (island: number, side: Side, item: 'pier' | 'port') => {
     const key = `${island}/${side}`
     const entry = bySide.get(key) ?? { island, side, items: [] }
-    entry.items.push(item)
+    if (!entry.items.includes(item)) {
+      entry.items.push(item)
+    }
     bySide.set(key, entry)
   }
   for (const pair of sailing) {
-    const side = ferrySide(pair)
-    slot(pair.a, side, pair)
-    slot(pair.b, side, pair)
+    slot(pair.a, ferrySide(pair), 'pier')
+    slot(pair.b, ferrySide(pair), 'pier')
   }
   for (const island of [...portLinks.keys()].sort((p, q) => p - q)) {
     slot(island, 'west', 'port')
@@ -213,7 +215,7 @@ export function cityLinks(layout: CityLayout, shapes: readonly IslandShape[]): C
       if (port) {
         result.ports.push({ island, links: portLinks.get(island) ?? 0, quay })
       } else {
-        piers.set(`${item.a}/${item.b}/${island}`, quay)
+        piers.set(`${island}/${side}`, quay)
       }
     })
   }
@@ -221,8 +223,8 @@ export function cityLinks(layout: CityLayout, shapes: readonly IslandShape[]): C
   if (sailing.length > 0) {
     const grid = waterGrid(shapes, boundsOf(layout.islands.map((island) => island.plateau)))
     for (const pair of sailing) {
-      const from = piers.get(`${pair.a}/${pair.b}/${pair.a}`)
-      const to = piers.get(`${pair.a}/${pair.b}/${pair.b}`)
+      const from = piers.get(`${pair.a}/${ferrySide(pair)}`)
+      const to = piers.get(`${pair.b}/${ferrySide(pair)}`)
       const path = from && to ? waterRoute(grid, tipOf(from), tipOf(to)) : null
       if (!path) {
         result.hidden++
