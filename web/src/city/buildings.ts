@@ -84,11 +84,11 @@ ${stretchPars}
 attribute vec4 paint;
 attribute vec3 tint;
 attribute vec3 edge;
-attribute float generated;
 attribute float stamped;
 attribute vec4 stampCentre;
-attribute float highlight;
-attribute float kept;
+// Generated (1 or 0), its highlight, and kept from fading (1 or 0): one attribute, as a vertex
+// shader has 16 at most and this one uses 15.
+attribute vec3 state;
 uniform float dim;
 varying vec3 vColor;
 varying vec3 vEdge;
@@ -102,11 +102,11 @@ varying float vHovered;
 varying float vDim;
 void main() {
   vColor = mix(tint, paint.rgb, paint.a);
-  vHovered = highlight > 0.5 && highlight < 1.5 ? 1.0 : 0.0;
-  vDim = dim * (1.0 - kept);
+  vHovered = state.y > 0.5 && state.y < 1.5 ? 1.0 : 0.0;
+  vDim = dim * (1.0 - state.z);
   vEdgeColor = tint * ${(1 - EDGE_DARKENING).toFixed(6)};
   vRoof = 0.0;
-  if (generated > 0.5) {
+  if (state.x > 0.5) {
     // Only the faces painted from the language: wood, stone and kiosks keep their colour
     if (abs(normal.y) < 0.5 && paint.a < 0.999) {
       vColor = mix(tint, ${glslColour(GENERATED_WALL)}, ${GENERATED_WALL_SHARE.toFixed(6)});
@@ -193,6 +193,11 @@ export interface CityBuildings {
   setKept(kept: ((index: number) => boolean) | null): void
 }
 
+/** Where each part of a building's state lies in its `state` attribute. */
+const GENERATED = 0
+const HIGHLIGHT = 1
+const KEPT = 2
+
 /** Where a building is drawn: its shape's mesh and its instance there. */
 interface Slot {
   mesh: InstancedMesh
@@ -234,30 +239,30 @@ export function createBuildings(
     }
   }
 
-  const attribute = (mesh: InstancedMesh, name: string) =>
-    mesh.geometry.getAttribute(name) as InstancedBufferAttribute
+  const stateOf = (mesh: InstancedMesh) =>
+    mesh.geometry.getAttribute('state') as InstancedBufferAttribute
   return {
     group,
     placed,
     setHighlight(index, highlight) {
       const slot = slots[index]
       if (slot) {
-        const values = attribute(slot.mesh, 'highlight')
-        values.setX(slot.instance, highlight)
-        values.addUpdateRange(slot.instance, 1)
-        values.needsUpdate = true
+        const state = stateOf(slot.mesh)
+        state.setComponent(slot.instance, HIGHLIGHT, highlight)
+        state.addUpdateRange(slot.instance * 3 + HIGHLIGHT, 1)
+        state.needsUpdate = true
       }
     },
     setKept(kept) {
       const touched = new Set<InstancedMesh>()
       slots.forEach(({ mesh, instance }, index) => {
-        attribute(mesh, 'kept').setX(instance, kept === null || kept(index) ? 1 : 0)
+        stateOf(mesh).setComponent(instance, KEPT, kept === null || kept(index) ? 1 : 0)
         touched.add(mesh)
       })
       for (const mesh of touched) {
-        const values = attribute(mesh, 'kept')
-        values.clearUpdateRanges()
-        values.needsUpdate = true
+        const state = stateOf(mesh)
+        state.clearUpdateRanges()
+        state.needsUpdate = true
       }
     },
   }
@@ -285,7 +290,7 @@ function instancedShape(
 
   const sizes = new Float32Array(placed.length * 3)
   const tints = new Float32Array(placed.length * 3)
-  const generated = new Float32Array(placed.length)
+  const states = new Float32Array(placed.length * 3)
   const material = new ShaderMaterial({
     uniforms: { ...shadingUniforms(), edgeWidth: { value: edgeWidth }, dim },
     vertexShader,
@@ -298,19 +303,12 @@ function instancedShape(
     mesh.setMatrixAt(index, matrix.makeRotationY(angle).setPosition(...position))
     sizes.set([building.side, building.height, building.split], index * 3)
     tints.set(tintOf(file), index * 3)
-    generated[index] = file.generated === true ? 1 : 0
+    states[index * 3 + GENERATED] = file.generated === true ? 1 : 0
+    states[index * 3 + KEPT] = 1
   })
   geometry.setAttribute('building', new InstancedBufferAttribute(sizes, 3))
   geometry.setAttribute('tint', new InstancedBufferAttribute(tints, 3))
-  geometry.setAttribute('generated', new InstancedBufferAttribute(generated, 1))
-  geometry.setAttribute(
-    'highlight',
-    new InstancedBufferAttribute(new Float32Array(placed.length), 1),
-  )
-  geometry.setAttribute(
-    'kept',
-    new InstancedBufferAttribute(new Float32Array(placed.length).fill(1), 1),
-  )
+  geometry.setAttribute('state', new InstancedBufferAttribute(states, 3))
 
   mesh.customDepthMaterial = stretchedDepthMaterial()
   mesh.castShadow = true
