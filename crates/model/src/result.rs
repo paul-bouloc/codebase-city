@@ -376,9 +376,11 @@ pub struct Parcels {
 #[ts(export)]
 pub enum ParcelNature {
     Normal,
-    /// More than half are tests or test fixtures: a park.
+    /// More than half are tests or test fixtures, and no more than half
+    /// unanalyzed: a park.
     Tests,
-    /// More than half are in a language the analyzer does not read.
+    /// More than half are in a language the analyzer does not read, tests
+    /// or not: concrete, as their buildings are.
     Unanalyzed,
 }
 

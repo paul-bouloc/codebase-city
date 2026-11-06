@@ -212,6 +212,45 @@ fn parcels_take_the_nature_of_most_of_their_files() {
 }
 
 #[test]
+fn grids_take_the_nature_of_their_own_files() {
+    let mut paths: Vec<String> = (0..6)
+        .map(|file| format!("lib/x/t{file}.test.ts"))
+        .collect();
+    paths.extend((0..20).map(|file| format!("lib/x/y/s{file}.ts")));
+    // Test data in a language the analyzer does not read: concrete, as
+    // their buildings are, not a park
+    paths.extend((0..5).map(|file| format!("lib/test/c{file}.yaml")));
+    paths.extend((0..2).map(|file| format!("lib/test/s{file}.ts")));
+    paths.extend((0..30).map(|file| format!("app/s{file}.ts")));
+    let result = analyzed(paths);
+    let layout = &result.layout;
+    let grid = |path: &str| {
+        let row = layout
+            .grids
+            .dir
+            .iter()
+            .position(|&dir| dir_path(&result, dir) == path)
+            .unwrap_or_else(|| panic!("no grid for {path}"));
+        layout.grids.nature[row]
+    };
+    let parcel = |path: &str| {
+        let row = layout
+            .parcels
+            .dir
+            .iter()
+            .position(|&dir| dir_path(&result, dir) == path)
+            .unwrap_or_else(|| panic!("no parcel for {path}"));
+        layout.parcels.nature[row]
+    };
+    // 6 tests of its own, 20 sources below it
+    assert_eq!(parcel("lib/x"), ParcelNature::Normal);
+    assert_eq!(grid("lib/x"), ParcelNature::Tests);
+    assert_eq!(grid("lib/x/y"), ParcelNature::Normal);
+    assert_eq!(grid("lib/test"), ParcelNature::Unanalyzed);
+    assert_eq!(parcel("lib/test"), ParcelNature::Unanalyzed);
+}
+
+#[test]
 fn config_files_stand_on_the_north_row() {
     let result = analyzed(harbor());
     let grids = &result.layout.grids;

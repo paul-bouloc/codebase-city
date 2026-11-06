@@ -95,12 +95,13 @@ impl Counts {
         self.unanalyzed += other.unanalyzed;
     }
 
-    /// What more than half of the files are.
+    /// What more than half of the files are; a language the analyzer does
+    /// not read wins over tests, as it does for their buildings.
     fn nature(self) -> ParcelNature {
-        if self.tests * 2 > self.files {
-            ParcelNature::Tests
-        } else if self.unanalyzed * 2 > self.files {
+        if self.unanalyzed * 2 > self.files {
             ParcelNature::Unanalyzed
+        } else if self.tests * 2 > self.files {
+            ParcelNature::Tests
         } else {
             ParcelNature::Normal
         }
