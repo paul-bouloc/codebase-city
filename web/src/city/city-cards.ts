@@ -58,11 +58,28 @@ export function cityCards(result: AnalysisResult): CityCards {
 
   const incoming = new Array<number>(filePaths.length).fill(0)
   const outgoing = new Array<number>(filePaths.length).fill(0)
+  // A Go import names a package: each of its files is imported by the importer.
+  const filesIn = new Map<number, number[]>()
+  files.dir.forEach((dir, file) => {
+    const members = filesIn.get(dir)
+    if (members) {
+      members.push(file)
+    } else {
+      filesIn.set(dir, [file])
+    }
+  })
   edges.from.forEach((from, row) => {
     outgoing[from] = (outgoing[from] ?? 0) + 1
     const to = edges.to[row]
-    if (to !== null && to !== undefined) {
-      incoming[to] = (incoming[to] ?? 0) + 1
+    const toDir = edges.toDir[row]
+    const targets =
+      to !== null && to !== undefined
+        ? [to]
+        : toDir !== null && toDir !== undefined
+          ? (filesIn.get(toDir) ?? [])
+          : []
+    for (const target of targets) {
+      incoming[target] = (incoming[target] ?? 0) + 1
     }
   })
 

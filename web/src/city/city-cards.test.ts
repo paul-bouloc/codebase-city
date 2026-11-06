@@ -25,6 +25,24 @@ describe('cityCards', () => {
     })
   })
 
+  it('counts an import of a package for each of its files', () => {
+    // `main.ts` imports the folder `src/api` as a package, as Go does
+    const json = structuredClone(sample) as unknown as AnalysisResult
+    json.edges.from.push(2)
+    json.edges.to.push(null)
+    json.edges.toDir.push(4)
+    json.edges.kind.push('import')
+    json.edges.confidence.push('exact')
+    const go = cityCards(json)
+    expect(go.file('src/api/client.ts')?.incoming).toBe(
+      (cards.file('src/api/client.ts')?.incoming ?? 0) + 1,
+    )
+    expect(go.file('src/api/routes.ts')?.incoming).toBe(
+      (cards.file('src/api/routes.ts')?.incoming ?? 0) + 1,
+    )
+    expect(go.file('src/main.ts')?.outgoing).toBe(2)
+  })
+
   it('names a language the analyzer does not read, without a complexity', () => {
     const card = cards.file('package.json')
     expect(card).toMatchObject({ language: 'other', languageName: 'JSON', lines: 30 })
