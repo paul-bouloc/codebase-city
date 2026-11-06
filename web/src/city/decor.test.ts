@@ -3,6 +3,7 @@ import { CROWN_RADIUS, cityDecor, type Tree } from './decor'
 import { DECOR_MODELS } from './decor-mesh'
 import { islandShapes } from './island-shape'
 import type { CityLayout, IslandLayout, Lot, ParcelNature } from './layout'
+import { cityLinks } from './links'
 import { layerAltitude, slabTop } from './units'
 
 const file = { language: 'typescript' as const, lines: 10, complexity: 1, test: false }
@@ -318,6 +319,28 @@ describe('cityDecor', () => {
     expect(decor.trees.length + decor.rocks.length).toBeGreaterThan(0)
     for (const item of [...decor.trees, ...decor.rocks]) {
       expect(Math.abs(item.x - 21.8) < 1.2 && item.y < 0).toBe(false)
+    }
+  })
+
+  it('keeps rocks off quays and boats', () => {
+    // A small city: a quay and two boats on its largest island, and rocks all along its shore.
+    const near = (layout: CityLayout, withHarbours: boolean) => {
+      const shapes = islandShapes(layout)
+      const links = cityLinks(layout, shapes)
+      const [quay] = links.quays
+      const decor = withHarbours ? cityDecor(layout, shapes, links) : cityDecor(layout, shapes)
+      return decor.rocks.filter((rock) =>
+        [...links.boats, ...(quay ? [quay] : [])].some(
+          (spot) => Math.hypot(rock.x - spot.x, rock.y - spot.y) < 1.5,
+        ),
+      )
+    }
+    const layouts = ['a', 'b', 'c', 'd', 'e', 'f'].map((path) =>
+      city(island(path, 'normal', { columns: 8, rows: 6, every: 2 })),
+    )
+    expect(layouts.some((layout) => near(layout, false).length > 0)).toBe(true)
+    for (const layout of layouts) {
+      expect(near(layout, true)).toEqual([])
     }
   })
 

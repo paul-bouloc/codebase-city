@@ -153,8 +153,8 @@ export class CityEngine {
       disposeObject(this.city)
     }
     const shapes = islandShapes(layout)
-    const decor = cityDecor(layout, shapes)
     const links = cityLinks(layout, shapes)
+    const decor = cityDecor(layout, shapes, links)
     this.decor = decorStats(decor, links.boats)
     this.links = {
       bridges: links.bridges.length,

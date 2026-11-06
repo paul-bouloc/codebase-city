@@ -2,6 +2,7 @@ import { type CanalCell, islandCanals } from './canals'
 import { islandGardens, squareGardens } from './gardens'
 import { type ContourSample, type IslandShape, SAMPLE_STEP } from './island-shape'
 import type { CityLayout, GridLayout, IslandLayout, ParcelNature, Point, Rect } from './layout'
+import type { Boat, Quay } from './links'
 import { seededRandom } from './random'
 import { LOT_SIZE, layerAltitude, slabTop } from './units'
 
@@ -76,6 +77,9 @@ const ROCK_SHARE = 0.22
 const ROCK_RADII = [0.25, 0.6] as const
 /** No tree nor rock this close to a cascade, measured on the plateau's edge. */
 const CASCADE_CLEARANCE = 1.5 + 0.38
+/** No rock under a quay, nor this close to a moored or sailing boat's centre. */
+const QUAY_CLEARANCE = 0.2
+const BOAT_CLEARANCE = 1.2
 
 /**
  * At most this many trees on a city's empty lots and gardens. The layout's stretch leaves many
@@ -108,8 +112,18 @@ function meanTrees(nature: ParcelNature, small: boolean): number {
   return each.reduce((sum, count) => sum + count, 0) / each.length
 }
 
+/** The quays and boats the decor keeps clear of. */
+export interface Harbours {
+  quays: readonly Quay[]
+  boats: readonly Boat[]
+}
+
 /** The decor of a city, from its layout and its islands' terrain (in the same order). */
-export function cityDecor(layout: CityLayout, shapes: readonly IslandShape[]): Decor {
+export function cityDecor(
+  layout: CityLayout,
+  shapes: readonly IslandShape[],
+  harbours: Harbours = { quays: [], boats: [] },
+): Decor {
   const files = layout.islands.reduce((sum, island) => sum + island.lots.length, 0)
   const small = files < SMALL_CITY
   // First what each island has room for, then as many trees as the budget allows.
@@ -155,8 +169,29 @@ export function cityDecor(layout: CityLayout, shapes: readonly IslandShape[]): D
     }
   })
   decor.trees = keepEvenly(decor.trees, MAX_TREES)
-  decor.rocks = keepEvenly(decor.rocks, MAX_ROCKS)
+  decor.rocks = keepEvenly(
+    decor.rocks.filter((rock) => clearOfHarbours(rock, harbours)),
+    MAX_ROCKS,
+  )
   return decor
+}
+
+/** Whether a rock stands off every quay and boat. */
+function clearOfHarbours(rock: Rock, { quays, boats }: Harbours): boolean {
+  for (const quay of quays) {
+    // Along the quay from its root, and across it from its axis.
+    const dx = rock.x - quay.x
+    const dy = rock.y - quay.y
+    const along = dx * quay.nx + dy * quay.ny
+    const across = Math.abs(dx * -quay.ny + dy * quay.nx)
+    const beyond = Math.max(0, -along, along - quay.length)
+    if (Math.hypot(beyond, Math.max(0, across - quay.width / 2)) < rock.radius + QUAY_CLEARANCE) {
+      return false
+    }
+  }
+  return boats.every(
+    (boat) => Math.hypot(rock.x - boat.x, rock.y - boat.y) >= rock.radius + BOAT_CLEARANCE,
+  )
 }
 
 /** At most `max` of `items`, spread evenly through them. */
