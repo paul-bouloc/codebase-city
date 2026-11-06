@@ -26,6 +26,8 @@ const DIRS: &[(Option<u32>, &str)] = &[
 ];
 
 const LANGUAGES: &[&str] = &["TypeScript", "CSS", "JSON", "Shell"];
+/// The languages of [`LANGUAGES`] the analyzer reads.
+const ANALYZED: &[u32] = &[0];
 
 /// Folder, name, language, lines, complexity, generated.
 type FileRow = (u32, &'static str, u32, u32, Option<u32>, bool);
@@ -218,15 +220,24 @@ fn layout() -> Layout {
         layout.grids.y.push(grid_y);
         layout.grids.columns.push(columns);
         layout.grids.rows.push(rows);
+        // As the analyzer tells it: a language it does not read wins over tests
+        let scope = |file: usize| {
+            SCOPES
+                .iter()
+                .find(|&&(row, _)| row as usize == file)
+                .map_or(Scope::Source, |&(_, scope)| scope)
+        };
+        let unanalyzed = files
+            .iter()
+            .filter(|&&file| !ANALYZED.contains(&FILES[file].2))
+            .count();
         let tests = files
             .iter()
-            .filter(|&&file| {
-                SCOPES
-                    .iter()
-                    .any(|&(row, scope)| row as usize == file && scope == Scope::Test)
-            })
+            .filter(|&&file| matches!(scope(file), Scope::Test | Scope::Fixture))
             .count();
-        layout.grids.nature.push(if tests * 2 > files.len() {
+        layout.grids.nature.push(if unanalyzed * 2 > files.len() {
+            ParcelNature::Unanalyzed
+        } else if tests * 2 > files.len() {
             ParcelNature::Tests
         } else {
             ParcelNature::Normal
