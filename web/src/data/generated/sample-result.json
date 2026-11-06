@@ -1,5 +1,5 @@
 {
-  "formatVersion": 8,
+  "formatVersion": 9,
   "analyzerVersion": "0.1.0",
   "repo": {
     "owner": "acme",
@@ -737,6 +737,16 @@
         1,
         1,
         1
+      ],
+      "nature": [
+        "normal",
+        "normal",
+        "normal",
+        "normal",
+        "normal",
+        "normal",
+        "tests",
+        "normal"
       ]
     },
     "lots": {

@@ -405,6 +405,7 @@ fn layout(result: &AnalysisResult) -> Result<(), InvalidResult> {
     same_length("layout.grids.y", grid_count, grids.y.len())?;
     same_length("layout.grids.columns", grid_count, grids.columns.len())?;
     same_length("layout.grids.rows", grid_count, grids.rows.len())?;
+    same_length("layout.grids.nature", grid_count, grids.nature.len())?;
     in_bounds("layout.grids.dir", &grids.dir, dir_count)?;
     let file_count = result.files.dir.len();
     same_length("layout.lots.x", file_count, layout.lots.x.len())?;
@@ -761,6 +762,7 @@ mod tests {
                     y: vec![9],
                     columns: vec![2],
                     rows: vec![1],
+                    nature: vec![ParcelNature::Normal],
                 },
                 lots: Lots {
                     x: vec![219, 239],
@@ -1264,6 +1266,7 @@ mod tests {
             y: vec![9, 9],
             columns: vec![1, 1],
             rows: vec![1, 1],
+            nature: vec![ParcelNature::Normal; 2],
         };
         result.layout.lots.x = vec![219, 263];
         result
@@ -1361,6 +1364,7 @@ mod tests {
                     y: vec![9],
                     columns: vec![2],
                     rows: vec![1],
+                    nature: vec![ParcelNature::Normal],
                 };
                 r.layout.lots.x = vec![219, 239];
             }),
@@ -1433,8 +1437,19 @@ mod tests {
                 r.layout.grids.y.insert(0, 9);
                 r.layout.grids.columns.insert(0, 1);
                 r.layout.grids.rows.insert(0, 1);
+                r.layout.grids.nature.insert(0, ParcelNature::Normal);
             }),
             InvalidResult::GridDir { row: 0 }
+        );
+        assert_eq!(
+            invalid(|r| {
+                r.layout.grids.nature.pop();
+            }),
+            InvalidResult::ColumnLength {
+                column: "layout.grids.nature",
+                expected: 1,
+                actual: 0,
+            }
         );
         assert_eq!(
             invalid(|r| r.layout.grids.rows[0] = 0),

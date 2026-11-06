@@ -22,7 +22,7 @@ import type { SymbolKind } from './generated/SymbolKind'
 import type { Symbols } from './generated/Symbols'
 
 // FORMAT_VERSION in crates/model; the generated sample result keeps the two in step.
-export const FORMAT_VERSION = 8
+export const FORMAT_VERSION = 9
 
 // Checked by the compiler against the generated unions: adding a variant in Rust breaks the build here.
 const EDGE_KINDS = {
@@ -551,12 +551,14 @@ function decodeLayout(value: unknown, dirs: Dirs, islands: Islands, files: Files
     y: u32Column(gridFields.y, 'layout.grids.y'),
     columns: u32Column(gridFields.columns, 'layout.grids.columns'),
     rows: u32Column(gridFields.rows, 'layout.grids.rows'),
+    nature: column(gridFields.nature, 'layout.grids.nature', isParcelNature, 'a nature'),
   }
   const gridCount = grids.dir.length
   sameLength('layout.grids.x', gridCount, grids.x)
   sameLength('layout.grids.y', gridCount, grids.y)
   sameLength('layout.grids.columns', gridCount, grids.columns)
   sameLength('layout.grids.rows', gridCount, grids.rows)
+  sameLength('layout.grids.nature', gridCount, grids.nature)
   inBounds('layout.grids.dir', grids.dir, dirCount)
   const lotFields = object(fields.lots, 'layout.lots')
   const lots = {

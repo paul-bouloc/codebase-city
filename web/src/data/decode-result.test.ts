@@ -44,9 +44,22 @@ describe('decodeResult', () => {
   it('rejects another format version', () => {
     expect(
       decodeChanged((json) => {
-        json.formatVersion = 7
+        json.formatVersion = 8
       }),
-    ).toThrow('unsupported format version 7, expected 8')
+    ).toThrow('unsupported format version 8, expected 9')
+  })
+
+  it('rejects a grid without a nature, or of an unknown one', () => {
+    expect(
+      decodeChanged((json) => {
+        json.layout.grids.nature.pop()
+      }),
+    ).toThrow('layout.grids.nature')
+    expect(
+      decodeChanged((json) => {
+        ;(json.layout.grids.nature as string[])[0] = 'lava'
+      }),
+    ).toThrow('layout.grids.nature')
   })
 
   it('rejects values of the wrong type', () => {

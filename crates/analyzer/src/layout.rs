@@ -300,6 +300,7 @@ fn layout_here(input: &Input) -> (Layout, Audit) {
         layout.grids.y.push(y);
         layout.grids.columns.push(columns);
         layout.grids.rows.push(rows);
+        layout.grids.nature.push(tree.own[dir as usize].nature());
         let files = &files_of[dir as usize];
         let lots = lots_of(input, dir, files, columns, rows);
         for (&file, lot) in files.iter().zip(lots) {

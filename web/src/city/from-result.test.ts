@@ -81,6 +81,7 @@ describe('cityFromResult', () => {
     json.layout.grids.y.push(12)
     json.layout.grids.columns.push(1)
     json.layout.grids.rows.push(1)
+    json.layout.grids.nature.push('tests')
     json.layout.lots.x[8] = 465
     json.layout.lots.y[8] = 22
     const core = cityFromResult(decodeResult(json)).islands[2]
@@ -120,6 +121,7 @@ describe('cityFromResult', () => {
     json.layout.grids.y.push(12, 12)
     json.layout.grids.columns.push(1, 1)
     json.layout.grids.rows.push(1, 1)
+    json.layout.grids.nature.push('tests', 'normal')
     json.layout.lots.x.splice(6, 3, 399, 445, 477)
     json.layout.lots.y.splice(6, 3, 19, 22, 22)
     const core = cityFromResult(decodeResult(json)).islands[2]

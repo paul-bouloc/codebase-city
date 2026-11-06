@@ -10,7 +10,7 @@ use ts_rs::TS;
 
 /// Version of the shape of the data. Bumped on any change the web app has to
 /// know about; a result with another version is rejected, not guessed at.
-pub const FORMAT_VERSION: u32 = 8;
+pub const FORMAT_VERSION: u32 = 9;
 
 /// One analysis of one repository at one commit.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -370,7 +370,7 @@ pub struct Parcels {
     pub nature: Vec<ParcelNature>,
 }
 
-/// What most files of a parcel's subtree are.
+/// What most files of a parcel's subtree, or of a grid, are.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
@@ -394,6 +394,8 @@ pub struct Grids {
     pub y: Vec<u32>,
     pub columns: Vec<u32>,
     pub rows: Vec<u32>,
+    /// What most of the folder's own files are: the ground under the grid.
+    pub nature: Vec<ParcelNature>,
 }
 
 /// Points, one row each.

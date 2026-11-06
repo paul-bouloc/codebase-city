@@ -10,8 +10,8 @@ use std::path::PathBuf;
 
 use model::{
     AnalysisResult, Confidence, Cycles, Dirs, EdgeKind, Edges, Entries, EntryReason,
-    FORMAT_VERSION, Files, Ignored, Islands, Layout, Links, Lots, Parcels, Ranked, Repo, Roles,
-    Scope, Stats, SymbolKind, Symbols,
+    FORMAT_VERSION, Files, Ignored, Islands, Layout, Links, Lots, ParcelNature, Parcels, Ranked,
+    Repo, Roles, Scope, Stats, SymbolKind, Symbols,
 };
 
 const DIRS: &[(Option<u32>, &str)] = &[
@@ -218,6 +218,19 @@ fn layout() -> Layout {
         layout.grids.y.push(grid_y);
         layout.grids.columns.push(columns);
         layout.grids.rows.push(rows);
+        let tests = files
+            .iter()
+            .filter(|&&file| {
+                SCOPES
+                    .iter()
+                    .any(|&(row, scope)| row as usize == file && scope == Scope::Test)
+            })
+            .count();
+        layout.grids.nature.push(if tests * 2 > files.len() {
+            ParcelNature::Tests
+        } else {
+            ParcelNature::Normal
+        });
         for (lot, &file) in (0..).zip(&files) {
             let (column, row) = (lot % columns, lot / columns);
             lots[file] = (
