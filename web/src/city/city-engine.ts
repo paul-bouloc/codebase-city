@@ -26,13 +26,16 @@ import {
 } from 'three'
 import { createBridges } from './bridges'
 import { createBuildings } from './buildings'
+import { CityInteraction, type CityItem, type CityListeners } from './city-interaction'
 import { cityDecor } from './decor'
 import { createDecor, type DecorStats, decorStats } from './decor-mesh'
+import { createFading } from './dimming'
 import { createFerries } from './ferries'
 import { islandShapes } from './island-shape'
 import type { CityLayout } from './layout'
 import { SUN_DIRECTION } from './light'
 import { cityLinks } from './links'
+import { CityPicker, type CityTarget } from './picking'
 import { createParcels } from './plateaux'
 import { createSea, OPEN_SEA, seaSize } from './sea'
 import { createTerrain } from './terrain'
@@ -64,6 +67,9 @@ const START_POLAR_ANGLE = MathUtils.degToRad(55)
 /** How far the camera target may leave the city's edge. */
 const TARGET_MARGIN = 20
 
+/** A press that moves less than this, in CSS pixels, is a click, not a drag of the camera. */
+const CLICK_SLOP = 4
+
 const SHADOW_MAP_SIZE = 4096
 /** Room around the city for the shadows of the tallest towers. */
 const SHADOW_MARGIN = 25
@@ -75,6 +81,8 @@ export interface FrameStats {
   /** Trees, rocks and boats of the city, and their triangles at full size. */
   decor: DecorStats
   links: LinkStats
+  /** How long the last search for what the pointer rests on took, in ms. */
+  pickMs: number
 }
 
 /** How the imports between islands are drawn. */
@@ -117,7 +125,18 @@ export class CityEngine {
     triangles: 0,
     decor: { instances: 0, triangles: 0 },
     links: NO_LINKS,
+    pickMs: 0,
   }
+  private picker: CityPicker | null = null
+  private interaction: CityInteraction | null = null
+  private listeners: CityListeners = {}
+  private readonly raycaster = new Raycaster()
+  private readonly ndc = new Vector2()
+  // Where the pointer is on the canvas, in CSS pixels; null when it is elsewhere.
+  private pointer: { x: number; y: number; clientX: number; clientY: number } | null = null
+  private pressedAt: { x: number; y: number } | null = null
+  private cameraMoving = false
+  private readonly removeListeners: () => void
 
   constructor(container: HTMLElement, { continuous = false }: CityEngineOptions = {}) {
     this.continuous = continuous
@@ -142,8 +161,103 @@ export class CityEngine {
     this.sun.shadow.mapSize.set(mapSize, mapSize)
     this.scene.add(this.sun, this.sun.target)
 
+    this.removeListeners = this.listenToPointer(this.renderer.domElement)
     this.setSize(container.clientWidth, container.clientHeight)
     this.renderer.setAnimationLoop((time) => this.frame(time))
+  }
+
+  /** Who hears of hover cards and selections. */
+  setListeners(listeners: CityListeners): void {
+    this.listeners = listeners
+  }
+
+  /** Selects a building or a folder, or nothing. */
+  select(target: CityTarget | null): void {
+    this.interaction?.select(target)
+  }
+
+  clearSelection(): void {
+    this.select(null)
+  }
+
+  getSelection(): CityItem | null {
+    return this.interaction?.getSelection() ?? null
+  }
+
+  private listenToPointer(canvas: HTMLCanvasElement): () => void {
+    const move = (event: PointerEvent) => {
+      const box = canvas.getBoundingClientRect()
+      this.pointer = {
+        x: event.clientX - box.left,
+        y: event.clientY - box.top,
+        clientX: event.clientX,
+        clientY: event.clientY,
+      }
+      // A button held down drags the camera: nothing is hovered meanwhile.
+      if (event.buttons === 0 && !this.cameraMoving) {
+        this.hoverAtPointer()
+      }
+    }
+    const leave = () => {
+      this.pointer = null
+      this.interaction?.point(null, { x: 0, y: 0 })
+    }
+    const down = (event: PointerEvent) => {
+      this.pressedAt = event.button === 0 ? { x: event.clientX, y: event.clientY } : null
+    }
+    const up = (event: PointerEvent) => {
+      const pressed = this.pressedAt
+      this.pressedAt = null
+      if (
+        event.button !== 0 ||
+        !pressed ||
+        Math.hypot(event.clientX - pressed.x, event.clientY - pressed.y) > CLICK_SLOP
+      ) {
+        return
+      }
+      move(event)
+      // A click on the sea clears the selection.
+      this.interaction?.select(this.pick())
+    }
+    canvas.addEventListener('pointermove', move)
+    canvas.addEventListener('pointerleave', leave)
+    canvas.addEventListener('pointerdown', down)
+    canvas.addEventListener('pointerup', up)
+    return () => {
+      canvas.removeEventListener('pointermove', move)
+      canvas.removeEventListener('pointerleave', leave)
+      canvas.removeEventListener('pointerdown', down)
+      canvas.removeEventListener('pointerup', up)
+    }
+  }
+
+  /** What is under the pointer, if anything. */
+  private pick(): CityTarget | null {
+    const pointer = this.pointer
+    const canvas = this.renderer.domElement
+    if (!pointer || !this.picker || canvas.clientWidth === 0 || canvas.clientHeight === 0) {
+      return null
+    }
+    const started = performance.now()
+    this.ndc.set(
+      (pointer.x / canvas.clientWidth) * 2 - 1,
+      -(pointer.y / canvas.clientHeight) * 2 + 1,
+    )
+    this.raycaster.setFromCamera(this.ndc, this.camera)
+    const { origin, direction } = this.raycaster.ray
+    const target = this.picker.pick({
+      origin: [origin.x, origin.y, origin.z],
+      direction: [direction.x, direction.y, direction.z],
+    })
+    this.stats.pickMs = performance.now() - started
+    return target
+  }
+
+  private hoverAtPointer(): void {
+    const pointer = this.pointer
+    if (pointer) {
+      this.interaction?.point(this.pick(), { x: pointer.clientX, y: pointer.clientY })
+    }
   }
 
   /** Replaces the city on show and frames it. */
@@ -152,6 +266,7 @@ export class CityEngine {
       this.scene.remove(this.city)
       disposeObject(this.city)
     }
+    this.dropInteraction()
     const shapes = islandShapes(layout)
     const links = cityLinks(layout, shapes)
     const decor = cityDecor(layout, shapes, links)
@@ -163,6 +278,22 @@ export class CityEngine {
       hidden: links.hidden,
     }
     const pixelRatio = this.renderer.getPixelRatio()
+    const fading = createFading()
+    const buildings = createBuildings(layout, pixelRatio, fading)
+    this.picker = new CityPicker(layout, buildings.placed)
+    const interaction = new CityInteraction(
+      layout,
+      shapes,
+      buildings,
+      fading,
+      pixelRatio,
+      () => this.listeners,
+      () => {
+        this.needsRender = true
+      },
+    )
+    this.interaction = interaction
+    this.scene.add(interaction.overlay)
     this.city = new Group().add(
       createSea(
         layout,
@@ -172,8 +303,8 @@ export class CityEngine {
       createParcels(layout, decor.gardens),
       createBridges(links),
       createFerries(links.ferries),
-      createBuildings(layout, pixelRatio).group,
-      createDecor(decor, links.boats),
+      buildings.group,
+      createDecor(decor, links.boats, fading),
     )
     this.scene.add(this.city)
 
@@ -237,6 +368,8 @@ export class CityEngine {
 
   dispose(): void {
     this.renderer.setAnimationLoop(null)
+    this.removeListeners()
+    this.dropInteraction()
     this.controls.dispose()
     if (this.city) {
       disposeObject(this.city)
@@ -254,6 +387,16 @@ export class CityEngine {
     // Browsers cap live WebGL contexts: give this one back now rather than at collection.
     this.renderer.forceContextLoss()
     this.renderer.domElement.remove()
+  }
+
+  /** Forgets the hover and the selection of the city on show, quietly. */
+  private dropInteraction(): void {
+    if (this.interaction) {
+      this.scene.remove(this.interaction.overlay)
+      this.interaction.dispose()
+      this.interaction = null
+    }
+    this.picker = null
   }
 
   /** One square orthographic shadow camera over the whole city, along the fixed sun. */
@@ -279,6 +422,18 @@ export class CityEngine {
   private frame(time: number): void {
     this.timer.update(time)
     const moved = this.controls.update(this.timer.getDelta())
+    if (moved !== this.cameraMoving) {
+      this.cameraMoving = moved
+      // No card while the camera moves; once it rests, what lies under the pointer may differ.
+      if (moved) {
+        this.interaction?.clearHover()
+      } else {
+        this.hoverAtPointer()
+      }
+    }
+    if (this.interaction?.update(time)) {
+      this.needsRender = true
+    }
     if (moved || this.needsRender || this.continuous) {
       const near = nearPlane(this.controls.distance)
       if (near !== this.camera.near) {
