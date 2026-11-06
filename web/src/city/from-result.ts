@@ -133,10 +133,17 @@ export function cityFromResult(result: AnalysisResult): CityLayout {
   }
 
   // The own files of a paved folder stand on a slab one level up, with the margin of a parcel;
-  // those of an island's folder stand on its plateau, in a square.
-  const natureOf = new Map(parcels.dir.map((dir, row) => [dir, parcels.nature[row]]))
-  const groundLevel = (dir: number) => (level[dir] ?? 0) + (paved.has(dir) ? 1 : 0)
+  // those of an island's folder stand on its plateau, in a square, and on a slab of their own when
+  // they are not ordinary code. The ground under a grid is what most of its own files are.
   const { grids } = layout
+  const natureOf = new Map(grids.dir.map((dir, row) => [dir, grids.nature[row] ?? 'normal']))
+  const slabbed = new Set(paved)
+  for (const dir of grids.dir) {
+    if (islandDirs.has(dir) && natureOf.get(dir) !== 'normal') {
+      slabbed.add(dir)
+    }
+  }
+  const groundLevel = (dir: number) => (level[dir] ?? 0) + (slabbed.has(dir) ? 1 : 0)
   const gridOf = new Map<number, Rect>()
   grids.dir.forEach((dir, row) => {
     const island = islands[dirs.island[dir] ?? 0]
@@ -159,7 +166,8 @@ export function cityFromResult(result: AnalysisResult): CityLayout {
     })
     if (islandDirs.has(dir)) {
       island.square = lots
-    } else if (paved.has(dir)) {
+    }
+    if (slabbed.has(dir)) {
       island.parcels.push({
         rect: lots,
         level: (level[dir] ?? 1) + 1,

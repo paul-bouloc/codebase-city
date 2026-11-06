@@ -121,6 +121,7 @@ describe('cityFromResult', () => {
     json.layout.grids.y.push(12, 12)
     json.layout.grids.columns.push(1, 1)
     json.layout.grids.rows.push(1, 1)
+    // `sub`'s own file is a test, though most of its subtree is not
     json.layout.grids.nature.push('tests', 'normal')
     json.layout.lots.x.splice(6, 3, 399, 445, 477)
     json.layout.lots.y.splice(6, 3, 19, 22, 22)
@@ -138,14 +139,15 @@ describe('cityFromResult', () => {
         nature: 'normal',
         paved: false,
       },
-      // The slab of `sub`'s own files
+      // The slab of `sub`'s own files, of their own nature
       {
         rect: { x: 43.2, y: 0.9, width: 2.6, height: 2.6 },
         level: 2,
-        nature: 'normal',
+        nature: 'tests',
         paved: false,
       },
     ])
+    expect(core?.lots.find((lot) => lot.x === 44.5)?.ground).toBe('tests')
     expect(core?.lots.find((lot) => lot.x === 44.5)?.base).toBe(slabTop(2))
     expect(core?.lots.find((lot) => lot.x === 47.7)?.base).toBe(slabTop(2))
     // The island folder's own files stand in a square on the plateau
@@ -153,9 +155,20 @@ describe('cityFromResult', () => {
     // Every grid, its lots alone, at the height of the ground under them
     expect(core?.grids).toEqual([
       { rect: { x: 38.9, y: 0.9, width: 4, height: 4 }, nature: 'normal', base: 0, square: true },
-      { rect: { x: 43.5, y: 1.2, width: 2, height: 2 }, nature: 'normal', base: slabTop(2) },
+      { rect: { x: 43.5, y: 1.2, width: 2, height: 2 }, nature: 'tests', base: slabTop(2) },
       { rect: { x: 46.7, y: 1.2, width: 2, height: 2 }, nature: 'normal', base: slabTop(2) },
     ])
+  })
+
+  it('raises the own files of an island folder on a slab when they are not ordinary code', () => {
+    const json = structuredClone(sample) as unknown as AnalysisResult
+    json.layout.grids.nature[2] = 'tests'
+    const core = cityFromResult(decodeResult(json)).islands[2]
+    const square = { x: 38.6, y: 0.6, width: 6.6, height: 4.6 }
+    expect(core?.parcels).toEqual([{ rect: square, level: 1, nature: 'tests', paved: false }])
+    expect(core?.square).toEqual(square)
+    expect(core?.grids?.[0]).toMatchObject({ nature: 'tests', base: slabTop(1), square: true })
+    expect(core?.lots.every((lot) => lot.ground === 'tests' && lot.base === slabTop(1))).toBe(true)
   })
 
   it('names each island by its full path, so that two of one name differ', () => {
