@@ -141,6 +141,26 @@ pub async fn ingest(
     })
 }
 
+/// Reads a gzipped tarball shaped like GitHub's (every file under one
+/// top folder), with the same limits as a download: for tools that work
+/// on a local copy. Blocks: call it off the async runtime.
+pub fn ingest_archive(
+    archive: impl Read,
+    archive_bytes: u64,
+    limits: &Limits,
+    on_progress: &dyn Fn(Progress),
+) -> Result<Ingested, IngestError> {
+    if archive_bytes > limits.archive_bytes {
+        return Err(IngestError::ArchiveTooLarge {
+            limit: limits.archive_bytes,
+        });
+    }
+    Ok(Ingested {
+        archive_bytes,
+        ..unpack(archive, limits, on_progress)?
+    })
+}
+
 /// Sends the archive's chunks to the reader. Stops early, without error,
 /// when the reader has stopped.
 ///

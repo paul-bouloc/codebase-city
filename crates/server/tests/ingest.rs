@@ -12,7 +12,7 @@ use std::time::Duration;
 use analyzer::files::{Language, MAX_DEPTH, SourceFile};
 use fake_github::{FakeGithub, Reply, SHA, repo, tarball, tarball_path};
 use model::Ignored;
-use server::ingest::{IngestError, Ingested, Limits, Progress, ingest};
+use server::ingest::{IngestError, Ingested, Limits, Progress, ingest, ingest_archive};
 
 async fn serve(reply: Reply, limits: &Limits) -> Result<Ingested, IngestError> {
     let github = FakeGithub::start().await;
@@ -437,4 +437,20 @@ async fn progress_is_reported() {
             skipped: 1
         })
     );
+}
+
+#[test]
+fn a_local_archive_is_read_like_a_download() {
+    let archive = tarball(&[("src/main.ts", b"export const a = 1\n")]);
+    let bytes = archive.len() as u64;
+    let ingested = ingest_archive(archive.as_slice(), bytes, &Limits::default(), &|_| {}).unwrap();
+    assert_eq!(paths(&ingested), ["src/main.ts"]);
+    assert_eq!(ingested.archive_bytes, bytes);
+
+    let limits = Limits {
+        archive_bytes: bytes - 1,
+        ..Limits::default()
+    };
+    let refused = ingest_archive(archive.as_slice(), bytes, &limits, &|_| {});
+    assert!(matches!(refused, Err(IngestError::ArchiveTooLarge { .. })));
 }
