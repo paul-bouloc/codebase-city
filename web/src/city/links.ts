@@ -121,6 +121,8 @@ export interface CityLinks {
   quays: Quay[]
   ports: Port[]
   boats: Boat[]
+  /** Links gathered at a port, each once even when both its islands' ports count it. */
+  inPorts: number
   /** Links too small to show while nothing is selected. */
   hidden: number
 }
@@ -149,7 +151,15 @@ export function cityLinks(layout: CityLayout, shapes: readonly IslandShape[]): C
   const largest = pairs[0]?.imports ?? 0
   const outlines = shapes.map((shape) => landOutline(shape))
   const plateaux = layout.islands.map((island) => island.plateau)
-  const result: CityLinks = { bridges: [], ferries: [], quays: [], ports: [], boats: [], hidden: 0 }
+  const result: CityLinks = {
+    bridges: [],
+    ferries: [],
+    quays: [],
+    ports: [],
+    boats: [],
+    inPorts: 0,
+    hidden: 0,
+  }
 
   const perSide = new Map<string, number>()
   const ferriesOf = new Map<number, number>()
@@ -175,6 +185,7 @@ export function cityLinks(layout: CityLayout, shapes: readonly IslandShape[]): C
         for (const side of full) {
           toPort(Number(side.split('/')[0]))
         }
+        result.inPorts++
       }
       continue
     }
@@ -185,6 +196,7 @@ export function cityLinks(layout: CityLayout, shapes: readonly IslandShape[]): C
       for (const island of full) {
         toPort(island)
       }
+      result.inPorts++
       continue
     }
     ferriesOf.set(pair.a, (ferriesOf.get(pair.a) ?? 0) + 1)

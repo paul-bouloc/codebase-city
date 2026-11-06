@@ -159,7 +159,7 @@ export class CityEngine {
     this.links = {
       bridges: links.bridges.length,
       ferries: links.ferries.length,
-      inPorts: links.ports.reduce((sum, port) => sum + port.links, 0),
+      inPorts: links.inPorts,
       hidden: links.hidden,
     }
     const pixelRatio = this.renderer.getPixelRatio()

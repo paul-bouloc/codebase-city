@@ -195,6 +195,26 @@ describe('cityLinks', () => {
     expect(links.ports).toEqual([expect.objectContaining({ island: 0, links: 2 })])
   })
 
+  it("counts a link gathered at both its islands' ports once", () => {
+    // Two hubs with four ferries each, then a link between them: both are full.
+    const spread = (k: number) => ({ plateau: { x: 50 * k, y: 0, width: 16, height: 12 } })
+    const links = linksOf(
+      city(
+        Array.from({ length: 10 }, (_, k) => spread(k)),
+        [
+          ...[2, 3, 4, 5].map((island) => link(0, island, 100)),
+          ...[6, 7, 8, 9].map((island) => link(1, island, 100)),
+          link(0, 1, 50),
+        ],
+      ),
+    )
+    expect(links.ports.map((port) => [port.island, port.links])).toEqual([
+      [0, 1],
+      [1, 1],
+    ])
+    expect(links.inPorts).toBe(1)
+  })
+
   it('never hides nor gathers a link that goes up', () => {
     const links = linksOf(
       city(ring, [...[1, 2, 3, 4, 5].map((island) => link(island, 0, 100)), link(0, 6, 1, 1)]),
