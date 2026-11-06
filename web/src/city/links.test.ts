@@ -61,7 +61,7 @@ describe('linkPairs', () => {
 })
 
 describe('deckWidth and boatsFor', () => {
-  it('follow the art direction', () => {
+  it('grow with the imports, a deck to 4.6 u at most', () => {
     expect(deckWidth(1)).toBeCloseTo(0.87, 2)
     expect(deckWidth(300)).toBeCloseTo(2.83, 2)
     expect(deckWidth(1e9)).toBe(4.6)

@@ -4,9 +4,9 @@ import type { Point, Rect } from './layout'
 // Ferries sail on a grid of water cells: every cell whose centre stands on an island's land
 // (its plateau, terraces and beach, a little more for the line's own width) is closed. The open
 // sea around the archipelago is cheaper than its channels, so that a ferry goes round by the
-// open sea when the detour is short, as the art direction draws them, and through the channels
-// otherwise. Water near a shore costs more too: a line that hugged the beaches would read as the
-// islands' outline. The path found is then pulled straight where it can, and rounded.
+// open sea when the detour is short, and through the channels otherwise. Water near a shore
+// costs more too: a line that hugged the beaches would read as the islands' outline. The path
+// found is then pulled straight where it can, and rounded.
 
 /** Side of a cell, in u. */
 const CELL = 1
