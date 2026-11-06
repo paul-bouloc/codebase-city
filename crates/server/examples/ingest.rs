@@ -676,7 +676,7 @@ const NEIGHBOURS: i64 = 240;
 fn print_layout(result: &AnalysisResult) {
     let layout = &result.layout;
     let started = Instant::now();
-    let again = analyzer::layout::of_result(result);
+    let (again, audit) = analyzer::layout::audited(result);
     let elapsed = started.elapsed();
     let grids = &layout.grids;
     let lots: u64 = (0..grids.dir.len())
@@ -695,6 +695,7 @@ fn print_layout(result: &AnalysisResult) {
             ", NOT REPRODUCIBLE"
         }
     );
+    print_audit(result, &audit);
     let parcels = &layout.parcels;
     let ratio = |width: u32, height: u32| {
         f64::from(width.max(height)) / f64::from(width.min(height).max(1))
@@ -746,6 +747,56 @@ fn print_layout(result: &AnalysisResult) {
             links.from.len(),
             100.0 * f64::from(bridges) / links.from.len() as f64,
             100.0 * bridged_imports as f64 / imports.max(1) as f64
+        );
+    }
+}
+
+/// Where the area of the city went: what it ends as, then where room was
+/// lost, by depth (0: the archipelago, 1: inside the islands, then one more
+/// a parcel level), in shares of the city's area.
+fn print_audit(result: &AnalysisResult, audit: &analyzer::layout::Audit) {
+    const LOT_AREA: f64 = 400.0;
+    let layout = &result.layout;
+    let city = f64::from(layout.width) * f64::from(layout.height);
+    let share = |area: f64| 100.0 * area / city.max(1.0);
+    let sum = |field: fn(&analyzer::layout::AuditLevel) -> u64| {
+        audit.levels.iter().map(field).sum::<u64>() as f64
+    };
+    let files = result.files.dir.len() as f64 * LOT_AREA;
+    let asked = sum(|level| level.lots);
+    let extra = sum(|level| level.extra_lots);
+    let channels = audit.levels.first().map_or(0, |level| level.gaps) as f64;
+    let gaps = sum(|level| level.gaps) - channels;
+    let plateaux: f64 = (0..layout.islands.x.len())
+        .map(|island| {
+            f64::from(layout.islands.width[island]) * f64::from(layout.islands.height[island])
+        })
+        .sum();
+    let placed: u64 = (0..layout.grids.dir.len())
+        .map(|row| u64::from(layout.grids.columns[row]) * u64::from(layout.grids.rows[row]))
+        .sum();
+    println!(
+        "lots          {:.2} placed per lot asked; files on {:.0}% of the plateaux",
+        placed as f64 * LOT_AREA / asked.max(1.0),
+        100.0 * files / plateaux.max(1.0)
+    );
+    println!(
+        "area          files {:.0}%, empty lots asked {:.0}%, extra lots {:.0}%, gaps {:.0}%, padding {:.0}%, channels {:.0}%, water {:.0}%",
+        share(files),
+        share(asked - files),
+        share(extra),
+        share(gaps),
+        share(sum(|level| level.padding)),
+        share(channels),
+        share(sum(|level| level.water)),
+    );
+    for (depth, level) in audit.levels.iter().enumerate() {
+        println!(
+            "  depth {depth:>2}    extra lots {:>4.1}%   lost: shorter than row {:>4.1}%, narrower rows {:>4.1}%, reshaped {:>5.1}%",
+            share(level.extra_lots as f64),
+            share(level.shorter as f64),
+            share(level.narrower as f64),
+            share(level.reshaped as f64),
         );
     }
 }
