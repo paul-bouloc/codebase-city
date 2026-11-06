@@ -15,14 +15,16 @@
 /// A lot is 2 × 2 u.
 pub(crate) const LOT: u32 = 20;
 
-/// How much wider than tall the shapes of a pack are: from a twelfth to
-/// twelve, each about 17 % wider than the last. Finer steps let an item
+/// How many shapes a pack works out, from a twelfth to twelve times wider
+/// than tall, each about 17 % wider than the last. Finer steps let an item
 /// come closer to the height of its row.
-const ASPECTS: [f64; 33] = [
-    0.083333, 0.097335, 0.11369, 0.13279, 0.1551, 0.18116, 0.2116, 0.24715, 0.28868, 0.33718,
-    0.39383, 0.46, 0.53728, 0.62756, 0.733, 0.85615, 1.0, 1.168, 1.3643, 1.5935, 1.8612, 2.1739,
-    2.5392, 2.9658, 3.4641, 4.0461, 4.7259, 5.52, 6.4474, 7.5307, 8.796, 10.274, 12.0,
-];
+const SHAPES: usize = 33;
+
+/// How much wider than tall each of a pack's shapes is.
+fn aspects() -> impl Iterator<Item = f64> {
+    let middle = (SHAPES / 2) as f64;
+    (0..SHAPES).map(move |index| 12f64.powf((index as f64 - middle) / middle))
+}
 
 /// How many times a row's height is corrected to make it as wide as its
 /// pack.
@@ -244,7 +246,7 @@ impl Node {
             weight: 0,
         };
         let (width, height) = node.size(node.preferred());
-        node.weight = u64::from(width) * u64::from(height);
+        node.weight = area(width, height);
         node
     }
 
@@ -292,9 +294,8 @@ impl Node {
             })
             .sum();
         let shapes_of = |stack: bool| -> (Vec<PackShape>, u32) {
-            let shapes: Vec<PackShape> = ASPECTS
-                .iter()
-                .map(|&aspect| rows(&items, (area * aspect).sqrt(), gap, stack))
+            let shapes: Vec<PackShape> = aspects()
+                .map(|aspect| rows(&items, (area * aspect).sqrt(), gap, stack))
                 .collect();
             let preferred = closest(&shapes, |shape| {
                 (f64::from(shape.width) / f64::from(shape.height.max(1)) / aspect)
@@ -548,9 +549,9 @@ impl Node {
                 // The shape that fills `rect` best, of those that fit in it
                 let mut best = (choice, 0u64);
                 for (index, shape) in (0..).zip(shapes) {
-                    let area = u64::from(shape.width) * u64::from(shape.height);
-                    if shape.width <= rect.width && shape.height <= rect.height && area > best.1 {
-                        best = (index, area);
+                    let fits = shape.width <= rect.width && shape.height <= rect.height;
+                    if fits && area_of(shape) > best.1 {
+                        best = (index, area_of(shape));
                     }
                 }
                 let shape = &shapes[best.0 as usize];
