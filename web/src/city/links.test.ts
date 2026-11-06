@@ -283,6 +283,56 @@ describe('cityLinks', () => {
     expect(moored).toHaveLength(0)
   })
 
+  it('keeps a pier 2 u off the deck of a bridge on its side', () => {
+    const links = linksOf(
+      city(
+        [
+          { plateau: west },
+          { plateau: east },
+          { plateau: { x: 42, y: 200, width: 20, height: 20 } },
+        ],
+        // East's bridge lands on its west side, where its ferry's pier goes too.
+        [link(0, 1, 30), link(1, 2, 10)],
+      ),
+    )
+    const [bridge] = links.bridges
+    const pier = links.quays.find((quay) => quay.island === 1)
+    expect(bridge).toBeDefined()
+    expect(pier?.side).toBe('west')
+    const gap = Math.abs((pier?.y ?? 0) - (bridge?.at ?? 0)) - (bridge?.width ?? 0) / 2 - 0.3
+    expect(gap).toBeGreaterThanOrEqual(2 - 1e-9)
+  })
+
+  it('keeps a pier 2 u off every mouth of its side, and on its side', () => {
+    // Three folders 1.8 u apart: two canals pouring over the west edge, at 4.1 to 5.9 and
+    // 9.1 to 10.9, on a side 14 u long.
+    const parcels: ParcelLayout[] = [0.9, 5.9, 10.9].map((y, k) => ({
+      rect: { x: 0.9, y, width: 20, height: k === 2 ? 2.2 : 3.2 },
+      level: 1,
+      nature: 'normal',
+    }))
+    const layout = city(
+      [
+        { plateau: { x: 0, y: 0, width: 30, height: 14 }, parcels },
+        { plateau: { x: 200, y: 0, width: 20, height: 20 } },
+      ],
+      [link(0, 1, 10)],
+    )
+    const shapes = islandShapes(layout)
+    const mouths = (shapes[0]?.canals.cells ?? [])
+      .filter((cell) => cell.mouth === 'west')
+      .map((cell) => [cell.rect.y, cell.rect.y + cell.rect.height])
+    expect(mouths).toHaveLength(2)
+    const pier = cityLinks(layout, shapes).quays.find((quay) => quay.island === 0)
+    const y = pier?.y ?? 0
+    expect(y).toBeGreaterThanOrEqual(0.3)
+    expect(y).toBeLessThanOrEqual(13.7)
+    // Room is left at the side's south end: 2 u clear of both
+    for (const [m0 = 0, m1 = 0] of mouths) {
+      expect(y + 0.3 <= m0 - 2 + 1e-9 || y - 0.3 >= m1 + 2 - 1e-9).toBe(true)
+    }
+  })
+
   it('leaves no pier for a ferry with no way by water', () => {
     // A lagoon: four islands 1 u apart, whose shores close it, around a fifth.
     const links = linksOf(

@@ -228,9 +228,12 @@ export function cityLinks(layout: CityLayout, shapes: readonly IslandShape[]): C
     if (!shape) {
       continue
     }
+    const taken = [...mouthsOn(shape, side), ...decksOn(result.bridges, island, side)]
     items.forEach((item, index) => {
       const port = item === 'port'
-      const quay = quayAt(shape, island, side, (index + 1) / (items.length + 1), port, plateaux)
+      const share = (index + 1) / (items.length + 1)
+      const quay = quayAt(shape, island, side, share, port, plateaux, taken)
+      taken.push(quayStretch(quay))
       result.quays.push(quay)
       if (port) {
         result.ports.push({ island, links: portLinks.get(island) ?? 0, quay })
@@ -264,7 +267,7 @@ export function cityLinks(layout: CityLayout, shapes: readonly IslandShape[]): C
 
   const files = layout.islands.reduce((sum, island) => sum + island.lots.length, 0)
   if (files < SMALL_CITY && result.quays.length === 0 && shapes.length > 0) {
-    const lone = loneQuay(layout, shapes)
+    const lone = loneQuay(layout, shapes, result.bridges)
     if (lone) {
       result.quays.push(lone)
     }
@@ -282,6 +285,19 @@ function bridgeSides(bridge: Bridge): string[] {
   return bridge.axis === 'x'
     ? [`${bridge.low}/east`, `${bridge.high}/west`]
     : [`${bridge.low}/north`, `${bridge.high}/south`]
+}
+
+/** Where bridges land on a side of an island, along that side. */
+function decksOn(bridges: readonly Bridge[], island: number, side: Side): [number, number][] {
+  return bridges
+    .filter((bridge) => bridgeSides(bridge).includes(`${island}/${side}`))
+    .map((bridge) => [bridge.at - bridge.width / 2, bridge.at + bridge.width / 2])
+}
+
+/** The stretch of its side a quay takes. */
+function quayStretch(quay: Quay): [number, number] {
+  const along = quay.nx !== 0 ? quay.y : quay.x
+  return [along - quay.width / 2, along + quay.width / 2]
 }
 
 /** Two plateaux face to face across one channel, and the stretch where they do. */
@@ -545,8 +561,9 @@ const NORMALS: Record<Side, [number, number]> = {
 }
 
 /**
- * A quay `share` of the way along a side, from its south or west end, moved off any canal's
- * mouth: its cascade pours into a pool there.
+ * A quay `share` of the way along a side, from its south or west end, or as near there as it
+ * keeps 2 u from every stretch `taken` (a canal's mouth, where a cascade pours into a pool; a
+ * bridge's deck; another quay), without leaving the side.
  */
 function quayAt(
   shape: IslandShape,
@@ -555,22 +572,38 @@ function quayAt(
   share: number,
   port: boolean,
   plateaux: readonly Rect[],
+  taken: readonly [number, number][] = [],
 ): Quay {
   const { plateau } = shape.island
   const vertical = side === 'east' || side === 'west'
   const start = vertical ? plateau.y : plateau.x
   const length = vertical ? plateau.height : plateau.width
   const size = port ? PORT_QUAY : PIER
-  let along = start + share * length
-  const room = size.width / 2 + LANDING_CLEARANCE
-  for (const [m0, m1] of mouthsOn(shape, side)) {
-    if (along > m0 - room && along < m1 + room) {
-      const before = m0 - room
-      const after = m1 + room
-      along = along - before < after - along && before >= start ? before : after
+  const half = size.width / 2
+  const lowest = start + half
+  const highest = start + length - half
+  const wanted = Math.min(Math.max(start + share * length, lowest), highest)
+  // How far the quay stands from the nearest taken stretch: free from 2 u on.
+  const room = (at: number) =>
+    taken.reduce(
+      (least, [t0, t1]) => Math.min(least, Math.max(t0 - (at + half), at - half - t1)),
+      Number.POSITIVE_INFINITY,
+    )
+  // The nearest free position; on a side with none, the one with the most room.
+  let along = wanted
+  let best = room(wanted)
+  const steps = Math.ceil((highest - lowest) / LANDING_STEP)
+  for (let k = 1; k <= 2 * steps && best < LANDING_CLEARANCE; k++) {
+    const at = wanted + Math.ceil(k / 2) * LANDING_STEP * (k % 2 === 0 ? 1 : -1)
+    if (at < lowest - 1e-9 || at > highest + 1e-9) {
+      continue
+    }
+    const space = room(at)
+    if (space > best + 1e-9) {
+      along = at
+      best = space
     }
   }
-  along = Math.min(Math.max(along, start + size.width / 2), start + length - size.width / 2)
   // `offsetsAt` measures counter-clockwise from the side's start: west and north run backward.
   const fromStart = side === 'west' || side === 'north' ? start + length - along : along - start
   const beach = shape.offsetsAt(side, fromStart).at(-1) ?? 0
@@ -622,7 +655,11 @@ export function tipOf(quay: Quay): Point {
 }
 
 /** A small city's quay: on its largest island, on the side that looks out to the open sea. */
-function loneQuay(layout: CityLayout, shapes: readonly IslandShape[]): Quay | null {
+function loneQuay(
+  layout: CityLayout,
+  shapes: readonly IslandShape[],
+  bridges: readonly Bridge[],
+): Quay | null {
   let largest = 0
   layout.islands.forEach((island, index) => {
     const best = layout.islands[largest]?.plateau
@@ -666,6 +703,7 @@ function loneQuay(layout: CityLayout, shapes: readonly IslandShape[]): Quay | nu
     0.5,
     false,
     layout.islands.map((island) => island.plateau),
+    [...mouthsOn(shape, side), ...decksOn(bridges, largest, side)],
   )
 }
 
