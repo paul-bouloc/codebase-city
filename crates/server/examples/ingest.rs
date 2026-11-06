@@ -12,45 +12,52 @@
 //! again with the current code and prints the layout, without downloading
 //! anything: `just ingest result.json [--out result.json]`.
 //!
+//! `--archive repo.tar.gz` reads a local gzipped tarball instead of
+//! downloading one, for a copy GitHub would not serve: every file under one
+//! top folder, as `git archive --prefix=repo/ HEAD | gzip` makes it. The
+//! commit is then forty zeros.
+//!
 //! Uses `GITHUB_TOKEN` when set, and GitHub anonymously otherwise.
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use analyzer::ImportReport;
 use analyzer::graph::Node;
 use anyhow::Context;
 use model::{AnalysisResult, Repo};
 use server::github::{GithubClient, RepoName, Token};
-use server::ingest::{Limits, Progress, ingest};
+use server::ingest::{Ingested, Limits, Progress, ingest, ingest_archive};
 use server::store::results;
 
 const MB: f64 = 1024.0 * 1024.0;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    const USAGE: &str =
-        "usage: ingest owner/repo|result.json [--out result.json] [--expect roles.yaml] [--store]";
+    const USAGE: &str = "usage: ingest owner/repo|result.json [--out result.json] [--expect roles.yaml] [--archive repo.tar.gz] [--store]";
     let args: Vec<String> = std::env::args().skip(1).collect();
     let Some((name, flags)) = args.split_first() else {
         anyhow::bail!(USAGE);
     };
     let mut out = None;
     let mut expected = None;
+    let mut archive = None;
     let mut store = false;
     let mut flags = flags.iter();
     while let Some(flag) = flags.next() {
         match flag.as_str() {
             "--store" => store = true,
-            "--out" | "--expect" => {
+            "--out" | "--expect" | "--archive" => {
                 let Some(path) = flags.next().filter(|path| !path.starts_with("--")) else {
                     anyhow::bail!(USAGE);
                 };
                 if flag == "--out" {
                     out = Some(PathBuf::from(path));
+                } else if flag == "--archive" {
+                    archive = Some(PathBuf::from(path));
                 } else {
                     let text =
                         std::fs::read_to_string(path).with_context(|| format!("reading {path}"))?;
@@ -75,41 +82,25 @@ async fn main() -> anyhow::Result<()> {
         return Ok(());
     }
     let repo = RepoName::parse(name)?;
-    let token = std::env::var("GITHUB_TOKEN")
-        .ok()
-        .filter(|token| !token.is_empty())
-        .map(Token::new);
-    let client = GithubClient::new(token)?;
-
-    let started = Instant::now();
-    let snapshot = client.resolve(&repo).await?;
-    let resolved = started.elapsed();
-    eprintln!(
-        "{} @ {} ({}), resolved in {resolved:.1?}",
-        snapshot.repo, snapshot.sha, snapshot.default_branch
-    );
-
-    let last_megabyte = Arc::new(AtomicU64::new(0));
-    let on_progress = Arc::new(move |progress| match progress {
-        Progress::WaitingForGithub(wait) => eprintln!("rate limited, waiting {wait:.0?}"),
-        Progress::Downloading { bytes } => {
-            let tens = bytes / (10 * 1024 * 1024);
-            if last_megabyte.swap(tens, Ordering::Relaxed) != tens {
-                eprintln!("downloaded {} MB", tens * 10);
-            }
+    let (sha, ingested, elapsed) = match archive {
+        Some(path) => {
+            let file = std::fs::File::open(&path)
+                .with_context(|| format!("opening {}", path.display()))?;
+            let bytes = file.metadata()?.len();
+            let started = Instant::now();
+            let ingested = tokio::task::spawn_blocking(move || {
+                ingest_archive(
+                    std::io::BufReader::new(file),
+                    bytes,
+                    &Limits::default(),
+                    &|_| {},
+                )
+            })
+            .await??;
+            ("0".repeat(40), ingested, started.elapsed())
         }
-        Progress::Reading { .. } => {}
-    });
-    let started = Instant::now();
-    let ingested = ingest(
-        &client,
-        &snapshot.repo,
-        &snapshot.sha,
-        &Limits::default(),
-        on_progress,
-    )
-    .await?;
-    let elapsed = started.elapsed();
+        None => download(&repo).await?,
+    };
 
     let with_content = ingested
         .files
@@ -159,12 +150,12 @@ async fn main() -> anyhow::Result<()> {
     println!("languages     {}", top.join(", "));
 
     let repo = Repo {
-        owner: snapshot.repo.owner().to_owned(),
-        name: snapshot.repo.name().to_owned(),
+        owner: repo.owner().to_owned(),
+        name: repo.name().to_owned(),
     };
     let started = Instant::now();
     let (result, report) = tokio::task::spawn_blocking(move || {
-        analyzer::analyze_with_report(repo, snapshot.sha, ingested.files, ingested.ignored)
+        analyzer::analyze_with_report(repo, sha, ingested.files, ingested.ignored)
     })
     .await?;
     let elapsed = started.elapsed();
@@ -205,6 +196,46 @@ async fn main() -> anyhow::Result<()> {
         println!("written to    {}", path.display());
     }
     Ok(())
+}
+
+/// Downloads and reads the default branch of `repo` from GitHub: its
+/// commit, what came out, and how long that took.
+async fn download(repo: &RepoName) -> anyhow::Result<(String, Ingested, Duration)> {
+    let token = std::env::var("GITHUB_TOKEN")
+        .ok()
+        .filter(|token| !token.is_empty())
+        .map(Token::new);
+    let client = GithubClient::new(token)?;
+
+    let started = Instant::now();
+    let snapshot = client.resolve(repo).await?;
+    let resolved = started.elapsed();
+    eprintln!(
+        "{} @ {} ({}), resolved in {resolved:.1?}",
+        snapshot.repo, snapshot.sha, snapshot.default_branch
+    );
+
+    let last_megabyte = Arc::new(AtomicU64::new(0));
+    let on_progress = Arc::new(move |progress| match progress {
+        Progress::WaitingForGithub(wait) => eprintln!("rate limited, waiting {wait:.0?}"),
+        Progress::Downloading { bytes } => {
+            let tens = bytes / (10 * 1024 * 1024);
+            if last_megabyte.swap(tens, Ordering::Relaxed) != tens {
+                eprintln!("downloaded {} MB", tens * 10);
+            }
+        }
+        Progress::Reading { .. } => {}
+    });
+    let started = Instant::now();
+    let ingested = ingest(
+        &client,
+        &snapshot.repo,
+        &snapshot.sha,
+        &Limits::default(),
+        on_progress,
+    )
+    .await?;
+    Ok((snapshot.sha, ingested, started.elapsed()))
 }
 
 /// The path of a file, rebuilt from the folder table.
