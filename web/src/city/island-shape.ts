@@ -39,7 +39,9 @@ const EDGE_WOBBLE_SHARE = 0.35
 const WOBBLE_WAVELENGTHS = [53, 29, 13] as const
 /**
  * The terraces swell toward the middle of each side, nothing at the corners: 5 % of the side's
- * length, 10 u at most, so that an island reads as a cushion rather than a box.
+ * length, 10 u at most, so that an island reads as a cushion rather than a box. The swell
+ * starts flat at each corner (a squared sine): a half sine leaves the corner at its steepest,
+ * and two sides meet in a point, a hexagon.
  */
 const BULGE_SHARE = 0.05
 const BULGE_MAX = 10
@@ -186,7 +188,7 @@ export function islandShape(island: IslandLayout, others: readonly Rect[]): Isla
         from[1] + dy * along,
         normal[0],
         normal[1],
-        swell * Math.sin((Math.PI * i) / steps),
+        swell * Math.sin((Math.PI * i) / steps) ** 2,
       )
     }
     // The corner after this side turns the normal toward the next side's.

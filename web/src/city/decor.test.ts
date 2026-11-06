@@ -266,8 +266,10 @@ describe('cityDecor', () => {
       const ring = shape.altitudes.indexOf(tree.z)
       const offsets = shape.offsetsAt('south', tree.x - x)
       const crown = CROWN_RADIUS[tree.kind] * tree.size
-      expect(-tree.y - crown).toBeGreaterThanOrEqual((offsets[ring - 1] ?? 0) - 0.05)
-      expect(-tree.y + crown).toBeLessThanOrEqual((offsets[ring] ?? 0) + 0.05)
+      // A tree slides up to 0.6 u along the contour, where the terrace is a little wider or
+      // narrower than at its own x: a tenth of a unit of slack.
+      expect(-tree.y - crown).toBeGreaterThanOrEqual((offsets[ring - 1] ?? 0) - 0.1)
+      expect(-tree.y + crown).toBeLessThanOrEqual((offsets[ring] ?? 0) + 0.1)
       checked++
     }
     expect(checked).toBeGreaterThan(10)
