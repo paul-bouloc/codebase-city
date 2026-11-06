@@ -1,5 +1,5 @@
 import { buildingGeometry, shapeKey, type Vertex } from './archetype-geometry'
-import type { CityLayout, Rect } from './layout'
+import { type CityLayout, rectContains } from './layout'
 import type { PlacedBuilding } from './placed-buildings'
 import { layerAltitude, type Vec3 } from './units'
 
@@ -113,22 +113,18 @@ export class CityPicker {
     }
     const x = origin[0] + t * direction[0]
     const y = -(origin[2] + t * direction[2])
-    if (!inside(island.plateau, x, y)) {
+    if (!rectContains(island.plateau, x, y)) {
       return null
     }
     // Outer parcels come first: the last one that holds the point is the deepest.
     for (let parcel = island.parcels.length - 1; parcel >= 0; parcel--) {
       const { rect, path } = island.parcels[parcel] ?? {}
-      if (rect && path !== undefined && inside(rect, x, y)) {
+      if (rect && path !== undefined && rectContains(rect, x, y)) {
         return { t, target: { kind: 'parcel', island: index, parcel } }
       }
     }
     return { t, target: { kind: 'island', island: index } }
   }
-}
-
-function inside(rect: Rect, x: number, y: number): boolean {
-  return x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height
 }
 
 /** A building's box around its stretched, turned shape, written at `at`. */

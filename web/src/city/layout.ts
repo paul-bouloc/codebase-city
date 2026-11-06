@@ -124,6 +124,11 @@ export function boundsOf(rects: readonly Rect[]): Rect {
   return { x: minX, y: minY, width: maxX - minX, height: maxY - minY }
 }
 
+/** Whether a point lies in a rectangle, its edges included. */
+export function rectContains(rect: Rect, x: number, y: number): boolean {
+  return x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height
+}
+
 /** Distance from a point to a rectangle, 0 inside. */
 export function distanceToRect(px: number, py: number, rect: Rect): number {
   const dx = Math.max(rect.x - px, 0, px - (rect.x + rect.width))
