@@ -160,18 +160,17 @@ export function islandShape(island: IslandLayout, others: readonly Rect[]): Isla
     ny: number
     position: number
     factor: number
-    nearest: number
+    room: number
     bulge: number
   }
   const points: Point[] = []
   const add = (position: number, x: number, y: number, nx: number, ny: number, bulge = 0) => {
-    let nearest = Number.POSITIVE_INFINITY
     let ahead = Number.POSITIVE_INFINITY
     for (const other of others) {
-      nearest = Math.min(nearest, distanceToRect(x, y, other))
       ahead = Math.min(ahead, distanceAhead(x, y, nx, ny, other))
     }
-    points.push({ x, y, nx, ny, position, factor: sideFactor(ahead), nearest, bulge })
+    const room = beachRoom(island.plateau, others, x, y, nx, ny)
+    points.push({ x, y, nx, ny, position, factor: sideFactor(ahead), room, bulge })
   }
   const order: Side[] = ['south', 'east', 'north', 'west']
   for (const side of order) {
@@ -205,30 +204,37 @@ export function islandShape(island: IslandLayout, others: readonly Rect[]): Isla
   // Then the rings, from the side factor averaged along the edge (a tent, around the island).
   // Points are in order around the edge: only those within the tent are visited, both ways.
   const count = points.length
-  const samples: ContourSample[] = points.map((point, index) => {
-    let weighted = point.factor
-    let weights = 1
+  const tent = (index: number, width: number, visit: (at: number, weight: number) => void) => {
+    const point = points[index] as Point
+    visit(index, 1)
     // Back only over the points forward did not reach: a tiny edge fits whole in the tent.
     let left = count - 1
     for (const step of [1, -1]) {
       for (let k = 1; k <= left; k++) {
-        const other = points[(index + step * k + count) % count]
+        const at = (index + step * k + count) % count
+        const other = points[at]
         if (!other) {
           break
         }
         const apart = Math.abs(other.position - point.position)
         const distance = Math.min(apart, perimeter - apart)
-        if (distance >= FACTOR_SMOOTHING) {
+        if (distance >= width) {
           break
         }
-        const weight = 1 - distance / FACTOR_SMOOTHING
-        weighted += weight * other.factor
-        weights += weight
+        visit(at, 1 - distance / width)
         if (step > 0) {
           left--
         }
       }
     }
+  }
+  const samples: ContourSample[] = points.map((point, index) => {
+    let weighted = 0
+    let weights = 0
+    tent(index, FACTOR_SMOOTHING, (at, weight) => {
+      weighted += weight * (points[at]?.factor ?? FACING_FACTOR)
+      weights += weight
+    })
     const factor = weighted / weights
     // A side swells out to the open sea only, not toward an island facing it.
     const open = (factor - FACING_FACTOR) / (OPEN_SEA_FACTOR - FACING_FACTOR)
@@ -241,7 +247,7 @@ export function islandShape(island: IslandLayout, others: readonly Rect[]): Isla
         edgeWobble(point.position),
         ringWobbles.map((wobble) => wobble(point.position)),
         factor,
-        point.nearest,
+        point.room,
         terraces,
         point.bulge * Math.min(Math.max(open, 0), 1),
       ),
@@ -281,6 +287,46 @@ export function islandShape(island: IslandLayout, others: readonly Rect[]): Isla
   }
 }
 
+/**
+ * How far out along its normal the beach of a point of the plateau's edge may reach: every
+ * point of it stays nearer its own plateau than any other, by both foams and the free water
+ * between them. Each of two neighbours keeps to its side of the line halfway between them, so
+ * that their beaches never meet; a side that looks out to sea is cut only near a neighbour,
+ * not all along.
+ */
+function beachRoom(
+  own: Rect,
+  others: readonly Rect[],
+  x: number,
+  y: number,
+  nx: number,
+  ny: number,
+): number {
+  let room = WIDEST_BEACH
+  for (const other of others) {
+    const margin =
+      2 * FOAM_WIDTH + 2 * Math.max(FREE_WATER, FREE_WATER_SHARE * rectDistance(own, other))
+    // How much nearer the other plateau than this one a point `out` u along the normal is: it
+    // only shrinks as the point moves out, so the room ends where it reaches the margin.
+    const lead = (out: number) => distanceToRect(x + nx * out, y + ny * out, other) - out
+    if (lead(room) >= margin) {
+      continue
+    }
+    let low = 0
+    let high = room
+    for (let step = 0; step < 24; step++) {
+      const middle = (low + high) / 2
+      if (lead(middle) >= margin) {
+        low = middle
+      } else {
+        high = middle
+      }
+    }
+    room = low
+  }
+  return room
+}
+
 /** How wide the terraces are where the island ahead is `ahead` u away: narrow when it is close. */
 function sideFactor(ahead: number): number {
   return FACING_FACTOR + (OPEN_SEA_FACTOR - FACING_FACTOR) * smoothstep(ahead)
@@ -289,23 +335,17 @@ function sideFactor(ahead: number): number {
 /**
  * The offsets of the plateau's edge and of each terrace, at a point of the edge where the
  * wobbles are `edgeWobble` and `ringWobbles` (0 to 1, one per terrace), each terrace about
- * `factor` u wide, the nearest island `nearest` u away, and the terraces swelling out by
+ * `factor` u wide, the beach reaching `limit` u at most, and the terraces swelling out by
  * `bulge` u in all.
  */
 function ringOffsets(
   edgeWobble: number,
   ringWobbles: readonly number[],
   factor: number,
-  nearest: number,
+  limit: number,
   terraces: number,
   bulge = 0,
 ): number[] {
-  // Two neighbours share the water between them: each beach keeps to its half, foam included.
-  // Alone on the sea, nothing to share: nearest is infinite.
-  const free = Number.isFinite(nearest)
-    ? Math.max(FREE_WATER, FREE_WATER_SHARE * nearest)
-    : FREE_WATER
-  const limit = nearest / 2 - FOAM_WIDTH - free
   const amplitude = Math.min(
     Math.max((limit - EDGE_OFFSET) * EDGE_WOBBLE_SHARE, EDGE_WOBBLE[0]),
     EDGE_WOBBLE[1],

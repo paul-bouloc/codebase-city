@@ -7,6 +7,7 @@ import {
   islandShape,
   islandShapes,
   ringAltitudes,
+  SAMPLE_STEP,
 } from './island-shape'
 import { type CityLayout, distanceToRect, type IslandLayout, type Rect } from './layout'
 import { syntheticCity } from './synthetic'
@@ -179,8 +180,25 @@ describe('islandShapes', () => {
     // In the middle of the facing side, no swell; on the open side, all of it
     const facing = west.offsetsAt('east', 40).at(-1) ?? 0
     const open = west.offsetsAt('west', 40).at(-1) ?? 0
-    expect(facing).toBeLessThan(4)
+    expect(facing).toBeLessThanOrEqual(4 + 1e-9)
     expect(open).toBeGreaterThan(10)
+  })
+
+  it('rounds the short side of a narrow island between two others, without a point', () => {
+    // Neighbours 14 u off both long sides: the short north side looks out to sea
+    const layout: CityLayout = {
+      islands: [
+        island('left', { x: -44, y: 0, width: 30, height: 80 }, 5),
+        island('middle', { x: 0, y: 0, width: 30, height: 80 }, 5),
+        island('right', { x: 44, y: 0, width: 30, height: 80 }, 5),
+      ],
+      bounds: { x: -44, y: 0, width: 118, height: 80 },
+    }
+    const middle = islandShapes(layout)[1]
+    const beachAt = (along: number) => middle?.offsetsAt('north', along).at(-1) ?? 0
+    // A point stands out of the line between its two sides (a roof: 1.1 u)
+    expect(beachAt(15) - (beachAt(12) + beachAt(18)) / 2).toBeLessThan(0.6)
+    expect(beachAt(15)).toBeGreaterThan(8)
   })
 
   it('widens the terraces gradually around a corner, without a step', () => {
@@ -189,18 +207,19 @@ describe('islandShapes', () => {
     const layout: CityLayout = {
       islands: [
         island('west', { x: 0, y: 0, width: 30, height: 20 }, 5),
-        island('east', { x: 39, y: -10, width: 30, height: 20 }, 5),
+        island('east', { x: 44, y: -10, width: 30, height: 20 }, 5),
       ],
-      bounds: { x: 0, y: -10, width: 69, height: 30 },
+      bounds: { x: 0, y: -10, width: 74, height: 30 },
     }
     const [west] = islandShapes(layout)
     const samples = west?.samples ?? []
     samples.forEach((sample, index) => {
       const next = samples[(index + 1) % samples.length] ?? sample
       const step = Math.abs((next.offsets.at(-1) ?? 0) - (sample.offsets.at(-1) ?? 0))
-      // Within a corner, where the normal turns on one point, the beach barely moves
+      // Within a corner, where the normal turns on one point, the beach barely moves; along a
+      // side, it slopes at most as the line halfway to a neighbour off the corner does (45°)
       const sameCorner = next.x === sample.x && next.y === sample.y
-      expect(step).toBeLessThan(sameCorner ? 0.5 : 2)
+      expect(step).toBeLessThan(sameCorner ? 0.5 : 1.05 * SAMPLE_STEP)
     })
   })
 
