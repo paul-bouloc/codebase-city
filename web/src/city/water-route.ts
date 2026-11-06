@@ -5,7 +5,8 @@ import type { Point, Rect } from './layout'
 // (its plateau, terraces and beach, a little more for the line's own width) is closed. The open
 // sea around the archipelago is cheaper than its channels, so that a ferry goes round by the
 // open sea when the detour is short, as the art direction draws them, and through the channels
-// otherwise. The path found is then pulled straight where it can, and rounded.
+// otherwise. Water near a shore costs more too: a line that hugged the beaches would read as the
+// islands' outline. The path found is then pulled straight where it can, and rounded.
 
 /** Side of a cell, in u. */
 const CELL = 1
@@ -13,6 +14,9 @@ const CELL = 1
 const SEA_MARGIN = 40
 /** A cell among the islands costs this much more than one on the open sea. */
 const CHANNEL_COST = 3
+/** Within this distance of land, in u, water costs up to this much more. */
+const SHORE_REACH = 6
+const SHORE_COST = 4
 /** Land is widened by this much: the line has a width of its own. */
 const LAND_CLEARANCE = 0.3
 /** How far a quay's tip may stand from free water, in cells. */
@@ -26,6 +30,8 @@ export interface WaterGrid {
   rows: number
   /** 1 where the cell is land. */
   land: Uint8Array
+  /** Distance from each cell to land, in u. */
+  shore: Float32Array
   /** Cost of crossing a cell, per u. */
   cost: Float32Array
 }
@@ -64,15 +70,62 @@ export function waterGrid(shapes: readonly IslandShape[], inner: Rect): WaterGri
   for (const shape of shapes) {
     fillPolygon(land, columns, rows, x0, y0, landOutline(shape, LAND_CLEARANCE))
   }
-  const cost = new Float32Array(columns * rows).fill(1)
+  const shore = distanceToLand(land, columns, rows)
+  const cost = new Float32Array(columns * rows)
+  for (let cell = 0; cell < cost.length; cell++) {
+    cost[cell] = 1 + SHORE_COST * Math.max(0, 1 - (shore[cell] ?? 0) / SHORE_REACH)
+  }
   const fromColumn = Math.max(0, Math.floor((inner.x - x0) / CELL))
   const toColumn = Math.min(columns, Math.ceil((inner.x + inner.width - x0) / CELL))
   const fromRow = Math.max(0, Math.floor((inner.y - y0) / CELL))
   const toRow = Math.min(rows, Math.ceil((inner.y + inner.height - y0) / CELL))
   for (let row = fromRow; row < toRow; row++) {
-    cost.fill(CHANNEL_COST, row * columns + fromColumn, row * columns + toColumn)
+    for (let cell = row * columns + fromColumn; cell < row * columns + toColumn; cell++) {
+      cost[cell] = (cost[cell] ?? 1) + CHANNEL_COST - 1
+    }
   }
-  return { x0, y0, columns, rows, land, cost }
+  return { x0, y0, columns, rows, land, shore, cost }
+}
+
+/** Distance from each cell to the nearest land cell, in u: a two-pass chamfer (3-4). */
+function distanceToLand(land: Uint8Array, columns: number, rows: number): Float32Array {
+  const far = 3 * (columns + rows)
+  const distance = new Float32Array(columns * rows)
+  for (let cell = 0; cell < distance.length; cell++) {
+    distance[cell] = land[cell] === 1 ? 0 : far
+  }
+  const relax = (cell: number, column: number, row: number, dx: number, dy: number, w: number) => {
+    const c = column + dx
+    const r = row + dy
+    if (c >= 0 && r >= 0 && c < columns && r < rows) {
+      const through = (distance[r * columns + c] ?? far) + w
+      if (through < (distance[cell] ?? far)) {
+        distance[cell] = through
+      }
+    }
+  }
+  for (let row = 0; row < rows; row++) {
+    for (let column = 0; column < columns; column++) {
+      const cell = row * columns + column
+      relax(cell, column, row, -1, 0, 3)
+      relax(cell, column, row, 0, -1, 3)
+      relax(cell, column, row, -1, -1, 4)
+      relax(cell, column, row, 1, -1, 4)
+    }
+  }
+  for (let row = rows - 1; row >= 0; row--) {
+    for (let column = columns - 1; column >= 0; column--) {
+      const cell = row * columns + column
+      relax(cell, column, row, 1, 0, 3)
+      relax(cell, column, row, 0, 1, 3)
+      relax(cell, column, row, 1, 1, 4)
+      relax(cell, column, row, -1, 1, 4)
+    }
+  }
+  for (let cell = 0; cell < distance.length; cell++) {
+    distance[cell] = ((distance[cell] ?? 0) * CELL) / 3
+  }
+  return distance
 }
 
 /** Closes every cell whose centre is inside the polygon, row by row. */
@@ -136,12 +189,19 @@ function centreOf(grid: WaterGrid, cell: number): Point {
   }
 }
 
-/** Whether the straight line between two points stays on water. */
-function clear(grid: WaterGrid, a: Point, b: Point): boolean {
+/** How far from land a point is, in u; 0 on land or off the grid. */
+function shoreAt(grid: WaterGrid, point: Point): number {
+  const cell = cellAt(grid, point)
+  return cell < 0 ? 0 : (grid.shore[cell] ?? 0)
+}
+
+/** Whether the straight line between two points stays on water, at least `margin` u off land. */
+function clear(grid: WaterGrid, a: Point, b: Point, margin = 0): boolean {
   const steps = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / (CELL / 4))
   for (let i = 0; i <= steps; i++) {
     const t = steps === 0 ? 0 : i / steps
-    if (onLand(grid, { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t })) {
+    const point = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }
+    if (onLand(grid, point) || shoreAt(grid, point) < margin) {
       return false
     }
   }
@@ -265,7 +325,10 @@ function search(grid: WaterGrid, start: number, goal: number): number[] | null {
   return null
 }
 
-/** Keeps only the turns: each point goes as far ahead as a straight line on water reaches. */
+/**
+ * Keeps only the turns: each point goes as far ahead as a straight line on water reaches, never
+ * closer to a shore than the path it replaces.
+ */
 function pulled(grid: WaterGrid, points: readonly Point[]): Point[] {
   const first = points[0]
   if (!first) {
@@ -275,10 +338,14 @@ function pulled(grid: WaterGrid, points: readonly Point[]): Point[] {
   let at = 0
   while (at < points.length - 1) {
     let next = at + 1
-    while (
-      next + 1 < points.length &&
-      clear(grid, points[at] as Point, points[next + 1] as Point)
-    ) {
+    let low = Math.min(shoreAt(grid, points[at] as Point), shoreAt(grid, points[next] as Point))
+    while (next + 1 < points.length) {
+      const ahead = points[next + 1] as Point
+      const lowAhead = Math.min(low, shoreAt(grid, ahead))
+      if (!clear(grid, points[at] as Point, ahead, Math.min(lowAhead, SHORE_REACH) - CELL)) {
+        break
+      }
+      low = lowAhead
       next++
     }
     kept.push(points[next] as Point)

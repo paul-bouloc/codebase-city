@@ -72,6 +72,21 @@ describe('waterRoute', () => {
     expect(a).toEqual(b)
   })
 
+  it('keeps off a shore it could hug, when the sea leaves room', () => {
+    const long = city([{ x: 0, y: 0, width: 100, height: 12 }])
+    const [shape] = islandShapes(long)
+    const beach = shape ? landOutline(shape) : []
+    const top = Math.max(...beach.map((point) => point.y))
+    // Both ends just off the north beach: a straight line would run along it.
+    const route = waterRoute(
+      waterGrid(islandShapes(long), long.bounds),
+      { x: 10, y: top + 1.5 },
+      { x: 90, y: top + 1.5 },
+    )
+    const farthest = Math.max(...(route ?? []).map((point) => point.y - top))
+    expect(farthest).toBeGreaterThan(4)
+  })
+
   it('sails straight when nothing is in the way', () => {
     const route = waterRoute(grid, { x: -20, y: -20 }, { x: -20, y: 100 })
     expect(route).toHaveLength(2)
