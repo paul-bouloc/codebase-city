@@ -18,9 +18,9 @@ const LOT_MARGIN = 0.9
 const MIN_LOT_COLUMNS = 5
 const MIN_LOT_ROWS = 3
 
-/** Water between two plateaux, from the shorter of their facing sides. */
+/** Water between two plateaux, from the shorter of their facing sides, as the analyzer does. */
 export function channelWidth(facingSide: number): number {
-  return Math.min(Math.max(0.22 * facingSide, 9), 24)
+  return Math.min(Math.max(0.22 * facingSide, 14), 24)
 }
 
 export interface SyntheticOptions {

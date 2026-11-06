@@ -11,8 +11,8 @@ function gapBetween(a: Rect, b: Rect): number {
 }
 
 describe('channelWidth', () => {
-  it('keeps channels between 9 and 24 u', () => {
-    expect(channelWidth(20)).toBe(9)
+  it('keeps channels between 14 and 24 u', () => {
+    expect(channelWidth(20)).toBe(14)
     expect(channelWidth(80)).toBeCloseTo(17.6)
     expect(channelWidth(150)).toBe(24)
   })
@@ -64,11 +64,11 @@ describe('syntheticCity', () => {
     }
   })
 
-  it('separates every pair of plateaux by a channel of at least 9 u', () => {
+  it('separates every pair of plateaux by a channel of at least 14 u', () => {
     const plateaux = city.islands.map((island) => island.plateau)
     plateaux.forEach((a, i) => {
       for (const b of plateaux.slice(i + 1)) {
-        expect(gapBetween(a, b)).toBeGreaterThanOrEqual(9 - 1e-9)
+        expect(gapBetween(a, b)).toBeGreaterThanOrEqual(14 - 1e-9)
       }
     })
   })

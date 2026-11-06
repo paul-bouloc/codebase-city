@@ -70,15 +70,21 @@ pub(crate) struct Rect {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Gap {
     Fixed(u32),
-    /// Water between islands: 22 % of the facing sides, 9 to 24 u.
+    /// Water between islands: 22 % of the facing sides, 14 to 24 u.
     Channel,
 }
+
+/// The narrowest channel between two islands, in tenths of a unit: their beaches and foam take
+/// up to 8.4 u of it, and some open water must show between them.
+const MIN_CHANNEL: u32 = 140;
+/// The widest channel, in tenths of a unit.
+const MAX_CHANNEL: u32 = 240;
 
 impl Gap {
     fn between(self, facing: u32) -> u32 {
         match self {
             Self::Fixed(gap) => gap,
-            Self::Channel => (facing * 22 / 100).clamp(90, 240),
+            Self::Channel => (facing * 22 / 100).clamp(MIN_CHANNEL, MAX_CHANNEL),
         }
     }
 }
@@ -853,7 +859,7 @@ mod tests {
         assert!(small.1.width >= 66 && small.1.height >= 66);
         assert!(!placed.frames.iter().any(|frame| frame.2));
         let big = placed.frames.iter().find(|frame| frame.0 == 0).unwrap();
-        assert!(spacing(small.1, big.1) >= 90);
+        assert!(spacing(small.1, big.1) >= i64::from(MIN_CHANNEL));
     }
 
     #[test]
