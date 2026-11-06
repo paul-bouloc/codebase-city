@@ -162,7 +162,7 @@ export function cityLinks(layout: CityLayout, shapes: readonly IslandShape[]): C
       result.hidden++
       continue
     }
-    const bridge = bridgeFor(pair, layout, shapes, outlines)
+    const bridge = bridgeFor(pair, layout, plateaux, shapes, outlines)
     if (bridge) {
       const sides = bridgeSides(bridge)
       const full = sides.filter((side) => (perSide.get(side) ?? 0) >= MAX_BRIDGES_PER_SIDE)
@@ -308,6 +308,7 @@ function facing(a: number, b: number, plateaux: readonly Rect[]): Facing | null 
 function bridgeFor(
   pair: Pair,
   layout: CityLayout,
+  plateaux: readonly Rect[],
   shapes: readonly IslandShape[],
   outlines: readonly Point[][],
 ): Bridge | null {
@@ -317,7 +318,6 @@ function bridgeFor(
   if (Math.abs(layerA - layerB) > 1) {
     return null
   }
-  const plateaux = islands.map((island) => island.plateau)
   const face = facing(pair.a, pair.b, plateaux)
   if (!face) {
     return null
