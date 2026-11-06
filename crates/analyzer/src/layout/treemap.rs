@@ -15,25 +15,13 @@
 /// A lot is 2 × 2 u.
 pub(crate) const LOT: u32 = 20;
 
-/// How much wider than tall the shapes of a pack are: from a twelfth to twelve.
-const ASPECTS: [f64; 17] = [
-    1.0 / 12.0,
-    1.0 / 8.0,
-    1.0 / 6.0,
-    1.0 / 4.0,
-    1.0 / 3.0,
-    1.0 / 2.2,
-    1.0 / 1.6,
-    1.0 / 1.25,
-    1.0,
-    1.25,
-    1.6,
-    2.2,
-    3.0,
-    4.0,
-    6.0,
-    8.0,
-    12.0,
+/// How much wider than tall the shapes of a pack are: from a twelfth to
+/// twelve, each about 17 % wider than the last. Finer steps let an item
+/// come closer to the height of its row.
+const ASPECTS: [f64; 33] = [
+    0.083333, 0.097335, 0.11369, 0.13279, 0.1551, 0.18116, 0.2116, 0.24715, 0.28868, 0.33718,
+    0.39383, 0.46, 0.53728, 0.62756, 0.733, 0.85615, 1.0, 1.168, 1.3643, 1.5935, 1.8612, 2.1739,
+    2.5392, 2.9658, 3.4641, 4.0461, 4.7259, 5.52, 6.4474, 7.5307, 8.796, 10.274, 12.0,
 ];
 
 /// How many times a row's height is corrected to make it as wide as its
