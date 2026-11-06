@@ -261,18 +261,18 @@ describe('cityLinks', () => {
   })
 
   it('keeps a pier to its half of a narrow channel, too short to moor at', () => {
-    // Two plateaux 9 u apart
+    // Two plateaux 7 u apart
     const layout = city(
       [
         { plateau: { x: 0, y: 0, width: 20, height: 20 } },
-        { plateau: { x: 29, y: 0, width: 20, height: 20 } },
+        { plateau: { x: 27, y: 0, width: 20, height: 20 } },
       ],
       [],
     )
     const shape = islandShapes(layout)[0] as IslandShape
     const plateaux = layout.islands.map((island) => island.plateau)
     const narrow = quayAt(shape, 0, 'east', 0.5, false, plateaux)
-    expect(tipOf(narrow).x).toBeLessThan(24.5)
+    expect(tipOf(narrow).x).toBeLessThan(23.5)
     expect(narrow.length - 0.8).toBeLessThan(2)
     // On the open sea, a whole pier
     expect(quayAt(shape, 0, 'west', 0.5, false, plateaux).length).toBeCloseTo(0.8 + 2.4)

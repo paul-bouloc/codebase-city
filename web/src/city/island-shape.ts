@@ -16,8 +16,14 @@ const CORNER_SAMPLES = 6
 export const BEACH_ALTITUDE = 0.35
 /** The foam around a beach. */
 export const FOAM_WIDTH = 0.9
-/** Water left between the foams of two neighbours. */
+/**
+ * Water each of two neighbours leaves free past its foam: 15 % of the way to the other, so that
+ * a channel shows open water whatever its width; never less than 0.3 u.
+ */
 const FREE_WATER = 0.3
+const FREE_WATER_SHARE = 0.15
+/** The widest beach past the plateau's rectangle, in u (see `NEIGHBOUR_REACH`). */
+const WIDEST_BEACH = 24.75
 
 /**
  * The plateau's edge stands 0.85 u past the rectangle, plus a wobble of 0.35 u where room is
@@ -79,10 +85,10 @@ export interface IslandShape {
 
 /**
  * Past this distance between two plateaux, neither shapes the other: the widest beach reaches
- * 24.75 u (the edge's 4.35 u, five terraces of 2.08 u, a 10 u swell), each keeps 1.2 u of foam
- * and water, and the terraces are at their widest from 36 u on.
+ * 24.75 u (the edge's 4.35 u, five terraces of 2.08 u, a 10 u swell), and fits in its half with
+ * its foam and free water from there on; the terraces are at their widest from 36 u on.
  */
-const NEIGHBOUR_REACH = 2 * (24.75 + FOAM_WIDTH + FREE_WATER)
+const NEIGHBOUR_REACH = (WIDEST_BEACH + FOAM_WIDTH) / (0.5 - FREE_WATER_SHARE)
 
 /** The terrain of every island, knowing its neighbours. */
 export function islandShapes(layout: CityLayout): IslandShape[] {
@@ -222,6 +228,8 @@ export function islandShape(island: IslandLayout, others: readonly Rect[]): Isla
       }
     }
     const factor = weighted / weights
+    // A side swells out to the open sea only, not toward an island facing it.
+    const open = (factor - FACING_FACTOR) / (OPEN_SEA_FACTOR - FACING_FACTOR)
     return {
       x: point.x,
       y: point.y,
@@ -233,7 +241,7 @@ export function islandShape(island: IslandLayout, others: readonly Rect[]): Isla
         factor,
         point.nearest,
         terraces,
-        point.bulge,
+        point.bulge * Math.min(Math.max(open, 0), 1),
       ),
     }
   })
@@ -291,7 +299,11 @@ function ringOffsets(
   bulge = 0,
 ): number[] {
   // Two neighbours share the water between them: each beach keeps to its half, foam included.
-  const limit = nearest / 2 - FOAM_WIDTH - FREE_WATER
+  // Alone on the sea, nothing to share: nearest is infinite.
+  const free = Number.isFinite(nearest)
+    ? Math.max(FREE_WATER, FREE_WATER_SHARE * nearest)
+    : FREE_WATER
+  const limit = nearest / 2 - FOAM_WIDTH - free
   const amplitude = Math.min(
     Math.max((limit - EDGE_OFFSET) * EDGE_WOBBLE_SHARE, EDGE_WOBBLE[0]),
     EDGE_WOBBLE[1],

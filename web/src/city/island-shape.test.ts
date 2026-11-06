@@ -159,6 +159,30 @@ describe('islandShapes', () => {
     expect(westWest).toBeGreaterThan(8)
   })
 
+  it('leaves open water across the narrowest channel, long sides swelling only out to sea', () => {
+    // Two long, high islands across a 14 u channel: their sides would swell 4 u each.
+    const layout: CityLayout = {
+      islands: [
+        island('west', { x: 0, y: 0, width: 30, height: 80 }, 5),
+        island('east', { x: 44, y: 0, width: 30, height: 80 }, 5),
+      ],
+      bounds: { x: 0, y: 0, width: 74, height: 80 },
+    }
+    const [west, east] = islandShapes(layout)
+    if (!west || !east) {
+      throw new Error('two shapes expected')
+    }
+    // 15 % of the channel free on each side, past the foams
+    expect(gapBetween(beach(west), beach(east))).toBeGreaterThanOrEqual(
+      2 * FOAM_WIDTH + 2 * 0.15 * 14 - 1e-6,
+    )
+    // In the middle of the facing side, no swell; on the open side, all of it
+    const facing = west.offsetsAt('east', 40).at(-1) ?? 0
+    const open = west.offsetsAt('west', 40).at(-1) ?? 0
+    expect(facing).toBeLessThan(4)
+    expect(open).toBeGreaterThan(10)
+  })
+
   it('widens the terraces gradually around a corner, without a step', () => {
     // A high island faces a neighbour on its east side only: around its north-east corner, the
     // narrow terraces of that side meet the wide ones of the north side
