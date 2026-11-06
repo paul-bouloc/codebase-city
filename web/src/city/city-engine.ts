@@ -26,7 +26,7 @@ import {
 } from 'three'
 import { createBridges } from './bridges'
 import { createBuildings } from './buildings'
-import { CityInteraction, type CityItem, type CityListeners } from './city-interaction'
+import { CityInteraction, type CityItem, type CityListeners, isClick } from './city-interaction'
 import { cityDecor } from './decor'
 import { createDecor, type DecorStats, decorStats } from './decor-mesh'
 import { createFading } from './dimming'
@@ -66,9 +66,6 @@ const START_AZIMUTH = MathUtils.degToRad(34)
 const START_POLAR_ANGLE = MathUtils.degToRad(55)
 /** How far the camera target may leave the city's edge. */
 const TARGET_MARGIN = 20
-
-/** A press that moves less than this, in CSS pixels, is a click, not a drag of the camera. */
-const CLICK_SLOP = 4
 
 const SHADOW_MAP_SIZE = 4096
 /** Room around the city for the shadows of the tallest towers. */
@@ -211,7 +208,7 @@ export class CityEngine {
       if (
         event.button !== 0 ||
         !pressed ||
-        Math.hypot(event.clientX - pressed.x, event.clientY - pressed.y) > CLICK_SLOP
+        !isClick(pressed, { x: event.clientX, y: event.clientY })
       ) {
         return
       }

@@ -27,6 +27,14 @@ export interface CityListeners {
   select?(item: CityItem | null): void
 }
 
+/** A press that moves less than this, in CSS pixels, is a click, not a drag of the camera. */
+const CLICK_SLOP = 4
+
+/** Whether a press and its release, both in the page's pixels, make a click. */
+export function isClick(down: { x: number; y: number }, up: { x: number; y: number }): boolean {
+  return Math.hypot(up.x - down.x, up.y - down.y) <= CLICK_SLOP
+}
+
 /** The fading in or out of what is outside the selection, in ms. */
 const DIM_DURATION = 280
 
