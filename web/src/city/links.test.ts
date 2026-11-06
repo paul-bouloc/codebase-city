@@ -249,10 +249,10 @@ describe('cityLinks', () => {
       expect(tips).toContainEqual(ferry.path[0])
       expect(tips).toContainEqual(ferry.path.at(-1))
     }
-    // One pier on each island, the hub's shared by its three lines; two boats at each pier, and
-    // 4, 2 and 2 along the lines.
-    expect(links.quays).toHaveLength(4)
-    expect(links.boats).toHaveLength(2 * 4 + 4 + 2 + 2)
+    // A pier on each spoke, two on the hub (one toward the south spokes, one toward the north
+    // one); two boats at each pier, and 4, 2 and 2 along the lines.
+    expect(links.quays).toHaveLength(5)
+    expect(links.boats).toHaveLength(2 * 5 + 4 + 2 + 2)
     expect(links.ferries.map((ferry) => ferry.width)).toEqual([
       1.2,
       0.3 + 0.9 * Math.sqrt(0.012),
@@ -312,7 +312,7 @@ describe('cityLinks', () => {
     const layout = city(
       [
         { plateau: { x: 0, y: 0, width: 30, height: 14 }, parcels },
-        { plateau: { x: 200, y: 0, width: 20, height: 20 } },
+        { plateau: { x: -200, y: 0, width: 20, height: 20 } },
       ],
       [link(0, 1, 10)],
     )
@@ -352,42 +352,19 @@ describe('cityLinks', () => {
     expect(links.boats).toHaveLength(0)
   })
 
-  it('sails round the archipelago by the shorter way, out on the open sea', () => {
-    // From a spoke on the south row to one on the north row, and from the hub to a spoke
-    const links = linksOf(city(ring, [link(1, 2, 10), link(0, 3, 10, 2)]))
-    const plateaux = ring.map((spec) => spec.plateau)
-    const outer = boundsOf(plateaux)
-    const outside = (point: { x: number; y: number }) =>
-      point.x < outer.x ||
-      point.x > outer.x + outer.width ||
-      point.y < outer.y ||
-      point.y > outer.y + outer.height
-    for (const ferry of links.ferries) {
-      let length = 0
-      let out = 0
-      ferry.path.forEach((point, index) => {
-        const previous = ferry.path[index - 1]
-        if (previous) {
-          const step = Math.hypot(point.x - previous.x, point.y - previous.y)
-          length += step
-          out += outside(point) && outside(previous) ? step : 0
-        }
-      })
-      expect(out).toBeGreaterThan(length / 2)
-      // The shorter way round: less than half the ring, and the ways in and out
-      expect(length).toBeLessThan(outer.width + outer.height + 120)
-    }
-    // One pier on each island, whichever way its lines go
-    expect(links.quays.filter((quay) => quay.island === 0)).toHaveLength(1)
+  it('leaves each island from the side turned toward the other', () => {
+    // Spoke 1 stands south-west of the hub, spoke 4 north of it
+    const links = linksOf(city(ring, [link(1, 0, 10), link(0, 4, 10)]))
+    const sideOf = (island: number) => links.quays.find((quay) => quay.island === island)?.side
+    expect(sideOf(1)).toBe('north')
+    expect(sideOf(4)).toBe('south')
   })
 
-  it('gives each ferry its own lane, the shorter arcs inside', () => {
-    const links = linksOf(city(ring, [link(1, 0, 10), link(3, 0, 10), link(5, 0, 10)]))
-    const westmost = links.ferries.map((ferry) => Math.min(...ferry.path.map((point) => point.x)))
-    // Three nested arcs west of the archipelago, a lane apart at least
-    const sorted = [...westmost].sort((p, q) => p - q)
-    expect((sorted[1] ?? 0) - (sorted[0] ?? 0)).toBeGreaterThan(1.4)
-    expect((sorted[2] ?? 0) - (sorted[1] ?? 0)).toBeGreaterThan(1.4)
+  it('gives an island a pier on each side its ferries leave from', () => {
+    // Spokes 1 and 3 south of the hub, spoke 2 north of it
+    const links = linksOf(city(ring, [link(1, 0, 10), link(2, 0, 10), link(3, 0, 10)]))
+    const hub = links.quays.filter((quay) => quay.island === 0).map((quay) => quay.side)
+    expect(new Set(hub).size).toBeGreaterThan(1)
   })
 
   it('gives a small city a quay and two boats, even without ferries', () => {
