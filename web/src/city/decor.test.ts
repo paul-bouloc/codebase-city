@@ -134,6 +134,26 @@ describe('cityDecor', () => {
     }
   })
 
+  it('plants an island square on a slab of its own like a grid, without meadows', () => {
+    const grid = { x: 1.2, y: 1.2, width: 8, height: 4 }
+    const tests: IslandLayout = {
+      path: 'tests',
+      layer: 1,
+      plateau: { x: 0, y: 0, width: 10.4, height: 6.6 },
+      parcels: [],
+      lots: [lot(2.2, 2.2), lot(2.2, 4.2)],
+      square: { x: 0.9, y: 0.9, width: 8.6, height: 4.6 },
+      grids: [{ rect: grid, nature: 'tests', base: slabTop(1), square: true }],
+    }
+    const decor = decorOf(city(tests))
+    expect(decor.gardens).toEqual([])
+    const onLots = decor.trees.filter((tree) => tree.z > layerAltitude(1))
+    expect(onLots.length).toBeGreaterThan(0)
+    for (const tree of onLots) {
+      expect(tree.z).toBeCloseTo(layerAltitude(1) + slabTop(1))
+    }
+  })
+
   it('keeps every trunk of a garden inside it, whatever its width', () => {
     // A garden 18.2 u wide: 9 lots of 2.02 u, not 9 of 2 u spilling over its sides
     const bare: IslandLayout = {

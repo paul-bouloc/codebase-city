@@ -132,13 +132,14 @@ export function cityDecor(
     const altitude = layerAltitude(island.layer)
     const grids = lotGrids(island)
     const gardens: Garden[] = [
+      // A square on a slab of its own is planted as a grid of its nature, not with meadows
       ...grids.flatMap(({ grid, isEmpty }) =>
-        grid.square ? squareGardens(grid.rect, isEmpty) : [],
+        isMeadowSquare(grid) ? squareGardens(grid.rect, isEmpty) : [],
       ),
       ...islandGardens(island, canals),
     ].map((rect) => ({ rect, bottom: altitude, top: altitude + slabTop(1) }))
     const lots = grids
-      .filter(({ grid }) => !grid.square)
+      .filter(({ grid }) => !isMeadowSquare(grid))
       .map(({ grid, empty }) => ({ grid, empty: empty() }))
     return { island, canals, altitude, gardens, lots }
   })
@@ -243,6 +244,11 @@ function lotGrids(island: IslandLayout) {
     }
     return { grid, isEmpty, empty }
   })
+}
+
+/** An island folder's square of ordinary code, on the paving: its empty lots become meadows. */
+function isMeadowSquare(grid: GridLayout): boolean {
+  return grid.square === true && grid.nature === 'normal'
 }
 
 /** Trees on a share `wooded` of a folder's empty lots, by the nature of its ground. */
