@@ -9,6 +9,7 @@ import {
   Vector2,
 } from 'three'
 import { CROWN_RADIUS, type Decor, FOLIAGE_TINTS, type TreeKind } from './decor'
+import { createFading, dimmingFragmentPars, type Fading } from './dimming'
 import type { Boat } from './links'
 import { shadingFragmentPars, shadingUniforms, shadingVertex, shadingVertexPars } from './shading'
 import { boardToThree, srgb, type Vec3 } from './units'
@@ -211,15 +212,23 @@ const vertexShader = /* glsl */ `
 ${shadingVertexPars}
 uniform float viewportHeight;
 uniform float modelWidth;
+uniform float dim;
+uniform float fades;
+uniform vec4 keptArea;
 attribute vec4 paint;
 attribute vec2 tone;
 attribute vec3 tint;
 attribute float seed;
 varying vec3 vColor;
+varying float vDim;
 void main() {
   vec3 colour = mix(tint, paint.rgb, paint.a);
   colour = mix(colour, vec3(0.0), tone.x);
   vColor = mix(colour, vec3(1.0), tone.y);
+  // Trees fade with the buildings, but for those in the kept area (x and z, min then max).
+  vec2 at = instanceMatrix[3].xz;
+  bool kept = all(greaterThanEqual(at, keptArea.xy)) && all(lessThanEqual(at, keptArea.zw));
+  vDim = kept ? 0.0 : dim * fades;
   // The instance's width in pixels, from its size and its distance; staggered by its seed.
   float size = length(instanceMatrix[0].xyz);
   vec4 centre = modelViewMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
@@ -233,9 +242,11 @@ void main() {
 
 const fragmentShader = /* glsl */ `
 ${shadingFragmentPars}
+${dimmingFragmentPars}
 varying vec3 vColor;
+varying float vDim;
 void main() {
-  gl_FragColor = vec4(shade(vColor, normalize(vWorldNormal)), 1.0);
+  gl_FragColor = vec4(shade(dimmed(vColor, vDim), normalize(vWorldNormal), dimmedShadows(vDim)), 1.0);
 }
 `
 
@@ -266,8 +277,12 @@ export function decorStats(decor: Decor, boats: readonly Boat[] = []): DecorStat
   }
 }
 
-/** Every tree, rock and boat of the city, in at most four draw calls. */
-export function createDecor(decor: Decor, boats: readonly Boat[] = []): Group {
+/** Every tree, rock and boat of the city, in at most four draw calls; trees fade, if asked. */
+export function createDecor(
+  decor: Decor,
+  boats: readonly Boat[] = [],
+  fading: Fading = createFading(),
+): Group {
   const byModel: Record<keyof typeof DECOR_MODELS, Instance[]> = {
     conifer: [],
     round: [],
@@ -305,13 +320,20 @@ export function createDecor(decor: Decor, boats: readonly Boat[] = []): Group {
   for (const model of ['conifer', 'round', 'rock', 'boat'] as const) {
     const instances = byModel[model]
     if (instances.length > 0) {
-      group.add(instancedModel(DECOR_MODELS[model], MODEL_WIDTH[model], instances))
+      const fades = model === 'conifer' || model === 'round'
+      group.add(instancedModel(DECOR_MODELS[model], MODEL_WIDTH[model], instances, fading, fades))
     }
   }
   return group
 }
 
-function instancedModel(vertices: ModelVertex[], width: number, instances: Instance[]) {
+function instancedModel(
+  vertices: ModelVertex[],
+  width: number,
+  instances: Instance[],
+  { dim, keptArea }: Fading,
+  fades: boolean,
+) {
   const geometry = new BufferGeometry()
   const attribute = (name: keyof ModelVertex) => {
     const values = vertices.flatMap((vertex) => vertex[name])
@@ -326,6 +348,9 @@ function instancedModel(vertices: ModelVertex[], width: number, instances: Insta
     ...shadingUniforms(),
     viewportHeight: { value: 1 },
     modelWidth: { value: width },
+    dim,
+    keptArea,
+    fades: { value: fades ? 1 : 0 },
   }
   const material = new ShaderMaterial({ uniforms, vertexShader, fragmentShader, lights: true })
   const mesh = new InstancedMesh(geometry, material, instances.length)
