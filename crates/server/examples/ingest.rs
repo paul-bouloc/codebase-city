@@ -781,10 +781,11 @@ fn print_audit(result: &AnalysisResult, audit: &analyzer::layout::Audit) {
         100.0 * files / plateaux.max(1.0)
     );
     println!(
-        "area          files {:.0}%, empty lots asked {:.0}%, extra lots {:.0}%, gaps {:.0}%, padding {:.0}%, channels {:.0}%, water {:.0}%",
+        "area          files {:.0}%, empty lots asked {:.0}%, extra lots {:.0}%, free ground {:.0}%, gaps {:.0}%, padding {:.0}%, channels {:.0}%, water {:.0}%",
         share(files),
         share(asked - files),
         share(extra),
+        share(sum(|level| level.ground)),
         share(gaps),
         share(sum(|level| level.padding)),
         share(channels),
