@@ -165,9 +165,9 @@ export function cityFromResult(result: AnalysisResult): CityLayout {
       ...(islandDirs.has(dir) ? { square: true } : {}),
     })
     if (islandDirs.has(dir)) {
+      // Its slab, if any, is drawn from the grid: the square stays apart from the folders
       island.square = lots
-    }
-    if (slabbed.has(dir)) {
+    } else if (slabbed.has(dir)) {
       island.parcels.push({
         rect: lots,
         level: (level[dir] ?? 1) + 1,

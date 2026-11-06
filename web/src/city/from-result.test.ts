@@ -164,9 +164,9 @@ describe('cityFromResult', () => {
     const json = structuredClone(sample) as unknown as AnalysisResult
     json.layout.grids.nature[2] = 'tests'
     const core = cityFromResult(decodeResult(json)).islands[2]
-    const square = { x: 38.6, y: 0.6, width: 6.6, height: 4.6 }
-    expect(core?.parcels).toEqual([{ rect: square, level: 1, nature: 'tests', paved: false }])
-    expect(core?.square).toEqual(square)
+    // The slab is drawn from the square's grid: the square stays apart from the folders
+    expect(core?.parcels).toEqual([])
+    expect(core?.square).toEqual({ x: 38.6, y: 0.6, width: 6.6, height: 4.6 })
     expect(core?.grids?.[0]).toMatchObject({ nature: 'tests', base: slabTop(1), square: true })
     expect(core?.lots.every((lot) => lot.ground === 'tests' && lot.base === slabTop(1))).toBe(true)
   })

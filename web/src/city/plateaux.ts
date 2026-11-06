@@ -1,6 +1,6 @@
 import { Mesh, ShaderMaterial } from 'three'
 import type { Garden } from './decor'
-import type { CityLayout, ParcelNature, Rect } from './layout'
+import type { CityLayout, ParcelLayout, ParcelNature, Rect } from './layout'
 import { MeshBuilder } from './mesh-builder'
 import { shadingFragmentPars, shadingUniforms, shadingVertex, shadingVertexPars } from './shading'
 import { layerAltitude, mixSrgb, slabTop, srgb, type Vec3 } from './units'
@@ -48,13 +48,19 @@ interface Block {
  * Every parcel as a flat slab on its island, nested ones higher, in one draw call. Each slab
  * starts on the one it stands on: a nested slab flush with its parent's edge would otherwise
  * share its side, and flicker. The island's folders keep square corners, like the canals and
- * quays along them; the ones inside are rounded, along their streets.
+ * quays along them; the ones inside are rounded, along their streets. The square of an island
+ * folder whose own files are not ordinary code gets a slab of their nature too.
  */
 export function createParcels(layout: CityLayout, gardens: readonly Garden[] = []): Mesh {
   return blocksMesh([
-    ...layout.islands.flatMap(({ parcels, layer }) => {
+    ...layout.islands.flatMap(({ parcels, grids = [], square, layer }) => {
       const altitude = layerAltitude(layer)
-      return parcels.map(({ rect, level, nature, paved }) => {
+      const squareNature = grids.find((grid) => grid.square)?.nature ?? 'normal'
+      const slabs: readonly ParcelLayout[] =
+        square && squareNature !== 'normal'
+          ? [...parcels, { rect: square, level: 1, nature: squareNature }]
+          : parcels
+      return slabs.map(({ rect, level, nature, paved }) => {
         const [topColour, sideColour] = paved ? [PAVING, PAVING_EDGE] : parcelColours(nature, level)
         return {
           rect,

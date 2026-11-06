@@ -78,4 +78,26 @@ describe('createParcels', () => {
     const outer = Array.from({ length: 36 }, (_, index) => position.getY(index))
     expect(Math.min(...outer)).toBeCloseTo(0.6)
   })
+
+  it('lays a slab under an island square that is not ordinary code', () => {
+    const square = { x: 0.9, y: 0.9, width: 4.6, height: 4.6 }
+    const layout = (nature: 'normal' | 'tests'): CityLayout => ({
+      islands: [
+        {
+          path: 'island',
+          layer: 1,
+          plateau: { x: 0, y: 0, width: 10, height: 6.6 },
+          parcels: [],
+          lots: [],
+          square,
+          grids: [{ rect: square, nature, base: 0, square: true }],
+        },
+      ],
+      bounds: { x: 0, y: 0, width: 10, height: 6.6 },
+    })
+    const triangles = (city: CityLayout) =>
+      createParcels(city).geometry.getAttribute('position').count / 3
+    expect(triangles(layout('normal'))).toBe(0)
+    expect(triangles(layout('tests'))).toBe(12)
+  })
 })
