@@ -291,15 +291,28 @@ impl Node {
                 (side + gap) * (side + gap)
             })
             .sum();
-        let shapes: Vec<PackShape> = ASPECTS
-            .iter()
-            .map(|&aspect| rows(&items, (area * aspect).sqrt(), gap))
-            .collect();
-        let preferred = closest(&shapes, |shape| {
-            (f64::from(shape.width) / f64::from(shape.height.max(1)) / aspect)
-                .ln()
-                .abs()
-        });
+        let shapes_of = |stack: bool| -> (Vec<PackShape>, u32) {
+            let shapes: Vec<PackShape> = ASPECTS
+                .iter()
+                .map(|&aspect| rows(&items, (area * aspect).sqrt(), gap, stack))
+                .collect();
+            let preferred = closest(&shapes, |shape| {
+                (f64::from(shape.width) / f64::from(shape.height.max(1)) / aspect)
+                    .ln()
+                    .abs()
+            });
+            (shapes, preferred)
+        };
+        let (mut shapes, mut preferred) = shapes_of(true);
+        if gap == Gap::Channel {
+            // Islands keep their own size, and what a stack leaves around them
+            // is water: for the archipelago's few islands, the smaller city of
+            // the two ways
+            let (flat, flat_preferred) = shapes_of(false);
+            if area_of(&flat[flat_preferred as usize]) < area_of(&shapes[preferred as usize]) {
+                (shapes, preferred) = (flat, flat_preferred);
+            }
+        }
         Self::new(
             id,
             Kind::Pack {
@@ -598,6 +611,10 @@ impl Row {
     }
 }
 
+fn area_of(shape: &PackShape) -> u64 {
+    area(shape.width, shape.height)
+}
+
 /// The side of an item's preferred shape that faces its neighbours.
 fn item_side(item: &Node) -> u32 {
     item.width().min(item.height())
@@ -766,11 +783,11 @@ impl Shape {
 }
 
 /// Lays `items`, heaviest first, out in rows about `width` wide, from the
-/// north: see [`lay_rows`].
-fn rows(items: &[Node], width: f64, gap: Gap) -> PackShape {
+/// north, small items stacked or not: see [`lay_rows`].
+fn rows(items: &[Node], width: f64, gap: Gap, stack: bool) -> PackShape {
     let order: Vec<usize> = (0..items.len()).collect();
     let mut choices = vec![0; items.len()];
-    let rows = lay_rows(items, &order, width, gap, gap != Gap::Channel, &mut choices);
+    let rows = lay_rows(items, &order, width, gap, stack, &mut choices);
     let size_of = |index: usize| items[index].size(choices[index]);
     let (width, height) = rows.size(&size_of);
     PackShape {
@@ -943,6 +960,16 @@ fn stacked_row(
         return None;
     }
     let need: f64 = small.iter().map(|&index| items[index].weight as f64).sum();
+    // The room the stack needs, gaps included: between islands, a channel is
+    // as wide as a small island
+    let room: f64 = small
+        .iter()
+        .map(|&index| {
+            let side = (items[index].weight as f64).sqrt();
+            let gap = f64::from(gap.between(item_side(&items[index])));
+            (side + gap) * (side + gap)
+        })
+        .sum();
     let alone: Vec<u32> = small.iter().map(|&index| choices[index]).collect();
     let extent = |choices: &[u32], indexes: &[usize], axis: Axis| -> f64 {
         let size_of = |index: usize| items[index].size(choices[index]);
@@ -969,8 +996,9 @@ fn stacked_row(
         alone_width * height - need + beside(alone_width, height),
         None,
     );
+    let area = if gap == Gap::Channel { room } else { need };
     for factor in STACK_WIDTHS {
-        let stack_width = (need / height.max(1.0) * factor).max(f64::from(LOT));
+        let stack_width = (area / height.max(1.0) * factor).max(f64::from(LOT));
         let stack = lay_rows(items, small, stack_width, gap, false, choices);
         let size_of = |index: usize| items[index].size(choices[index]);
         let (stack_width, stack_height) = stack.size(&size_of);
