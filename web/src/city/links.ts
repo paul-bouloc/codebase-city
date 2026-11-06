@@ -40,8 +40,8 @@ const MID_CHANNEL = 0.5
 /** A city this small gets a quay and two boats even without ferries. */
 const SMALL_CITY = 50
 
-/** A ferry line's width in pixels: `1.4 + 4.5 × √(n ÷ max)`. */
-const FERRY_WIDTH = [1.4, 4.5] as const
+/** A ferry line's width on the water, in u: `0.3 + 0.9 × √(n ÷ max)`. */
+const FERRY_WIDTH = [0.3, 0.9] as const
 
 /** Width of a bridge's deck, in u, from the imports it carries. */
 export function deckWidth(imports: number): number {
@@ -96,8 +96,8 @@ export interface Quay {
 export interface Ferry extends Pair {
   /** From the pier of `a` to the pier of `b`, by water. */
   path: Point[]
-  /** Its width on screen, in pixels. */
-  pixels: number
+  /** Its wake's width on the water, in u. */
+  width: number
 }
 
 export interface Port {
@@ -258,7 +258,7 @@ export function cityLinks(layout: CityLayout, shapes: readonly IslandShape[]): C
       result.ferries.push({
         ...pair,
         path,
-        pixels: FERRY_WIDTH[0] + FERRY_WIDTH[1] * Math.sqrt(pair.imports / Math.max(largest, 1)),
+        width: FERRY_WIDTH[0] + FERRY_WIDTH[1] * Math.sqrt(pair.imports / Math.max(largest, 1)),
       })
     }
     // A pier no line leaves from has nothing to show.

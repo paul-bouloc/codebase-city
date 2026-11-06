@@ -252,10 +252,10 @@ describe('cityLinks', () => {
     // 4, 2 and 2 along the lines.
     expect(links.quays).toHaveLength(4)
     expect(links.boats).toHaveLength(2 * 4 + 4 + 2 + 2)
-    expect(links.ferries.map((ferry) => ferry.pixels)).toEqual([
-      5.9,
-      1.4 + 4.5 * Math.sqrt(0.012),
-      1.4 + 4.5 * Math.sqrt(0.01),
+    expect(links.ferries.map((ferry) => ferry.width)).toEqual([
+      1.2,
+      0.3 + 0.9 * Math.sqrt(0.012),
+      0.3 + 0.9 * Math.sqrt(0.01),
     ])
   })
 
