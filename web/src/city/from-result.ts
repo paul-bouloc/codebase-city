@@ -67,6 +67,21 @@ function round(value: number): number {
   return Math.round(value * TENTHS) / TENTHS
 }
 
+/**
+ * Every folder's full path, `/` for the root. The full path, not the name: two islands may share
+ * a name (`test` and `src/test`), and an island's path seeds its coast and its decor.
+ */
+export function folderPaths(dirs: AnalysisResult['dirs']): string[] {
+  const paths: string[] = []
+  // A folder comes after its parent: its parent's path is known.
+  dirs.parent.forEach((parent, dir) => {
+    const name = dirs.name[dir] ?? ''
+    const above = parent === null ? '' : (paths[parent] ?? '')
+    paths[dir] = above === '/' || above === '' ? name : `${above}/${name}`
+  })
+  return paths.map((path) => path || '/')
+}
+
 /** The city of an analysis result, from the layout the analyzer computed. */
 export function cityFromResult(result: AnalysisResult): CityLayout {
   const { dirs, files, layout } = result
@@ -79,19 +94,8 @@ export function cityFromResult(result: AnalysisResult): CityLayout {
     }
   })
 
-  // The full path, not the name: two islands may share a name (`test` and `src/test`), and an
-  // island's path seeds its coast and its decor.
-  const pathOf = (dir: number): string => {
-    const names: string[] = []
-    for (let at: number | null | undefined = dir; at !== null && at !== undefined; ) {
-      const name = dirs.name[at]
-      if (name) {
-        names.unshift(name)
-      }
-      at = dirs.parent[at]
-    }
-    return names.join('/') || '/'
-  }
+  const paths = folderPaths(dirs)
+  const pathOf = (dir: number): string => paths[dir] ?? '/'
   const islands: IslandLayout[] = result.islands.dir.map((dir, island) => ({
     path: pathOf(dir),
     layer: result.islands.layer[island] ?? 1,
@@ -178,13 +182,8 @@ export function cityFromResult(result: AnalysisResult): CityLayout {
     }
   })
 
-  const dirPaths = new Map<number, string>()
   const filePath = (dir: number, file: number): string => {
-    let folder = dirPaths.get(dir)
-    if (folder === undefined) {
-      folder = pathOf(dir)
-      dirPaths.set(dir, folder)
-    }
+    const folder = pathOf(dir)
     const name = files.name[file] ?? ''
     return folder === '/' ? name : `${folder}/${name}`
   }
