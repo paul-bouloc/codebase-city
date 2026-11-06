@@ -333,10 +333,12 @@ describe('decor models', () => {
     // Two tiers with their tops and a four-sided trunk
     expect(DECOR_MODELS.round.length / 3).toBe(40)
     expect(DECOR_MODELS.rock.length / 3).toBe(5)
+    // A hull without a bottom, and two sails seen from both sides
+    expect(DECOR_MODELS.boat.length / 3).toBe(14)
   })
 
-  it('face outward and up', () => {
-    for (const vertices of Object.values(DECOR_MODELS)) {
+  it('face outward and up, wound to be seen from where they face', () => {
+    for (const [model, vertices] of Object.entries(DECOR_MODELS)) {
       for (let i = 0; i < vertices.length; i += 3) {
         const [a, b, c] = [vertices[i], vertices[i + 1], vertices[i + 2]]
         if (!a || !b || !c) {
@@ -346,9 +348,9 @@ describe('decor models', () => {
           (k) => (a.position[k] ?? 0) + (b.position[k] ?? 0) + (c.position[k] ?? 0),
         )
         const [nx, ny, nz] = a.normal
-        // Sides point away from the axis, tops straight up
+        // Sides point away from the axis, tops straight up; a sail stands on the boat's axis
         const outward = nx * (centroid[0] ?? 0) + nz * (centroid[2] ?? 0)
-        expect(outward > 1e-9 || ny > 0.99).toBe(true)
+        expect(outward > 1e-9 || ny > 0.99 || model === 'boat').toBe(true)
         // Wound counter-clockwise seen from outside, as three.js culls
         const u = [0, 1, 2].map((k) => (b.position[k] ?? 0) - (a.position[k] ?? 0))
         const v = [0, 1, 2].map((k) => (c.position[k] ?? 0) - (a.position[k] ?? 0))

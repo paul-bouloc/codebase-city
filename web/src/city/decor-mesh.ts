@@ -9,10 +9,11 @@ import {
   Vector2,
 } from 'three'
 import { CROWN_RADIUS, type Decor, FOLIAGE_TINTS, type TreeKind } from './decor'
+import type { Boat } from './links'
 import { shadingFragmentPars, shadingUniforms, shadingVertex, shadingVertexPars } from './shading'
 import { boardToThree, srgb, type Vec3 } from './units'
 
-// Trees and rocks are a few models repeated, one instanced draw call each. A part of a model
+// Trees, rocks and boats are a few models repeated, one instanced draw call each. A part of a model
 // takes the instance's tint (foliage) or a colour of its own (trunk, rock), then darkens (a
 // flank) or lightens (a top). Below 3 px on screen, each instance shrinks away.
 
@@ -128,14 +129,78 @@ function rockModel(): ModelVertex[] {
   return builder.vertices
 }
 
+const HULL = srgb('#3E4A57')
+const BOAT_DECK = srgb('#F4EEE2')
+const MAINSAIL = srgb('#FFFFFF')
+const JIB = srgb('#EFE6D3')
+/** The hull: 2 × 0.7 u, 0.3 u high, a little of it under water. */
+const HULL_SIZE = { length: 2, beam: 0.7, bottom: -0.05, top: 0.25 }
+
+/**
+ * A sailboat heading along x: a box of a hull under a mainsail (2.3 u) and a jib (1.8 u), each
+ * sail a triangle seen from both sides.
+ */
+function boatModel(): ModelVertex[] {
+  const builder = new ModelBuilder()
+  const { length, beam, bottom, top } = HULL_SIZE
+  const x0 = -length / 2
+  const x1 = length / 2
+  const z0 = -beam / 2
+  const z1 = beam / 2
+  const hull = { colour: HULL }
+  const corner = (x: number, y: number, z: number): Vec3 => [x, y, z]
+  builder.triangle(
+    corner(x0, top, z0),
+    corner(x1, top, z0),
+    corner(x1, top, z1),
+    { colour: BOAT_DECK },
+    [0, 1, 0],
+  )
+  builder.triangle(
+    corner(x0, top, z0),
+    corner(x1, top, z1),
+    corner(x0, top, z1),
+    { colour: BOAT_DECK },
+    [0, 1, 0],
+  )
+  for (const [a, b, facing] of [
+    [corner(x0, 0, z0), corner(x1, 0, z0), [0, 0, -1]],
+    [corner(x1, 0, z0), corner(x1, 0, z1), [1, 0, 0]],
+    [corner(x1, 0, z1), corner(x0, 0, z1), [0, 0, 1]],
+    [corner(x0, 0, z1), corner(x0, 0, z0), [-1, 0, 0]],
+  ] as const) {
+    const lowA: Vec3 = [a[0], bottom, a[2]]
+    const lowB: Vec3 = [b[0], bottom, b[2]]
+    const highA: Vec3 = [a[0], top, a[2]]
+    const highB: Vec3 = [b[0], top, b[2]]
+    builder.triangle(lowA, lowB, highB, hull, [...facing])
+    builder.triangle(lowA, highB, highA, hull, [...facing])
+  }
+  const sails: [Vec3, Vec3, Vec3, Vec3][] = [
+    [[0.15, top, 0], [-0.75, top + 0.05, 0], [0.15, top + 2.3, 0], MAINSAIL],
+    [[0.25, top, 0], [0.95, top, 0], [0.25, top + 1.8, 0], JIB],
+  ]
+  for (const [a, b, c, colour] of sails) {
+    builder.triangle(a, b, c, { colour }, [0, 0, 1])
+    builder.triangle(a, b, c, { colour }, [0, 0, -1])
+  }
+  return builder.vertices
+}
+
 export const DECOR_MODELS = {
   conifer: coniferModel(),
   round: roundTreeModel(),
   rock: rockModel(),
-} satisfies Record<TreeKind | 'rock', ModelVertex[]>
+  boat: boatModel(),
+} satisfies Record<TreeKind | 'rock' | 'boat', ModelVertex[]>
 
 /** How wide a model is for size 1: what must show on screen for it to be drawn. */
-const MODEL_WIDTH = { conifer: 2 * CROWN_RADIUS.conifer, round: 2 * CROWN_RADIUS.round, rock: 2 }
+const MODEL_WIDTH = {
+  conifer: 2 * CROWN_RADIUS.conifer,
+  round: 2 * CROWN_RADIUS.round,
+  rock: 2,
+  boat: HULL_SIZE.length,
+}
 
 /** Below this many pixels across, an instance has shrunk to nothing; it is whole above. */
 const VANISH_PIXELS = [3, 4.5] as const
@@ -189,23 +254,25 @@ export interface DecorStats {
   triangles: number
 }
 
-/** How many trees and rocks a city has, and their triangles before any shrinks away. */
-export function decorStats(decor: Decor): DecorStats {
+/** How many trees, rocks and boats a city has, and their triangles before any shrinks away. */
+export function decorStats(decor: Decor, boats: readonly Boat[] = []): DecorStats {
   const triangles = (model: keyof typeof DECOR_MODELS) => DECOR_MODELS[model].length / 3
   return {
-    instances: decor.trees.length + decor.rocks.length,
+    instances: decor.trees.length + decor.rocks.length + boats.length,
     triangles:
       decor.trees.reduce((sum, tree) => sum + triangles(tree.kind), 0) +
-      decor.rocks.length * triangles('rock'),
+      decor.rocks.length * triangles('rock') +
+      boats.length * triangles('boat'),
   }
 }
 
-/** Every tree and rock of the city, in at most three draw calls. */
-export function createDecor(decor: Decor): Group {
+/** Every tree, rock and boat of the city, in at most four draw calls. */
+export function createDecor(decor: Decor, boats: readonly Boat[] = []): Group {
   const byModel: Record<keyof typeof DECOR_MODELS, Instance[]> = {
     conifer: [],
     round: [],
     rock: [],
+    boat: [],
   }
   for (const tree of decor.trees) {
     byModel[tree.kind].push({
@@ -225,8 +292,17 @@ export function createDecor(decor: Decor): Group {
       seed: rock.seed,
     })
   }
+  for (const boat of boats) {
+    byModel.boat.push({
+      position: boardToThree(boat.x, boat.y, 0),
+      angle: boat.angle,
+      size: 1,
+      tint: HULL,
+      seed: boat.seed,
+    })
+  }
   const group = new Group()
-  for (const model of ['conifer', 'round', 'rock'] as const) {
+  for (const model of ['conifer', 'round', 'rock', 'boat'] as const) {
     const instances = byModel[model]
     if (instances.length > 0) {
       group.add(instancedModel(DECOR_MODELS[model], MODEL_WIDTH[model], instances))
