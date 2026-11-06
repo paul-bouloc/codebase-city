@@ -365,10 +365,34 @@ impl Node {
         let (inner, padding) = self.innermost();
         let candidates: Vec<u32> = match &inner.kind {
             Kind::Grid { lots } => {
-                let rows = (row.height.saturating_sub(2 * padding) / LOT).clamp(1, *lots);
-                vec![rows, (rows + 1).min(*lots)]
+                // No longer than `MAX_STRETCH` either way
+                let fewest = (1..=*lots)
+                    .find(|&rows| lots.div_ceil(rows) <= MAX_STRETCH * rows)
+                    .unwrap_or(1);
+                let most = (1..=*lots)
+                    .rev()
+                    .find(|&rows| rows <= MAX_STRETCH * lots.div_ceil(rows))
+                    .unwrap_or(*lots);
+                let rows = (row.height.saturating_sub(2 * padding) / LOT).clamp(fewest, most);
+                // As many columns, no row more than the lots need
+                let tight = lots.div_ceil(lots.div_ceil(rows)).max(fewest);
+                vec![rows, (rows + 1).min(most), tight]
             }
-            Kind::Pack { shapes, .. } => (0..).take(shapes.len()).collect(),
+            Kind::Pack { shapes, .. } => {
+                let all = (0..).take(shapes.len());
+                let compact: Vec<u32> = all
+                    .clone()
+                    .filter(|&choice| {
+                        let (width, height) = self.size(choice);
+                        width.max(height) <= MAX_STRETCH * width.min(height)
+                    })
+                    .collect();
+                if compact.is_empty() {
+                    all.collect()
+                } else {
+                    compact
+                }
+            }
             Kind::Frame { .. } => Vec::new(),
         };
         let mut best = (self.preferred(), f64::INFINITY);
@@ -1012,8 +1036,12 @@ mod tests {
             grid.size(grid.fit(&row(2 * LOT + 5, 5 * LOT))),
             (5 * LOT, 2 * LOT)
         );
-        assert_eq!(grid.size(grid.fit(&row(3, 10 * LOT))), (10 * LOT, LOT));
-        assert_eq!(grid.size(grid.fit(&row(100 * LOT, LOT))), (LOT, 10 * LOT));
+        // Never a strip longer than four times its width
+        assert_eq!(grid.size(grid.fit(&row(3, 10 * LOT))), (5 * LOT, 2 * LOT));
+        assert_eq!(
+            grid.size(grid.fit(&row(100 * LOT, LOT))),
+            (2 * LOT, 8 * LOT)
+        );
     }
 
     #[test]
@@ -1047,8 +1075,17 @@ mod tests {
         let widest = shapes.last().unwrap();
         assert!(narrowest.width < narrowest.height);
         assert!(widest.width > 2 * widest.height);
-        let tall = pack.fit(&row(narrowest.height, narrowest.width));
-        assert_eq!(pack.size(tall), (narrowest.width, narrowest.height));
+        // A row as tall as the narrowest shape gets the tallest one no longer
+        // than four times its width
+        let (width, height) = pack.size(pack.fit(&row(narrowest.height, narrowest.width)));
+        assert!(height > width && height <= MAX_STRETCH * width);
+        let tallest = shapes
+            .iter()
+            .filter(|shape| shape.height <= MAX_STRETCH * shape.width)
+            .map(|shape| shape.height)
+            .max()
+            .unwrap();
+        assert_eq!(height, tallest);
     }
 
     #[test]
