@@ -123,7 +123,7 @@ export interface CityLinks {
   boats: Boat[]
   /** Links gathered at a port, each once even when both its islands' ports count it. */
   inPorts: number
-  /** Links too small to show while nothing is selected. */
+  /** Links not drawn: too small while nothing is selected, or with no way by water. */
   hidden: number
 }
 
@@ -242,20 +242,24 @@ export function cityLinks(layout: CityLayout, shapes: readonly IslandShape[]): C
 
   if (sailing.length > 0) {
     const grid = waterGrid(shapes, boundsOf(plateaux))
+    const sailed = new Set<Quay>()
     for (const pair of sailing) {
       const from = piers.get(`${pair.a}/${ferrySide(pair)}`)
       const to = piers.get(`${pair.b}/${ferrySide(pair)}`)
       const path = from && to ? waterRoute(grid, tipOf(from), tipOf(to)) : null
-      if (!path) {
+      if (!from || !to || !path) {
         result.hidden++
         continue
       }
+      sailed.add(from).add(to)
       result.ferries.push({
         ...pair,
         path,
         pixels: FERRY_WIDTH[0] + FERRY_WIDTH[1] * Math.sqrt(pair.imports / Math.max(largest, 1)),
       })
     }
+    // A pier no line leaves from has nothing to show.
+    result.quays = result.quays.filter((quay) => quay.port || sailed.has(quay))
   }
 
   const files = layout.islands.reduce((sum, island) => sum + island.lots.length, 0)

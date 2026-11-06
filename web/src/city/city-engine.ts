@@ -83,7 +83,7 @@ export interface LinkStats {
   ferries: number
   /** Links gathered at a port, not drawn. */
   inPorts: number
-  /** Links too small to draw while nothing is selected. */
+  /** Links not drawn: too small while nothing is selected, or with no way by water. */
   hidden: number
 }
 

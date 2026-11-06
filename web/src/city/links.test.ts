@@ -283,6 +283,27 @@ describe('cityLinks', () => {
     expect(moored).toHaveLength(0)
   })
 
+  it('leaves no pier for a ferry with no way by water', () => {
+    // A lagoon: four islands 1 u apart, whose shores close it, around a fifth.
+    const links = linksOf(
+      city(
+        [
+          { plateau: { x: 0, y: 0, width: 60, height: 12 } },
+          { plateau: { x: 0, y: 48, width: 60, height: 12 } },
+          { plateau: { x: 0, y: 13, width: 12, height: 34 } },
+          { plateau: { x: 48, y: 13, width: 12, height: 34 } },
+          { plateau: { x: 24, y: 24, width: 12, height: 12 } },
+          { plateau: { x: 150, y: 0, width: 20, height: 20 } },
+        ],
+        [link(4, 5, 10)],
+      ),
+    )
+    expect(links.ferries).toHaveLength(0)
+    expect(links.hidden).toBe(1)
+    expect(links.quays).toHaveLength(0)
+    expect(links.boats).toHaveLength(0)
+  })
+
   it('sails links that go up on the east side, the others on the west', () => {
     const links = linksOf(city(ring, [link(1, 0, 10), link(0, 2, 10, 2)]))
     const sideOf = (island: number) =>
