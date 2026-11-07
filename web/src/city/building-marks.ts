@@ -1,6 +1,7 @@
 import {
   BackSide,
   BufferGeometry,
+  DoubleSide,
   Float32BufferAttribute,
   Group,
   type IUniform,
@@ -13,7 +14,6 @@ import {
 } from 'three'
 import { buildingGeometry, type Vertex } from './archetype-geometry'
 import type { PlacedBuilding } from './placed-buildings'
-import { createScreenLines } from './screen-lines'
 import { srgb, type Vec3 } from './units'
 
 // What marks one building: an outline around its shape, a ring on the ground and, once
@@ -32,20 +32,33 @@ export interface MarkStyle {
   /** Ring width, and its dash and gap if dotted, in CSS pixels. */
   ring: number
   ringDash?: [number, number]
+  /** The ring's least radius on screen, in CSS pixels: a far building still gets a clear one. */
+  ringMinimum: number
   pin: boolean
 }
 
-export const HOVERED_MARK: MarkStyle = { outline: 1.4, ring: 1, ringDash: [3, 3], pin: false }
-export const SELECTED_MARK: MarkStyle = { outline: 1.6, ring: 2.4, pin: true }
+export const HOVERED_MARK: MarkStyle = {
+  outline: 2,
+  ring: 1.5,
+  ringDash: [4, 3],
+  ringMinimum: 12,
+  pin: false,
+}
+export const SELECTED_MARK: MarkStyle = { outline: 2.5, ring: 3, ringMinimum: 16, pin: true }
 
 /** The ring sits a little above the ground it is drawn on. */
 const RING_LIFT = 0.03
-/** The pin's stem, from above the roof, in u; its head, in CSS pixels, then its white rim. */
+/**
+ * The pin stands above the roof, from this far over it in u; its stem is as long on screen at
+ * any distance, in CSS pixels, then its head and the head's white rim.
+ */
 const STEM_FROM = 0.4
-const STEM_TO = 2.6
+const STEM_LENGTH = 36
 const STEM_WIDTH = 2
-const HEAD = 7
-const HEAD_RIM = 2
+const HEAD = 12
+const HEAD_RIM = 2.5
+/** Drawn after the city, over whatever stands in front. */
+const PIN_ORDER = 10
 
 // The outline is the shape's back faces, each vertex pushed away from the building's middle on
 // screen: a shell a fixed number of pixels wider than the building, seen only past its edge.
@@ -75,21 +88,33 @@ void main() {
 }
 `
 
+// The ring grows to its least size on screen when its building is far: its plane scales about
+// its middle, by how many pixels a unit spans there.
 const ringVertex = /* glsl */ `
+uniform float radius;
+uniform float minimum;
+uniform vec2 resolution;
 varying vec2 vLocal;
+varying float vRadius;
 void main() {
-  vLocal = position.xy;
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  vec4 middle = modelViewMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+  float pixelsPerUnit = resolution.y * projectionMatrix[1][1] * 0.5 / max(-middle.z, 1e-3);
+  float grown = max(radius, minimum / pixelsPerUnit);
+  vec3 local = vec3(position.xy * grown / radius, position.z);
+  vLocal = local.xy;
+  vRadius = grown;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(local, 1.0);
 }
 `
 
 const ringFragment = /* glsl */ `
-uniform float radius;
 uniform float width;
 uniform vec2 dash;
 uniform vec3 colour;
 varying vec2 vLocal;
+varying float vRadius;
 void main() {
+  float radius = vRadius;
   float d = length(vLocal);
   float perPixel = max(fwidth(d), 1e-6);
   float off = abs(d - radius) / perPixel;
@@ -107,10 +132,28 @@ void main() {
 }
 `
 
+// The stem is a quad standing up from its foot on screen: `corner` is its side (−1 or 1) and
+// how far up it is (0 or 1). The head sits at its top.
+const stemVertex = /* glsl */ `
+uniform vec2 resolution;
+uniform float width;
+uniform float stem;
+attribute vec2 corner;
+void main() {
+  vec4 clip = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  clip.xy += vec2(corner.x * width * 0.5, corner.y * stem) * 2.0 / resolution * clip.w;
+  gl_Position = clip;
+}
+`
+
 const headVertex = /* glsl */ `
+uniform vec2 resolution;
+uniform float stem;
 uniform float size;
 void main() {
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  vec4 clip = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  clip.y += stem * 2.0 / resolution.y * clip.w;
+  gl_Position = clip;
   gl_PointSize = size;
 }
 `
@@ -230,6 +273,8 @@ export class BuildingMark {
     const material = new ShaderMaterial({
       uniforms: {
         radius: { value: radius },
+        minimum: { value: this.style.ringMinimum * this.pixelRatio },
+        resolution: this.resolution,
         width: { value: this.style.ring * this.pixelRatio },
         dash: {
           value: new Vector2(...(this.style.ringDash ?? [0, 0]).map((l) => l * this.pixelRatio)),
@@ -247,34 +292,62 @@ export class BuildingMark {
     const mesh = new Mesh(new PlaneGeometry(extent, extent), material)
     mesh.rotation.x = -Math.PI / 2
     mesh.position.set(position[0], position[1] + RING_LIFT, position[2])
+    mesh.frustumCulled = false
+    this.follow(mesh)
     return mesh
   }
 
   private pin(roof: Vec3): (Mesh | Points)[] {
-    const from: Vec3 = [roof[0], roof[1] + STEM_FROM, roof[2]]
-    const to: Vec3 = [roof[0], roof[1] + STEM_TO, roof[2]]
-    const stem = createScreenLines(
-      [[from, to]],
-      { width: STEM_WIDTH, colour: INK },
-      this.pixelRatio,
-      false,
+    const foot: Vec3 = [roof[0], roof[1] + STEM_FROM, roof[2]]
+    const length = { value: STEM_LENGTH * this.pixelRatio }
+    const stemGeometry = new BufferGeometry()
+    stemGeometry.setAttribute(
+      'position',
+      new Float32BufferAttribute([...foot, ...foot, ...foot, ...foot], 3),
+    )
+    stemGeometry.setAttribute('corner', new Float32BufferAttribute([-1, 0, 1, 0, -1, 1, 1, 1], 2))
+    stemGeometry.setIndex([0, 1, 2, 2, 1, 3])
+    const stemMesh = new Mesh(
+      stemGeometry,
+      new ShaderMaterial({
+        uniforms: {
+          resolution: this.resolution,
+          width: { value: STEM_WIDTH * this.pixelRatio },
+          stem: length,
+          colour: { value: new Vector3(...INK) },
+        },
+        vertexShader: stemVertex,
+        fragmentShader: flatFragment,
+        depthTest: false,
+        side: DoubleSide,
+      }),
     )
     const size = (HEAD + 2 * HEAD_RIM) * this.pixelRatio
-    const geometry = new BufferGeometry()
-    geometry.setAttribute('position', new Float32BufferAttribute(to, 3))
-    const material = new ShaderMaterial({
-      uniforms: {
-        size: { value: size },
-        head: { value: HEAD * this.pixelRatio },
-        colour: { value: new Vector3(...INK) },
-        rim: { value: new Vector3(...WHITE) },
-      },
-      vertexShader: headVertex,
-      fragmentShader: headFragment,
-      transparent: true,
-    })
-    const head = new Points(geometry, material)
-    head.frustumCulled = false
-    return [stem, head]
+    const headGeometry = new BufferGeometry()
+    headGeometry.setAttribute('position', new Float32BufferAttribute(foot, 3))
+    const head = new Points(
+      headGeometry,
+      new ShaderMaterial({
+        uniforms: {
+          resolution: this.resolution,
+          stem: length,
+          size: { value: size },
+          head: { value: HEAD * this.pixelRatio },
+          colour: { value: new Vector3(...INK) },
+          rim: { value: new Vector3(...WHITE) },
+        },
+        vertexShader: headVertex,
+        fragmentShader: headFragment,
+        transparent: true,
+        depthTest: false,
+      }),
+    )
+    const parts = [stemMesh, head]
+    for (const part of parts) {
+      part.frustumCulled = false
+      part.renderOrder = PIN_ORDER
+      this.follow(part)
+    }
+    return parts
   }
 }
