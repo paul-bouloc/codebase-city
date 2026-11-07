@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { type CityBuildings, createBuildings, Highlight } from './buildings'
 import { CityInteraction, type CityItem, isClick } from './city-interaction'
 import { createFading } from './dimming'
-import { HOVER_DELAYS } from './hover-timing'
 import { islandShapes } from './island-shape'
 import type { CityLayout, FileMetrics } from './layout'
 
@@ -84,7 +83,6 @@ describe('CityInteraction', () => {
   it('lights up a hovered building, then marks it selected and fades the rest', () => {
     const { interaction, highlights, keptNow, selections, fading } = setup()
     interaction.point({ kind: 'building', index: 0 }, POINTER)
-    vi.advanceTimersByTime(HOVER_DELAYS.highlight)
     expect(highlights).toEqual([Highlight.hovered, Highlight.none, Highlight.none])
 
     interaction.select({ kind: 'building', index: 0 })
@@ -106,10 +104,8 @@ describe('CityInteraction', () => {
     const { interaction, highlights } = setup()
     interaction.select({ kind: 'building', index: 0 })
     interaction.point({ kind: 'building', index: 2 }, POINTER)
-    vi.advanceTimersByTime(HOVER_DELAYS.highlight)
     expect(highlights).toEqual([Highlight.selected, Highlight.none, Highlight.hovered])
     interaction.point({ kind: 'building', index: 0 }, POINTER)
-    vi.advanceTimersByTime(HOVER_DELAYS.highlight)
     // Hovering the selected building leaves it selected.
     expect(highlights).toEqual([Highlight.selected, Highlight.none, Highlight.none])
     interaction.point(null, POINTER)

@@ -1,8 +1,8 @@
-// When what the pointer rests on stands out, and when its card shows: the building lights up
-// after 120 ms, its card comes at 300 ms and goes 100 ms after the pointer leaves. A camera move
-// clears both at once.
+// When what the pointer rests on stands out, and when its card shows: the building lights up at
+// once, so that the pointer shows what it aims at; its card comes at 300 ms and goes 100 ms after
+// the pointer leaves. A camera move clears both at once.
 
-export const HOVER_DELAYS = { highlight: 120, card: 300, cardLeaves: 100 } as const
+export const HOVER_DELAYS = { card: 300, cardLeaves: 100 } as const
 
 export interface HoverListener<T> {
   /** What stands out now, or nothing. */
@@ -28,21 +28,16 @@ export class HoverTiming<T> {
       return
     }
     this.cancel()
-    if (current !== null) {
-      this.listener.highlight(null)
-    }
     this.current = target
+    this.listener.highlight(target)
     // Back on what the card still shows, before it left: the card stays.
     const carded = this.carded
     const kept = carded !== null && target !== null && this.same(carded, target)
     if (carded !== null && !kept) {
       this.later(HOVER_DELAYS.cardLeaves, () => this.showCard(null))
     }
-    if (target !== null) {
-      this.later(HOVER_DELAYS.highlight, () => this.listener.highlight(target))
-      if (!kept) {
-        this.later(HOVER_DELAYS.card, () => this.showCard(target))
-      }
+    if (target !== null && !kept) {
+      this.later(HOVER_DELAYS.card, () => this.showCard(target))
     }
   }
 

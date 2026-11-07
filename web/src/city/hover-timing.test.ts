@@ -22,13 +22,13 @@ describe('HoverTiming', () => {
     vi.useRealTimers()
   })
 
-  it('lights a target up at 120 ms and shows its card at 300 ms', () => {
+  it('lights a target up at once and shows its card at 300 ms', () => {
     const { calls, timing } = record()
     timing.point('a')
-    vi.advanceTimersByTime(119)
-    expect(calls).toEqual([])
+    vi.advanceTimersByTime(299)
+    expect(calls).toEqual(['0 highlight:a'])
     vi.advanceTimersByTime(1000)
-    expect(calls).toEqual(['120 highlight:a', '300 card:a'])
+    expect(calls).toEqual(['0 highlight:a', '300 card:a'])
   })
 
   it('lets the card go 100 ms after the pointer leaves', () => {
@@ -37,16 +37,16 @@ describe('HoverTiming', () => {
     vi.advanceTimersByTime(500)
     timing.point(null)
     vi.advanceTimersByTime(1000)
-    expect(calls).toEqual(['120 highlight:a', '300 card:a', '500 highlight:-', '600 card:-'])
+    expect(calls).toEqual(['0 highlight:a', '300 card:a', '500 highlight:-', '600 card:-'])
   })
 
-  it('shows nothing for a target left before its time', () => {
+  it('shows no card for a target left before its time', () => {
     const { calls, timing } = record()
     timing.point('a')
     vi.advanceTimersByTime(100)
     timing.point('b')
     vi.advanceTimersByTime(1000)
-    expect(calls).toEqual(['100 highlight:-', '220 highlight:b', '400 card:b'])
+    expect(calls).toEqual(['0 highlight:a', '100 highlight:b', '400 card:b'])
   })
 
   it('moves from one card to the next', () => {
@@ -55,12 +55,7 @@ describe('HoverTiming', () => {
     vi.advanceTimersByTime(500)
     timing.point('b')
     vi.advanceTimersByTime(1000)
-    expect(calls.slice(2)).toEqual([
-      '500 highlight:-',
-      '600 card:-',
-      '620 highlight:b',
-      '800 card:b',
-    ])
+    expect(calls.slice(2)).toEqual(['500 highlight:b', '600 card:-', '800 card:b'])
   })
 
   it('keeps the card of a target the pointer comes back to in time', () => {
@@ -71,7 +66,7 @@ describe('HoverTiming', () => {
     vi.advanceTimersByTime(50)
     timing.point('a')
     vi.advanceTimersByTime(1000)
-    expect(calls.slice(2)).toEqual(['500 highlight:-', '670 highlight:a'])
+    expect(calls.slice(2)).toEqual(['500 highlight:-', '550 highlight:a'])
   })
 
   it('clears everything at once when the camera moves', () => {
@@ -89,6 +84,6 @@ describe('HoverTiming', () => {
     vi.advanceTimersByTime(200)
     timing.point('a')
     vi.advanceTimersByTime(1000)
-    expect(calls).toEqual(['120 highlight:a', '300 card:a'])
+    expect(calls).toEqual(['0 highlight:a', '300 card:a'])
   })
 })
