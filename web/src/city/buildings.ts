@@ -68,8 +68,8 @@ const BAR_SPACING = 0.3
 export const Highlight = { none: 0, hovered: 1, selected: 2 } as const
 export type Highlight = (typeof Highlight)[keyof typeof Highlight]
 
-/** A hovered building's faces: 10 % toward white. */
-const HOVER_LIGHTENING = 0.1
+/** A hovered building's faces: 20 % toward white. */
+const HOVER_LIGHTENING = 0.2
 /** A dimmed building's edges keep 70 % of their strength. */
 const DIMMED_EDGES = 0.7
 
