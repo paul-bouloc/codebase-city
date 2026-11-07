@@ -1,7 +1,8 @@
 import { buildingGeometry, shapeKey, type Vertex } from './archetype-geometry'
-import { type CityLayout, rectContains } from './layout'
+import type { IslandShape } from './island-shape'
+import { rectContains } from './layout'
 import type { PlacedBuilding } from './placed-buildings'
-import { layerAltitude, type Vec3 } from './units'
+import type { Vec3 } from './units'
 
 /** What the pointer can rest on. */
 export type CityTarget =
@@ -20,37 +21,65 @@ export interface Ray {
 /** Six numbers per box: min x, y, z, then max x, y, z. */
 const BOX = 6
 
+/**
+ * A building the ray passes near counts only if it stands no further along the ray than this
+ * past the ground the ray meets, in u: the building beside the point aimed at, not one on an
+ * island behind.
+ */
+const NEAR_GROUND = 3
+
 interface IslandBoxes {
   /** Its buildings' boxes, and their indices among the placed buildings. */
   boxes: Float64Array
   indices: number[]
-  /** Around all of them and the plateau. */
+  /** Around all of them and the terrain, down to the beach. */
   bounds: Float64Array
+  /** Each ring's outline on the board, x then y for each point: the plateau's edge first. */
+  rings: Float64Array[]
 }
 
 /**
- * Finds what a ray meets first: a building (its box), or else the plateau of an island, and on
- * it the deepest folder's parcel. Islands whose box the ray misses are skipped whole.
+ * Finds what a ray meets first: a building (its box), or else the ground of an island, its
+ * plateau (and on it the deepest folder's parcel), a terrace or the beach. Islands whose box the
+ * ray misses are skipped whole. With some slack, a ray that meets no building but passes near
+ * one takes it: a building a few pixels across on screen need not be hit exactly.
  */
 export class CityPicker {
   private readonly islands: IslandBoxes[]
 
   constructor(
-    private readonly layout: CityLayout,
+    private readonly shapes: readonly IslandShape[],
     placed: readonly PlacedBuilding[],
   ) {
     const local = new Map<string, Vertex[]>()
-    const members = layout.islands.map(() => [] as number[])
+    const members = shapes.map(() => [] as number[])
     placed.forEach(({ island }, index) => {
       members[island]?.push(index)
     })
-    this.islands = layout.islands.map((island, at) => {
+    this.islands = shapes.map(({ island, altitudes, samples, reach }, at) => {
       const indices = members[at] ?? []
       const boxes = new Float64Array(indices.length * BOX)
-      const altitude = layerAltitude(island.layer)
+      const top = altitudes[0] ?? 0
+      const bottom = altitudes.at(-1) ?? top
       const { x, y, width, height } = island.plateau
-      // The plateau's top, in three.js coordinates: board y runs along −z.
-      const bounds = Float64Array.of(x, altitude, -(y + height), x + width, altitude, -y)
+      // The terrain, in three.js coordinates: board y runs along −z.
+      const bounds = Float64Array.of(
+        x - reach,
+        bottom,
+        -(y + height) - reach,
+        x + width + reach,
+        top,
+        -y + reach,
+      )
+      const rings = altitudes.map((_, ring) => {
+        const outline = new Float64Array(samples.length * 2)
+        samples.forEach(({ x, y, nx, ny, offsets }, at) => {
+          const out = offsets[ring] ?? 0
+          outline[at * 2] = x + nx * out
+          outline[at * 2 + 1] = y + ny * out
+        })
+        return outline
+      })
       indices.forEach((index, row) => {
         const building = placed[index] as PlacedBuilding
         const key = shapeKey(building.building)
@@ -68,24 +97,48 @@ export class CityPicker {
           )
         }
       })
-      return { boxes, indices, bounds }
+      return { boxes, indices, bounds, rings }
     })
   }
 
-  pick({ origin, direction }: Ray): CityTarget | null {
+  /**
+   * What the ray meets first. `slack` is how far from the ray a building may stand and still be
+   * taken, in u per u along the ray: an angle, a few pixels' worth.
+   */
+  pick(ray: Ray, slack = 0): CityTarget | null {
+    const origin = ray.origin
+    const length = Math.hypot(...ray.direction)
+    const direction: Vec3 = [
+      ray.direction[0] / length,
+      ray.direction[1] / length,
+      ray.direction[2] / length,
+    ]
     const inverse: Vec3 = [1 / direction[0], 1 / direction[1], 1 / direction[2]]
     let nearest = Number.POSITIVE_INFINITY
-    let target: CityTarget | null = null
-    this.islands.forEach(({ boxes, indices, bounds }, island) => {
-      const enter = hitBox(bounds, 0, origin, inverse)
+    let target = null as CityTarget | null
+    // The building the ray passes nearest to, as a share of the slack, and how far along it.
+    let close = null as { index: number; share: number; t: number } | null
+    for (let island = 0; island < this.islands.length; island++) {
+      const { boxes, indices, bounds } = this.islands[island] as IslandBoxes
+      const grow = slack > 0 ? slack * farthest(bounds, origin) : 0
+      const enter = hitBox(bounds, 0, origin, inverse, grow)
       if (enter === null || enter >= nearest) {
-        return
+        continue
       }
       for (let row = 0; row < indices.length; row++) {
+        const index = indices[row] as number
         const t = hitBox(boxes, row * BOX, origin, inverse)
-        if (t !== null && t < nearest) {
-          nearest = t
-          target = { kind: 'building', index: indices[row] as number }
+        if (t !== null) {
+          if (t < nearest) {
+            nearest = t
+            target = { kind: 'building', index }
+          }
+          continue
+        }
+        const miss = slack > 0 ? missOf(boxes, row * BOX, origin, direction) : null
+        const share = miss ? miss.distance / (slack * miss.t) : Number.POSITIVE_INFINITY
+        if (miss && share <= 1 && (!close || share < close.share)) {
+          close = { index, share, t: miss.t }
         }
       }
       const ground = this.ground(island, origin, direction)
@@ -93,38 +146,111 @@ export class CityPicker {
         nearest = ground.t
         target = ground.target
       }
-    })
+    }
+    // Nothing hit exactly: a building close by wins over the ground around it.
+    if (close && target?.kind !== 'building' && close.t <= nearest + NEAR_GROUND) {
+      return { kind: 'building', index: close.index }
+    }
     return target
   }
 
-  /** Where the ray meets an island's plateau, and the deepest folder there. */
+  /**
+   * Where the ray meets an island's ground, from the top: its plateau and the deepest folder
+   * there, else a terrace or the beach, each taken as flat at its top.
+   */
   private ground(
     index: number,
     origin: Vec3,
     direction: Vec3,
   ): { t: number; target: CityTarget } | null {
-    const island = this.layout.islands[index]
-    if (!island || direction[1] >= 0) {
+    const shape = this.shapes[index]
+    const rings = this.islands[index]?.rings
+    if (!shape || !rings || direction[1] >= 0) {
       return null
     }
-    const t = (layerAltitude(island.layer) - origin[1]) / direction[1]
-    if (t < 0) {
-      return null
-    }
-    const x = origin[0] + t * direction[0]
-    const y = -(origin[2] + t * direction[2])
-    if (!rectContains(island.plateau, x, y)) {
-      return null
-    }
-    // Outer parcels come first: the last one that holds the point is the deepest.
-    for (let parcel = island.parcels.length - 1; parcel >= 0; parcel--) {
-      const { rect, path } = island.parcels[parcel] ?? {}
-      if (rect && path !== undefined && rectContains(rect, x, y)) {
-        return { t, target: { kind: 'parcel', island: index, parcel } }
+    const { island, altitudes } = shape
+    for (let ring = 0; ring < altitudes.length; ring++) {
+      const t = ((altitudes[ring] as number) - origin[1]) / direction[1]
+      if (t < 0) {
+        continue
+      }
+      const x = origin[0] + t * direction[0]
+      const y = -(origin[2] + t * direction[2])
+      if (ring === 0 && rectContains(island.plateau, x, y)) {
+        // Outer parcels come first: the last one that holds the point is the deepest.
+        for (let parcel = island.parcels.length - 1; parcel >= 0; parcel--) {
+          const { rect, path } = island.parcels[parcel] ?? {}
+          if (rect && path !== undefined && rectContains(rect, x, y)) {
+            return { t, target: { kind: 'parcel', island: index, parcel } }
+          }
+        }
+        return { t, target: { kind: 'island', island: index } }
+      }
+      if (insideOutline(rings[ring] as Float64Array, x, y)) {
+        return { t, target: { kind: 'island', island: index } }
       }
     }
-    return { t, target: { kind: 'island', island: index } }
+    return null
   }
+}
+
+/** The distance from a point to the farthest corner of a box, at most. */
+function farthest(box: Float64Array, point: Vec3): number {
+  let sum = 0
+  for (let axis = 0; axis < 3; axis++) {
+    const p = point[axis] as number
+    const reach = Math.max(
+      Math.abs(p - (box[axis] as number)),
+      Math.abs(p - (box[axis + 3] as number)),
+    )
+    sum += reach * reach
+  }
+  return Math.sqrt(sum)
+}
+
+/**
+ * How far a ray (of unit direction) passes from a box: from its point level with the box's
+ * middle to the box. Null if the box lies behind.
+ */
+function missOf(
+  boxes: Float64Array,
+  at: number,
+  origin: Vec3,
+  direction: Vec3,
+): { distance: number; t: number } | null {
+  let t = 0
+  for (let axis = 0; axis < 3; axis++) {
+    const middle = ((boxes[at + axis] as number) + (boxes[at + axis + 3] as number)) / 2
+    t += (middle - (origin[axis] as number)) * (direction[axis] as number)
+  }
+  if (t <= 0) {
+    return null
+  }
+  let sum = 0
+  for (let axis = 0; axis < 3; axis++) {
+    const p = (origin[axis] as number) + t * (direction[axis] as number)
+    const low = boxes[at + axis] as number
+    const high = boxes[at + axis + 3] as number
+    const out = p < low ? low - p : p > high ? p - high : 0
+    sum += out * out
+  }
+  return { distance: Math.sqrt(sum), t }
+}
+
+/** Whether a board point lies inside a closed outline (x then y for each point). */
+function insideOutline(outline: Float64Array, x: number, y: number): boolean {
+  let inside = false
+  const count = outline.length / 2
+  for (let i = 0, j = count - 1; i < count; j = i++) {
+    const xi = outline[i * 2] as number
+    const yi = outline[i * 2 + 1] as number
+    const xj = outline[j * 2] as number
+    const yj = outline[j * 2 + 1] as number
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) {
+      inside = !inside
+    }
+  }
+  return inside
 }
 
 /** A building's box around its stretched, turned shape, written at `at`. */
@@ -179,15 +305,21 @@ function boxOf(
   )
 }
 
-/** Where a ray enters a box (0 if it starts inside), or null if it misses it. */
-function hitBox(boxes: Float64Array, at: number, origin: Vec3, inverse: Vec3): number | null {
+/** Where a ray enters a box grown by `grow` (0 if it starts inside), or null if it misses it. */
+function hitBox(
+  boxes: Float64Array,
+  at: number,
+  origin: Vec3,
+  inverse: Vec3,
+  grow = 0,
+): number | null {
   let near = 0
   let far = Number.POSITIVE_INFINITY
   for (let axis = 0; axis < 3; axis++) {
     const o = origin[axis] as number
     const k = inverse[axis] as number
-    const low = boxes[at + axis] as number
-    const high = boxes[at + axis + 3] as number
+    const low = (boxes[at + axis] as number) - grow
+    const high = (boxes[at + axis + 3] as number) + grow
     if (!Number.isFinite(k)) {
       // Parallel to this axis: inside its slab or never.
       if (o < low || o > high) {

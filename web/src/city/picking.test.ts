@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { islandShapes } from './island-shape'
 import type { CityLayout, FileMetrics } from './layout'
 import { CityPicker, type Ray } from './picking'
 import { placeBuildings } from './placed-buildings'
@@ -34,7 +35,8 @@ const LAYOUT: CityLayout = {
 }
 
 const placed = placeBuildings(LAYOUT)
-const picker = new CityPicker(LAYOUT, placed)
+const shapes = islandShapes(LAYOUT)
+const picker = new CityPicker(shapes, placed)
 
 /** Straight down onto a board point. */
 const down = (x: number, y: number): Ray => ({
@@ -84,4 +86,48 @@ describe('CityPicker', () => {
     expect(picker.pick(level(roof - 0.05))).toEqual({ kind: 'building', index: 1 })
     expect(picker.pick(level(roof + 5))).toBeNull()
   })
+
+  it('takes a building the ray passes near, given some slack', () => {
+    // 0.3 u beside the low building's box, from 100 u up: about 0.003 u per u along the ray.
+    const low = placed[0]
+    if (!low) {
+      throw new Error('no building')
+    }
+    const box = boxEdge(low.position[0], low.building.side)
+    const beside = down(box + 0.3, 3)
+    expect(picker.pick(beside)).toEqual({ kind: 'island', island: 0 })
+    expect(picker.pick(beside, 0.005)).toEqual({ kind: 'building', index: 0 })
+    expect(picker.pick(beside, 0.001)).toEqual({ kind: 'island', island: 0 })
+  })
+
+  it('takes the building nearest the ray among those close enough', () => {
+    // Halfway between the two buildings, a little nearer the tall one.
+    expect(picker.pick(down(5.3, 3), 0.05)).toEqual({ kind: 'building', index: 1 })
+    expect(picker.pick(down(4.7, 3), 0.05)).toEqual({ kind: 'building', index: 0 })
+  })
+
+  it('takes a terrace or the beach for its island', () => {
+    const shape = shapes[0]
+    const sample = shape?.samples.find(({ nx, ny }) => nx === 0 && ny === -1)
+    const beach = sample?.offsets.at(-1)
+    if (!sample || beach === undefined) {
+      throw new Error('no beach')
+    }
+    // Past the plateau's south edge, on the beach, then out at sea.
+    expect(picker.pick(down(sample.x, -(beach - 0.2)))).toEqual({ kind: 'island', island: 0 })
+    expect(picker.pick(down(sample.x, -(beach + 0.5)))).toBeNull()
+  })
 })
+
+/** The east edge of a building's box, standing at `x` (three.js x is board x). */
+function boxEdge(x: number, side: number): number {
+  const placedBox = picker.pick(down(x, 3))
+  if (placedBox?.kind !== 'building') {
+    throw new Error('no building there')
+  }
+  let edge = x
+  while (picker.pick(down(edge + 0.01, 3))?.kind === 'building' && edge < x + side) {
+    edge += 0.01
+  }
+  return edge
+}

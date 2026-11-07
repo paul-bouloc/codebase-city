@@ -66,6 +66,8 @@ const START_AZIMUTH = MathUtils.degToRad(34)
 const START_POLAR_ANGLE = MathUtils.degToRad(55)
 /** How far the camera target may leave the city's edge. */
 const TARGET_MARGIN = 20
+/** A building this close to the pointer, in CSS pixels, is under it. */
+const PICK_SLACK = 8
 
 const SHADOW_MAP_SIZE = 4096
 /** Room around the city for the shadows of the tallest towers. */
@@ -242,10 +244,15 @@ export class CityEngine {
     )
     this.raycaster.setFromCamera(this.ndc, this.camera)
     const { origin, direction } = this.raycaster.ray
-    const target = this.picker.pick({
-      origin: [origin.x, origin.y, origin.z],
-      direction: [direction.x, direction.y, direction.z],
-    })
+    // The angle a few pixels span, at the middle of the view.
+    const perPixel = (2 * Math.tan(MathUtils.degToRad(this.camera.fov) / 2)) / canvas.clientHeight
+    const target = this.picker.pick(
+      {
+        origin: [origin.x, origin.y, origin.z],
+        direction: [direction.x, direction.y, direction.z],
+      },
+      PICK_SLACK * perPixel,
+    )
     this.stats.pickMs = performance.now() - started
     return target
   }
@@ -277,7 +284,7 @@ export class CityEngine {
     const pixelRatio = this.renderer.getPixelRatio()
     const fading = createFading()
     const buildings = createBuildings(layout, pixelRatio, fading)
-    this.picker = new CityPicker(layout, buildings.placed)
+    this.picker = new CityPicker(shapes, buildings.placed)
     const interaction = new CityInteraction(
       layout,
       shapes,
