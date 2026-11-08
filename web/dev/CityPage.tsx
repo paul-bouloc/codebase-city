@@ -5,7 +5,7 @@ import type { CityEngine } from '../src/city/city-engine'
 import type { CityHover, CityItem, PortList } from '../src/city/city-interaction'
 import { cityFromResult } from '../src/city/from-result'
 import type { CityLayout } from '../src/city/layout'
-import { syntheticCity } from '../src/city/synthetic'
+import { syntheticCity, withCrossingCycles } from '../src/city/synthetic'
 import { decodeResult } from '../src/data/decode-result'
 import { Button } from '../src/ui/Button'
 import { AreaTooltip } from '../src/ui/city/AreaTooltip'
@@ -42,7 +42,7 @@ const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve))
 
 /**
  * A synthetic city, full screen: `?islands=12&files=2000&seed=synthetic`, or every archetype on
- * one island: `?gallery`, or every combination of the low buildings' pieces: `?variants`. A result written by `just ingest owner/repo --out result.json` can be
+ * one island: `?gallery`, or with import cycles across islands: `?cycles`, or every combination of the low buildings' pieces: `?variants`. A result written by `just ingest owner/repo --out result.json` can be
  * loaded in its place, or dropped in `web/dev/results/` to get a button: `?result=name` opens it.
  * `?look=x,y,distance[,azimuth,polar]` points the camera at a board point, for close captures.
  * `?select=path` selects the file of that path once the city loads; `?port=path` opens the port
@@ -64,7 +64,12 @@ export function CityPage() {
       return archetypeGallery()
     }
     const seed = query.get('seed') ?? undefined
-    return syntheticCity({ islands: param('islands', 12), files: param('files', 2_000), seed })
+    const city = syntheticCity({
+      islands: param('islands', 12),
+      files: param('files', 2_000),
+      seed,
+    })
+    return query.has('cycles') ? withCrossingCycles(city) : city
   }, [])
   const [loaded, setLoaded] = useState<CityLayout | null>(null)
   const [error, setError] = useState<string | null>(null)
