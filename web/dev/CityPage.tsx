@@ -1,9 +1,9 @@
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { CityView } from '../src/app/CityView'
+import { useDriveKeys } from '../src/app/use-drive-keys'
 import { type CityCards, cityCards } from '../src/city/city-cards'
 import type { CityEngine } from '../src/city/city-engine'
 import type { CityHover, CityItem, PortList } from '../src/city/city-interaction'
-import { driveOf, isDriveKey, STILL } from '../src/city/drive'
 import { cityFromResult } from '../src/city/from-result'
 import type { CityLayout } from '../src/city/layout'
 import { syntheticCity, withCrossingCycles } from '../src/city/synthetic'
@@ -107,43 +107,7 @@ export function CityPage() {
   }, [engine, portOpen])
 
   // W A S D move the camera along the ground and Q E turn it, while held, as on the city screen.
-  useEffect(() => {
-    if (!engine) {
-      return
-    }
-    const held = new Set<string>()
-    const update = () => engine.setDrive(driveOf(held))
-    const down = (event: KeyboardEvent) => {
-      const typing =
-        event.target instanceof HTMLElement &&
-        (event.target.isContentEditable || /^(INPUT|SELECT|TEXTAREA)$/.test(event.target.tagName))
-      if (typing || event.metaKey || event.ctrlKey || event.altKey || !isDriveKey(event.code)) {
-        return
-      }
-      event.preventDefault()
-      held.add(event.code)
-      update()
-    }
-    const up = (event: KeyboardEvent) => {
-      if (held.delete(event.code)) {
-        update()
-      }
-    }
-    // A key released in another window never comes up here.
-    const release = () => {
-      held.clear()
-      update()
-    }
-    window.addEventListener('keydown', down)
-    window.addEventListener('keyup', up)
-    window.addEventListener('blur', release)
-    return () => {
-      window.removeEventListener('keydown', down)
-      window.removeEventListener('keyup', up)
-      window.removeEventListener('blur', release)
-      engine.setDrive(STILL)
-    }
-  }, [engine])
+  useDriveKeys(engine)
 
   // After the city loads (the view's effect runs first), the camera goes where `?look` says.
   // biome-ignore lint/correctness/useExhaustiveDependencies: again after each city loads
