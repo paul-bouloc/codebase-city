@@ -113,6 +113,8 @@ export interface Boat {
   /** Heading, in radians from the east, counter-clockwise. */
   angle: number
   seed: number
+  /** A boat that sails a ferry line: its index in `ferries`, and the share of the way it starts at. */
+  line?: { ferry: number; share: number }
 }
 
 export interface CityLinks {
@@ -771,16 +773,23 @@ function boats(links: CityLinks, layout: CityLayout): Boat[] {
       })
     }
   }
-  for (const ferry of links.ferries) {
+  links.ferries.forEach((ferry, index) => {
     const random = seededRandom(
       `boat/${layout.islands[ferry.a]?.path ?? ''}/${layout.islands[ferry.b]?.path ?? ''}`,
     )
     const count = boatsFor(ferry.imports)
     for (let k = 0; k < count; k++) {
-      const { point, heading } = pointAlong(ferry.path, (k + 1) / (count + 1))
-      boats.push({ x: point.x, y: point.y, angle: heading, seed: random() })
+      const share = (k + 1) / (count + 1)
+      const { point, heading } = pointAlong(ferry.path, share)
+      boats.push({
+        x: point.x,
+        y: point.y,
+        angle: heading,
+        seed: random(),
+        line: { ferry: index, share },
+      })
     }
-  }
+  })
   return boats
 }
 
