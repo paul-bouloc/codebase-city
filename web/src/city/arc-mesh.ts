@@ -12,7 +12,9 @@ import {
   Points,
   ShaderMaterial,
   Vector2,
+  Vector3,
 } from 'three'
+import { easeStandard } from './easing'
 import { createScreenLines, lineGeometry } from './screen-lines'
 import type { Vec3 } from './units'
 
@@ -30,6 +32,8 @@ export interface ArcLine {
   width: number
   /** Goes up the layers: dashed apart, with white dots along it. */
   upward: boolean
+  /** Just shown: it grows from its start (1) or from its end (−1). Drawn whole if absent. */
+  grows?: 1 | -1
 }
 
 /** A round dot, a fixed size on screen, in CSS pixels. */
@@ -46,6 +50,8 @@ export interface ArcDot {
 export interface ArcLabel {
   position: Vec3
   text: string
+  /** The colour of its arc: its rim, once hovered. */
+  colour: Vec3
 }
 
 export interface ArcDrawing {
@@ -67,6 +73,8 @@ const UPWARD_DASH: [number, number] = [0.55, 0.45]
 /** Both dash periods, in u. */
 export const DASH_PERIOD = 1
 export const DASH_TIME = 1.2
+/** Arcs opened out of a bundle grow to their file in this many ms. */
+const GROW_DURATION = 300
 /** A dash period shorter than this many device pixels fills in, from the first to the second. */
 const SOLID_BELOW = [6, 12] as const
 /** Still, the arc shows its way by two light spots this far before its target, in u. */
@@ -77,6 +85,8 @@ const STEM_DASH: [number, number] = [2, 3]
 export const LABEL_LIFT = 10
 const LABEL_FONT = '600 12px "Space Grotesk", system-ui, sans-serif'
 export const LABEL_HEIGHT = 20
+/** A hovered count's rim, in CSS pixels. */
+const LABEL_RIM = 1.5
 const LABEL_PADDING = 7
 const LABEL_TEXT = '#23313A'
 /** Drawn after the city and the outlines of its marked buildings. */
@@ -93,12 +103,14 @@ attribute float total;
 attribute float width;
 attribute vec3 colour;
 attribute vec2 dash;
+attribute float grows;
 varying float vDistance;
 varying float vTotal;
 varying float vAcross;
 varying float vWidth;
 varying vec3 vColour;
 varying vec2 vDash;
+varying float vGrows;
 void main() {
   vec4 a = projectionMatrix * modelViewMatrix * vec4(start, 1.0);
   vec4 b = projectionMatrix * modelViewMatrix * vec4(end, 1.0);
@@ -127,6 +139,7 @@ void main() {
   vWidth = width;
   vColour = colour;
   vDash = dash;
+  vGrows = grows;
 }
 `
 
@@ -135,18 +148,25 @@ uniform float halo;
 uniform float opacity;
 uniform float phase;
 uniform float still;
+uniform float growth;
 varying float vDistance;
 varying float vTotal;
 varying float vAcross;
 varying float vWidth;
 varying vec3 vColour;
 varying vec2 vDash;
+varying float vGrows;
 float spot(float at, float back) {
   return 1.0 - smoothstep(0.15, 0.25, abs(back - at));
 }
 void main() {
   float cover = clamp((vWidth + 2.0 * halo) * 0.5 - abs(vAcross) + 0.5, 0.0, 1.0);
   if (cover <= 0.0) {
+    discard;
+  }
+  // An arc just opened shows only as far as it has grown.
+  float grown = vGrows > 0.0 ? vDistance : vTotal - vDistance;
+  if (vGrows != 0.0 && grown > growth * vTotal) {
     discard;
   }
   if (halo > 0.0) {
@@ -225,15 +245,26 @@ void main() {
 }
 `
 
+// The pill and its count come from the canvas; its rim, in the arc's colour, shows on hover.
 const labelFragment = /* glsl */ `
 uniform sampler2D map;
+uniform vec2 size;
+uniform float rim;
+uniform vec3 rimColour;
+uniform float hovered;
 varying vec2 vUv;
 void main() {
   vec4 texel = texture2D(map, vUv);
-  if (texel.a <= 0.0) {
+  vec2 halfSize = size * 0.5 - 0.5;
+  float radius = halfSize.y;
+  vec2 q = abs((vUv - 0.5) * size) - (halfSize - radius);
+  float d = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - radius;
+  float band = clamp(0.5 - d, 0.0, 1.0) * clamp(d + rim + 0.5, 0.0, 1.0) * hovered;
+  vec4 colour = mix(texel, vec4(rimColour, 1.0), band);
+  if (colour.a <= 0.0) {
     discard;
   }
-  gl_FragColor = texel;
+  gl_FragColor = colour;
 }
 `
 
@@ -243,7 +274,11 @@ export class ArcLayer {
   private readonly resolution: IUniform<Vector2> = { value: new Vector2(1, 1) }
   private readonly phase: IUniform<number> = { value: 0 }
   private readonly stillness: IUniform<number> = { value: 0 }
+  private readonly growth: IUniform<number> = { value: 1 }
+  private growingSince: number | null = null
+  private growing = false
   private moving = false
+  private labels: ShaderMaterial[] = []
 
   constructor(private readonly pixelRatio: number) {
     this.group.visible = false
@@ -256,6 +291,9 @@ export class ArcLayer {
       return
     }
     this.moving = drawing.lines.length > 0
+    this.growing = drawing.lines.some((line) => line.grows)
+    this.growth.value = this.growing ? 0 : 1
+    this.growingSince = null
     if (drawing.lines.length > 0) {
       const lines = this.lines(drawing.lines)
       for (const [pass, depth, opacity] of [
@@ -281,7 +319,9 @@ export class ArcLayer {
       this.add(stem, ARC_ORDER + 3, true)
     }
     for (const label of drawing.labels) {
-      this.add(this.label(label), ARC_ORDER + 6)
+      const mesh = this.label(label)
+      this.labels.push(mesh.material as ShaderMaterial)
+      this.add(mesh, ARC_ORDER + 6)
     }
     this.group.visible = true
   }
@@ -289,6 +329,34 @@ export class ArcLayer {
   /** Whether the arcs on show have dashes to move. */
   get moves(): boolean {
     return this.moving
+  }
+
+  /** Rims the count of the hub at this index (in the order of the drawing's labels), or none. */
+  hoverLabel(index: number | null): void {
+    this.labels.forEach((material, at) => {
+      const uniform = material.uniforms.hovered
+      if (uniform) {
+        uniform.value = at === index ? 1 : 0
+      }
+    })
+  }
+
+  /** Whether arcs just opened are still growing. */
+  get grows(): boolean {
+    return this.growing
+  }
+
+  /** Grows the arcs just opened to where they are at `now` (ms); still, at once. */
+  grow(now: number, still: boolean): void {
+    if (this.growingSince === null) {
+      this.growingSince = now
+    }
+    const progress = still ? 1 : Math.min((now - this.growingSince) / GROW_DURATION, 1)
+    this.growth.value = easeStandard(progress)
+    if (progress >= 1) {
+      this.growth.value = 1
+      this.growing = false
+    }
   }
 
   /** Whether the dashes stand still. */
@@ -329,6 +397,8 @@ export class ArcLayer {
     }
     this.group.visible = false
     this.moving = false
+    this.growing = false
+    this.labels = []
   }
 
   private lines(arcs: readonly ArcLine[]): BufferGeometry {
@@ -340,6 +410,7 @@ export class ArcLayer {
     const widths: number[] = []
     const colours: number[] = []
     const dashes: number[] = []
+    const grows: number[] = []
     for (const arc of arcs) {
       let total = 0
       for (let i = 1; i < arc.points.length; i++) {
@@ -354,12 +425,14 @@ export class ArcLayer {
         widths.push(arc.width * this.pixelRatio)
         colours.push(...arc.colour)
         dashes.push(...dash)
+        grows.push(arc.grows ?? 0)
       }
     }
     geometry.setAttribute('total', new Float32BufferAttribute(totals, 1))
     geometry.setAttribute('width', new Float32BufferAttribute(widths, 1))
     geometry.setAttribute('colour', new Float32BufferAttribute(colours, 3))
     geometry.setAttribute('dash', new Float32BufferAttribute(dashes, 2))
+    geometry.setAttribute('grows', new Float32BufferAttribute(grows, 1))
     return geometry
   }
 
@@ -371,6 +444,7 @@ export class ArcLayer {
         opacity: { value: opacity },
         phase: this.phase,
         still: this.stillness,
+        growth: this.growth,
       },
       vertexShader: lineVertex,
       fragmentShader: lineFragment,
@@ -433,7 +507,7 @@ export class ArcLayer {
   }
 
   /** A pill with the count, drawn on a canvas, a fixed size on screen above its hub. */
-  private label({ position, text }: ArcLabel): Mesh {
+  private label({ position, text, colour }: ArcLabel): Mesh {
     const ratio = this.pixelRatio
     const canvas = document.createElement('canvas')
     const context = canvas.getContext('2d')
@@ -472,6 +546,9 @@ export class ArcLayer {
           size: { value: new Vector2(canvas.width, canvas.height) },
           lift: { value: LABEL_LIFT * ratio },
           map: { value: texture },
+          rim: { value: LABEL_RIM * ratio },
+          rimColour: { value: new Vector3(...colour) },
+          hovered: { value: 0 },
         },
         vertexShader: labelVertex,
         fragmentShader: labelFragment,

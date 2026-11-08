@@ -50,7 +50,9 @@ describe('selectionArcs', () => {
     expect(drawing.lines[2]?.width).toBeCloseTo(bundleWidth(2))
     expect(bundleWidth(1)).toBe(2)
     expect(bundleWidth(100)).toBeCloseTo(4.8)
-    expect(drawing.labels).toEqual([{ position: [40, 7, 0], text: '2 files' }])
+    expect(drawing.labels).toEqual([
+      { position: [40, 7, 0], text: '2 files', colour: srgb(OUTGOING_LINK) },
+    ])
     expect(drawing.stems).toEqual([
       {
         colour: srgb(OUTGOING_LINK),
@@ -74,6 +76,35 @@ describe('selectionArcs', () => {
     }
     const arcs = selectionArcs(lone, selection, { arcEnd: place, ground: place, plateau })
     expect(arcs.drawing.labels[0]?.text).toBe('1 file')
+  })
+
+  it('counts what is left of an opened bundle as more', () => {
+    const left: SelectionLinks = {
+      outgoing: {
+        single: [],
+        bundles: [{ direction: 'outgoing', island: 0, ends: [linked(1, 0)], shown: 50 }],
+      },
+      incoming: { single: [], bundles: [] },
+    }
+    const arcs = selectionArcs(left, selection, { arcEnd: place, ground: place, plateau })
+    expect(arcs.drawing.labels[0]?.text).toBe('1 more')
+  })
+
+  it('grows the arcs just opened out of the selection', () => {
+    const imported = linked(10, 0)
+    const importer = linked(-10, 0)
+    const opened: SelectionLinks = {
+      outgoing: { single: [imported, linked(20, 0)], bundles: [] },
+      incoming: { single: [importer], bundles: [] },
+    }
+    const arcs = selectionArcs(
+      opened,
+      selection,
+      { arcEnd: place, ground: place, plateau },
+      new Set([imported, importer]),
+    )
+    // From their start when the selection imports, from their end when it is imported
+    expect(arcs.drawing.lines.map((line) => line.grows)).toEqual([1, undefined, -1])
   })
 
   it('puts a dot at each end of an arc, and two white ones along an upward arc', () => {

@@ -52,11 +52,24 @@ export interface LinkPlaces {
   plateau(island: number): number
 }
 
-/** The arcs of a selection whose own arcs start at `selection` (over its roof). */
+/** A bundle's count: how many files it holds, or how many more once it was opened. */
+export function bundleLabel(bundle: Bundle): string {
+  const count = bundle.ends.length
+  if (bundle.shown) {
+    return `${count} more`
+  }
+  return count === 1 ? '1 file' : `${count} files`
+}
+
+/**
+ * The arcs of a selection whose own arcs start at `selection` (over its roof). The links in
+ * `fresh` were just opened out of a bundle: their arcs grow out of the selection.
+ */
 export function selectionArcs(
   links: SelectionLinks,
   selection: Vec3,
   places: LinkPlaces,
+  fresh: ReadonlySet<Linked> = new Set(),
 ): SelectionArcs {
   const lines: ArcLine[] = []
   const dots: ArcDot[] = []
@@ -78,12 +91,18 @@ export function selectionArcs(
   })
   // The selection's own end of its arcs gets one dot of each kind, not one per arc on one point.
   const atSelection = new Map<Direction, ArcDot>()
-  const draw = (direction: Direction, there: Vec3, upward: boolean, width: number) => {
+  const draw = (
+    direction: Direction,
+    there: Vec3,
+    upward: boolean,
+    width: number,
+    grows = false,
+  ) => {
     const outgoing = direction === 'outgoing'
     const [source, target] = outgoing ? [selection, there] : [there, selection]
     const points = arcPoints(source, target)
     const colour = upward ? RED : COLOURS[direction]
-    lines.push({ points, colour, width, upward })
+    lines.push({ points, colour, width, upward, ...(grows ? { grows: outgoing ? 1 : -1 } : {}) })
     dots.push(outgoing ? targetDot(target, colour) : sourceDot(source, colour))
     if (!atSelection.has(direction)) {
       atSelection.set(direction, outgoing ? sourceDot(source, colour) : targetDot(target, colour))
@@ -104,7 +123,7 @@ export function selectionArcs(
   for (const direction of ['outgoing', 'incoming'] as const) {
     const side = links[direction]
     for (const link of side.single) {
-      draw(direction, places.arcEnd(link.end), link.upward, ARC_WIDTH)
+      draw(direction, places.arcEnd(link.end), link.upward, ARC_WIDTH, fresh.has(link))
     }
     for (const bundle of side.bundles) {
       const position = hubOf(bundle.ends, places.ground, places.plateau(bundle.island))
@@ -124,7 +143,8 @@ export function selectionArcs(
       })),
       labels: hubs.map(({ bundle, position }) => ({
         position,
-        text: bundle.ends.length === 1 ? '1 file' : `${bundle.ends.length} files`,
+        text: bundleLabel(bundle),
+        colour: COLOURS[bundle.direction],
       })),
     },
     hubs,
