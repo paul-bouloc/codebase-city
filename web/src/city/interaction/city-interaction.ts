@@ -9,12 +9,12 @@ import type { CycleOnShow, Hub } from '../flows/selection-arcs'
 import { type Direction, type ImportIndex, OPENED_ARCS } from '../flows/selection-links'
 import { ArcLayer } from '../render/arc-mesh'
 import type { Fading } from '../render/dimming'
-import { easeStandard } from '../render/easing'
 import type { IslandShape } from '../terrain/island-shape'
 import type { Bridge, Ferry, Pair, Port } from '../waterways/links'
 import { type CityLayout, rectContains } from '../world/layout'
 import { type Area, AreaMark, HOVERED_AREA, SELECTED_AREA } from './area-marks'
 import { BuildingMark, HOVERED_MARK, SELECTED_MARK } from './building-marks'
+import { DimFade } from './dim-fade'
 import { HoverTiming } from './hover-timing'
 import { OpenPort, type PortList } from './open-port'
 import type { CityTarget } from './picking'
@@ -95,9 +95,6 @@ export function isClick(down: { x: number; y: number }, up: { x: number; y: numb
   return Math.hypot(up.x - down.x, up.y - down.y) <= CLICK_SLOP
 }
 
-/** The fading in or out of what is outside the selection, in ms. */
-const DIM_DURATION = 280
-
 export function sameTarget(a: Pointed, b: Pointed): boolean {
   switch (a.kind) {
     case 'hub':
@@ -130,9 +127,7 @@ export class CityInteraction {
   private selected: CityTarget | null = null
   private pointer = { x: 0, y: 0 }
   private carded: Pointed | null = null
-  private dimFrom = 0
-  private dimTo = 0
-  private dimSince = 0
+  private readonly dim: DimFade
   private readonly links: SelectedLinks
   /** The rings around the files of the selected file's cycle. */
   readonly cycleRings: RingSet
@@ -156,6 +151,7 @@ export class CityInteraction {
     private readonly listeners: () => CityListeners,
     private readonly redraw: () => void,
   ) {
+    this.dim = new DimFade(fading)
     this.arcs = new ArcLayer(pixelRatio)
     this.links = new SelectedLinks(
       layout,
@@ -260,7 +256,7 @@ export class CityInteraction {
     if (target) {
       this.keep(target)
     }
-    this.fadeTo(target ? 1 : 0)
+    this.dim.toward(target ? 1 : 0)
     this.listeners().select?.(target ? this.item(target) : null)
     this.redraw()
   }
@@ -329,19 +325,7 @@ export class CityInteraction {
 
   /** Moves the fading on; true while it still has a way to go. */
   update(now: number): boolean {
-    const { dim } = this.fading
-    if (dim.value === this.dimTo) {
-      return false
-    }
-    if (this.dimSince === 0) {
-      this.dimSince = now
-    }
-    const progress = Math.min((now - this.dimSince) / DIM_DURATION, 1)
-    dim.value = this.dimFrom + (this.dimTo - this.dimFrom) * easeStandard(progress)
-    if (progress >= 1) {
-      dim.value = this.dimTo
-    }
-    return true
+    return this.dim.update(now)
   }
 
   /** Lets go of the marks; a card still shown is withdrawn, and so is an open port's. */
@@ -392,15 +376,6 @@ export class CityInteraction {
     this.folderLinks.show(
       folderWays(target.island, flows, this.flows.bridges, [...this.flows.ferries, ...extras]),
     )
-  }
-
-  private fadeTo(value: number): void {
-    if (value !== this.dimTo) {
-      this.dimFrom = this.fading.dim.value
-      this.dimTo = value
-      // Starts at the next frame's time.
-      this.dimSince = 0
-    }
   }
 
   private highlight(pointed: Pointed | null): void {
