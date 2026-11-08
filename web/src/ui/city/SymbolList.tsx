@@ -14,6 +14,7 @@ const GROUPS = [
   { title: 'Classes', kinds: ['class'] },
   { title: 'Functions', kinds: ['function'] },
   { title: 'Types', kinds: ['interface', 'type', 'enum'] },
+  { title: 'Constants', kinds: ['constant'] },
 ] as const satisfies readonly { title: string; kinds: readonly FileSymbol['kind'][] }[]
 
 interface SymbolListProps {
