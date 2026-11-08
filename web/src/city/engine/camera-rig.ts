@@ -48,7 +48,7 @@ CameraControls.install({
 
 const FIELD_OF_VIEW = 38
 /** About three lots across the view. */
-export const MIN_DISTANCE = 6
+const MIN_DISTANCE = 6
 /** Never pull back further than twice the distance that frames the whole city. */
 const MAX_FRAMING = 2
 /** How high above the ground under it the camera stays, in u. */
