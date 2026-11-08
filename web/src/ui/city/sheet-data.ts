@@ -25,8 +25,9 @@ export interface FileSymbol {
 export type CodeState =
   | { status: 'loading' }
   | { status: 'ready'; lines: readonly string[]; totalLines: number }
-  // `timeout`: GitHub did not answer; `gone`: the file is no longer at that commit on GitHub.
-  | { status: 'error'; cause: 'timeout' | 'gone' }
+  // `timeout`: GitHub did not answer; `refused`: it answered with an error (rate limit, outage);
+  // `gone`: the file is no longer at that commit on GitHub.
+  | { status: 'error'; cause: 'timeout' | 'refused' | 'gone' }
 
 export interface FileSheetData {
   path: string

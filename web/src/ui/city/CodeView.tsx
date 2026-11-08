@@ -20,6 +20,8 @@ const TEXT = {
   errorCause: {
     timeout:
       'GitHub didn’t answer in time. Everything else on this sheet comes from the analysis and is still accurate.',
+    refused:
+      'GitHub answered with an error instead of the file. Everything else on this sheet comes from the analysis and is still accurate.',
     gone: 'This file isn’t on GitHub at the analyzed commit anymore. Everything else on this sheet comes from the analysis and is still accurate.',
   },
   beyond: (line: number) => `Line ${exactCount(line)} is past the lines shown here.`,

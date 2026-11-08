@@ -29,6 +29,7 @@ describe('CodeView', () => {
     expect(timeout).toContain('role="alert"')
     expect(timeout).toContain('didn’t answer in time')
     expect(gone).toContain('isn’t on GitHub at the analyzed commit anymore')
+    expect(render({ status: 'error', cause: 'refused' })).toContain('GitHub answered with an error')
     expect(gone).toContain('Try again')
   })
 
