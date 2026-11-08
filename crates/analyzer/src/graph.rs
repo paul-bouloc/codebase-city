@@ -6,6 +6,8 @@
 //! production graph keeps only the code the project ships: no tests,
 //! examples, docs, build output or generated files.
 
+pub(crate) mod reach;
+
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 use model::{Confidence, EdgeKind, Scope, Symbols};

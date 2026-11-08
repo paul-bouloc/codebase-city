@@ -7,7 +7,7 @@ use std::cmp::Reverse;
 use model::Ranked;
 
 use crate::graph::Node;
-use crate::reach::{Reach, Units};
+use crate::graph::reach::{Reach, Units};
 
 /// Places in each ranking.
 const RANKED: usize = 5;

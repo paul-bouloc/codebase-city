@@ -11,7 +11,7 @@ use serde_json::Value;
 
 use crate::files::split_path;
 use crate::graph::Node;
-use crate::reach::{Reach, Units};
+use crate::graph::reach::{Reach, Units};
 
 /// Entries kept at most.
 const KEPT: usize = 5;

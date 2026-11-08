@@ -11,8 +11,8 @@ use std::collections::VecDeque;
 
 use model::{Cycles, EdgeKind};
 
+use crate::graph::reach::{csr, strong_components};
 use crate::graph::{Graph, Node};
-use crate::reach::{csr, strong_components};
 
 /// The loops of the production graph, the largest first, then by first
 /// file.
