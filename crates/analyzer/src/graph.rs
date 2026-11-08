@@ -7,6 +7,7 @@
 //! examples, docs, build output or generated files.
 
 pub(crate) mod reach;
+pub(crate) mod roles;
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 

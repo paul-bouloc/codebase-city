@@ -12,13 +12,13 @@ use crate::cycles;
 use crate::entries;
 use crate::files::{Language, SourceFile, scope, split_path};
 use crate::graph::reach::{self, Reach, Units};
+use crate::graph::roles::{self, RolesReport};
 use crate::graph::{self, BarrelReport, Graph, Node, strength};
 use crate::islands;
 use crate::lang::{self, Parsed};
 use crate::layers;
 use crate::layout;
 use crate::resolve::{self, Outcome, Target};
-use crate::roles::{self, RolesReport};
 use crate::saturating_u32 as index;
 
 /// Version of the algorithms. Bumped whenever a change would give another
