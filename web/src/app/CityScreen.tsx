@@ -1,6 +1,7 @@
 import {
   type KeyboardEvent as ReactKeyboardEvent,
   useCallback,
+  useDeferredValue,
   useEffect,
   useId,
   useMemo,
@@ -349,12 +350,14 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
   const [query, setQuery] = useState('')
   const [searchFocused, setSearchFocused] = useState(false)
   const [activeOption, setActiveOption] = useState(0)
-  const searchResults = useMemo(() => searchIndex.search(query), [searchIndex, query])
+  // The field shows each key at once; the results follow, and give way to the next key.
+  const shownQuery = useDeferredValue(query)
+  const searchResults = useMemo(() => searchIndex.search(shownQuery), [searchIndex, shownQuery])
   const options = useMemo(() => searchOptions(searchResults), [searchResults])
   const paletteShown = searchFocused && normalizeQuery(query) !== ''
   const suggestion = useMemo(
-    () => (paletteShown && options.length === 0 ? searchIndex.suggest(query) : null),
-    [paletteShown, options, searchIndex, query],
+    () => (paletteShown && options.length === 0 ? searchIndex.suggest(shownQuery) : null),
+    [paletteShown, options, searchIndex, shownQuery],
   )
   const openLineRequest = useRef(0)
 
@@ -491,7 +494,7 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
             paletteShown && (
               <SearchPalette
                 id={searchListboxId}
-                query={normalizeQuery(query)}
+                query={normalizeQuery(shownQuery)}
                 results={searchResults}
                 active={activeOption}
                 suggestion={suggestion}
