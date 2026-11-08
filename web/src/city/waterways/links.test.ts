@@ -9,7 +9,8 @@ import {
   type Rect,
 } from '../world/layout'
 import { deckWidth } from './bridge-placement'
-import { boatsFor, type CityLinks, cityLinks, linkPairs, pointAlong, quayAt, tipOf } from './links'
+import { boatsFor, type CityLinks, cityLinks, linkPairs, pointAlong } from './links'
+import { quayAt, tipOf } from './quays'
 import { insidePolygon, landOutline } from './water-route'
 
 interface Spec {

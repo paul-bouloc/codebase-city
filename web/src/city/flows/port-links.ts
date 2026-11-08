@@ -1,6 +1,7 @@
 import { type ArcLabel, LABEL_HEIGHT, LABEL_LIFT } from '../render/arc-mesh'
 import { FERRY_LINE } from '../render/palette'
-import { type Port, tipOf } from '../waterways/links'
+import type { Port } from '../waterways/links'
+import { tipOf } from '../waterways/quays'
 import type { IslandLink } from '../world/layout'
 import { boardToThree, srgb, type Vec3 } from '../world/units'
 
