@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { islandShapes } from './island-shape'
+import { islandShapes } from './terrain/island-shape'
 import {
   ferryRoute,
   insidePolygon,

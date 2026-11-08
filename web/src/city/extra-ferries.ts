@@ -1,4 +1,3 @@
-import type { IslandShape } from './island-shape'
 import {
   type CityLinks,
   type Ferry,
@@ -8,6 +7,7 @@ import {
   type Quay,
   tipOf,
 } from './links'
+import type { IslandShape } from './terrain/island-shape'
 import { ferryRoute, type WaterGrid, waterGrid } from './water-route'
 import { boundsOf, type CityLayout, type Point } from './world/layout'
 

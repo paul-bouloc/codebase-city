@@ -2,10 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { type CityBuildings, createBuildings, Highlight } from './buildings'
 import { CityInteraction, type CityItem, isClick } from './city-interaction'
 import { indexCycles } from './cycles'
-import { islandShapes } from './island-shape'
 import type { Ferry } from './links'
 import { createFading } from './render/dimming'
 import { indexImports } from './selection-links'
+import { islandShapes } from './terrain/island-shape'
 import type { CityLayout, FileMetrics } from './world/layout'
 
 const file = (path: string): FileMetrics => ({

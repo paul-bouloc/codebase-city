@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import type { CityLayout } from '../world/layout'
 import { createParcels, roundedOutline } from './plateaux'
-import type { CityLayout } from './world/layout'
 
 /** Whether a point is inside a convex counter-clockwise outline. */
 function inside(outline: [number, number][], [px, py]: [number, number]): boolean {

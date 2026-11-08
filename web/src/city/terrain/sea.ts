@@ -14,10 +14,10 @@ import {
   shadingUniforms,
   shadingVertex,
   shadingVertexPars,
-} from './render/shading'
+} from '../render/shading'
+import type { CityLayout } from '../world/layout'
+import { srgb } from '../world/units'
 import { DEPTH_BANDS, SEA_FIELD_RANGE, seaField } from './sea-field'
-import type { CityLayout } from './world/layout'
-import { srgb } from './world/units'
 
 /** The open sea, past the last depth band; also the scene's background. */
 export const OPEN_SEA = '#4F9EA5'

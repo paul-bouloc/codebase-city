@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { ExtraFerries, islandExtras } from './extra-ferries'
-import { islandShapes } from './island-shape'
 import { cityLinks, pointAlong, tipOf } from './links'
+import { islandShapes } from './terrain/island-shape'
 import { insidePolygon, landOutline } from './water-route'
 import { boundsOf, type CityLayout, type IslandLink, type Lot, type Rect } from './world/layout'
 

@@ -1,4 +1,4 @@
-import type { IslandShape, Side } from './island-shape'
+import type { IslandShape, Side } from './terrain/island-shape'
 import { ferryRoute, insidePolygon, landOutline, type WaterGrid, waterGrid } from './water-route'
 import { boundsOf, type CityLayout, type IslandLink, type Point, type Rect } from './world/layout'
 import { seededRandom } from './world/random'

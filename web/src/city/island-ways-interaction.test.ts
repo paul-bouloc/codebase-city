@@ -3,10 +3,10 @@ import { createBuildings } from './buildings'
 import { type CityHover, CityInteraction, type PortList } from './city-interaction'
 import { indexCycles } from './cycles'
 import { ExtraFerries } from './extra-ferries'
-import { islandShapes } from './island-shape'
 import { cityLinks } from './links'
 import { createFading } from './render/dimming'
 import { indexImports } from './selection-links'
+import { islandShapes } from './terrain/island-shape'
 import { boundsOf, type CityLayout, type IslandLink, type Rect } from './world/layout'
 
 // A hub between six islands, far apart: four ferries leave it, its two smallest links go to its

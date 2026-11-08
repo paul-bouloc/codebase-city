@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { type IslandShape, islandShapes } from './island-shape'
 import {
   boatsFor,
   type CityLinks,
@@ -10,6 +9,7 @@ import {
   quayAt,
   tipOf,
 } from './links'
+import { type IslandShape, islandShapes } from './terrain/island-shape'
 import { insidePolygon, landOutline } from './water-route'
 import {
   boundsOf,

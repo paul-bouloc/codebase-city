@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
+import type { IslandLayout, Rect } from '../world/layout'
 import { islandCanals } from './canals'
 import { islandGardens } from './gardens'
-import type { IslandLayout, Rect } from './world/layout'
 
 const lot = (x: number, y: number) => ({
   x,

@@ -1,5 +1,5 @@
+import type { IslandLayout, Rect } from '../world/layout'
 import type { Side } from './island-shape'
-import type { IslandLayout, Rect } from './world/layout'
 
 // Canals run in the gaps the layout leaves between an island's folders (1.8 u). A canal is the
 // gap between two folders that face each other, along the whole stretch where they do. Where

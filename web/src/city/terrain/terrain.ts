@@ -1,10 +1,10 @@
 import { Mesh, ShapeUtils, Vector2 } from 'three'
+import { MeshBuilder } from '../render/mesh-builder'
+import { mixSrgb, srgb, type Vec3 } from '../world/units'
 import { type CanalCell, ISLAND_MARGIN, QUAY_WIDTH } from './canals'
 import { FOAM_WIDTH, type IslandShape, type Side } from './island-shape'
 import { groundMaterial, PAVING } from './plateaux'
-import { MeshBuilder } from './render/mesh-builder'
 import { SHORE_BAND } from './sea'
-import { mixSrgb, srgb, type Vec3 } from './world/units'
 
 const CLIFF = srgb('#D2AE84')
 /** Terraces between the plateau and the beach, from the lowest to the highest: four at most. */

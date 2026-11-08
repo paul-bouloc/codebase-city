@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest'
+import { type CityLayout, distanceToRect, type IslandLayout, type Rect } from '../world/layout'
+import { syntheticCity } from '../world/synthetic'
+import { layerAltitude } from '../world/units'
 import {
   BEACH_ALTITUDE,
   type ContourSample,
@@ -9,9 +12,6 @@ import {
   ringAltitudes,
   SAMPLE_STEP,
 } from './island-shape'
-import { type CityLayout, distanceToRect, type IslandLayout, type Rect } from './world/layout'
-import { syntheticCity } from './world/synthetic'
-import { layerAltitude } from './world/units'
 
 function island(path: string, plateau: Rect, layer = 1): IslandLayout {
   return { path, layer, plateau, parcels: [], lots: [] }

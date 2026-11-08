@@ -1,6 +1,6 @@
 import { buildingGeometry, shapeKey, type Vertex } from './archetype-geometry'
-import type { IslandShape } from './island-shape'
 import type { PlacedBuilding } from './placed-buildings'
+import type { IslandShape } from './terrain/island-shape'
 import { rectContains } from './world/layout'
 import type { Vec3 } from './world/units'
 

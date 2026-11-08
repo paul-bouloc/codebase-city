@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { islandShapes } from './island-shape'
 import { CityPicker, type Ray } from './picking'
 import { placeBuildings } from './placed-buildings'
+import { islandShapes } from './terrain/island-shape'
 import type { CityLayout, FileMetrics } from './world/layout'
 import { boardToThree, layerAltitude } from './world/units'
 

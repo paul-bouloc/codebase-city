@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { ARCHETYPES, buildingFor } from '../archetypes'
-import { islandShapes } from '../island-shape'
 import { cityLinks } from '../links'
+import { islandShapes } from '../terrain/island-shape'
 import { boundsOf, distanceToRect, type Rect } from './layout'
 import { channelWidth, syntheticCity, withCrossingCycles } from './synthetic'
 

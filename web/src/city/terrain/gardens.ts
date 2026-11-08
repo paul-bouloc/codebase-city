@@ -1,6 +1,6 @@
+import type { IslandLayout, Rect } from '../world/layout'
+import { LOT_SIZE } from '../world/units'
 import { type CanalCell, ISLAND_MARGIN } from './canals'
-import type { IslandLayout, Rect } from './world/layout'
-import { LOT_SIZE } from './world/units'
 
 /** A meadow slab on the free room of a plateau or the empty lots of its square, in u. */
 export interface Garden {
