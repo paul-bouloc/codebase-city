@@ -2,7 +2,6 @@ import CameraControls from 'camera-controls'
 import {
   Box3,
   Color,
-  DirectionalLight,
   Group,
   MathUtils,
   Matrix4,
@@ -41,7 +40,6 @@ import { type CityTargets, cityTargets } from '../interaction/targets'
 import { DASH_PERIOD, LABEL_HEIGHT, LABEL_LIFT } from '../render/arc-mesh'
 import { createFading } from '../render/dimming'
 import { disposeObject } from '../render/dispose-object'
-import { SUN_DIRECTION } from '../render/light'
 import { islandShapes } from '../terrain/island-shape'
 import { createParcels } from '../terrain/plateaux'
 import { createSea, OPEN_SEA, seaSize } from '../terrain/sea'
@@ -52,6 +50,7 @@ import { cityLinks, type Port } from '../waterways/links'
 import type { CityLayout } from '../world/layout'
 import { boardToThree, nearPlane, type Vec3 } from '../world/units'
 import { CityControls } from './city-controls'
+import { CitySun, SHADOW_MARGIN } from './city-sun'
 import { type Drive, STILL } from './drive'
 import {
   extentOf,
@@ -124,10 +123,6 @@ const HUB_LABEL_HALF_WIDTH = 40
  */
 const DASH_PIXELS = 6
 
-const SHADOW_MAP_SIZE = 4096
-/** Room around the city for the shadows of the tallest towers. */
-const SHADOW_MARGIN = 25
-
 export interface FrameStats {
   fps: number
   drawCalls: number
@@ -162,7 +157,7 @@ export class CityEngine {
   private readonly scene = new Scene()
   private readonly camera: PerspectiveCamera
   private readonly controls: CityControls
-  private readonly sun = new DirectionalLight()
+  private readonly sun: CitySun
   private readonly timer = new Timer()
   private readonly continuous: boolean
   private city: Group | null = null
@@ -243,10 +238,7 @@ export class CityEngine {
     this.controls.minDistance = MIN_DISTANCE
     this.controls.maxPolarAngle = NEAR_TILT
 
-    this.sun.castShadow = true
-    const mapSize = Math.min(SHADOW_MAP_SIZE, this.renderer.capabilities.maxTextureSize)
-    this.sun.shadow.mapSize.set(mapSize, mapSize)
-    this.scene.add(this.sun, this.sun.target)
+    this.sun = new CitySun(this.renderer, this.scene)
 
     this.removeListeners = this.listenToPointer(this.renderer.domElement)
     this.setSize(container.clientWidth, container.clientHeight)
@@ -803,7 +795,7 @@ export class CityEngine {
     const [cx, , cz] = boardToThree(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2, 0)
     const centre = new Vector3(cx, 0, cz)
     const radius = Math.hypot(bounds.width, bounds.height) / 2
-    this.fitShadows(centre, radius + SHADOW_MARGIN)
+    this.sun.fit(centre, radius + SHADOW_MARGIN)
 
     this.camera.far = seaSize(layout)
     this.camera.updateProjectionMatrix()
@@ -878,7 +870,7 @@ export class CityEngine {
       disposeObject(this.city)
       this.city = null
     }
-    this.sun.shadow.dispose()
+    this.sun.dispose()
     this.timer.dispose()
     if (import.meta.env.DEV) {
       const { geometries, textures } = this.renderer.info.memory
@@ -907,26 +899,6 @@ export class CityEngine {
     this.picker = null
     this.fleet = null
     this.targets = null
-  }
-
-  /** One square orthographic shadow camera over the whole city, along the fixed sun. */
-  private fitShadows(centre: Vector3, extent: number): void {
-    this.sun.target.position.copy(centre)
-    this.sun.position
-      .set(...SUN_DIRECTION)
-      .multiplyScalar(2 * extent)
-      .add(centre)
-    const camera = this.sun.shadow.camera
-    camera.left = -extent
-    camera.right = extent
-    camera.top = extent
-    camera.bottom = -extent
-    camera.near = 0.1
-    camera.far = 4 * extent
-    camera.updateProjectionMatrix()
-    const texel = (2 * extent) / this.sun.shadow.mapSize.x
-    this.sun.shadow.normalBias = 1.5 * texel
-    this.sun.shadow.bias = -0.0002
   }
 
   /**
