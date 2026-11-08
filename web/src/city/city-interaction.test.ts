@@ -125,6 +125,18 @@ describe('CityInteraction', () => {
     expect(selections.map((item) => item?.path)).toEqual(['a/ui', 'a'])
   })
 
+  it('tells of a click on what is already selected, without changing anything', () => {
+    const { interaction, highlights, selections } = setup()
+    interaction.select({ kind: 'building', index: 0 })
+    interaction.select({ kind: 'building', index: 0 })
+    expect(selections.map((item) => item?.path)).toEqual(['a/main.ts', 'a/main.ts'])
+    expect(highlights).toEqual([Highlight.selected, Highlight.none, Highlight.none])
+    interaction.select(null)
+    interaction.select(null)
+    expect(selections.at(-1)).toBeNull()
+    expect(selections).toHaveLength(3)
+  })
+
   it('lets the selection go: back to normal colours, and nothing selected', () => {
     const { interaction, highlights, selections, fading } = setup()
     interaction.select({ kind: 'building', index: 1 })
@@ -216,13 +228,6 @@ describe('CityInteraction', () => {
     expect(interaction.folderLinks.group.visible).toBe(true)
     interaction.select({ kind: 'building', index: 1 })
     expect(interaction.folderLinks.group.visible).toBe(false)
-  })
-
-  it('does not tell twice of the same selection', () => {
-    const { interaction, selections } = setup()
-    interaction.select({ kind: 'island', island: 1 })
-    interaction.select({ kind: 'island', island: 1 })
-    expect(selections).toHaveLength(1)
   })
 })
 

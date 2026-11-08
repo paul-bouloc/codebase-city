@@ -260,6 +260,10 @@ export class CityInteraction {
   select(target: CityTarget | null): void {
     const previous = this.selected
     if (previous === target || (previous && target && sameTarget(previous, target))) {
+      // Nothing changes in the city, but a click on the selection is heard: it reopens its sheet.
+      if (target) {
+        this.listeners().select?.(this.item(target))
+      }
       return
     }
     if (previous?.kind === 'building') {
