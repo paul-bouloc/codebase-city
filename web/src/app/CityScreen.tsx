@@ -505,6 +505,7 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
           searchActiveDescendant={searchOptionId(searchListboxId, active)}
           searchInputRef={searchInput}
           onSearchKeyDown={handleSearchKey}
+          onSearchClick={() => setSearchFocused(true)}
           onSearchFocus={() => setSearchFocused(true)}
           onSearchBlur={() => setSearchFocused(false)}
           searchPalette={

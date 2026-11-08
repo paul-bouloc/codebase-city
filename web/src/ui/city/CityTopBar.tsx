@@ -67,6 +67,7 @@ interface CityTopBarProps {
   searchInputRef?: Ref<HTMLInputElement>
   // Keys pressed in the field or in its results.
   onSearchKeyDown?: (event: KeyboardEvent) => void
+  onSearchClick?: () => void
   // The focus coming into the search (field or results), and leaving it.
   onSearchFocus?: (event: FocusEvent) => void
   onSearchBlur?: (event: FocusEvent) => void
@@ -102,6 +103,7 @@ export function CityTopBar({
   searchActiveDescendant,
   searchInputRef,
   onSearchKeyDown,
+  onSearchClick,
   onSearchFocus,
   onSearchBlur,
   searchPalette,
@@ -194,6 +196,7 @@ export function CityTopBar({
               listboxId={searchListboxId}
               activeDescendant={searchActiveDescendant}
               inputRef={searchInputRef}
+              onClick={onSearchClick}
               disabled={searchDisabled}
             />
             {searchPalette && <span className={styles.palette}>{searchPalette}</span>}
