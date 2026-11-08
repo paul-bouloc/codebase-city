@@ -18,6 +18,7 @@ import {
   Vector3,
 } from 'three'
 import { buildingGeometry, type Vertex } from './archetype-geometry'
+import type { Building } from './archetypes'
 import type { PlacedBuilding } from './placed-buildings'
 import { srgb, type Vec3 } from './units'
 
@@ -29,6 +30,22 @@ const WHITE = srgb('#FFFFFF')
 
 /** The ring's radius around a building of side `side`, in u. */
 export const ringRadius = (side: number) => 0.78 * side + 0.25
+
+/** How high a building's roof rises above its foot, chimneys and all, in u. */
+export function roofHeight(building: Building): number {
+  return topOf(buildingGeometry(building).flat(), building)
+}
+
+function topOf(vertices: readonly Vertex[], building: Building): number {
+  let top = 0
+  for (const { position: p, sideFactor: s, heightFactor: h } of vertices) {
+    top = Math.max(
+      top,
+      p[1] + s[1] * building.side + h[0] * building.height + h[1] * building.split,
+    )
+  }
+  return top
+}
 
 /** How a building is marked. */
 export interface MarkStyle {
@@ -201,13 +218,7 @@ export class BuildingMark {
     }
     const { building, position } = placed
     const vertices = buildingGeometry(building).flat()
-    let top = 0
-    for (const { position: p, sideFactor: s, heightFactor: h } of vertices) {
-      top = Math.max(
-        top,
-        p[1] + s[1] * building.side + h[0] * building.height + h[1] * building.split,
-      )
-    }
+    const top = topOf(vertices, building)
     this.group.add(...this.outline(placed, vertices), this.ring(position, building.side))
     if (this.style.pin) {
       this.group.add(...this.pin([position[0], position[1] + top, position[2]]))
