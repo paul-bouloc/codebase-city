@@ -132,6 +132,7 @@ describe('selectionLinks', () => {
     const half = openBundle({ ...links, outgoing: { single: [], bundles: [big] } }, big)
     expect(half.outgoing.single).toHaveLength(OPENED_ARCS)
     expect(half.outgoing.bundles[0]?.ends).toHaveLength(60 - OPENED_ARCS)
+    expect(half.outgoing.bundles[0]?.shown).toBe(OPENED_ARCS)
   })
 
   it('marks a building linked both ways as imported', () => {

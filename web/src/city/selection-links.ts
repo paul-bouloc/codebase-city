@@ -28,6 +28,8 @@ export interface Bundle {
   island: number
   /** The nearest first. */
   ends: Linked[]
+  /** How many of its island's files were opened out of it already; none if absent. */
+  shown?: number
 }
 
 export interface DirectionLinks {
@@ -177,7 +179,8 @@ export function openBundle(links: SelectionLinks, opened: Bundle): SelectionLink
     }
     single.push(...bundle.ends.slice(0, OPENED_ARCS))
     if (bundle.ends.length > OPENED_ARCS) {
-      bundles.push({ ...bundle, ends: bundle.ends.slice(OPENED_ARCS) })
+      const shown = (bundle.shown ?? 0) + OPENED_ARCS
+      bundles.push({ ...bundle, ends: bundle.ends.slice(OPENED_ARCS), shown })
     }
   }
   return { ...links, [opened.direction]: { single, bundles } }
