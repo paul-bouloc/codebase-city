@@ -1,4 +1,4 @@
-import type { CameraAction } from '../ui/city/CameraControls'
+import type { CameraAction } from './camera/CameraControls'
 
 // The keys the city screen listens to, wherever the focus is, unless one is typing.
 

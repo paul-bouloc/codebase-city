@@ -1,8 +1,8 @@
 import { type CSSProperties, type KeyboardEvent, useRef, useState } from 'react'
-import { ControlHint } from '../../screen/parts/ControlHint'
-import { Button } from '../Button'
-import type { IconName } from '../icons'
-import { rovingIndex } from '../roving-index'
+import { Button } from '../../ui/Button'
+import type { IconName } from '../../ui/icons'
+import { rovingIndex } from '../../ui/roving-index'
+import { ControlHint } from '../parts/ControlHint'
 import styles from './CameraControls.module.css'
 
 const TEXT = {
