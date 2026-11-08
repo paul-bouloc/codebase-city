@@ -1,13 +1,4 @@
-import {
-  type KeyboardEvent as ReactKeyboardEvent,
-  useCallback,
-  useDeferredValue,
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CityEngine } from '../city/engine/city-engine'
 import { cityCards } from '../city/interaction/city-cards'
 import type {
@@ -34,11 +25,9 @@ import { CityLegend } from './legend/CityLegend'
 import { repoContents } from './legend/legend'
 import { type LegendContent, legendContent } from './legend/legend-content'
 import { indexResult } from './result-index'
-import { isSearchKey } from './screen-keys'
 import { SearchPalette, searchOptionId } from './search/SearchPalette'
-import { type SearchHit, searchOptions } from './search/search-data'
-import { buildSearchIndex, normalizeQuery } from './search/search-index'
-import { searchKeyAction } from './search/search-keys'
+import { buildSearchIndex } from './search/search-index'
+import { useSearch } from './search/use-search'
 import { hashOf, type ScreenSelection } from './selection-hash'
 import { FileSheet } from './sheets/file/FileSheet'
 import { fileSheetData, symbolsByFile } from './sheets/file/file-sheet'
@@ -253,37 +242,9 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
   const cameraAction = useCameraActions(engine)
   useDriveKeys(engine)
 
-  // The search: the palette shows under the field while it has the focus and a query.
-  const searchListboxId = useId()
-  const searchInput = useRef<HTMLInputElement>(null)
-  const [query, setQuery] = useState('')
-  const [searchFocused, setSearchFocused] = useState(false)
-  const [activeOption, setActiveOption] = useState(0)
-  // The field shows each key at once; the results follow, and give way to the next key.
-  const shownQuery = useDeferredValue(query)
-  const searchResults = useMemo(() => searchIndex.search(shownQuery), [searchIndex, shownQuery])
-  const options = useMemo(() => searchOptions(searchResults), [searchResults])
-  // Shown once the results are a query's, not the empty field's: no flash of "Nothing matches".
-  const paletteShown =
-    searchFocused && normalizeQuery(query) !== '' && normalizeQuery(shownQuery) !== ''
-  // The option the arrows reached, within the results on show (fewer, after a new query).
-  const active = options.length === 0 ? 0 : Math.min(activeOption, options.length - 1)
-  const suggestion = useMemo(
-    () => (paletteShown && options.length === 0 ? searchIndex.suggest(shownQuery) : null),
-    [paletteShown, options, searchIndex, shownQuery],
-  )
   const openLineRequest = useRef(0)
-
-  const changeQuery = (value: string) => {
-    setQuery(value)
-    setActiveOption(0)
-    setSearchFocused(true)
-  }
-
-  // Flies to what was found and selects it; the field lets go, so the city's keys work again.
-  const chooseHit = (hit: SearchHit) => {
-    searchInput.current?.blur()
-    setSearchFocused(false)
+  // Flies to what was found and selects it.
+  const search = useSearch(searchIndex, (hit) => {
     if (hit.kind === 'symbol') {
       choose({ kind: 'file', path: hit.file }, FLY)
       openLineRequest.current++
@@ -291,81 +252,7 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
     } else {
       choose({ kind: hit.kind === 'file' ? 'file' : 'dir', path: hit.path }, FLY)
     }
-  }
-
-  // Keys in the field or in its results (the suggestion): Enter and Space on a button are its own.
-  const handleSearchKey = (event: ReactKeyboardEvent) => {
-    const onButton = event.target !== searchInput.current
-    // A button is no field: without this, the city's keys (arrows, Esc) would act behind it.
-    if (onButton) {
-      event.stopPropagation()
-    }
-    if (
-      event.nativeEvent.isComposing ||
-      (onButton && (event.key === 'Enter' || event.key === ' '))
-    ) {
-      return
-    }
-    const action = searchKeyAction(event.key, {
-      open: paletteShown,
-      count: options.length,
-      active,
-      query,
-    })
-    if (!action) {
-      return
-    }
-    // Esc taken here is not the screen's: it closes no sheet.
-    event.preventDefault()
-    switch (action.type) {
-      case 'move':
-        setActiveOption(action.index)
-        break
-      case 'open':
-        setSearchFocused(true)
-        break
-      case 'choose': {
-        // The results on show may still be an older query's: Enter takes the query in the field.
-        const hit =
-          shownQuery === query ? options[active] : searchOptions(searchIndex.search(query))[0]
-        if (hit) {
-          chooseHit(hit)
-        }
-        break
-      }
-      case 'close':
-        setSearchFocused(false)
-        // From the suggestion, which goes with the results: back to the field.
-        searchInput.current?.focus()
-        break
-      case 'clear':
-        changeQuery('')
-        setSearchFocused(false)
-        break
-      case 'leave':
-        searchInput.current?.blur()
-        break
-    }
-  }
-
-  // / and ⌘K (Ctrl+K) go to the search field, its query selected to be typed over.
-  useEffect(() => {
-    const handleKey = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || !isSearchKey(event)) {
-        return
-      }
-      const input = searchInput.current
-      if (!input || input.disabled) {
-        return
-      }
-      event.preventDefault()
-      input.focus()
-      input.select()
-      setSearchFocused(true)
-    }
-    window.addEventListener('keydown', handleKey)
-    return () => window.removeEventListener('keydown', handleKey)
-  }, [])
+  })
 
   const copy = (text: string, title: string) => {
     navigator.clipboard.writeText(text).then(
@@ -407,30 +294,30 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
           aboutOpen={aboutOpen}
           onAboutToggle={() => setAboutOpen(!aboutOpen)}
           aboutPanelId={ABOUT_ID}
-          searchValue={query}
-          onSearchChange={changeQuery}
-          searchExpanded={paletteShown && options.length > 0}
-          searchListboxId={searchListboxId}
-          searchActiveDescendant={searchOptionId(searchListboxId, active)}
-          searchInputRef={searchInput}
-          onSearchKeyDown={handleSearchKey}
-          onSearchClick={() => setSearchFocused(true)}
-          onSearchFocus={() => setSearchFocused(true)}
-          onSearchBlur={() => setSearchFocused(false)}
+          searchValue={search.query}
+          onSearchChange={search.changeQuery}
+          searchExpanded={search.paletteShown && search.options.length > 0}
+          searchListboxId={search.listboxId}
+          searchActiveDescendant={searchOptionId(search.listboxId, search.active)}
+          searchInputRef={search.inputRef}
+          onSearchKeyDown={search.handleKey}
+          onSearchClick={() => search.setFocused(true)}
+          onSearchFocus={() => search.setFocused(true)}
+          onSearchBlur={() => search.setFocused(false)}
           searchPalette={
-            paletteShown && (
+            search.paletteShown && (
               <SearchPalette
-                id={searchListboxId}
-                query={normalizeQuery(shownQuery)}
-                results={searchResults}
-                active={active}
-                suggestion={suggestion}
-                onActiveChange={setActiveOption}
-                onChoose={chooseHit}
+                id={search.listboxId}
+                query={search.shownQuery}
+                results={search.results}
+                active={search.active}
+                suggestion={search.suggestion}
+                onActiveChange={search.setActive}
+                onChoose={search.chooseHit}
                 onSuggest={(name) => {
-                  changeQuery(name)
+                  search.changeQuery(name)
                   // The suggestion goes with the empty results: the field takes the focus back.
-                  searchInput.current?.focus()
+                  search.inputRef.current?.focus()
                 }}
               />
             )
