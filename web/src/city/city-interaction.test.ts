@@ -5,6 +5,7 @@ import { indexCycles } from './cycles'
 import { createFading } from './dimming'
 import { islandShapes } from './island-shape'
 import type { CityLayout, FileMetrics } from './layout'
+import type { Ferry } from './links'
 import { indexImports } from './selection-links'
 
 const file = (path: string): FileMetrics => ({
@@ -42,7 +43,7 @@ const LAYOUT: CityLayout = {
 }
 
 /** The buildings, with what each one's highlight and kept flag are now. */
-function setup(layout = LAYOUT) {
+function setup(layout = LAYOUT, ferries: Ferry[] = []) {
   const fading = createFading()
   const real = createBuildings(layout, 1, fading)
   const highlights = real.placed.map(() => Highlight.none as Highlight)
@@ -63,7 +64,7 @@ function setup(layout = LAYOUT) {
     layout,
     islandShapes(layout),
     buildings,
-    { imports: indexImports(layout), cycles: indexCycles(layout) },
+    { imports: indexImports(layout), cycles: indexCycles(layout), bridges: [], ferries },
     fading,
     1,
     () => ({ select: (item) => selections.push(item) }),
@@ -185,6 +186,36 @@ describe('CityInteraction', () => {
     expect(interaction.cycleRings.group.visible).toBe(false)
     expect(interaction.arcs.group.visible).toBe(false)
     vi.unstubAllGlobals()
+  })
+
+  it('lines the ferries of a selected folder, and lets them go with it', () => {
+    // `a/ui/view.ts` imports `b/util.ts`, by ferry
+    const { interaction } = setup(
+      {
+        ...LAYOUT,
+        links: [{ from: 0, to: 1, imports: 1, upward: 0 }],
+        imports: [{ from: { island: 0, lot: 1 }, to: { island: 1, lot: 0 }, upward: false }],
+      },
+      [
+        {
+          a: 0,
+          b: 1,
+          imports: 1,
+          upward: false,
+          path: [
+            { x: 10, y: 5 },
+            { x: 40, y: 5 },
+          ],
+        },
+      ],
+    )
+    interaction.select({ kind: 'island', island: 1 })
+    expect(interaction.folderLinks.group.visible).toBe(true)
+    // `a/ui` imports from `b`
+    interaction.select({ kind: 'parcel', island: 0, parcel: 0 })
+    expect(interaction.folderLinks.group.visible).toBe(true)
+    interaction.select({ kind: 'building', index: 1 })
+    expect(interaction.folderLinks.group.visible).toBe(false)
   })
 
   it('does not tell twice of the same selection', () => {

@@ -374,7 +374,12 @@ export class CityEngine {
       layout,
       shapes,
       buildings,
-      { imports: indexImports(layout), cycles: indexCycles(layout) },
+      {
+        imports: indexImports(layout),
+        cycles: indexCycles(layout),
+        bridges: links.bridges,
+        ferries: links.ferries,
+      },
       fading,
       pixelRatio,
       () => this.listeners,

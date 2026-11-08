@@ -15,9 +15,12 @@ import { type CityBuildings, Highlight } from './buildings'
 import { type CycleIndex, loopThrough } from './cycles'
 import type { Fading } from './dimming'
 import { easeStandard } from './easing'
+import { FolderLinkMarks, folderWays } from './folder-link-marks'
+import { folderFlows } from './folder-links'
 import { HoverTiming } from './hover-timing'
 import type { IslandShape } from './island-shape'
 import { type CityLayout, rectContains } from './layout'
+import type { Bridge, Ferry } from './links'
 import type { CityTarget } from './picking'
 import { type CycleOnShow, type Hub, selectionArcs } from './selection-arcs'
 import {
@@ -62,6 +65,9 @@ export interface CityHover extends CityItem {
 export interface CityFlows {
   imports: ImportIndex
   cycles: CycleIndex
+  /** The bridges and ferry lines on show between islands. */
+  bridges: readonly Bridge[]
+  ferries: readonly Ferry[]
 }
 
 /** What the pointer can rest on: a place of the city, or the hub of a selection's bundle. */
@@ -129,6 +135,8 @@ export class CityInteraction {
   /** The rings around the files of the selected file's cycle. */
   readonly cycleRings: RingSet
   private cycle: CycleOnShow | null = null
+  /** The bridges and ferry lines of a selected folder. */
+  readonly folderLinks: FolderLinkMarks
 
   constructor(
     private readonly layout: CityLayout,
@@ -146,7 +154,9 @@ export class CityInteraction {
     this.hoveredArea = new AreaMark(HOVERED_AREA, pixelRatio)
     this.selectedArea = new AreaMark(SELECTED_AREA, pixelRatio)
     this.cycleRings = new RingSet(CYCLE_RINGS, pixelRatio)
+    this.folderLinks = new FolderLinkMarks(pixelRatio)
     this.overlay.add(
+      this.folderLinks.group,
       this.cycleRings.group,
       this.hoveredArea.group,
       this.selectedArea.group,
@@ -222,6 +232,7 @@ export class CityInteraction {
     } else if (target) {
       this.selectedArea.show(this.area(target), this.shapes)
     }
+    this.showFolderLinks(target)
     // A hovered mark under the selected one would draw twice.
     this.highlight(this.highlighted)
     if (target) {
@@ -275,6 +286,7 @@ export class CityInteraction {
     this.hoveredArea.dispose()
     this.selectedArea.dispose()
     this.cycleRings.dispose()
+    this.folderLinks.dispose()
     this.clearLinkMarks()
     this.arcs.dispose()
   }
@@ -317,6 +329,20 @@ export class CityInteraction {
     )
     this.hubs = hubs
     this.arcs.show(drawing)
+  }
+
+  /** A selected folder's bridges and ferry lines stand out; none for a file. */
+  private showFolderLinks(target: CityTarget | null): void {
+    if (!target || target.kind === 'building') {
+      this.folderLinks.show(null)
+      return
+    }
+    const rect =
+      target.kind === 'parcel'
+        ? this.layout.islands[target.island]?.parcels[target.parcel]?.rect
+        : undefined
+    const flows = folderFlows(this.layout, { island: target.island, ...(rect ? { rect } : {}) })
+    this.folderLinks.show(folderWays(target.island, flows, this.flows.bridges, this.flows.ferries))
   }
 
   private clearLinkMarks(): void {
