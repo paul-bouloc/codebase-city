@@ -1,4 +1,5 @@
-import type { ArcDot, ArcDrawing, ArcLabel, ArcLine } from '../render/arc-mesh'
+import type { ArcLabel } from '../render/arc-label'
+import type { ArcDot, ArcDrawing, ArcLine } from '../render/arc-mesh'
 import { ARC_SEGMENTS, arcPoints } from '../render/arc-path'
 import { INCOMING_LINK, OUTGOING_LINK, UPWARD } from '../render/palette'
 import { srgb, type Vec3 } from '../world/units'

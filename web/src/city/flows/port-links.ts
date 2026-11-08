@@ -1,4 +1,4 @@
-import { type ArcLabel, LABEL_HEIGHT, LABEL_LIFT } from '../render/arc-mesh'
+import { type ArcLabel, LABEL_HEIGHT, LABEL_LIFT } from '../render/arc-label'
 import { FERRY_LINE } from '../render/palette'
 import type { Port } from '../waterways/links'
 import { tipOf } from '../waterways/quays'

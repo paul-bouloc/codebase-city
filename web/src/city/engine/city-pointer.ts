@@ -2,7 +2,7 @@ import { MathUtils, type PerspectiveCamera, Raycaster, Vector2, Vector3 } from '
 import { BADGE_HALF_WIDTH, badgeInView, portBadgeAt } from '../flows/port-links'
 import { type CityInteraction, isClick, type Pointed } from '../interaction/city-interaction'
 import type { CityPicker, CityTarget } from '../interaction/picking'
-import { LABEL_HEIGHT, LABEL_LIFT } from '../render/arc-mesh'
+import { LABEL_HEIGHT, LABEL_LIFT } from '../render/arc-label'
 import type { Port } from '../waterways/links'
 import type { Vec3 } from '../world/units'
 
