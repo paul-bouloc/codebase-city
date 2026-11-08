@@ -6,6 +6,8 @@
 //! its code under `src/vs`, so its islands are `base`, `platform`, `editor`,
 //! `workbench`…, not one `src`; a monorepo gets one island per package.
 
+pub(crate) mod layers;
+
 use std::collections::BTreeMap;
 
 use model::Links;
