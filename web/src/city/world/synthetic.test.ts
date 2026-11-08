@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ARCHETYPES, buildingFor } from '../archetypes'
+import { ARCHETYPES, buildingFor } from '../buildings/archetypes'
 import { islandShapes } from '../terrain/island-shape'
 import { cityLinks } from '../waterways/links'
 import { boundsOf, distanceToRect, type Rect } from './layout'

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import type { FileMetrics } from '../world/layout'
 import { archetypeFor, buildingFor, floorsFor, footprintFor } from './archetypes'
-import type { FileMetrics } from './world/layout'
 
 const file = (metrics: Partial<FileMetrics>): FileMetrics => ({
   language: 'typescript',

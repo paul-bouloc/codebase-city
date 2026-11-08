@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createBuildings } from './buildings'
+import { createBuildings } from './buildings/buildings'
 import { islandShapes } from './terrain/island-shape'
 import { createSea } from './terrain/sea'
 import { createTerrain } from './terrain/terrain'

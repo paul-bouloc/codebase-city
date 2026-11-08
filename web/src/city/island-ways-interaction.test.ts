@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createBuildings } from './buildings'
+import { createBuildings } from './buildings/buildings'
 import { type CityHover, CityInteraction, type PortList } from './city-interaction'
 import { indexCycles } from './cycles'
 import { ExtraFerries } from './extra-ferries'

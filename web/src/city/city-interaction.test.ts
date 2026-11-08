@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { type CityBuildings, createBuildings, Highlight } from './buildings'
+import { type CityBuildings, createBuildings, Highlight } from './buildings/buildings'
 import { CityInteraction, type CityItem, isClick } from './city-interaction'
 import { indexCycles } from './cycles'
 import { createFading } from './render/dimming'

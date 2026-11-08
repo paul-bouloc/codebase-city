@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { decodeResult } from '../data/decode-result'
 import sample from '../data/generated/sample-result.json'
+import { placeBuildings } from './buildings/placed-buildings'
 import {
   type Extent,
   extentOf,
@@ -13,7 +14,6 @@ import {
   turnAbout,
   type Viewport,
 } from './flight'
-import { placeBuildings } from './placed-buildings'
 import { cityTargets } from './targets'
 import { cityFromResult } from './world/from-result'
 

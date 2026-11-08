@@ -24,7 +24,8 @@ import {
   Vector4,
   WebGLRenderer,
 } from 'three'
-import { createBuildings } from './buildings'
+import { createBuildings } from './buildings/buildings'
+import type { PlacedBuilding } from './buildings/placed-buildings'
 import { CityControls } from './city-controls'
 import {
   type CameraView,
@@ -53,7 +54,6 @@ import {
 } from './flight'
 import { bearingOf, northOf, scaleFiles } from './map-scale'
 import { CityPicker, type CityTarget } from './picking'
-import type { PlacedBuilding } from './placed-buildings'
 import { BADGE_HALF_WIDTH, badgeInView, portBadgeAt } from './port-links'
 import { DASH_PERIOD, LABEL_HEIGHT, LABEL_LIFT } from './render/arc-mesh'
 import { createFading } from './render/dimming'

@@ -9,18 +9,18 @@ import {
   MeshDepthMaterial,
   ShaderMaterial,
 } from 'three'
-import { buildingGeometry, type Shape, shapeKey, type Vertex } from './archetype-geometry'
-import { ARCHETYPES } from './archetypes'
-import { type PlacedBuilding, placeBuildings } from './placed-buildings'
-import { createFading, dimmingFragmentPars, type Fading } from './render/dimming'
+import { createFading, dimmingFragmentPars, type Fading } from '../render/dimming'
 import {
   shadingFragmentPars,
   shadingUniforms,
   shadingVertex,
   shadingVertexPars,
-} from './render/shading'
-import type { BuildingLanguage, CityLayout, ConcreteFamily, FileMetrics } from './world/layout'
-import { srgb, type Vec3 } from './world/units'
+} from '../render/shading'
+import type { BuildingLanguage, CityLayout, ConcreteFamily, FileMetrics } from '../world/layout'
+import { srgb, type Vec3 } from '../world/units'
+import { buildingGeometry, type Shape, shapeKey, type Vertex } from './archetype-geometry'
+import { ARCHETYPES } from './archetypes'
+import { type PlacedBuilding, placeBuildings } from './placed-buildings'
 
 // TypeScript, JavaScript and CSS are tuned by hand; the others take their GitHub Linguist colour.
 const LANGUAGE_COLOURS: Record<BuildingLanguage, Vec3> = {

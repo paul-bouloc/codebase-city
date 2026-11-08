@@ -10,7 +10,7 @@ import {
   roofHeight,
   SELECTED_MARK,
 } from './building-marks'
-import { type CityBuildings, Highlight } from './buildings'
+import { type CityBuildings, Highlight } from './buildings/buildings'
 import { CycleWayMarks, cycleWays, loopIslandPairs } from './cycle-ways'
 import { type CycleIndex, loopThrough } from './cycles'
 import { type ExtraFerries, islandExtras } from './extra-ferries'

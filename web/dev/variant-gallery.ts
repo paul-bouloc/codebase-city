@@ -1,4 +1,4 @@
-import { buildingFor, floorsFor } from '../src/city/archetypes'
+import { buildingFor, floorsFor } from '../src/city/buildings/archetypes'
 import type { CityLayout, FileMetrics, IslandLayout, Lot } from '../src/city/world/layout'
 import { LOT_SIZE } from '../src/city/world/units'
 

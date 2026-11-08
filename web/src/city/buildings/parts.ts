@@ -1,4 +1,4 @@
-import { mixSrgb, srgb, type Vec3 } from './world/units'
+import { mixSrgb, srgb, type Vec3 } from '../world/units'
 
 // The pieces buildings are made of. A vertex coordinate is a length
 // `fixed + side × s + height × h + split × k`, where s, h and k come from the instance: what

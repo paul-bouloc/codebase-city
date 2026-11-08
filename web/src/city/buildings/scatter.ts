@@ -1,8 +1,8 @@
+import type { ParcelNature, Rect } from '../world/layout'
+import { seededRandom } from '../world/random'
 import { buildingGeometry, stretched } from './archetype-geometry'
 import type { Archetype, Building } from './archetypes'
 import { quarterTurnsFor } from './variants'
-import type { ParcelNature, Rect } from './world/layout'
-import { seededRandom } from './world/random'
 
 /** Low buildings scatter in their lot; the others stand in line, centred. */
 const SCATTERED: ReadonlySet<Archetype> = new Set(['pavilion', 'house'])

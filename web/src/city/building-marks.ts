@@ -17,9 +17,9 @@ import {
   Vector2,
   Vector3,
 } from 'three'
-import { buildingGeometry, type Vertex } from './archetype-geometry'
-import type { Building } from './archetypes'
-import type { PlacedBuilding } from './placed-buildings'
+import { buildingGeometry, type Vertex } from './buildings/archetype-geometry'
+import type { Building } from './buildings/archetypes'
+import type { PlacedBuilding } from './buildings/placed-buildings'
 import { INCOMING_LINK, OUTGOING_LINK, UPWARD } from './render/palette'
 import { srgb, type Vec3 } from './world/units'
 
