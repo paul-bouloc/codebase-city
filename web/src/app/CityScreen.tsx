@@ -40,6 +40,8 @@ const TEXT = {
 
 const ABOUT_ID = 'city-about'
 const LOADING_CODE: CodeState = { status: 'loading' }
+/** Room kept clear left of the open sheet, in px: as the camera controls keep (444 px). */
+const SHEET_GAP = 12
 
 type Sheet = { file: FileSheetData } | { folder: FolderSheetData }
 
@@ -238,6 +240,18 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
   const shownSheet = sheet ?? lastSheet.current
   const sheetShown = sheetOpen && sheet !== null
 
+  // The open sheet covers the right of the city: flights frame left of it, and a selection it
+  // hides slides clear. It covers its travel and the margin left of it.
+  const screen = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const element = screen.current
+    if (!engine || !element) {
+      return
+    }
+    const travel = Number.parseFloat(getComputedStyle(element).getPropertyValue('--sheet-travel'))
+    engine.setViewInset(sheetShown && Number.isFinite(travel) ? travel + SHEET_GAP : 0)
+  }, [engine, sheetShown])
+
   const portOpen = port !== null
   // Esc that no panel took: the open panel first, then the selection.
   useEffect(() => {
@@ -334,7 +348,7 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
     sheetShown ? `${base} ${styles.besideSheet}` : base
 
   return (
-    <main className={styles.screen}>
+    <main ref={screen} className={styles.screen}>
       <CityView layout={layout} showStats={showStats} onEngine={handleEngine} />
 
       <div className={styles.topBar}>
