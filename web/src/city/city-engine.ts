@@ -28,6 +28,7 @@ import { DASH_PERIOD, LABEL_HEIGHT, LABEL_LIFT } from './arc-mesh'
 import { createBridges } from './bridges'
 import { createBuildings } from './buildings'
 import { CityInteraction, type CityItem, type CityListeners, isClick } from './city-interaction'
+import { indexCycles } from './cycles'
 import { cityDecor } from './decor'
 import { BOAT_LENGTH, createDecor, type DecorStats, decorStats } from './decor-mesh'
 import { createFading } from './dimming'
@@ -373,7 +374,7 @@ export class CityEngine {
       layout,
       shapes,
       buildings,
-      indexImports(layout),
+      { imports: indexImports(layout), cycles: indexCycles(layout) },
       fading,
       pixelRatio,
       () => this.listeners,

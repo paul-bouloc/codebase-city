@@ -3,20 +3,23 @@ import { ArcLayer } from './arc-mesh'
 import { type Area, AreaMark, HOVERED_AREA, SELECTED_AREA } from './area-marks'
 import {
   BuildingMark,
+  CYCLE_RINGS,
   HOVERED_MARK,
   INCOMING_MARK,
   OUTGOING_MARK,
+  RingSet,
   roofHeight,
   SELECTED_MARK,
 } from './building-marks'
 import { type CityBuildings, Highlight } from './buildings'
+import { type CycleIndex, loopThrough } from './cycles'
 import type { Fading } from './dimming'
 import { easeStandard } from './easing'
 import { HoverTiming } from './hover-timing'
 import type { IslandShape } from './island-shape'
 import { type CityLayout, rectContains } from './layout'
 import type { CityTarget } from './picking'
-import { type Hub, selectionArcs } from './selection-arcs'
+import { type CycleOnShow, type Hub, selectionArcs } from './selection-arcs'
 import {
   type Direction,
   type ImportIndex,
@@ -53,6 +56,12 @@ export interface CityHover extends CityItem {
   pointer: { x: number; y: number }
   /** For a bundle's hub, whose item is its island. */
   bundle?: BundleCard
+}
+
+/** How the city's files depend on each other. */
+export interface CityFlows {
+  imports: ImportIndex
+  cycles: CycleIndex
 }
 
 /** What the pointer can rest on: a place of the city, or the hub of a selection's bundle. */
@@ -117,12 +126,15 @@ export class CityInteraction {
   private linkMarks: BuildingMark[] = []
   private hubs: Hub[] = []
   private readonly roofs = new Map<number, Vec3>()
+  /** The rings around the files of the selected file's cycle. */
+  readonly cycleRings: RingSet
+  private cycle: CycleOnShow | null = null
 
   constructor(
     private readonly layout: CityLayout,
     private readonly shapes: readonly IslandShape[],
     private readonly buildings: CityBuildings,
-    private readonly imports: ImportIndex,
+    private readonly flows: CityFlows,
     private readonly fading: Fading,
     private readonly pixelRatio: number,
     private readonly listeners: () => CityListeners,
@@ -133,7 +145,9 @@ export class CityInteraction {
     this.selectedBuilding = new BuildingMark(SELECTED_MARK, pixelRatio)
     this.hoveredArea = new AreaMark(HOVERED_AREA, pixelRatio)
     this.selectedArea = new AreaMark(SELECTED_AREA, pixelRatio)
+    this.cycleRings = new RingSet(CYCLE_RINGS, pixelRatio)
     this.overlay.add(
+      this.cycleRings.group,
       this.hoveredArea.group,
       this.selectedArea.group,
       this.hoveredBuilding.group,
@@ -189,8 +203,18 @@ export class CityInteraction {
     this.selectedArea.show(null, this.shapes)
     this.links =
       target?.kind === 'building'
-        ? selectionLinks(this.imports, target.index, (end) => this.distance(target.index, end))
+        ? selectionLinks(this.flows.imports, target.index, (end) =>
+            this.distance(target.index, end),
+          )
         : null
+    const cycle = target?.kind === 'building' ? this.flows.cycles.cycleOf.get(target.index) : null
+    this.cycle =
+      cycle && target?.kind === 'building'
+        ? { loop: loopThrough(cycle, target.index), members: cycle.members }
+        : null
+    this.cycleRings.show(
+      this.cycle?.members.flatMap((member) => this.buildings.placed[member] ?? []) ?? [],
+    )
     this.drawLinks()
     if (target?.kind === 'building') {
       this.buildings.setHighlight(target.index, Highlight.selected)
@@ -250,6 +274,7 @@ export class CityInteraction {
     this.selectedBuilding.dispose()
     this.hoveredArea.dispose()
     this.selectedArea.dispose()
+    this.cycleRings.dispose()
     this.clearLinkMarks()
     this.arcs.dispose()
   }
@@ -288,6 +313,7 @@ export class CityInteraction {
         plateau: (island) => layerAltitude(this.layout.islands[island]?.layer ?? 1),
       },
       fresh,
+      this.cycle,
     )
     this.hubs = hubs
     this.arcs.show(drawing)
@@ -402,7 +428,12 @@ export class CityInteraction {
     const { placed } = this.buildings
     const area = this.fading.keptArea.value
     if (target.kind === 'building') {
-      const linked = this.links ? linkedBuildings(this.links, this.imports) : new Set<number>()
+      const linked = this.links
+        ? linkedBuildings(this.links, this.flows.imports)
+        : new Set<number>()
+      for (const member of this.cycle?.members ?? []) {
+        linked.add(member)
+      }
       this.buildings.setKept((index) => index === target.index || linked.has(index))
       area.set(1, 1, 0, 0)
       return

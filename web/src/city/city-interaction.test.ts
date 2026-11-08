@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { type CityBuildings, createBuildings, Highlight } from './buildings'
 import { CityInteraction, type CityItem, isClick } from './city-interaction'
+import { indexCycles } from './cycles'
 import { createFading } from './dimming'
 import { islandShapes } from './island-shape'
 import type { CityLayout, FileMetrics } from './layout'
@@ -62,7 +63,7 @@ function setup(layout = LAYOUT) {
     layout,
     islandShapes(layout),
     buildings,
-    indexImports(layout),
+    { imports: indexImports(layout), cycles: indexCycles(layout) },
     fading,
     1,
     () => ({ select: (item) => selections.push(item) }),
@@ -154,6 +155,36 @@ describe('CityInteraction', () => {
     expect(interaction.arcs.group.visible).toBe(false)
     interaction.select(null)
     expect(interaction.arcs.group.visible).toBe(false)
+  })
+
+  it('rings the files of the cycle of a selected one, and keeps them', () => {
+    // The cycle's badge is drawn on a canvas, which the tests have none of.
+    vi.stubGlobal('document', { createElement: () => ({ getContext: () => null }) })
+    // `a/main.ts` and `a/ui/view.ts` import each other
+    const { interaction, keptNow } = setup({
+      ...LAYOUT,
+      cycles: [
+        {
+          members: [
+            { island: 0, lot: 0 },
+            { island: 0, lot: 1 },
+          ],
+          loop: [0, 1],
+          imports: [
+            [0, 1],
+            [1, 0],
+          ],
+        },
+      ],
+    })
+    interaction.select({ kind: 'building', index: 1 })
+    expect(keptNow()).toEqual([true, true, false])
+    expect(interaction.cycleRings.group.visible).toBe(true)
+    expect(interaction.arcs.group.visible).toBe(true)
+    interaction.select({ kind: 'building', index: 2 })
+    expect(interaction.cycleRings.group.visible).toBe(false)
+    expect(interaction.arcs.group.visible).toBe(false)
+    vi.unstubAllGlobals()
   })
 
   it('does not tell twice of the same selection', () => {
