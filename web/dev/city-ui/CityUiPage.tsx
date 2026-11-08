@@ -8,8 +8,6 @@ import { MapScale } from '../../src/screen/camera/MapScale'
 import { escapeTarget } from '../../src/screen/city-escape'
 import { CityLegend } from '../../src/screen/legend/CityLegend'
 import { Glass } from '../../src/screen/parts/Glass'
-import { FileSheet } from '../../src/screen/sheets/file/FileSheet'
-import { FolderSheet } from '../../src/screen/sheets/folder/FolderSheet'
 import { AreaTooltip } from '../../src/screen/tooltips/AreaTooltip'
 import { CityMarker } from '../../src/screen/tooltips/CityMarker'
 import { FileTooltip } from '../../src/screen/tooltips/FileTooltip'
@@ -26,14 +24,9 @@ import {
   SMALL_LEGEND,
 } from './city-ui-samples'
 import { SheetsBoard } from './SheetsBoard'
+import { StageSheet } from './StageSheet'
 import { ABOUT } from './sheet-samples'
-import {
-  HOVER_LABELS,
-  type Hover,
-  SELECTION_LABELS,
-  SELECTIONS,
-  type Selection,
-} from './stage-states'
+import { HOVER_LABELS, type Hover, SELECTION_LABELS, type Selection } from './stage-states'
 
 const TEXT = {
   tools: 'States',
@@ -302,53 +295,6 @@ export function CityUiPage() {
       <Board />
       <SheetsBoard />
     </>
-  )
-}
-
-function StageSheet({
-  selection,
-  open,
-  onClose,
-  onSelectFile,
-  onOpenFolder,
-}: {
-  selection: Selection | null
-  open: boolean
-  onClose: () => void
-  onSelectFile: () => void
-  onOpenFolder: () => void
-}) {
-  // Nothing selected yet: a closed sheet waits off screen.
-  const shown = SELECTIONS[selection ?? 'file']
-  const noop = () => {}
-  if ('file' in shown) {
-    return (
-      <FileSheet
-        open={open && selection !== null}
-        file={shown.file}
-        loading={shown.loading}
-        onClose={onClose}
-        onOpenFolder={onOpenFolder}
-        onSelectFile={onSelectFile}
-        onShowCycle={noop}
-        onCopyPath={noop}
-        onCopyLink={noop}
-        onRetryCode={noop}
-        onShowImpact={noop}
-        onFindPath={noop}
-      />
-    )
-  }
-  return (
-    <FolderSheet
-      open={open && selection !== null}
-      folder={shown.folder}
-      loading={shown.loading}
-      onClose={onClose}
-      onOpenFolder={onOpenFolder}
-      onSelectFile={onSelectFile}
-      onCopyLink={noop}
-    />
   )
 }
 
