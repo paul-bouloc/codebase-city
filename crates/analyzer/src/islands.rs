@@ -1,4 +1,5 @@
-//! The islands of the city, and the imports between them.
+//! The islands of the city, the imports between them, and the layers they
+//! fall into.
 //!
 //! An island is a top-level folder, unless a folder holds more than half of
 //! the production code: then it is split, its subfolders become islands, and

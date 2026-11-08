@@ -1,9 +1,9 @@
 //! The import graph that rankings, layers and cycles are computed on.
 //!
-//! It differs from the edges of the result in two ways. An import of named
-//! symbols through a barrel goes on to the files that declare them, so a
-//! barrel does not stand in for the whole package it gathers. And the
-//! production graph keeps only the code the project ships: no tests,
+//! It differs from the edges of the result (built in `edges`) in two ways. An
+//! import of named symbols through a barrel goes on to the files that declare
+//! them, so a barrel does not stand in for the whole package it gathers. And
+//! the production graph keeps only the code the project ships: no tests,
 //! examples, docs, build output or generated files.
 
 mod barrels;
