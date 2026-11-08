@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { FOLDED_ROWS } from '../../screen/sheets/ranked-files'
-import type { FileSymbol } from '../../screen/sheets/sheet-data'
-import { exactCount } from '../count-format'
-import { Icon } from '../Icon'
+import { exactCount } from '../../../ui/count-format'
+import { Icon } from '../../../ui/Icon'
+import { FOLDED_ROWS } from '../ranked-files'
+import type { FileSymbol } from '../sheet-data'
 import styles from './SymbolList.module.css'
 
 const TEXT = {

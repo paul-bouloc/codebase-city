@@ -1,8 +1,8 @@
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
-import { splitPath } from '../../screen/parts/shorten-folder'
-import { FOLDED_ROWS, rankedRows } from '../../screen/sheets/ranked-files'
-import type { RankedFile } from '../../screen/sheets/sheet-data'
-import { exactCount } from '../count-format'
+import { exactCount } from '../../../ui/count-format'
+import { splitPath } from '../../parts/shorten-folder'
+import { FOLDED_ROWS, rankedRows } from '../ranked-files'
+import type { RankedFile } from '../sheet-data'
 import styles from './ImportanceList.module.css'
 
 const TEXT = {

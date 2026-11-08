@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import type { FileSheetData } from '../../screen/sheets/sheet-data'
+import type { FileSheetData } from '../sheet-data'
 import { FileSheet } from './FileSheet'
 
 const FILE: FileSheetData = {

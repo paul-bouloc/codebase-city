@@ -1,6 +1,6 @@
-import type { GithubRepo } from '../screen/github-links'
-import { githubRawUrl } from '../screen/github-links'
-import type { CodeState } from '../screen/sheets/sheet-data'
+import type { GithubRepo } from '../../github-links'
+import { githubRawUrl } from '../../github-links'
+import type { CodeState } from '../sheet-data'
 
 // A file's code, read from GitHub when its sheet shows it, never stored.
 

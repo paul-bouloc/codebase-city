@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import type { CodeState } from '../../screen/sheets/sheet-data'
+import type { CodeState } from '../sheet-data'
 import { CodeView } from './CodeView'
 
 const render = (code: CodeState) =>
