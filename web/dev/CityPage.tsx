@@ -2,7 +2,7 @@ import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { CityView } from '../src/app/CityView'
 import { type CityCards, cityCards } from '../src/city/city-cards'
 import type { CityEngine } from '../src/city/city-engine'
-import type { CityHover, CityItem } from '../src/city/city-interaction'
+import type { CityHover, CityItem, PortList } from '../src/city/city-interaction'
 import { cityFromResult } from '../src/city/from-result'
 import type { CityLayout } from '../src/city/layout'
 import { syntheticCity } from '../src/city/synthetic'
@@ -11,6 +11,8 @@ import { Button } from '../src/ui/Button'
 import { AreaTooltip } from '../src/ui/city/AreaTooltip'
 import { BundleTooltip } from '../src/ui/city/BundleTooltip'
 import { FileTooltip } from '../src/ui/city/FileTooltip'
+import { PortCard } from '../src/ui/city/PortCard'
+import { PortTooltip } from '../src/ui/city/PortTooltip'
 import { archetypeGallery } from './archetype-gallery'
 import styles from './CityPage.module.css'
 import { variantGallery } from './variant-gallery'
@@ -43,7 +45,8 @@ const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve))
  * one island: `?gallery`, or every combination of the low buildings' pieces: `?variants`. A result written by `just ingest owner/repo --out result.json` can be
  * loaded in its place, or dropped in `web/dev/results/` to get a button: `?result=name` opens it.
  * `?look=x,y,distance[,azimuth,polar]` points the camera at a board point, for close captures.
- * `?select=path` selects the file of that path once the city loads.
+ * `?select=path` selects the file of that path once the city loads; `?port=path` opens the port
+ * of that island.
  * `?stats=off` hides the frame stats, and with them the drawing of every frame: the city then draws
  * only when something changes, as in the product.
  */
@@ -73,21 +76,28 @@ export function CityPage() {
   const [cards, setCards] = useState<CityCards | null>(null)
   const [hover, setHover] = useState<CityHover | null>(null)
   const [selection, setSelection] = useState<CityItem | null>(null)
+  const [port, setPort] = useState<PortList | null>(null)
 
   useEffect(() => {
-    engine?.setListeners({ hover: setHover, select: setSelection })
+    engine?.setListeners({ hover: setHover, select: setSelection, port: setPort })
   }, [engine])
 
-  // Esc clears the selection, as on the city screen once no panel is open.
+  // Esc closes the port open, if any, or clears the selection, as on the city screen once no
+  // panel is open.
   useEffect(() => {
     const clear = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
+      if (event.key !== 'Escape') {
+        return
+      }
+      if (port) {
+        engine?.closePort()
+      } else {
         engine?.clearSelection()
       }
     }
     window.addEventListener('keydown', clear)
     return () => window.removeEventListener('keydown', clear)
-  }, [engine])
+  }, [engine, port])
 
   // After the city loads (the view's effect runs first), the camera goes where `?look` says.
   // biome-ignore lint/correctness/useExhaustiveDependencies: again after each city loads
@@ -119,6 +129,15 @@ export function CityPage() {
       engine.select({ kind: 'island', island })
     } else if (parcel) {
       engine.select({ kind: 'parcel', island: parcel.island, parcel: parcel.parcel })
+    }
+  }, [engine, layout])
+
+  // And the port of the island `?port` names is opened.
+  useEffect(() => {
+    const path = new URLSearchParams(window.location.search).get('port')
+    const island = layout.islands.findIndex((each) => each.path === path)
+    if (engine && island >= 0) {
+      engine.openPortOf(island)
     }
   }, [engine, layout])
 
@@ -208,7 +227,11 @@ export function CityPage() {
         {error && <p className={styles.error}>{error}</p>}
         {selection && <p className={styles.selection}>{selection.path}</p>}
       </div>
-      {hover && cards && <HoverCard hover={hover} cards={cards} />}
+      {port ? (
+        <PortCard {...port} onFocusLink={(index) => engine?.focusPortLink(index)} />
+      ) : (
+        hover && cards && <HoverCard hover={hover} cards={cards} />
+      )}
     </main>
   )
 }
@@ -217,6 +240,9 @@ export function CityPage() {
 function HoverCard({ hover, cards }: { hover: CityHover; cards: CityCards }) {
   if (hover.bundle) {
     return <BundleTooltip path={hover.path} {...hover.bundle} pointer={hover.pointer} />
+  }
+  if (hover.port) {
+    return <PortTooltip path={hover.path} links={hover.port.links} pointer={hover.pointer} />
   }
   if (hover.target.kind === 'building') {
     const card = cards.file(hover.path)
