@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import type { AboutData } from '../../screen/sheets/sheet-data'
+import type { AboutData } from '../sheets/sheet-data'
 import { AboutPanel, type NewerVersion } from './AboutPanel'
 
 const ABOUT: AboutData = {
