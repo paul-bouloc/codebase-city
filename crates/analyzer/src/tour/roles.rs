@@ -124,6 +124,53 @@ mod tests {
         );
     }
 
+    /// [`Fixture::layered`] with Go packages as targets: `app` the entry
+    /// point and first conductor, `core` then `core/net` the foundations.
+    fn with_packages() -> Fixture {
+        let mut repo = Fixture::layered();
+        repo.file("core/net/conn.go", Scope::Source);
+        let [app, core, net] = ["app", "core", "core/net"].map(|path| repo.dir(path));
+        let roles = &mut repo.result.roles;
+        roles.entries.file = vec![None];
+        roles.entries.dir = vec![Some(app)];
+        roles.conductors = Ranked {
+            file: vec![None, Some(3)],
+            dir: vec![Some(app), None],
+            count: vec![5, 2],
+        };
+        roles.foundations = Ranked {
+            file: vec![None, None],
+            dir: vec![Some(core), Some(net)],
+            count: vec![5, 4],
+        };
+        repo
+    }
+
+    #[test]
+    fn a_package_shown_as_an_entry_point_is_not_a_conductor_again() {
+        let repo = with_packages();
+        let shown = entry_points(&repo.result);
+        assert_eq!(
+            conductors(&repo.result, shown.as_ref()),
+            Some(TourStep::Conductors {
+                conductors: vec![1]
+            })
+        );
+    }
+
+    #[test]
+    fn package_foundations_are_placed_by_their_folders() {
+        let mut repo = with_packages();
+        let core = repo.island("core");
+        assert_eq!(
+            foundations(&repo.result),
+            Some(TourStep::Foundations {
+                foundations: vec![0, 1],
+                island: Some(core),
+            })
+        );
+    }
+
     #[test]
     fn foundations_need_a_share_of_the_code_and_two_in_an_island_to_name_it() {
         let mut repo = Fixture::layered();
