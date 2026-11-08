@@ -32,6 +32,7 @@ import { indexCycles } from './cycles'
 import { cityDecor } from './decor'
 import { BOAT_LENGTH, createDecor, type DecorStats, decorStats } from './decor-mesh'
 import { createFading } from './dimming'
+import { ExtraFerries } from './extra-ferries'
 import { createFerries } from './ferries'
 import { Fleet } from './fleet'
 import { islandShapes } from './island-shape'
@@ -379,6 +380,8 @@ export class CityEngine {
         cycles: indexCycles(layout),
         bridges: links.bridges,
         ferries: links.ferries,
+        unshown: links.unshown,
+        extra: new ExtraFerries(layout, shapes, links),
       },
       fading,
       pixelRatio,

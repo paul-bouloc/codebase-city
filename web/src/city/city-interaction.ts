@@ -15,12 +15,13 @@ import { type CityBuildings, Highlight } from './buildings'
 import { type CycleIndex, loopThrough } from './cycles'
 import type { Fading } from './dimming'
 import { easeStandard } from './easing'
+import { type ExtraFerries, islandExtras } from './extra-ferries'
 import { FolderLinkMarks, folderWays } from './folder-link-marks'
 import { folderFlows } from './folder-links'
 import { HoverTiming } from './hover-timing'
 import type { IslandShape } from './island-shape'
 import { type CityLayout, rectContains } from './layout'
-import type { Bridge, Ferry } from './links'
+import type { Bridge, Ferry, Pair } from './links'
 import type { CityTarget } from './picking'
 import { type CycleOnShow, type Hub, selectionArcs } from './selection-arcs'
 import {
@@ -68,6 +69,9 @@ export interface CityFlows {
   /** The bridges and ferry lines on show between islands. */
   bridges: readonly Bridge[]
   ferries: readonly Ferry[]
+  /** The links between islands left undrawn, and how they sail out when asked for. */
+  unshown?: readonly Pair[]
+  extra?: ExtraFerries
 }
 
 /** What the pointer can rest on: a place of the city, or the hub of a selection's bundle. */
@@ -342,7 +346,13 @@ export class CityInteraction {
         ? this.layout.islands[target.island]?.parcels[target.parcel]?.rect
         : undefined
     const flows = folderFlows(this.layout, { island: target.island, ...(rect ? { rect } : {}) })
-    this.folderLinks.show(folderWays(target.island, flows, this.flows.bridges, this.flows.ferries))
+    // An island shows all its links: those left undrawn sail out too.
+    const { extra, unshown = [] } = this.flows
+    const extras =
+      target.kind === 'island' && extra ? islandExtras(target.island, unshown, extra) : []
+    this.folderLinks.show(
+      folderWays(target.island, flows, this.flows.bridges, [...this.flows.ferries, ...extras]),
+    )
   }
 
   private clearLinkMarks(): void {

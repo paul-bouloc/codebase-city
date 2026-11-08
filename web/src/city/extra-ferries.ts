@@ -64,3 +64,17 @@ export class ExtraFerries {
     return { ...pair, path: from === pair.a ? line : line.reverse() }
   }
 }
+
+/** The undrawn links of an island, sailed out from its side: those a way by water was found for. */
+export function islandExtras(
+  island: number,
+  unshown: readonly Pair[],
+  extra: ExtraFerries,
+): Ferry[] {
+  return unshown
+    .filter((pair) => pair.a === island || pair.b === island)
+    .flatMap((pair) => {
+      const ferry = extra.route(pair)
+      return ferry ? [ferry] : []
+    })
+}

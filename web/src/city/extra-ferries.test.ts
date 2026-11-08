@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ExtraFerries } from './extra-ferries'
+import { ExtraFerries, islandExtras } from './extra-ferries'
 import { islandShapes } from './island-shape'
 import { boundsOf, type CityLayout, type IslandLink, type Lot, type Rect } from './layout'
 import { cityLinks, pointAlong, tipOf } from './links'
@@ -92,5 +92,12 @@ describe('extra ferries', () => {
     const first = extra.route(pair)
     expect(extra.route(pair)).toBe(first)
     expect(links.grid?.traffic).toEqual(traffic)
+  })
+
+  it('sails every undrawn link of an island, at its port or too small', () => {
+    const { links, extra } = setUp()
+    expect(islandExtras(0, links.unshown, extra).map((ferry) => ferry.b)).toEqual([5, 6])
+    expect(islandExtras(6, links.unshown, extra).map((ferry) => ferry.a)).toEqual([0])
+    expect(islandExtras(1, links.unshown, extra)).toEqual([])
   })
 })
