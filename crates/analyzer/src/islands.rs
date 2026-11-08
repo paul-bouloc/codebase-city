@@ -6,11 +6,13 @@
 //! its code under `src/vs`, so its islands are `base`, `platform`, `editor`,
 //! `workbench`…, not one `src`; a monorepo gets one island per package.
 
-pub(crate) mod layers;
+mod layers;
 
 use std::collections::BTreeMap;
 
-use model::Links;
+use model::{EdgeKind, Links};
+
+use crate::graph::{Graph, Node};
 
 /// The islands of a folder tree.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -103,6 +105,40 @@ pub(crate) fn links(
         links.upward.push(upward);
     }
     links
+}
+
+/// The layer of each island, from the plain imports and re-exports between
+/// production files, barrels left out; `None` for an island without
+/// production code.
+pub(crate) fn layers(graph: &Graph, islands: &Islands, file_dirs: &[u32]) -> Vec<Option<u32>> {
+    let island_of = |file: u32| islands.of_dir[file_dirs[file as usize] as usize];
+    let counted = |file: u32| graph.is_production(file) && !graph.is_barrel(file);
+    let mut production = vec![false; islands.dirs.len()];
+    let mut imports: Vec<(u32, u32)> = Vec::new();
+    for file in (0..crate::saturating_u32(graph.file_count())).filter(|&file| counted(file)) {
+        let Some(from) = island_of(file) else {
+            continue;
+        };
+        production[from as usize] = true;
+        for edge in graph.production_edges(file) {
+            if !matches!(edge.kind, EdgeKind::Import | EdgeKind::Reexport) {
+                continue;
+            }
+            let to = match edge.to {
+                Node::File(to) if counted(to) => island_of(to),
+                Node::File(_) => None,
+                Node::Dir(dir) => islands.of_dir[dir as usize],
+            };
+            if let Some(to) = to {
+                imports.push((from, to));
+            }
+        }
+    }
+    layers::layers(islands.dirs.len(), imports.into_iter())
+        .into_iter()
+        .zip(production)
+        .map(|(layer, production)| production.then_some(layer))
+        .collect()
 }
 
 #[cfg(test)]

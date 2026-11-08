@@ -14,7 +14,7 @@ use crate::graph::entries;
 use crate::graph::reach::{self, Reach, Units};
 use crate::graph::roles::{self, RolesReport};
 use crate::graph::{self, BarrelReport, Graph, Node, strength};
-use crate::islands::{self, layers};
+use crate::islands;
 use crate::lang::{self, Parsed};
 use crate::layout;
 use crate::resolve::{self, Outcome, Target};
@@ -304,7 +304,7 @@ pub fn analyze_with_report(
         .collect();
     let islands = islands::islands(&dirs.dirs.parent, &table.dir, &production);
     dirs.dirs.island.clone_from(&islands.of_dir);
-    let layers = island_layers(&graph, &islands, &table.dir);
+    let layers = islands::layers(&graph, &islands, &table.dir);
     let links = islands::links(
         &islands,
         &layers,
@@ -368,40 +368,6 @@ pub fn analyze_with_report(
         roles: roles_report,
     };
     (result, report)
-}
-
-/// The layer of each island, from the plain imports and re-exports between
-/// production files, barrels left out; `None` for an island without
-/// production code.
-fn island_layers(graph: &Graph, islands: &islands::Islands, file_dirs: &[u32]) -> Vec<Option<u32>> {
-    let island_of = |file: u32| islands.of_dir[file_dirs[file as usize] as usize];
-    let counted = |file: u32| graph.is_production(file) && !graph.is_barrel(file);
-    let mut production = vec![false; islands.dirs.len()];
-    let mut imports: Vec<(u32, u32)> = Vec::new();
-    for file in (0..index(graph.file_count())).filter(|&file| counted(file)) {
-        let Some(from) = island_of(file) else {
-            continue;
-        };
-        production[from as usize] = true;
-        for edge in graph.production_edges(file) {
-            if !matches!(edge.kind, EdgeKind::Import | EdgeKind::Reexport) {
-                continue;
-            }
-            let to = match edge.to {
-                Node::File(to) if counted(to) => island_of(to),
-                Node::File(_) => None,
-                Node::Dir(dir) => islands.of_dir[dir as usize],
-            };
-            if let Some(to) = to {
-                imports.push((from, to));
-            }
-        }
-    }
-    layers::layers(islands.dirs.len(), imports.into_iter())
-        .into_iter()
-        .zip(production)
-        .map(|(layer, production)| production.then_some(layer))
-        .collect()
 }
 
 /// Names with their count, the most frequent first, then by name.
