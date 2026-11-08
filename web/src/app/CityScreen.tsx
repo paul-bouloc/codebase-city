@@ -40,6 +40,8 @@ const TEXT = {
 
 const ABOUT_ID = 'city-about'
 const LOADING_CODE: CodeState = { status: 'loading' }
+/** Moving from sheet to sheet, the camera follows. */
+const FLY = { fly: true }
 /** Room kept clear left of the open sheet, in px: as the camera controls keep (444 px). */
 const SHEET_GAP = 12
 
@@ -130,9 +132,12 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
     }
   }, [engine, index])
 
-  /** Selects a file or a folder from the interface: its sheet opens, the city follows. */
+  /**
+   * Selects a file or a folder from the interface: its sheet opens, the city follows. With `fly`,
+   * the camera flies to it too.
+   */
   const choose = useCallback(
-    (next: ScreenSelection | null) => {
+    (next: ScreenSelection | null, { fly = false }: { fly?: boolean } = {}) => {
       // A path the result does not hold selects nothing.
       const known =
         next &&
@@ -147,7 +152,8 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
       driving.current = true
       try {
         // A folder that holds islands has no place of its own in the city.
-        if (!known || !engine.selectPath(known.path)) {
+        const shown = known && (fly ? engine.flyTo(known.path) : engine.selectPath(known.path))
+        if (!shown) {
           engine.clearSelection()
         }
       } finally {
@@ -392,8 +398,8 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
             open={sheetShown}
             file={shownSheet.file}
             onClose={() => setSheetOpen(false)}
-            onOpenFolder={(path) => choose({ kind: 'dir', path })}
-            onSelectFile={(path) => choose({ kind: 'file', path })}
+            onOpenFolder={(path) => choose({ kind: 'dir', path }, FLY)}
+            onSelectFile={(path) => choose({ kind: 'file', path }, FLY)}
             onShowCycle={showCycle}
             onCopyPath={() => copy(shownSheet.file.path, TEXT.pathCopied)}
             onCopyLink={() =>
@@ -412,8 +418,8 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
             open={sheetShown}
             folder={shownSheet.folder}
             onClose={() => setSheetOpen(false)}
-            onOpenFolder={(path) => choose({ kind: 'dir', path })}
-            onSelectFile={(path) => choose({ kind: 'file', path })}
+            onOpenFolder={(path) => choose({ kind: 'dir', path }, FLY)}
+            onSelectFile={(path) => choose({ kind: 'file', path }, FLY)}
             onCopyLink={() =>
               copy(linkTo({ kind: 'dir', path: shownSheet.folder.path }), TEXT.linkCopied)
             }
