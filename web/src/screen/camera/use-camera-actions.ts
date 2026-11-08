@@ -1,7 +1,8 @@
 import { useCallback, useEffect } from 'react'
 import type { CityEngine } from '../../city/engine/city-engine'
-import { cameraKey, isTyping } from '../screen-keys'
+import { isTyping } from '../screen-keys'
 import type { CameraAction } from './CameraControls'
+import { cameraKey } from './camera-keys'
 
 /** What the camera buttons do, also on + − F T, as their hints say. */
 export function useCameraActions(engine: CityEngine | null): (action: CameraAction) => void {
