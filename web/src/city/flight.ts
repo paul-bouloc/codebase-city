@@ -138,18 +138,26 @@ export function turnAbout(
 }
 
 /** Going round, the camera rises this many radians at most above the tilt it flew in at, */
-const ORBIT_RISE = (14 * Math.PI) / 180
-/** and comes back down, twice a turn. */
+const ORBIT_RISE = (8 * Math.PI) / 180
+/** comes down this many below it, towards the horizon, */
+const ORBIT_FALL = (10 * Math.PI) / 180
+/** and does both once in this many seconds: twice a turn. */
 const ORBIT_SWELL_SECONDS = ORBIT_SECONDS / 2
 /** Never closer to straight down than this, in radians from the vertical. */
 const ORBIT_MIN_POLAR = (5 * Math.PI) / 180
 
 /**
  * The tilt from the vertical `seconds` into a turn begun at `polar`: it rises towards the top
- * view and comes back down, setting off and turning back smoothly; never lower than it began,
- * so never past the tilt's bounds.
+ * view, then comes down past where it began towards the horizon, and back, smoothly all along.
+ * One wave, `mid − swing × cos(ωt − lag)`, set to start at `polar` and to span the rise and the
+ * fall. The camera's own bound keeps the fall above the horizon.
  */
 export function orbitTilt(polar: number, seconds: number): number {
-  const swell = (1 - Math.cos((2 * Math.PI * seconds) / ORBIT_SWELL_SECONDS)) / 2
-  return Math.max(Math.min(polar, ORBIT_MIN_POLAR), polar - ORBIT_RISE * swell)
+  const mid = (ORBIT_FALL - ORBIT_RISE) / 2
+  const swing = (ORBIT_FALL + ORBIT_RISE) / 2
+  // At 0, cos(−lag) = mid / swing: the wave starts at 0, on its way up.
+  const lag = Math.acos(mid / swing)
+  const omega = (2 * Math.PI) / ORBIT_SWELL_SECONDS
+  const offset = mid - swing * Math.cos(omega * seconds - lag)
+  return Math.max(Math.min(polar, ORBIT_MIN_POLAR), polar + offset)
 }

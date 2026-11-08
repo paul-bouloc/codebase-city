@@ -141,22 +141,29 @@ describe('turnAbout', () => {
 describe('orbitTilt', () => {
   const polar = (55 * Math.PI) / 180
   const degrees = (radians: number) => (radians * 180) / Math.PI
+  const wave = Array.from({ length: 301 }, (_, i) => degrees(orbitTilt(polar, i / 10)))
 
-  it('sets off from the tilt the camera flew in at', () => {
-    expect(orbitTilt(polar, 0)).toBe(polar)
+  it('sets off from the tilt the camera flew in at, rising first', () => {
+    expect(wave[0]).toBeCloseTo(55)
+    expect(wave[1]).toBeLessThan(55)
   })
 
-  it('rises 14° at most, halfway through a swell, and comes back down', () => {
-    expect(degrees(orbitTilt(polar, 15))).toBeCloseTo(41)
-    expect(orbitTilt(polar, 30)).toBeCloseTo(polar)
-    for (let second = 0; second < 60; second += 0.5) {
-      expect(orbitTilt(polar, second)).toBeLessThanOrEqual(polar)
+  it('rises 8° at most and comes down 10° at most, once in 30 s', () => {
+    expect(Math.min(...wave)).toBeCloseTo(47, 1)
+    expect(Math.max(...wave)).toBeCloseTo(65, 1)
+    expect(degrees(orbitTilt(polar, 30))).toBeCloseTo(55)
+  })
+
+  it('moves smoothly: no step between two frames at 60 Hz', () => {
+    for (let second = 0; second < 60; second += 1 / 60) {
+      const step = Math.abs(orbitTilt(polar, second + 1 / 60) - orbitTilt(polar, second))
+      expect(degrees(step)).toBeLessThan(0.05)
     }
   })
 
   it('stays off the vertical when the camera already looks almost straight down', () => {
-    const steep = (10 * Math.PI) / 180
-    expect(degrees(orbitTilt(steep, 15))).toBeCloseTo(5)
-    expect(orbitTilt(0, 15)).toBe(0)
+    const steep = (8 * Math.PI) / 180
+    const lowest = Math.min(...Array.from({ length: 301 }, (_, i) => orbitTilt(steep, i / 10)))
+    expect(degrees(lowest)).toBeCloseTo(5)
   })
 })
