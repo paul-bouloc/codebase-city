@@ -33,6 +33,18 @@ describe('aboutData', () => {
     })
   })
 
+  it('names Python and Go with their own colour, not as other', () => {
+    const json = structuredClone(sample) as unknown as AnalysisResult
+    json.languages[0] = 'Python'
+    json.languages[3] = 'Go'
+    expect(aboutData(indexResult(json)).languages).toEqual([
+      { language: 'python', files: 16 },
+      { language: 'css', files: 1 },
+      { language: 'go', files: 1 },
+      { language: 'other', files: 2 },
+    ])
+  })
+
   it('lists code in a language the analyzer does not read', () => {
     const json = structuredClone(sample) as unknown as AnalysisResult
     json.languages[3] = 'Rust'

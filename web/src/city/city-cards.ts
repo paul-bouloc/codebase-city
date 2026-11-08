@@ -43,6 +43,8 @@ const SHOWN_TOP = 10
 const LANGUAGES: Record<string, Language> = {
   TypeScript: 'typescript',
   JavaScript: 'javascript',
+  Python: 'python',
+  Go: 'go',
   CSS: 'css',
 }
 

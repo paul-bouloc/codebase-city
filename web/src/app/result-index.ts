@@ -9,6 +9,8 @@ import type { Language } from '../ui/Badge'
 const LANGUAGES: Record<string, Language> = {
   TypeScript: 'typescript',
   JavaScript: 'javascript',
+  Python: 'python',
+  Go: 'go',
   CSS: 'css',
 }
 
