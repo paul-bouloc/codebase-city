@@ -405,7 +405,9 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
         setSearchFocused(true)
         break
       case 'choose': {
-        const hit = options[active]
+        // The results on show may still be an older query's: Enter takes the query in the field.
+        const hit =
+          shownQuery === query ? options[active] : searchOptions(searchIndex.search(query))[0]
         if (hit) {
           chooseHit(hit)
         }
