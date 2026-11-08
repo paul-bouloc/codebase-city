@@ -1,5 +1,5 @@
-import type { Language } from '../Badge'
-import { percent } from '../count-format'
+import type { Language } from '../../ui/Badge'
+import { percent } from '../../ui/count-format'
 
 // Language names in the city's own lists. Unanalyzed files are "Other" here; a badge on a single
 // file says "Not analyzed".

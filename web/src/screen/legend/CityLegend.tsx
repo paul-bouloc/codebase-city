@@ -8,9 +8,9 @@ import {
   TEST_PARK,
   TEST_PARK_EDGE,
 } from '../../city/render/palette'
-import { Glass } from '../../screen/parts/Glass'
-import { LanguageDot } from '../../screen/parts/LanguageDot'
-import { Icon } from '../Icon'
+import { Icon } from '../../ui/Icon'
+import { Glass } from '../parts/Glass'
+import { LanguageDot } from '../parts/LanguageDot'
 import styles from './CityLegend.module.css'
 import {
   LANGUAGE_NAMES,

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { decodeResult } from '../data/decode-result'
-import type { AnalysisResult } from '../data/generated/AnalysisResult'
-import sample from '../data/generated/sample-result.json'
-import { indexResult } from '../screen/result-index'
+import { decodeResult } from '../../data/decode-result'
+import type { AnalysisResult } from '../../data/generated/AnalysisResult'
+import sample from '../../data/generated/sample-result.json'
+import { indexResult } from '../result-index'
 import { repoContents } from './legend'
 
 const index = indexResult(decodeResult(sample))

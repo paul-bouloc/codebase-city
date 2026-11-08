@@ -1,6 +1,6 @@
 import type { CityAccount, CityRepo } from '../src/screen/CityTopBar'
 import { githubTreeUrl } from '../src/screen/github-links'
-import { type LegendContent, legendContent } from '../src/ui/city/legend-content'
+import { type LegendContent, legendContent } from '../src/screen/legend/legend-content'
 
 // The demonstration content of the boards: microsoft/vscode at a1b2c3d.
 export const REPO: CityRepo = {
