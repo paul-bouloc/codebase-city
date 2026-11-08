@@ -1,4 +1,4 @@
-// The selection lives in the URL's fragment: `#file=src/app.ts` or `#dir=src/core` (spec 04), so
+// The selection lives in the URL's fragment: `#file=src/app.ts` or `#dir=src/core`, so
 // a link opens the same sheet and the browser's Back and Forward go from one selection to another.
 
 export interface ScreenSelection {

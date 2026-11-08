@@ -2,7 +2,7 @@ import type { GithubRepo } from '../ui/city/github-links'
 import { githubRawUrl } from '../ui/city/github-links'
 import type { CodeState } from '../ui/city/sheet-data'
 
-// A file's code, read from GitHub when its sheet shows it, never stored (spec 05, A8).
+// A file's code, read from GitHub when its sheet shows it, never stored.
 
 /** The sheet shows the start of a file: this many lines, */
 export const CODE_LINES = 2_000

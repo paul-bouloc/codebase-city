@@ -41,11 +41,6 @@ const TEXT = {
 const ABOUT_ID = 'city-about'
 const LOADING_CODE: CodeState = { status: 'loading' }
 
-/** Where the sheet stands, as the CSS places it: 420 px on the right, under the top bar. */
-function sheetRect(): Rect {
-  return { x: window.innerWidth - 432, y: 84, width: 420, height: window.innerHeight - 96 }
-}
-
 type Sheet = { file: FileSheetData } | { folder: FolderSheetData }
 
 interface CityScreenProps {
@@ -58,7 +53,7 @@ interface CityScreenProps {
   onEngine?: (engine: CityEngine | null) => void
 }
 
-/** The city of one analysis, full screen, with its interface over it (interface-ville.md). */
+/** The city of one analysis, full screen, with its interface over it. */
 export function CityScreen(props: CityScreenProps) {
   return (
     <ToastProvider>
@@ -93,7 +88,8 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
   const [aboutOpen, setAboutOpen] = useState(false)
   const [selection, setSelection] = useState<ScreenSelection | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
-  const [code, setCode] = useState<{ path: string; state: CodeState } | null>(null)
+  // The code of one file at one commit: another result, even of the same repository, reads it again.
+  const [code, setCode] = useState<{ sha: string; path: string; state: CodeState } | null>(null)
 
   const handleEngine = useCallback(
     (next: CityEngine | null) => {
@@ -182,10 +178,11 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
     if (!hashRead.current) {
       return
     }
-    const hash = hashOf(selection)
-    if (hash !== window.location.hash) {
+    // The same selection spelt another way (`@` left unescaped) is no new entry.
+    const current = selectionOfHash(window.location.hash)
+    if (current?.kind !== selection?.kind || current?.path !== selection?.path) {
       const { pathname, search } = window.location
-      window.history.pushState(null, '', hash || `${pathname}${search}`)
+      window.history.pushState(null, '', hashOf(selection) || `${pathname}${search}`)
     }
   }, [selection])
 
@@ -196,13 +193,14 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
       codeRequest.current?.abort()
       const controller = new AbortController()
       codeRequest.current = controller
-      setCode({ path, state: LOADING_CODE })
+      const { sha } = result
+      setCode({ sha, path, state: LOADING_CODE })
       const file = index.fileAt(path)
       const lines = file === undefined ? 0 : (result.files.lines[file] ?? 0)
-      fetchCode(result.repo, result.sha, path, lines, controller.signal).then(
+      fetchCode(result.repo, sha, path, lines, controller.signal).then(
         (state) => {
           if (!controller.signal.aborted) {
-            setCode({ path, state })
+            setCode({ sha, path, state })
           }
         },
         () => {},
@@ -212,25 +210,26 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
   )
   useEffect(() => () => codeRequest.current?.abort(), [])
   const selectedFile = selection?.kind === 'file' ? selection.path : null
-  const codePath = code?.path
+  const codeFor = code ? `${code.sha}:${code.path}` : null
   const openCode = useCallback(() => {
-    if (selectedFile && codePath !== selectedFile) {
+    if (selectedFile && codeFor !== `${result.sha}:${selectedFile}`) {
       loadCode(selectedFile)
     }
-  }, [selectedFile, codePath, loadCode])
+  }, [selectedFile, codeFor, result.sha, loadCode])
 
   const sheet = useMemo<Sheet | null>(() => {
     if (!selection) {
       return null
     }
     if (selection.kind === 'file') {
-      const state = code?.path === selection.path ? code.state : LOADING_CODE
+      const state =
+        code?.path === selection.path && code.sha === result.sha ? code.state : LOADING_CODE
       const file = fileSheetData(index, symbols, selection.path, state)
       return file ? { file } : null
     }
     const folder = folderSheetData(index, selection.path)
     return folder ? { folder } : null
-  }, [selection, code, index, symbols])
+  }, [selection, code, index, symbols, result.sha])
   // A closed sheet keeps its content while it slides out.
   const lastSheet = useRef<Sheet | null>(null)
   if (sheet) {
@@ -240,7 +239,7 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
   const sheetShown = sheetOpen && sheet !== null
 
   const portOpen = port !== null
-  // Esc that no panel took: the open panel first, then the selection (A2).
+  // Esc that no panel took: the open panel first, then the selection.
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || event.defaultPrevented) {
@@ -324,7 +323,13 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
     }
   }
 
-  const obstacles = useMemo(() => (sheetShown ? [sheetRect()] : []), [sheetShown])
+  // Cards keep out of the open sheet, wherever the CSS puts it: read at each render, which every
+  // move of the pointer makes.
+  const sheetBox = useRef<HTMLDivElement>(null)
+  const box = sheetShown ? sheetBox.current?.getBoundingClientRect() : undefined
+  const obstacles: Rect[] = box
+    ? [{ x: box.left, y: box.top, width: box.width, height: box.height }]
+    : []
   const besideSheet = (base: string | undefined) =>
     sheetShown ? `${base} ${styles.besideSheet}` : base
 
@@ -367,7 +372,7 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
       )}
 
       {/* The sheet stays in the page so it can slide out. */}
-      <div className={styles.sheet}>
+      <div ref={sheetBox} className={styles.sheet}>
         {shownSheet && 'file' in shownSheet && (
           <FileSheet
             open={sheetShown}
