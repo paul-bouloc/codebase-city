@@ -403,6 +403,26 @@ export class CityEngine {
     this.interaction?.closePort()
   }
 
+  /** Opens the port of an island, if it has one, its card beside its badge. */
+  openPortOf(island: number): void {
+    const interaction = this.interaction
+    const port = interaction?.getPorts().find((each) => each.island === island)
+    if (!interaction || !port) {
+      return
+    }
+    const canvas = this.renderer.domElement
+    const box = canvas.getBoundingClientRect()
+    // The camera may have been moved since the last frame: it is where it goes.
+    this.controls.update(0)
+    this.camera.updateMatrixWorld()
+    const projected = this.projected.set(...portBadgeAt(port)).project(this.camera)
+    interaction.closePort()
+    interaction.openPort(port, {
+      x: box.left + ((projected.x + 1) / 2) * canvas.clientWidth,
+      y: box.top + ((1 - projected.y) / 2) * canvas.clientHeight,
+    })
+  }
+
   /** Replaces the city on show and frames it. */
   load(layout: CityLayout): void {
     if (this.city) {
