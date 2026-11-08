@@ -102,3 +102,8 @@
 .outgoing {
   background: var(--meaning-outgoing);
 }
+
+/* What a click on the hovered thing does. */
+.action {
+  color: var(--color-text-secondary);
+}
