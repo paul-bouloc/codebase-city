@@ -22,11 +22,11 @@ import type { Building } from '../buildings/archetypes'
 import type { PlacedBuilding } from '../buildings/placed-buildings'
 import { INCOMING_LINK, OUTGOING_LINK, UPWARD } from '../render/palette'
 import { srgb, type Vec3 } from '../world/units'
+import { flatFragment, INK } from './ink'
 
 // What marks one building: an outline around its shape, a ring on the ground and, once
 // selected, a pin above its roof. All keep their width in pixels at any distance.
 
-export const INK = srgb('#23313A')
 const WHITE = srgb('#FFFFFF')
 
 /** The ring's radius around a building of side `side`, in u. */
@@ -132,13 +132,6 @@ void main() {
 
 /** Directions the copies are shifted in: the band's corners are this many-sided. */
 const OUTLINE_SHIFTS = 12
-
-const flatFragment = /* glsl */ `
-uniform vec3 colour;
-void main() {
-  gl_FragColor = vec4(colour, 1.0);
-}
-`
 
 // The ring grows to its least size on screen when its building is far: its plane scales about
 // its middle, by how many pixels a unit spans there.
