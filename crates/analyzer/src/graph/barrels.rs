@@ -16,7 +16,7 @@ const MAX_DEPTH: usize = 256;
 /// Steps of lookup through re-exports, over the whole analysis. Past it,
 /// imports stay on their barrel: a repository built to make lookups slow
 /// cannot hold the analysis. nest takes about 25 000, vscode 16 000.
-const MAX_STEPS: u32 = 2_000_000;
+pub(super) const MAX_STEPS: u32 = 2_000_000;
 
 /// Where a name a file exports is declared.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
