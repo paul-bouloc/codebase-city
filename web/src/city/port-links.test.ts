@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Port } from './links'
-import { portBadgeAt, portLabels, portRows } from './port-links'
+import { badgeInView, portBadgeAt, portLabels, portRows } from './port-links'
 
 const PORT: Port = {
   island: 2,
@@ -31,5 +31,17 @@ describe('port links', () => {
       { island: 5, imports: 40, outgoing: true, incoming: true },
       { island: 1, imports: 12, outgoing: false, incoming: true },
     ])
+  })
+
+  it('keeps a badge in view while some of its pill is, its point below the view or not', () => {
+    expect(badgeInView(100, 100, 800, 600)).toBe(true)
+    // The point under the bottom edge, its pill above it still on screen.
+    expect(badgeInView(100, 615, 800, 600)).toBe(true)
+    expect(badgeInView(100, 640, 800, 600)).toBe(false)
+    // The pill above the top edge.
+    expect(badgeInView(100, 5, 800, 600)).toBe(false)
+    // Half a pill past a side.
+    expect(badgeInView(-10, 100, 800, 600)).toBe(true)
+    expect(badgeInView(-30, 100, 800, 600)).toBe(false)
   })
 })

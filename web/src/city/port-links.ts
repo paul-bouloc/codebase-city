@@ -1,4 +1,4 @@
-import type { ArcLabel } from './arc-mesh'
+import { type ArcLabel, LABEL_HEIGHT, LABEL_LIFT } from './arc-mesh'
 import type { IslandLink } from './layout'
 import { type Port, tipOf } from './links'
 import { FERRY_LINE } from './palette'
@@ -11,6 +11,21 @@ import { boardToThree, srgb, type Vec3 } from './units'
 const BADGE_RISE = 0.6
 /** A port's card lists this many links at most; it counts the rest. */
 export const PORT_ROWS = 12
+/** Half the width of a badge's pill, in CSS pixels, at most: « +17 ». */
+export const BADGE_HALF_WIDTH = 22
+
+/**
+ * Whether a badge whose point projects at (x, y) on a view this big, in CSS pixels, still shows
+ * some of its pill: the pill stands above the point, as wide as `BADGE_HALF_WIDTH` either side.
+ */
+export function badgeInView(x: number, y: number, width: number, height: number): boolean {
+  return (
+    x >= -BADGE_HALF_WIDTH &&
+    x <= width + BADGE_HALF_WIDTH &&
+    y >= LABEL_LIFT &&
+    y <= height + LABEL_LIFT + LABEL_HEIGHT
+  )
+}
 
 /** Where a port's badge stands: over the end of its quay. */
 export function portBadgeAt(port: Port): Vec3 {

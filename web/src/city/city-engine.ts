@@ -47,7 +47,7 @@ import { SUN_DIRECTION } from './light'
 import { cityLinks, type Port } from './links'
 import { CityPicker, type CityTarget } from './picking'
 import { createParcels } from './plateaux'
-import { portBadgeAt } from './port-links'
+import { BADGE_HALF_WIDTH, badgeInView, portBadgeAt } from './port-links'
 import { createSea, OPEN_SEA, seaSize } from './sea'
 import { indexImports } from './selection-links'
 import { createTerrain } from './terrain'
@@ -94,8 +94,6 @@ const SAIL_PIXELS = 3
 const HUB_SLACK = 14
 /** and so does the pointer on its count, a pill at most this wide. */
 const HUB_LABEL_HALF_WIDTH = 40
-/** A port's badge is narrower: « +17 ». */
-const PORT_LABEL_HALF_WIDTH = 22
 /**
  * The arcs' dashes move only while a period at the camera's target spans this many device pixels
  * or more: shorter, they have filled in (`SOLID_BELOW` of the arcs).
@@ -356,7 +354,7 @@ export class CityEngine {
     if (hub) {
       return { kind: 'hub', hub }
     }
-    const port = this.nearestAtPointer(interaction.getPorts(), portBadgeAt, PORT_LABEL_HALF_WIDTH)
+    const port = this.nearestAtPointer(interaction.getPorts(), portBadgeAt, BADGE_HALF_WIDTH)
     return port ? { kind: 'port', port } : null
   }
 
@@ -421,14 +419,16 @@ export class CityEngine {
   private badgeOnPage(port: Port): { x: number; y: number } | null {
     const canvas = this.renderer.domElement
     const projected = this.projected.set(...portBadgeAt(port)).project(this.camera)
-    if (projected.z > 1 || Math.abs(projected.x) > 1 || Math.abs(projected.y) > 1) {
+    const width = canvas.clientWidth
+    const height = canvas.clientHeight
+    const x = ((projected.x + 1) / 2) * width
+    const y = ((1 - projected.y) / 2) * height
+    // In view while some of its pill is, even with its point past the edge.
+    if (projected.z > 1 || !badgeInView(x, y, width, height)) {
       return null
     }
     const box = canvas.getBoundingClientRect()
-    return {
-      x: box.left + ((projected.x + 1) / 2) * canvas.clientWidth,
-      y: box.top + ((1 - projected.y) / 2) * canvas.clientHeight,
-    }
+    return { x: box.left + x, y: box.top + y }
   }
 
   /** Replaces the city on show and frames it. */
