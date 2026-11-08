@@ -227,7 +227,7 @@ export class ArcLayer {
   readonly group = new Group()
   private readonly resolution: IUniform<Vector2> = { value: new Vector2(1, 1) }
   private readonly phase: IUniform<number> = { value: 0 }
-  private readonly still: IUniform<number> = { value: 0 }
+  private readonly stillness: IUniform<number> = { value: 0 }
   private moving = false
 
   constructor(private readonly pixelRatio: number) {
@@ -276,9 +276,14 @@ export class ArcLayer {
     return this.moving
   }
 
+  /** Whether the dashes stand still. */
+  get still(): boolean {
+    return this.stillness.value === 1
+  }
+
   /** Moves the dashes to where they are after this many seconds; still, they stay put. */
   update(seconds: number, still: boolean): void {
-    this.still.value = still ? 1 : 0
+    this.stillness.value = still ? 1 : 0
     this.phase.value = still ? 0 : (seconds % DASH_TIME) / DASH_TIME
   }
 
@@ -347,7 +352,7 @@ export class ArcLayer {
         halo: { value: halo * this.pixelRatio },
         opacity: { value: opacity },
         phase: this.phase,
-        still: this.still,
+        still: this.stillness,
       },
       vertexShader: lineVertex,
       fragmentShader: lineFragment,

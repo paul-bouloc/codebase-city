@@ -77,6 +77,8 @@ const PICK_SLACK = 8
 const SAIL_FRAME = 1000 / 30 - 4
 /** Boats sail only while one at the camera's target spans this many device pixels or more. */
 const SAIL_PIXELS = 3
+/** The pointer this close to a bundle's hub, in CSS pixels, opens it. */
+const HUB_SLACK = 14
 
 const SHADOW_MAP_SIZE = 4096
 /** Room around the city for the shadows of the tallest towers. */
@@ -138,6 +140,9 @@ export class CityEngine {
   private picker: CityPicker | null = null
   private fleet: Fleet | null = null
   private sailedAt = Number.NEGATIVE_INFINITY
+  private arcedAt = Number.NEGATIVE_INFINITY
+  // Whether the pointer rests on a bundle's hub: it opens the bundle once, on arriving.
+  private onHub = false
   private readonly lessMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
   private interaction: CityInteraction | null = null
   private listeners: CityListeners = {}
@@ -278,8 +283,38 @@ export class CityEngine {
   private hoverAtPointer(): void {
     const pointer = this.pointer
     if (pointer) {
+      this.openHubAtPointer(pointer)
       this.interaction?.point(this.pick(), { x: pointer.clientX, y: pointer.clientY })
     }
+  }
+
+  /** Opens the bundle whose hub the pointer arrives on, if any. */
+  private openHubAtPointer(pointer: { x: number; y: number }): void {
+    const interaction = this.interaction
+    const canvas = this.renderer.domElement
+    if (!interaction || canvas.clientWidth === 0) {
+      return
+    }
+    const projected = new Vector3()
+    let nearest = HUB_SLACK
+    let opened = null
+    for (const hub of interaction.getHubs()) {
+      projected.set(...hub.position).project(this.camera)
+      if (projected.z > 1) {
+        continue
+      }
+      const x = ((projected.x + 1) / 2) * canvas.clientWidth
+      const y = ((1 - projected.y) / 2) * canvas.clientHeight
+      const distance = Math.hypot(x - pointer.x, y - pointer.y)
+      if (distance <= nearest) {
+        nearest = distance
+        opened = hub
+      }
+    }
+    if (opened && !this.onHub) {
+      interaction.openHub(opened)
+    }
+    this.onHub = opened !== null
   }
 
   /** Replaces the city on show and frames it. */
@@ -488,6 +523,16 @@ export class CityEngine {
     }
     if (this.interaction?.update(time)) {
       this.needsRender = true
+    }
+    const arcs = this.interaction?.arcs
+    if (arcs?.moves) {
+      // Still when the system asks for less motion: drawn once, their way shown by two spots.
+      const still = this.lessMotion.matches
+      if (still !== arcs.still || (!still && time - this.arcedAt >= SAIL_FRAME)) {
+        arcs.update(time / 1000, still)
+        this.arcedAt = time
+        this.needsRender = true
+      }
     }
     if (this.fleet?.sails && time - this.sailedAt >= SAIL_FRAME && this.boatsSail()) {
       this.fleet.update(time / 1000)
