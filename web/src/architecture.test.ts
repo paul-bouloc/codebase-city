@@ -13,8 +13,9 @@ const ALLOWED: Record<string, readonly string[]> = {
   data: [],
   ui: ['data'],
   city: ['data'],
-  screen: ['data', 'ui', 'city'],
-  app: ['data', 'ui', 'city', 'screen'],
+  guide: ['data'],
+  screen: ['data', 'ui', 'city', 'guide'],
+  app: ['data', 'ui', 'city', 'guide', 'screen'],
 }
 
 const CITY_LAYERS = [
