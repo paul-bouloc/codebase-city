@@ -172,7 +172,8 @@ describe('cityLinks', () => {
       ),
     )
     expect(links.bridges.map((bridge) => bridge.high)).toEqual([1, 2, 3])
-    expect(links.ports).toEqual([expect.objectContaining({ island: 0, links: 1 })])
+    expect(links.ports.map((port) => [port.island, port.pairs.length])).toEqual([[0, 1]])
+    expect(links.ports[0]?.pairs.map((pair) => [pair.a, pair.b])).toEqual([[0, 4]])
   })
 
   // A hub between six islands, far apart: no bridge, only ferries.
@@ -193,7 +194,10 @@ describe('cityLinks', () => {
     )
     expect(links.ferries).toHaveLength(4)
     expect(links.ferries.map((ferry) => ferry.b)).toEqual([1, 2, 3, 4])
-    expect(links.ports).toEqual([expect.objectContaining({ island: 0, links: 2 })])
+    expect(links.ports.map((port) => [port.island, port.pairs.length])).toEqual([[0, 2]])
+    // The largest first, as they are kept unshown.
+    expect(links.ports[0]?.pairs.map((pair) => pair.b)).toEqual([5, 6])
+    expect(links.unshown.map((pair) => pair.b)).toEqual([5, 6])
   })
 
   it("counts a link gathered at both its islands' ports once", () => {
@@ -209,11 +213,14 @@ describe('cityLinks', () => {
         ],
       ),
     )
-    expect(links.ports.map((port) => [port.island, port.links])).toEqual([
+    expect(links.ports.map((port) => [port.island, port.pairs.length])).toEqual([
       [0, 1],
       [1, 1],
     ])
     expect(links.inPorts).toBe(1)
+    // One pair, shared by both ports, kept unshown once.
+    expect(links.ports[0]?.pairs[0]).toBe(links.ports[1]?.pairs[0])
+    expect(links.unshown.map((pair) => [pair.a, pair.b])).toEqual([[0, 1]])
   })
 
   it('never hides nor gathers a link that goes up', () => {
@@ -228,6 +235,8 @@ describe('cityLinks', () => {
     const links = linksOf(city(ring, [link(1, 0, 1000), link(2, 0, 9), link(3, 0, 10)]))
     expect(links.hidden).toBe(1)
     expect(links.ferries.map((ferry) => ferry.imports)).toEqual([1000, 10])
+    expect(links.unshown.map((pair) => [pair.a, pair.b, pair.imports])).toEqual([[0, 2, 9]])
+    expect(links.ports).toEqual([])
   })
 
   it('draws every ferry by water, from pier to pier, with its boats', () => {

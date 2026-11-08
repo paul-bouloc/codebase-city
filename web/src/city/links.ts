@@ -2,7 +2,7 @@ import type { IslandShape, Side } from './island-shape'
 import { boundsOf, type CityLayout, type IslandLink, type Point, type Rect } from './layout'
 import { seededRandom } from './random'
 import { layerAltitude } from './units'
-import { ferryRoute, insidePolygon, landOutline, waterGrid } from './water-route'
+import { ferryRoute, insidePolygon, landOutline, type WaterGrid, waterGrid } from './water-route'
 
 // Imports between islands become works the city always shows. Two neighbours at most one layer
 // apart, face to face across one channel, get a stone bridge; every other pair a ferry line on
@@ -102,8 +102,8 @@ export interface Ferry extends Pair {
 
 export interface Port {
   island: number
-  /** The links it gathers, not drawn. */
-  links: number
+  /** The links it gathers, not drawn, the largest first. */
+  pairs: Pair[]
   quay: Quay
 }
 
@@ -127,6 +127,10 @@ export interface CityLinks {
   inPorts: number
   /** Links not drawn: too small while nothing is selected, or with no way by water. */
   hidden: number
+  /** Every pair not drawn, at a port, too small or with no way by water; the largest first. */
+  unshown: Pair[]
+  /** The water the ferries were routed on, if any, with their traffic: more lines can follow. */
+  grid: WaterGrid | null
 }
 
 /** Both ways between two islands as one pair; the largest first. */
@@ -161,17 +165,22 @@ export function cityLinks(layout: CityLayout, shapes: readonly IslandShape[]): C
     boats: [],
     inPorts: 0,
     hidden: 0,
+    unshown: [],
+    grid: null,
   }
 
   const perSide = new Map<string, number>()
   const ferriesOf = new Map<number, number>()
-  const portLinks = new Map<number, number>()
-  const toPort = (island: number) => portLinks.set(island, (portLinks.get(island) ?? 0) + 1)
+  const portLinks = new Map<number, Pair[]>()
+  const toPort = (island: number, pair: Pair) =>
+    portLinks.set(island, [...(portLinks.get(island) ?? []), pair])
+  const unshown = new Set<Pair>()
   const sailing: Pair[] = []
 
   for (const pair of pairs) {
     if (!pair.upward && pair.imports < SMALL_LINK * largest) {
       result.hidden++
+      unshown.add(pair)
       continue
     }
     const bridge = bridgeFor(pair, layout, plateaux, shapes, outlines)
@@ -185,9 +194,10 @@ export function cityLinks(layout: CityLayout, shapes: readonly IslandShape[]): C
         result.bridges.push(bridge)
       } else {
         for (const side of full) {
-          toPort(Number(side.split('/')[0]))
+          toPort(Number(side.split('/')[0]), pair)
         }
         result.inPorts++
+        unshown.add(pair)
       }
       continue
     }
@@ -196,9 +206,10 @@ export function cityLinks(layout: CityLayout, shapes: readonly IslandShape[]): C
     )
     if (full.length > 0 && !pair.upward) {
       for (const island of full) {
-        toPort(island)
+        toPort(island, pair)
       }
       result.inPorts++
+      unshown.add(pair)
       continue
     }
     ferriesOf.set(pair.a, (ferriesOf.get(pair.a) ?? 0) + 1)
@@ -241,7 +252,7 @@ export function cityLinks(layout: CityLayout, shapes: readonly IslandShape[]): C
         taken.push(quayStretch(quay))
         result.quays.push(quay)
         if (port) {
-          result.ports.push({ island, links: portLinks.get(island) ?? 0, quay })
+          result.ports.push({ island, pairs: portLinks.get(island) ?? [], quay })
         } else {
           piers.set(`${island}/${side}`, quay)
         }
@@ -252,6 +263,7 @@ export function cityLinks(layout: CityLayout, shapes: readonly IslandShape[]): C
   if (sailing.length > 0) {
     // The largest first: they take the best water, the smaller ones sail beside them.
     const grid = waterGrid(shapes, boundsOf(plateaux))
+    result.grid = grid
     const sailed = new Set<Quay>()
     sailing.forEach((pair, index) => {
       const end = ends[index]
@@ -266,6 +278,7 @@ export function cityLinks(layout: CityLayout, shapes: readonly IslandShape[]): C
           : null
       if (!from || !to || !path) {
         result.hidden++
+        unshown.add(pair)
         return
       }
       sailed.add(from).add(to)
@@ -282,6 +295,8 @@ export function cityLinks(layout: CityLayout, shapes: readonly IslandShape[]): C
       result.quays.push(lone)
     }
   }
+  // In the pairs' order: the largest first.
+  result.unshown = pairs.filter((pair) => unshown.has(pair))
   result.boats = boats(result, layout)
   return result
 }
