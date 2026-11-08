@@ -27,8 +27,9 @@ export async function fetchCode(
     if (response.status === 404) {
       return { status: 'error', cause: 'gone' }
     }
+    // A rate limit or an outage: GitHub answered, but not with the file.
     if (!response.ok || !response.body) {
-      return { status: 'error', cause: 'timeout' }
+      return { status: 'error', cause: 'refused' }
     }
     const { text, cut } = await readStart(response.body, CODE_BYTES)
     return { status: 'ready', lines: firstLines(text, cut), totalLines }
@@ -50,7 +51,8 @@ async function readStart(
   const chunks: Uint8Array[] = []
   let size = 0
   try {
-    while (size < limit) {
+    // One byte past the limit says the file goes on.
+    while (size <= limit) {
       const { done, value } = await reader.read()
       if (done) {
         break

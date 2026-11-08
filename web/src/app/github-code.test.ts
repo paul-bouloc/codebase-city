@@ -34,11 +34,34 @@ describe('fetchCode', () => {
     expect(code.status === 'ready' && code.lines.length).toBe(CODE_BYTES / 100)
   })
 
+  it('sees a file go on when its first chunk ends right at the byte limit', async () => {
+    // The limit falls in the middle of the second line, at the end of a chunk
+    const encoder = new TextEncoder()
+    const chunks = [`ab\n${'z'.repeat(CODE_BYTES - 3)}`, 'zz\nmore\n']
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const chunk of chunks) {
+          controller.enqueue(encoder.encode(chunk))
+        }
+        controller.close()
+      },
+    })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(body)),
+    )
+    expect(await fetchCode(REPO, SHA, 'big.ts', 3)).toEqual({
+      status: 'ready',
+      lines: ['ab'],
+      totalLines: 3,
+    })
+  })
+
   it('says a file gone from GitHub apart from GitHub not answering', async () => {
     answer('Not Found', 404)
     expect(await fetchCode(REPO, SHA, 'gone.ts', 1)).toEqual({ status: 'error', cause: 'gone' })
-    answer('Bad gateway', 502)
-    expect(await fetchCode(REPO, SHA, 'a.ts', 1)).toEqual({ status: 'error', cause: 'timeout' })
+    answer('Too many requests', 429)
+    expect(await fetchCode(REPO, SHA, 'a.ts', 1)).toEqual({ status: 'error', cause: 'refused' })
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => Promise.reject(new TypeError('network'))),
