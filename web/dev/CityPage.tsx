@@ -42,6 +42,7 @@ const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve))
  * one island: `?gallery`, or every combination of the low buildings' pieces: `?variants`. A result written by `just ingest owner/repo --out result.json` can be
  * loaded in its place, or dropped in `web/dev/results/` to get a button: `?result=name` opens it.
  * `?look=x,y,distance[,azimuth,polar]` points the camera at a board point, for close captures.
+ * `?select=path` selects the file of that path once the city loads.
  * `?stats=off` hides the frame stats, and with them the drawing of every frame: the city then draws
  * only when something changes, as in the product.
  */
@@ -94,6 +95,17 @@ export function CityPage() {
     const [x, y, distance, azimuth, polar] = (look ?? '').split(',').map(Number)
     if (engine && x !== undefined && y !== undefined && distance) {
       engine.lookAt(x, y, distance, azimuth, polar)
+    }
+  }, [engine, layout])
+
+  // Then the file `?select` names is selected.
+  useEffect(() => {
+    const path = new URLSearchParams(window.location.search).get('select')
+    const index = layout.islands
+      .flatMap((island) => island.lots)
+      .findIndex((lot) => lot.file.path === path)
+    if (engine && index >= 0) {
+      engine.select({ kind: 'building', index })
     }
   }, [engine, layout])
 
