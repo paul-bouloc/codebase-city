@@ -39,6 +39,7 @@ import { indexCycles } from './cycles'
 import { cityDecor } from './decor'
 import { BOAT_LENGTH, createDecor, type DecorStats, decorStats } from './decor-mesh'
 import { createFading } from './dimming'
+import { type Drive, STILL } from './drive'
 import { ExtraFerries } from './extra-ferries'
 import { createFerries } from './ferries'
 import { Fleet } from './fleet'
@@ -79,6 +80,8 @@ const MIN_DISTANCE = 6
 const MAX_FRAMING = 2
 /** 10° above the horizon. */
 const MAX_POLAR_ANGLE = MathUtils.degToRad(80)
+/** The longest step, in seconds, the keys move the camera by in one frame. */
+const MAX_DRIVE_STEP = 0.1
 const START_AZIMUTH = MathUtils.degToRad(34)
 const START_POLAR_ANGLE = MathUtils.degToRad(55)
 /** How far the camera target may leave the city's edge. */
@@ -174,6 +177,7 @@ export class CityEngine {
   private pointer: { x: number; y: number; clientX: number; clientY: number } | null = null
   private pressedAt: { x: number; y: number } | null = null
   private cameraMoving = false
+  private drive: Drive = STILL
   private readonly removeListeners: () => void
 
   constructor(container: HTMLElement, { continuous = false }: CityEngineOptions = {}) {
@@ -211,6 +215,11 @@ export class CityEngine {
   /** Who hears of hover cards and selections. */
   setListeners(listeners: CityListeners): void {
     this.listeners = listeners
+  }
+
+  /** Moves the camera as the keys held down say, until told otherwise. */
+  setDrive(drive: Drive): void {
+    this.drive = drive
   }
 
   /** Selects a building or a folder, or nothing. */
@@ -633,7 +642,10 @@ export class CityEngine {
 
   private frame(time: number): void {
     this.timer.update(time)
-    const moved = this.controls.update(this.timer.getDelta())
+    const delta = this.timer.getDelta()
+    // A frame late by more than this (a hidden tab, a long task) does not throw the camera away.
+    this.controls.drive(this.drive, Math.min(delta, MAX_DRIVE_STEP))
+    const moved = this.controls.update(delta)
     if (moved !== this.cameraMoving) {
       this.cameraMoving = moved
       // No card while the camera moves; once it rests, what lies under the pointer may differ.
