@@ -4,7 +4,7 @@ import { Kbd } from '../src/ui/actions/Kbd'
 import { SegmentedControl, type SegmentedOption } from '../src/ui/actions/SegmentedControl'
 import { type TabItem, Tabs } from '../src/ui/actions/Tabs'
 import { UrlField, type UrlFieldSize, type UrlFieldState } from '../src/ui/actions/UrlField'
-import type { IconName } from '../src/ui/icons'
+import type { IconName } from '../src/ui/brand/icons'
 import styles from './ActionsSection.module.css'
 
 const TEXT = {

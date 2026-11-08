@@ -1,6 +1,6 @@
+import { Icon } from '../brand/Icon'
+import type { IconName } from '../brand/icons'
 import { Spinner } from '../feedback/Spinner'
-import { Icon } from '../Icon'
-import type { IconName } from '../icons'
 import styles from './Badge.module.css'
 import { LANGUAGE_LABELS } from './language-labels'
 import { ROLE_NAMES } from './role-names'

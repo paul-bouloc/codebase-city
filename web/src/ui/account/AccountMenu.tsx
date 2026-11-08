@@ -1,6 +1,6 @@
 import { type FocusEvent, type KeyboardEvent, useEffect, useId, useRef, useState } from 'react'
 import { rovingIndex } from '../actions/roving-index'
-import { Icon } from '../Icon'
+import { Icon } from '../brand/Icon'
 import styles from './AccountMenu.module.css'
 import { Avatar } from './Avatar'
 

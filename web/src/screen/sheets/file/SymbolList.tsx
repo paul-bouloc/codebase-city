@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { Icon } from '../../../ui/brand/Icon'
 import { exactCount } from '../../../ui/display/count-format'
-import { Icon } from '../../../ui/Icon'
 import { FOLDED_ROWS } from '../ranked-files'
 import type { FileSymbol } from '../sheet-data'
 import styles from './SymbolList.module.css'

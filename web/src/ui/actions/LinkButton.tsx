@@ -1,6 +1,6 @@
 import type { ComponentPropsWithRef, ReactNode } from 'react'
-import { Icon } from '../Icon'
-import type { IconName } from '../icons'
+import { Icon } from '../brand/Icon'
+import type { IconName } from '../brand/icons'
 import type { ButtonVariant } from './Button'
 import styles from './Button.module.css'
 

@@ -8,7 +8,7 @@ import {
   TEST_PARK,
   TEST_PARK_EDGE,
 } from '../../city/render/palette'
-import { Icon } from '../../ui/Icon'
+import { Icon } from '../../ui/brand/Icon'
 import { Glass } from '../parts/Glass'
 import { LanguageDot } from '../parts/LanguageDot'
 import styles from './CityLegend.module.css'

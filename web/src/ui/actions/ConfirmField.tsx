@@ -1,5 +1,5 @@
 import { type Ref, useId } from 'react'
-import { Icon } from '../Icon'
+import { Icon } from '../brand/Icon'
 import styles from './ConfirmField.module.css'
 import { confirmationMatches } from './confirmation'
 

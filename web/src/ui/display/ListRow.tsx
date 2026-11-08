@@ -1,5 +1,5 @@
 import type { ComponentPropsWithRef } from 'react'
-import { Icon } from '../Icon'
+import { Icon } from '../brand/Icon'
 import { Badge, type FileRole } from './Badge'
 import { exactCount } from './count-format'
 import styles from './ListRow.module.css'

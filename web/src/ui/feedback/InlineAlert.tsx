@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
-import { Icon } from '../Icon'
-import type { IconName } from '../icons'
+import { Icon } from '../brand/Icon'
+import type { IconName } from '../brand/icons'
 import styles from './InlineAlert.module.css'
 
 export type AlertTone = 'info' | 'success' | 'warning' | 'error' | 'neutral'

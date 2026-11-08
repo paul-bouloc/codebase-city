@@ -1,6 +1,6 @@
 import { type FormEvent, type ReactNode, useId, useRef } from 'react'
-import { Icon } from '../Icon'
-import type { IconName } from '../icons'
+import { Icon } from '../brand/Icon'
+import type { IconName } from '../brand/icons'
 import { Button } from './Button'
 import styles from './UrlField.module.css'
 

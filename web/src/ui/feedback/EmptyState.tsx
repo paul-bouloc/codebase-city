@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { ISLAND_COLORS, LOGO_COLORS } from '../logo-art'
+import { ISLAND_COLORS, LOGO_COLORS } from '../brand/logo-art'
 import styles from './EmptyState.module.css'
 
 const TEXT = {

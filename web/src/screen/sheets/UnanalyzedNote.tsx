@@ -1,4 +1,4 @@
-import { Icon } from '../../ui/Icon'
+import { Icon } from '../../ui/brand/Icon'
 import styles from './UnanalyzedNote.module.css'
 
 interface UnanalyzedNoteProps {

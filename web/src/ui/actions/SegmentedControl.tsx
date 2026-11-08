@@ -1,6 +1,6 @@
 import { type CSSProperties, useId } from 'react'
-import { Icon } from '../Icon'
-import type { IconName } from '../icons'
+import { Icon } from '../brand/Icon'
+import type { IconName } from '../brand/icons'
 import styles from './SegmentedControl.module.css'
 
 export interface SegmentedOption<T extends string> {

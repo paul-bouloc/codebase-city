@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
+import { Icon } from '../brand/Icon'
 import { Badge } from '../display/Badge'
-import { Icon } from '../Icon'
 import styles from './AnalysisProgress.module.css'
 import {
   BUILD_STEPS,
