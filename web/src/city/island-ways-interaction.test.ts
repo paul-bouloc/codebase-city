@@ -132,6 +132,17 @@ describe('the ways between islands', () => {
     expect(ports.at(-1)).toBeNull()
   })
 
+  it('withdraws an open port’s card when it goes', () => {
+    const { interaction, links, ports } = setup()
+    const port = links.ports[0]
+    if (!port) {
+      throw new Error('no port')
+    }
+    interaction.openPort(port, { x: 0, y: 0 })
+    interaction.dispose()
+    expect(ports.at(-1)).toBeNull()
+  })
+
   it('leaves its links and the small ones to a selected island too', () => {
     const { interaction, links } = setup()
     expect(links.ports[0]?.pairs.map((pair) => pair.b)).toEqual([5, 6])

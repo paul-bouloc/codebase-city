@@ -415,9 +415,10 @@ export class CityInteraction {
     return true
   }
 
-  /** Lets go of the marks; a card still shown is withdrawn. */
+  /** Lets go of the marks; a card still shown is withdrawn, and so is an open port's. */
   dispose(): void {
     this.timing.clear()
+    this.closePort()
     this.hoveredBuilding.dispose()
     this.selectedBuilding.dispose()
     this.hoveredArea.dispose()
