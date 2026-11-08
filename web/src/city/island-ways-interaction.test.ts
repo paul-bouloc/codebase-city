@@ -152,6 +152,37 @@ describe('the ways between islands', () => {
     expect(ports.at(-1)).toBeNull()
   })
 
+  it('lets go of the link that stood out once the card is hidden', () => {
+    const { interaction, links } = setup()
+    const port = links.ports[0]
+    if (!port) {
+      throw new Error('no port')
+    }
+    interaction.openPort(port, { x: 20, y: 30 })
+    const drawn = interaction.portLinks.group.children.length
+    interaction.focusPortLink(0)
+    interaction.movePort(null)
+    expect(interaction.portLinks.group.children).toHaveLength(drawn)
+  })
+
+  it('closes the port open when another one opens', () => {
+    const { interaction, links, ports } = setup()
+    const port = links.ports[0]
+    if (!port) {
+      throw new Error('no port')
+    }
+    interaction.openPort(port, { x: 20, y: 30 })
+    interaction.focusPortLink(0)
+    const count = ports.length
+    interaction.openPort(port, { x: 40, y: 30 })
+    // Closed, then opened again: the card hears of both, and nothing stands out.
+    expect(ports.slice(count).map((list) => list?.pointer ?? null)).toEqual([
+      null,
+      { x: 40, y: 30 },
+    ])
+    expect(ports[count]).toBeNull()
+  })
+
   it('withdraws an open port’s card when it goes', () => {
     const { interaction, links, ports } = setup()
     const port = links.ports[0]

@@ -331,6 +331,8 @@ export class CityInteraction {
     if (!extra || !this.getPorts().includes(port)) {
       return
     }
+    // One port at a time: the last one closes first.
+    this.closePort()
     const links = this.layout.links ?? []
     const rows = portRows(port, links)
     this.openPortAt = port
@@ -370,6 +372,10 @@ export class CityInteraction {
       was === pointer ||
       (was && pointer && Math.abs(was.x - pointer.x) < 0.5 && Math.abs(was.y - pointer.y) < 0.5)
     if (!same) {
+      // A hidden card takes the pointer off its rows with it: no link stands out any more.
+      if (!pointer) {
+        this.drawPort(null)
+      }
       this.portList = { ...list, pointer }
       this.listeners().port?.(this.portList)
     }
