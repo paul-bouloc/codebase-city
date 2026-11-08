@@ -6,7 +6,8 @@ import { mixSrgb } from './units'
 export const BRIDGE_STONE = '#E9DDC7'
 // The railings: the stone mixed with 45 % black.
 export const BRIDGE_RAIL = mixHex(BRIDGE_STONE, '#000000', 0.45)
-export const FERRY_WAKE = '#FFFFFF'
+// A ferry line, drawn on the sea as on a chart: the Harbor accent.
+export const FERRY_LINE = '#1D6F78'
 // Imports that go up the layers, and nothing else: the city's only red.
 export const UPWARD = '#D1435B'
 // The quay of a canal and of a port.

@@ -3,7 +3,7 @@ import {
   BRIDGE_RAIL,
   BRIDGE_STONE,
   CANAL_WATER,
-  FERRY_WAKE,
+  FERRY_LINE,
   QUAY,
   TEST_PARK,
   TEST_PARK_EDGE,
@@ -201,7 +201,7 @@ const SAMPLES: Record<LegendPlace, ReactNode> = {
   ferry: (
     <>
       <rect className={styles.water} x="0" y="1" width="22" height="12" rx="2" />
-      <path d="M2 7 H20" stroke={FERRY_WAKE} strokeWidth="2" strokeDasharray="4 2.5" />
+      <path d="M2 7 H20" stroke={FERRY_LINE} strokeWidth="2" strokeDasharray="4 3" />
     </>
   ),
   port: (
