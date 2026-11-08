@@ -102,6 +102,19 @@ varying vec2 vDash;
 void main() {
   vec4 a = projectionMatrix * modelViewMatrix * vec4(start, 1.0);
   vec4 b = projectionMatrix * modelViewMatrix * vec4(end, 1.0);
+  // An arc rises high: close up, a segment may pass behind the camera, where w turns negative
+  // and its quad flips across the screen. It is cut at the near plane, or dropped if all behind.
+  float nearA = a.z + a.w;
+  float nearB = b.z + b.w;
+  if (nearA < 0.0 && nearB < 0.0) {
+    gl_Position = vec4(0.0, 0.0, 2.0, 1.0);
+    return;
+  }
+  if (nearA < 0.0) {
+    a = mix(a, b, nearA / (nearA - nearB) + 1e-4);
+  } else if (nearB < 0.0) {
+    b = mix(b, a, nearB / (nearB - nearA) + 1e-4);
+  }
   vec4 here = corner.x < 0.5 ? a : b;
   vec2 along = normalize((b.xy / b.w - a.xy / a.w) * resolution + 1e-6);
   vec2 normal = vec2(-along.y, along.x);
