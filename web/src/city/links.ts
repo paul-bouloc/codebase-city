@@ -172,8 +172,14 @@ export function cityLinks(layout: CityLayout, shapes: readonly IslandShape[]): C
   const perSide = new Map<string, number>()
   const ferriesOf = new Map<number, number>()
   const portLinks = new Map<number, Pair[]>()
-  const toPort = (island: number, pair: Pair) =>
-    portLinks.set(island, [...(portLinks.get(island) ?? []), pair])
+  const toPort = (island: number, pair: Pair) => {
+    const gathered = portLinks.get(island)
+    if (gathered) {
+      gathered.push(pair)
+    } else {
+      portLinks.set(island, [pair])
+    }
+  }
   const unshown = new Set<Pair>()
   const sailing: Pair[] = []
 
