@@ -117,3 +117,22 @@ export function revealShift(left: number, right: number, viewport: Viewport): nu
   const room = left - REVEAL_MARGIN
   return clear <= room ? clear : Math.max(0, centre - free / 2)
 }
+
+/** After a flight to a file, the camera goes round it once in this many seconds. */
+export const ORBIT_SECONDS = 60
+
+/**
+ * Where a point on the ground goes when it turns `angle` radians about the vertical through
+ * `centre`, the way the camera's azimuth grows: what the camera looks at, as it goes round.
+ */
+export function turnAbout(
+  [x, z]: readonly [number, number],
+  [cx, cz]: readonly [number, number],
+  angle: number,
+): [number, number] {
+  const dx = x - cx
+  const dz = z - cz
+  const cos = Math.cos(angle)
+  const sin = Math.sin(angle)
+  return [cx + dx * cos + dz * sin, cz - dx * sin + dz * cos]
+}

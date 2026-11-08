@@ -9,6 +9,7 @@ import {
   frameInView,
   freeWidth,
   revealShift,
+  turnAbout,
   type Viewport,
 } from './flight'
 import { cityFromResult } from './from-result'
@@ -118,5 +119,20 @@ describe('revealShift', () => {
 
   it('brings one too wide to clear to the middle of the free room', () => {
     expect(revealShift(300, 1400, WITH_SHEET)).toBe(850 - 498)
+  })
+})
+
+describe('turnAbout', () => {
+  it('turns a point the way the azimuth grows, keeping its distance', () => {
+    // At azimuth 0 the camera stands on +z of what it looks at; a quarter turn brings it to +x.
+    const [x, z] = turnAbout([0, 1], [0, 0], Math.PI / 2)
+    expect(x).toBeCloseTo(1)
+    expect(z).toBeCloseTo(0)
+  })
+
+  it('turns about the centre given', () => {
+    const [x, z] = turnAbout([13, 4], [10, 0], Math.PI)
+    expect(x).toBeCloseTo(7)
+    expect(z).toBeCloseTo(-4)
   })
 })
