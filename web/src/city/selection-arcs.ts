@@ -1,5 +1,5 @@
-import type { ArcDot, ArcDrawing, ArcLine } from './arc-mesh'
-import { arcPoints } from './arc-path'
+import type { ArcDot, ArcDrawing, ArcLabel, ArcLine } from './arc-mesh'
+import { ARC_SEGMENTS, arcPoints } from './arc-path'
 import { INCOMING_LINK, OUTGOING_LINK, UPWARD } from './palette'
 import type { Bundle, Direction, LinkEnd, Linked, SelectionLinks } from './selection-links'
 import { srgb, type Vec3 } from './units'
@@ -25,6 +25,8 @@ const UPWARD_RIM = 1
 const UPWARD_DOTS = [0.35, 0.65] as const
 /** A bundle's hub floats this far above its island's plateau, in u. */
 export const HUB_RISE = 4
+/** A cycle's arcs bend aside by this share of their length: the two ways of a loop part. */
+const CYCLE_LEAN = 0.12
 
 /** A bundle's width grows with how many files it holds: `2 + 1.4 × log10(n)` CSS pixels. */
 export function bundleWidth(files: number): number {
@@ -52,6 +54,14 @@ export interface LinkPlaces {
   plateau(island: number): number
 }
 
+/** The import cycle of a selected file. */
+export interface CycleOnShow {
+  /** One of the shortest loops through the selection, from it, in import order: buildings. */
+  loop: readonly number[]
+  /** Every file of the cycle: its badge floats over their middle. */
+  members: readonly number[]
+}
+
 /** A bundle's count: how many files it holds, or how many more once it was opened. */
 export function bundleLabel(bundle: Bundle): string {
   const count = bundle.ends.length
@@ -63,13 +73,15 @@ export function bundleLabel(bundle: Bundle): string {
 
 /**
  * The arcs of a selection whose own arcs start at `selection` (over its roof). The links in
- * `fresh` were just opened out of a bundle: their arcs grow out of the selection.
+ * `fresh` were just opened out of a bundle: their arcs grow out of the selection. The loop of its
+ * `cycle`, if any, is drawn in red, in place of its links' arcs along it.
  */
 export function selectionArcs(
   links: SelectionLinks,
   selection: Vec3,
   places: LinkPlaces,
   fresh: ReadonlySet<Linked> = new Set(),
+  cycle: CycleOnShow | null = null,
 ): SelectionArcs {
   const lines: ArcLine[] = []
   const dots: ArcDot[] = []
@@ -91,6 +103,18 @@ export function selectionArcs(
   })
   // The selection's own end of its arcs gets one dot of each kind, not one per arc on one point.
   const atSelection = new Map<Direction, ArcDot>()
+  const directionDots = (points: readonly Vec3[]) => {
+    for (const share of UPWARD_DOTS) {
+      const at = points[Math.round(share * (points.length - 1))] ?? selection
+      dots.push({
+        position: at,
+        colour: WHITE,
+        size: UPWARD_DOT,
+        rim: UPWARD_RIM,
+        rimColour: RED,
+      })
+    }
+  }
   const draw = (
     direction: Direction,
     there: Vec3,
@@ -108,21 +132,21 @@ export function selectionArcs(
       atSelection.set(direction, outgoing ? sourceDot(source, colour) : targetDot(target, colour))
     }
     if (upward) {
-      for (const share of UPWARD_DOTS) {
-        const at = points[Math.round(share * (points.length - 1))] ?? source
-        dots.push({
-          position: at,
-          colour: WHITE,
-          size: UPWARD_DOT,
-          rim: UPWARD_RIM,
-          rimColour: RED,
-        })
-      }
+      directionDots(points)
     }
+  }
+  // The links along the loop are drawn as part of it.
+  const loop = cycle && cycle.loop.length >= 2 ? cycle.loop : null
+  const alongLoop: Record<Direction, number | undefined> = {
+    outgoing: loop?.[1],
+    incoming: loop?.at(-1),
   }
   for (const direction of ['outgoing', 'incoming'] as const) {
     const side = links[direction]
     for (const link of side.single) {
+      if ('building' in link.end && link.end.building === alongLoop[direction]) {
+        continue
+      }
       draw(direction, places.arcEnd(link.end), link.upward, ARC_WIDTH, fresh.has(link))
     }
     for (const bundle of side.bundles) {
@@ -133,6 +157,29 @@ export function selectionArcs(
       stems.set(direction, [...(stems.get(direction) ?? []), [position, foot]])
     }
   }
+  const labels: ArcLabel[] = hubs.map(({ bundle, position }) => ({
+    position,
+    text: bundleLabel(bundle),
+    colour: COLOURS[bundle.direction],
+  }))
+  if (loop && cycle) {
+    const ends = loop.map((building, at) => (at === 0 ? selection : places.arcEnd({ building })))
+    ends.forEach((start, at) => {
+      const end = ends[(at + 1) % ends.length] ?? selection
+      const points = arcPoints(start, end, ARC_SEGMENTS, CYCLE_LEAN)
+      lines.push({ points, colour: RED, width: ARC_WIDTH, upward: false, solid: true })
+      directionDots(points)
+      if (at > 0) {
+        dots.push(targetDot(start, RED))
+      }
+    })
+    labels.push({
+      position: badgeOf(cycle.members, places.ground),
+      text: `Cycle · ${cycle.members.length} files`,
+      colour: RED,
+      rimmed: true,
+    })
+  }
   return {
     drawing: {
       lines,
@@ -141,14 +188,25 @@ export function selectionArcs(
         colour: COLOURS[direction],
         polylines,
       })),
-      labels: hubs.map(({ bundle, position }) => ({
-        position,
-        text: bundleLabel(bundle),
-        colour: COLOURS[bundle.direction],
-      })),
+      labels,
     },
     hubs,
   }
+}
+
+/** Over the middle of a cycle's files, as high above the highest foot as a hub over its plateau. */
+function badgeOf(members: readonly number[], ground: (end: LinkEnd) => Vec3): Vec3 {
+  let x = 0
+  let z = 0
+  let top = Number.NEGATIVE_INFINITY
+  for (const building of members) {
+    const [px, py, pz] = ground({ building })
+    x += px
+    z += pz
+    top = Math.max(top, py)
+  }
+  const count = Math.max(members.length, 1)
+  return [x / count, (Number.isFinite(top) ? top : 0) + HUB_RISE, z / count]
 }
 
 /** Above the middle of the files it gathers, `HUB_RISE` over their island's plateau. */

@@ -114,4 +114,54 @@ describe('selectionArcs', () => {
     const white = drawing.dots.filter((dot) => dot.colour.every((channel) => channel === 1))
     expect(white).toHaveLength(2)
   })
+
+  it('draws the loop of its cycle in solid red, in place of the arcs along it', () => {
+    // Selection 0 imports 10, which imports -10, which imports 0: one way round. 20 is a
+    // member off the loop.
+    const around: SelectionLinks = {
+      outgoing: { single: [linked(10, 0), linked(5, 0)], bundles: [] },
+      incoming: { single: [linked(-10, 0)], bundles: [] },
+    }
+    const arcs = selectionArcs(
+      around,
+      selection,
+      { arcEnd: place, ground: place, plateau },
+      new Set(),
+      { loop: [0, 10, -10], members: [0, 10, -10, 20] },
+    )
+    const red = arcs.drawing.lines.filter((line) => line.solid)
+    expect(red).toHaveLength(3)
+    expect(red.map((line) => [line.colour, line.upward])).toEqual(
+      Array(3).fill([srgb(UPWARD), false]),
+    )
+    expect(red[0]?.points[0]).toEqual(selection)
+    expect(red[0]?.points[ARC_SEGMENTS]?.[0]).toBeCloseTo(10)
+    expect(red[2]?.points[ARC_SEGMENTS]).toEqual(selection)
+    // Only the link off the loop keeps its own arc
+    const own = arcs.drawing.lines.filter((line) => !line.solid)
+    expect(own).toHaveLength(1)
+    expect(own[0]?.points[ARC_SEGMENTS]?.[0]).toBeCloseTo(5)
+    expect(arcs.drawing.labels).toEqual([
+      { position: [5, HUB_RISE, 0], text: 'Cycle · 4 files', colour: srgb(UPWARD), rimmed: true },
+    ])
+  })
+
+  it('parts the two ways of a loop between two files', () => {
+    const both: SelectionLinks = {
+      outgoing: { single: [linked(10, 0)], bundles: [] },
+      incoming: { single: [linked(10, 0)], bundles: [] },
+    }
+    const arcs = selectionArcs(
+      both,
+      [0, 0, 0],
+      { arcEnd: place, ground: place, plateau },
+      new Set(),
+      { loop: [0, 10], members: [0, 10] },
+    )
+    expect(arcs.drawing.lines).toHaveLength(2)
+    const middle = ARC_SEGMENTS / 2
+    const [there, back] = arcs.drawing.lines.map((line) => line.points[middle]?.[2] ?? 0)
+    expect(there).toBeLessThan(-0.5)
+    expect(back).toBeGreaterThan(0.5)
+  })
 })
