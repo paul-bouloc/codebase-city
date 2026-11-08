@@ -4,7 +4,8 @@ import { boats } from './boat-places'
 import { bridgeFor } from './bridge-placement'
 import { bridgeSides, decksOn, mouthsOn, openSide, SIDES, sideToward } from './island-sides'
 import { loneQuay, quayAt, quayStretch, tipOf } from './quays'
-import { ferryRoute, landOutline, type WaterGrid, waterGrid } from './water-route'
+import { landOutline, type WaterGrid, waterGrid } from './water-grid'
+import { ferryRoute } from './water-route'
 
 // Imports between islands become works the city always shows. Two neighbours at most one layer
 // apart, face to face across one channel, get a stone bridge; every other pair a ferry line on

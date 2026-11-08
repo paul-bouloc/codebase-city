@@ -3,7 +3,7 @@ import type { CityLayout, Point, Rect } from '../world/layout'
 import { layerAltitude } from '../world/units'
 import { LANDING_CLEARANCE, LANDING_STEP, mouthsOn } from './island-sides'
 import type { Bridge, Pair } from './links'
-import { insidePolygon } from './water-route'
+import { insidePolygon } from './water-grid'
 
 // Two neighbours face to face across one channel get a bridge, landed near the middle of the
 // folders that face each other, clear of canals' mouths and of any third island's land.

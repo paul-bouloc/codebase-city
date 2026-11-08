@@ -12,7 +12,7 @@ import { boatsFor, pointAlong } from './boat-places'
 import { deckWidth } from './bridge-placement'
 import { type CityLinks, cityLinks, linkPairs } from './links'
 import { quayAt, tipOf } from './quays'
-import { insidePolygon, landOutline } from './water-route'
+import { insidePolygon, landOutline } from './water-grid'
 
 interface Spec {
   plateau: Rect

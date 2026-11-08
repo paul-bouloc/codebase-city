@@ -3,7 +3,7 @@ import { islandShapes } from '../terrain/island-shape'
 import { pointAlong } from '../waterways/boat-places'
 import { cityLinks } from '../waterways/links'
 import { tipOf } from '../waterways/quays'
-import { insidePolygon, landOutline } from '../waterways/water-route'
+import { insidePolygon, landOutline } from '../waterways/water-grid'
 import { boundsOf, type CityLayout, type IslandLink, type Lot, type Rect } from '../world/layout'
 import { ExtraFerries, islandExtras } from './extra-ferries'
 

@@ -1,7 +1,8 @@
 import type { IslandShape } from '../terrain/island-shape'
 import type { CityLinks, Ferry, Pair, Port, Quay } from '../waterways/links'
 import { passingPier, tipOf } from '../waterways/quays'
-import { ferryRoute, type WaterGrid, waterGrid } from '../waterways/water-route'
+import { type WaterGrid, waterGrid } from '../waterways/water-grid'
+import { ferryRoute } from '../waterways/water-route'
 import { boundsOf, type CityLayout, type Point } from '../world/layout'
 
 // The island links a city leaves undrawn, at a port or too small, sail out for a while when they
