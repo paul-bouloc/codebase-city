@@ -5,39 +5,21 @@ import { type CycleIndex, loopThrough } from '../flows/cycles'
 import { type ExtraFerries, islandExtras } from '../flows/extra-ferries'
 import { FolderLinkMarks, folderWays } from '../flows/folder-link-marks'
 import { folderFlows } from '../flows/folder-links'
-import { type CycleOnShow, type Hub, selectionArcs } from '../flows/selection-arcs'
-import {
-  type Direction,
-  type ImportIndex,
-  type LinkEnd,
-  type Linked,
-  linkedBuildings,
-  markedBuildings,
-  OPENED_ARCS,
-  openBundle,
-  type SelectionLinks,
-  selectionLinks,
-} from '../flows/selection-links'
+import type { CycleOnShow, Hub } from '../flows/selection-arcs'
+import { type Direction, type ImportIndex, OPENED_ARCS } from '../flows/selection-links'
 import { ArcLayer } from '../render/arc-mesh'
 import type { Fading } from '../render/dimming'
 import { easeStandard } from '../render/easing'
 import type { IslandShape } from '../terrain/island-shape'
 import type { Bridge, Ferry, Pair, Port } from '../waterways/links'
 import { type CityLayout, rectContains } from '../world/layout'
-import { boardToThree, layerAltitude, type Vec3 } from '../world/units'
 import { type Area, AreaMark, HOVERED_AREA, SELECTED_AREA } from './area-marks'
-import {
-  BuildingMark,
-  HOVERED_MARK,
-  INCOMING_MARK,
-  OUTGOING_MARK,
-  roofHeight,
-  SELECTED_MARK,
-} from './building-marks'
+import { BuildingMark, HOVERED_MARK, SELECTED_MARK } from './building-marks'
 import { HoverTiming } from './hover-timing'
 import { OpenPort, type PortList } from './open-port'
 import type { CityTarget } from './picking'
 import { CYCLE_RINGS, RingSet } from './rings'
+import { SelectedLinks } from './selected-links'
 
 export type { PortLinkRow, PortList } from './open-port'
 
@@ -115,8 +97,6 @@ export function isClick(down: { x: number; y: number }, up: { x: number; y: numb
 
 /** The fading in or out of what is outside the selection, in ms. */
 const DIM_DURATION = 280
-/** Arcs land this far above a roof or the ground, in u, clear of their surface. */
-const ARC_LIFT = 0.1
 
 export function sameTarget(a: Pointed, b: Pointed): boolean {
   switch (a.kind) {
@@ -153,12 +133,7 @@ export class CityInteraction {
   private dimFrom = 0
   private dimTo = 0
   private dimSince = 0
-  // The selected file's links, how its linked buildings are marked, and its bundles' hubs.
-  private links: SelectionLinks | null = null
-  private marked = new Map<number, Direction>()
-  private linkMarks: BuildingMark[] = []
-  private hubs: Hub[] = []
-  private readonly roofs = new Map<number, Vec3>()
+  private readonly links: SelectedLinks
   /** The rings around the files of the selected file's cycle. */
   readonly cycleRings: RingSet
   private cycle: CycleOnShow | null = null
@@ -177,11 +152,19 @@ export class CityInteraction {
     private readonly buildings: CityBuildings,
     private readonly flows: CityFlows,
     private readonly fading: Fading,
-    private readonly pixelRatio: number,
+    pixelRatio: number,
     private readonly listeners: () => CityListeners,
     private readonly redraw: () => void,
   ) {
     this.arcs = new ArcLayer(pixelRatio)
+    this.links = new SelectedLinks(
+      layout,
+      buildings,
+      flows.imports,
+      this.overlay,
+      this.arcs,
+      pixelRatio,
+    )
     this.hoveredBuilding = new BuildingMark(HOVERED_MARK, pixelRatio)
     this.selectedBuilding = new BuildingMark(SELECTED_MARK, pixelRatio)
     this.hoveredArea = new AreaMark(HOVERED_AREA, pixelRatio)
@@ -255,12 +238,6 @@ export class CityInteraction {
     this.selected = target
     this.selectedBuilding.show(null)
     this.selectedArea.show(null, this.shapes)
-    this.links =
-      target?.kind === 'building'
-        ? selectionLinks(this.flows.imports, target.index, (end) =>
-            this.distance(target.index, end),
-          )
-        : null
     const cycle = target?.kind === 'building' ? this.flows.cycles.cycleOf.get(target.index) : null
     this.cycle =
       cycle && target?.kind === 'building'
@@ -270,7 +247,7 @@ export class CityInteraction {
       this.cycle?.members.flatMap((member) => this.buildings.placed[member] ?? []) ?? [],
     )
     this.showCycleWays()
-    this.drawLinks()
+    this.links.select(target?.kind === 'building' ? target.index : null, this.cycle)
     if (target?.kind === 'building') {
       this.buildings.setHighlight(target.index, Highlight.selected)
       this.selectedBuilding.show(this.buildings.placed[target.index] ?? null)
@@ -290,19 +267,17 @@ export class CityInteraction {
 
   /** The hubs of the bundles on show, where a click opens them. */
   getHubs(): readonly Hub[] {
-    return this.hubs
+    return this.links.hubs
   }
 
   /** Opens a bundle into arcs of their own, its nearest files first: they grow out to them. */
   openHub(hub: Hub): void {
-    if (!this.links || !this.hubs.includes(hub)) {
+    if (!this.links.hubs.includes(hub)) {
       return
     }
-    const fresh = new Set(hub.bundle.ends.slice(0, OPENED_ARCS))
-    this.links = openBundle(this.links, hub.bundle)
     // The hub goes, or moves with what is left: its card and its rim go with it.
     this.timing.clear()
-    this.drawLinks(fresh)
+    this.links.open(hub)
     this.highlight(this.highlighted)
   }
 
@@ -381,48 +356,8 @@ export class CityInteraction {
     this.cycleWays.dispose()
     this.folderLinks.dispose()
     this.ports.dispose()
-    this.clearLinkMarks()
+    this.links.dispose()
     this.arcs.dispose()
-  }
-
-  /**
-   * Marks the linked buildings and draws the arcs of the selected file's links, if any; those in
-   * `fresh` were just opened out of a bundle.
-   */
-  private drawLinks(fresh: ReadonlySet<Linked> = new Set()): void {
-    this.clearLinkMarks()
-    const links = this.links
-    const selected = this.selected
-    if (!links || selected?.kind !== 'building') {
-      this.marked = new Map()
-      this.hubs = []
-      this.roofs.clear()
-      this.arcs.show(null)
-      return
-    }
-    this.marked = markedBuildings(links)
-    for (const [index, direction] of this.marked) {
-      const mark = new BuildingMark(
-        direction === 'outgoing' ? OUTGOING_MARK : INCOMING_MARK,
-        this.pixelRatio,
-      )
-      mark.show(this.buildings.placed[index] ?? null)
-      this.overlay.add(mark.group)
-      this.linkMarks.push(mark)
-    }
-    const { drawing, hubs } = selectionArcs(
-      links,
-      this.roof(selected.index),
-      {
-        arcEnd: (end) => this.place(end),
-        ground: (end) => this.ground(end),
-        plateau: (island) => layerAltitude(this.layout.islands[island]?.layer ?? 1),
-      },
-      fresh,
-      this.cycle,
-    )
-    this.hubs = hubs
-    this.arcs.show(drawing)
   }
 
   /** The ways the loop of the selected file's cycle takes between islands, outlined in red. */
@@ -459,58 +394,6 @@ export class CityInteraction {
     )
   }
 
-  private clearLinkMarks(): void {
-    for (const mark of this.linkMarks) {
-      this.overlay.remove(mark.group)
-      mark.dispose()
-    }
-    this.linkMarks = []
-  }
-
-  /** Where an arc lands: just over a building's roof, or on the ground of a folder's grid. */
-  private place(end: LinkEnd): Vec3 {
-    if ('building' in end) {
-      return this.roof(end.building)
-    }
-    const island = this.layout.islands[end.island]
-    const grid = island?.grids?.[end.grid]
-    if (!island || !grid) {
-      return [0, 0, 0]
-    }
-    const { rect } = grid
-    return boardToThree(
-      rect.x + rect.width / 2,
-      rect.y + rect.height / 2,
-      layerAltitude(island.layer) + grid.base + ARC_LIFT,
-    )
-  }
-
-  /** Over the building's highest point; kept, a selection asks for the same roofs again. */
-  private roof(index: number): Vec3 {
-    let roof = this.roofs.get(index)
-    if (!roof) {
-      const placed = this.buildings.placed[index]
-      const [x, y, z] = placed?.position ?? [0, 0, 0]
-      roof = [x, y + (placed ? roofHeight(placed.building) : 0) + ARC_LIFT, z]
-      this.roofs.set(index, roof)
-    }
-    return roof
-  }
-
-  /** Where a linked end stands: a building's foot, or the middle of a folder's grid. */
-  private ground(end: LinkEnd): Vec3 {
-    return 'building' in end
-      ? (this.buildings.placed[end.building]?.position ?? [0, 0, 0])
-      : this.place(end)
-  }
-
-  /** How far a linked end stands from a building, across the ground. */
-  private distance(index: number, end: LinkEnd): number {
-    const [x, , z] = this.buildings.placed[index]?.position ?? [0, 0, 0]
-    const there = this.ground(end)
-    return Math.hypot(there[0] - x, there[2] - z)
-  }
-
   private fadeTo(value: number): void {
     if (value !== this.dimTo) {
       this.dimFrom = this.fading.dim.value
@@ -529,7 +412,7 @@ export class CityInteraction {
     this.highlighted = pointed
     // A hovered hub rims its count, a port its badge (the open one keeps it rimmed); nothing of
     // the city stands out meanwhile.
-    this.arcs.hoverLabel(pointed?.kind === 'hub' ? this.hubs.indexOf(pointed.hub) : null)
+    this.arcs.hoverLabel(pointed?.kind === 'hub' ? this.links.hubs.indexOf(pointed.hub) : null)
     const ports = this.getPorts()
     const rimmed = pointed?.kind === 'port' ? pointed.port : this.ports.port
     this.portBadges.hoverLabel(rimmed ? ports.indexOf(rimmed) : null)
@@ -537,7 +420,7 @@ export class CityInteraction {
     const selected = target && this.selected && sameTarget(target, this.selected)
     const building = target?.kind === 'building' && !selected ? target : null
     // A linked building keeps its Marine or Sun mark: it says more than the hover.
-    const inked = building && !this.marked.has(building.index) ? building : null
+    const inked = building && !this.links.isMarked(building.index) ? building : null
     this.hoveredBuilding.show(inked ? (this.buildings.placed[inked.index] ?? null) : null)
     if (building) {
       this.buildings.setHighlight(building.index, Highlight.hovered)
@@ -581,9 +464,7 @@ export class CityInteraction {
     const { placed } = this.buildings
     const area = this.fading.keptArea.value
     if (target.kind === 'building') {
-      const linked = this.links
-        ? linkedBuildings(this.links, this.flows.imports)
-        : new Set<number>()
+      const linked = this.links.linked()
       for (const member of this.cycle?.members ?? []) {
         linked.add(member)
       }
