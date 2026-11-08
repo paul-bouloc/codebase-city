@@ -523,7 +523,9 @@ export class CityInteraction {
     // An island shows all its links: those left undrawn sail out too.
     const { extra, unshown = [] } = this.flows
     const extras =
-      target.kind === 'island' && extra ? islandExtras(target.island, unshown, extra) : []
+      target.kind === 'island' && extra
+        ? islandExtras(target.island, unshown, extra, this.getPorts())
+        : []
     this.folderLinks.show(
       folderWays(target.island, flows, this.flows.bridges, [...this.flows.ferries, ...extras]),
     )

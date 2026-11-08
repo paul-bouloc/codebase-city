@@ -1,6 +1,14 @@
 import type { IslandShape } from './island-shape'
 import { boundsOf, type CityLayout, type Point } from './layout'
-import { type CityLinks, type Ferry, type Pair, passingPier, type Quay, tipOf } from './links'
+import {
+  type CityLinks,
+  type Ferry,
+  type Pair,
+  type Port,
+  passingPier,
+  type Quay,
+  tipOf,
+} from './links'
 import { ferryRoute, type WaterGrid, waterGrid } from './water-route'
 
 // The island links a city leaves undrawn, at a port or too small, sail out for a while when they
@@ -65,16 +73,22 @@ export class ExtraFerries {
   }
 }
 
-/** The undrawn links of an island, sailed out from its side: those a way by water was found for. */
+/**
+ * The undrawn links of an island, sailed out: those gathered at its port from the port's quay, as
+ * when the port is open, the others from its side; those a way by water was found for.
+ */
 export function islandExtras(
   island: number,
   unshown: readonly Pair[],
   extra: ExtraFerries,
+  ports: readonly Port[] = [],
 ): Ferry[] {
+  const port = ports.find((each) => each.island === island)
+  const atPort = new Set(port?.pairs)
   return unshown
     .filter((pair) => pair.a === island || pair.b === island)
     .flatMap((pair) => {
-      const ferry = extra.route(pair)
+      const ferry = extra.route(pair, port && atPort.has(pair) ? port : undefined)
       return ferry ? [ferry] : []
     })
 }

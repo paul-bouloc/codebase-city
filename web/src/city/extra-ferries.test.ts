@@ -94,6 +94,18 @@ describe('extra ferries', () => {
     expect(links.grid?.traffic).toEqual(traffic)
   })
 
+  it('sails an island’s links gathered at its port from its quay, as the open port does', () => {
+    const { links, extra } = setUp()
+    const port = links.ports[0]
+    if (!port) {
+      throw new Error('no port')
+    }
+    const ferries = islandExtras(0, links.unshown, extra, links.ports)
+    const atPort = ferries.find((ferry) => ferry.b === 5)
+    expect(atPort?.path[0]).toEqual(tipOf(port.quay))
+    expect(atPort).toBe(extra.route(port.pairs[0] as (typeof port.pairs)[number], port))
+  })
+
   it('sails every undrawn link of an island, at its port or too small', () => {
     const { links, extra } = setUp()
     expect(islandExtras(0, links.unshown, extra).map((ferry) => ferry.b)).toEqual([5, 6])
