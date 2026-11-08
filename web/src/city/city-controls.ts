@@ -87,6 +87,17 @@ export class CityControls extends CameraControls {
     }
   }
 
+  /**
+   * Lifts the target onto the ground under it, `height` u, smoothly: the camera turns around the
+   * point it looks at, not one inside an island. The move carries on any drag or zoom under way.
+   */
+  followGround(height: number): void {
+    if (this._targetEnd.y !== height) {
+      this._targetEnd.y = height
+      this._needsUpdate = true
+    }
+  }
+
   override dispose(): void {
     this.removeListeners()
     super.dispose()
