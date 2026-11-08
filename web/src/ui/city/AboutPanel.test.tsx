@@ -61,6 +61,15 @@ describe('AboutPanel', () => {
     expect(render({ ...ABOUT, resolvedImports: undefined })).toContain('the city draws no flows')
   })
 
+  it('leaves out when and on which branch it ran until the screen knows', () => {
+    const { branch, analyzedAt, analyzedAgo, ...rest } = ABOUT
+    const html = render(rest)
+    expect(html).not.toContain('Analyzed<')
+    expect(html).not.toContain(' · main')
+    expect(html).not.toContain('2 days ago')
+    expect(html).toContain('a1b2c3d')
+  })
+
   it('offers to rebuild when a newer version exists, or to sign in first', () => {
     const newer: NewerVersion = {
       commits: 48,

@@ -225,13 +225,18 @@ export function AboutPanel({ id, open, about, newer, onClose }: AboutPanelProps)
               </ExternalLink>
             ) : (
               <span className={styles.commit}>{about.commit}</span>
-            )}{' '}
-            · {about.branch}
+            )}
+            {about.branch && ` · ${about.branch}`}
           </dd>
-          <dt>{TEXT.analyzedAt}</dt>
-          <dd>
-            {about.analyzedAt} · {about.analyzedAgo}
-          </dd>
+          {about.analyzedAt && (
+            <>
+              <dt>{TEXT.analyzedAt}</dt>
+              <dd>
+                {about.analyzedAt}
+                {about.analyzedAgo && ` · ${about.analyzedAgo}`}
+              </dd>
+            </>
+          )}
           <dt>{TEXT.analyzer}</dt>
           <dd className={styles.mono}>{about.analyzer}</dd>
         </dl>

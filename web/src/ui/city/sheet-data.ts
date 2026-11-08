@@ -107,8 +107,9 @@ export interface AboutData {
   unanalyzed: readonly { name: string; files: number }[]
   commit: string
   commitUrl: string
-  branch: string
-  analyzedAt: string
-  analyzedAgo: string
+  // Where and when the analysis ran: stored beside the result, absent until the screen has it.
+  branch?: string
+  analyzedAt?: string
+  analyzedAgo?: string
   analyzer: string
 }
