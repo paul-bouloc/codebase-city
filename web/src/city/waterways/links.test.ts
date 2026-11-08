@@ -8,16 +8,8 @@ import {
   type ParcelLayout,
   type Rect,
 } from '../world/layout'
-import {
-  boatsFor,
-  type CityLinks,
-  cityLinks,
-  deckWidth,
-  linkPairs,
-  pointAlong,
-  quayAt,
-  tipOf,
-} from './links'
+import { deckWidth } from './bridge-placement'
+import { boatsFor, type CityLinks, cityLinks, linkPairs, pointAlong, quayAt, tipOf } from './links'
 import { insidePolygon, landOutline } from './water-route'
 
 interface Spec {
