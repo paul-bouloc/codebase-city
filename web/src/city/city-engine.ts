@@ -27,7 +27,13 @@ import {
 import { DASH_PERIOD, LABEL_HEIGHT, LABEL_LIFT } from './arc-mesh'
 import { createBridges } from './bridges'
 import { createBuildings } from './buildings'
-import { CityInteraction, type CityItem, type CityListeners, isClick } from './city-interaction'
+import {
+  CityInteraction,
+  type CityItem,
+  type CityListeners,
+  isClick,
+  type Pointed,
+} from './city-interaction'
 import { indexCycles } from './cycles'
 import { cityDecor } from './decor'
 import { BOAT_LENGTH, createDecor, type DecorStats, decorStats } from './decor-mesh'
@@ -41,11 +47,14 @@ import { SUN_DIRECTION } from './light'
 import { cityLinks } from './links'
 import { CityPicker, type CityTarget } from './picking'
 import { createParcels } from './plateaux'
+import { portBadgeAt } from './port-links'
 import { createSea, OPEN_SEA, seaSize } from './sea'
-import type { Hub } from './selection-arcs'
 import { indexImports } from './selection-links'
 import { createTerrain } from './terrain'
-import { boardToThree, nearPlane } from './units'
+import { boardToThree, nearPlane, type Vec3 } from './units'
+
+/** What a click opens: a bundle's hub, or a port. */
+type Mark = Extract<Pointed, { kind: 'hub' | 'port' }>
 
 CameraControls.install({
   THREE: {
@@ -85,6 +94,8 @@ const SAIL_PIXELS = 3
 const HUB_SLACK = 14
 /** and so does the pointer on its count, a pill at most this wide. */
 const HUB_LABEL_HALF_WIDTH = 40
+/** A port's badge is narrower: « +17 ». */
+const PORT_LABEL_HALF_WIDTH = 22
 /**
  * The arcs' dashes move only while a period at the camera's target spans this many device pixels
  * or more: shorter, they have filled in (`SOLID_BELOW` of the arcs).
@@ -249,14 +260,31 @@ export class CityEngine {
         return
       }
       move(event)
-      // A click on a bundle's hub opens it; on the sea, it clears the selection.
-      const hub = this.hubAtPointer()
-      if (hub) {
-        this.interaction?.openHub(hub)
+      const interaction = this.interaction
+      const mark = this.markAtPointer()
+      // A click on a port's badge opens it, or closes it if open; any other click closes the
+      // port open, and does nothing else.
+      if (mark?.kind === 'port') {
+        const open = interaction?.openedPort === mark.port
+        interaction?.closePort()
+        if (!open) {
+          interaction?.openPort(mark.port, { x: event.clientX, y: event.clientY })
+        }
         this.hoverAtPointer()
         return
       }
-      this.interaction?.select(this.pick())
+      if (interaction?.openedPort) {
+        interaction.closePort()
+        this.hoverAtPointer()
+        return
+      }
+      // A click on a bundle's hub opens it; on the sea, it clears the selection.
+      if (mark?.kind === 'hub') {
+        interaction?.openHub(mark.hub)
+        this.hoverAtPointer()
+        return
+      }
+      interaction?.select(this.pick())
     }
     canvas.addEventListener('pointermove', move)
     canvas.addEventListener('pointerleave', leave)
@@ -300,47 +328,79 @@ export class CityEngine {
   private hoverAtPointer(): void {
     const pointer = this.pointer
     if (pointer) {
-      const hub = this.hubAtPointer()
-      this.showPointerOn(hub)
-      const pointed = hub ? { kind: 'hub' as const, hub } : this.pick()
-      this.interaction?.point(pointed, { x: pointer.clientX, y: pointer.clientY })
+      const mark = this.markAtPointer()
+      this.showPointerOn(mark)
+      this.interaction?.point(mark ?? this.pick(), { x: pointer.clientX, y: pointer.clientY })
     }
   }
 
-  /** Over a hub, the pointer says it can be clicked. */
-  private showPointerOn(hub: Hub | null): void {
-    this.renderer.domElement.style.cursor = hub ? 'pointer' : ''
+  /** Over a hub or a port's badge, the pointer says it can be clicked. */
+  private showPointerOn(mark: Mark | null): void {
+    this.renderer.domElement.style.cursor = mark ? 'pointer' : ''
   }
 
-  /** The bundle's hub under the pointer, or its count, if any. */
-  private hubAtPointer(): Hub | null {
+  /**
+   * The bundle's hub or the port under the pointer, or under it its count, if any; a hub first,
+   * it floats over the city.
+   */
+  private markAtPointer(): Mark | null {
     const interaction = this.interaction
+    if (!interaction) {
+      return null
+    }
+    const hub = this.nearestAtPointer(
+      interaction.getHubs(),
+      (hub) => hub.position,
+      HUB_LABEL_HALF_WIDTH,
+    )
+    if (hub) {
+      return { kind: 'hub', hub }
+    }
+    const port = this.nearestAtPointer(interaction.getPorts(), portBadgeAt, PORT_LABEL_HALF_WIDTH)
+    return port ? { kind: 'port', port } : null
+  }
+
+  /** The item whose point, or the pill above it, is nearest the pointer, within reach. */
+  private nearestAtPointer<T>(
+    items: readonly T[],
+    position: (item: T) => Vec3,
+    labelHalfWidth: number,
+  ): T | null {
     const pointer = this.pointer
     const canvas = this.renderer.domElement
-    if (!interaction || !pointer || canvas.clientWidth === 0) {
+    if (!pointer || canvas.clientWidth === 0) {
       return null
     }
     const projected = this.projected
     let nearest = HUB_SLACK
-    let found: Hub | null = null
-    for (const hub of interaction.getHubs()) {
-      projected.set(...hub.position).project(this.camera)
+    let found: T | null = null
+    for (const item of items) {
+      projected.set(...position(item)).project(this.camera)
       if (projected.z > 1) {
         continue
       }
       const x = ((projected.x + 1) / 2) * canvas.clientWidth
       const y = ((1 - projected.y) / 2) * canvas.clientHeight
       const onLabel =
-        Math.abs(pointer.x - x) <= HUB_LABEL_HALF_WIDTH &&
+        Math.abs(pointer.x - x) <= labelHalfWidth &&
         y - pointer.y >= LABEL_LIFT &&
         y - pointer.y <= LABEL_LIFT + LABEL_HEIGHT
       const distance = onLabel ? 0 : Math.hypot(x - pointer.x, y - pointer.y)
       if (distance <= nearest) {
         nearest = distance
-        found = hub
+        found = item
       }
     }
     return found
+  }
+
+  /** One of the open port's links stands out, or none does. */
+  focusPortLink(index: number | null): void {
+    this.interaction?.focusPortLink(index)
+  }
+
+  closePort(): void {
+    this.interaction?.closePort()
   }
 
   /** Replaces the city on show and frames it. */
@@ -382,6 +442,7 @@ export class CityEngine {
         ferries: links.ferries,
         unshown: links.unshown,
         extra: new ExtraFerries(layout, shapes, links),
+        ports: links.ports,
       },
       fading,
       pixelRatio,
