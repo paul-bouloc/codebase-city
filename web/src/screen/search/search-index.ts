@@ -1,11 +1,5 @@
-import { languageOf, type ResultIndex } from '../screen/result-index'
-import type {
-  FileHit,
-  FolderHit,
-  SearchGroup,
-  SearchResults,
-  SymbolHit,
-} from '../ui/city/search-data'
+import { languageOf, type ResultIndex } from '../result-index'
+import type { FileHit, FolderHit, SearchGroup, SearchResults, SymbolHit } from './search-data'
 import { editDistance, fuzzyMatch, lowerCase, type Match } from './search-match'
 
 // The city's search: file, folder and symbol names, matched in the browser on the result the city

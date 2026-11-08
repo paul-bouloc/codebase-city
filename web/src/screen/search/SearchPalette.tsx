@@ -1,8 +1,8 @@
 import { useEffect } from 'react'
-import { Badge } from '../Badge'
-import { exactCount } from '../count-format'
-import { Icon } from '../Icon'
-import { Kbd } from '../Kbd'
+import { Badge } from '../../ui/Badge'
+import { exactCount } from '../../ui/count-format'
+import { Icon } from '../../ui/Icon'
+import { Kbd } from '../../ui/Kbd'
 import styles from './SearchPalette.module.css'
 import {
   type FileHit,
