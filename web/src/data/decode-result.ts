@@ -10,7 +10,8 @@ export const FORMAT_VERSION = 9
 /**
  * Turns a parsed JSON analysis result into a typed one, or throws an
  * InvalidResultError. Runs the same consistency checks as the Rust model
- * (crates/model/src/validate.rs), so the rest of the app can trust the indexes.
+ * (crates/model/src/validate.rs and validate/layout.rs), so the rest of the app can trust
+ * the indexes.
  */
 export function decodeResult(json: unknown): AnalysisResult {
   const fields = object(json, 'result')
