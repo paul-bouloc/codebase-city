@@ -1,5 +1,6 @@
 import CameraControls from 'camera-controls'
 import type { PerspectiveCamera } from 'three'
+import type { Drive } from './drive'
 import { WheelSorter } from './wheel-gesture'
 
 const { ACTION } = CameraControls
@@ -9,6 +10,10 @@ const { ACTION } = CameraControls
  * leans away from it), but no more than this many times the drag: near the horizon, it would fly.
  */
 const MAX_GROUND_STRETCH = 3
+/** Held down, a key moves the target this much of the camera's distance in a second, */
+const DRIVE_SPEED = 0.8
+/** and turns the view this many radians. */
+const TURN_SPEED = Math.PI / 2
 /** One notch of a wheel zooms as much as camera-controls does; a pinch, this much more. */
 const PINCH_SPEED = 2
 const IS_MAC = /Mac/.test(globalThis.navigator?.platform ?? '')
@@ -52,6 +57,23 @@ export class CityControls extends CameraControls {
     this.removeListeners = () => {
       canvas.removeEventListener('pointerdown', down, { capture: true })
       canvas.removeEventListener('wheel', wheel)
+    }
+  }
+
+  /** Moves the target along the ground and turns around it, as keys held for `seconds` would. */
+  drive({ right, forward, turn }: Drive, seconds: number): void {
+    if (right === 0 && forward === 0 && turn === 0) {
+      return
+    }
+    const step = DRIVE_SPEED * this.distance * seconds
+    if (right !== 0) {
+      void this.truck(right * step, 0, false)
+    }
+    if (forward !== 0) {
+      void this.forward(forward * step, false)
+    }
+    if (turn !== 0) {
+      void this.rotate(turn * TURN_SPEED * seconds, 0, false)
     }
   }
 
