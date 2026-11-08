@@ -192,6 +192,8 @@ export class CityEngine {
   private readonly bufferSize = new Vector2()
   private readonly projected = new Vector3()
   private readonly aimedAt = new Vector3()
+  // Where the camera is going, not where its move has brought it so far.
+  private readonly heading = new Spherical()
   // Where the pointer is on the canvas, in CSS pixels; null when it is elsewhere.
   private pointer: { x: number; y: number; clientX: number; clientY: number } | null = null
   private pressedAt: { x: number; y: number } | null = null
@@ -268,8 +270,9 @@ export class CityEngine {
 
   /** Comes closer (1) or pulls back (-1) by a button's step, around the same target. */
   zoom(direction: 1 | -1): void {
-    const distance = this.controls.distance * ZOOM_STEP ** -direction
-    void this.controls.dollyTo(distance, true)
+    // From where a zoom under way ends: quick presses add up to whole steps.
+    const { radius } = this.controls.getSpherical(this.heading, true)
+    void this.controls.dollyTo(radius * ZOOM_STEP ** -direction, true)
   }
 
   /** Frames the whole city again, at the same heading and tilt. */
@@ -281,19 +284,20 @@ export class CityEngine {
 
   /** Looks straight down, or back at the tilt it left. */
   toggleTopView(): void {
-    const { azimuthAngle, polarAngle } = this.controls
-    if (polarAngle <= TOP_VIEW_POLAR) {
-      void this.controls.rotateTo(azimuthAngle, this.tiltBeforeTop, true)
+    // Where a turn under way ends: a second press goes back, it does not keep the tilt halfway.
+    const { theta, phi } = this.controls.getSpherical(this.heading, true)
+    if (phi <= TOP_VIEW_POLAR) {
+      void this.controls.rotateTo(theta, this.tiltBeforeTop, true)
     } else {
-      this.tiltBeforeTop = polarAngle
-      void this.controls.rotateTo(azimuthAngle, 0, true)
+      this.tiltBeforeTop = phi
+      void this.controls.rotateTo(theta, 0, true)
     }
   }
 
   /** Turns to face north, the shorter way. */
   faceNorth(): void {
-    const { azimuthAngle, polarAngle } = this.controls
-    void this.controls.rotateTo(northOf(azimuthAngle), polarAngle, true)
+    const { theta, phi } = this.controls.getSpherical(this.heading, true)
+    void this.controls.rotateTo(northOf(theta), phi, true)
   }
 
   /** Frames the lots of these files, at the same heading and tilt. */
