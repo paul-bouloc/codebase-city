@@ -76,6 +76,17 @@ export class CityControls extends CameraControls {
     }
   }
 
+  /**
+   * Bounds the tilt from the vertical. camera-controls only applies its bound when the camera
+   * turns: below it, the camera eases up to it.
+   */
+  limitTilt(max: number): void {
+    this.maxPolarAngle = max
+    if (this._sphericalEnd.phi > max) {
+      void this.rotateTo(this._sphericalEnd.theta, max, true)
+    }
+  }
+
   override dispose(): void {
     this.removeListeners()
     super.dispose()
