@@ -1,12 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CityEngine } from '../city/engine/city-engine'
 import { cityCards } from '../city/interaction/city-cards'
-import type {
-  CameraView,
-  CityHover,
-  CityItem,
-  PortList,
-} from '../city/interaction/city-interaction'
+import type { CameraView, CityHover, PortList } from '../city/interaction/city-interaction'
 import { cityFromResult } from '../city/world/from-result'
 import type { AnalysisResult } from '../data/generated/AnalysisResult'
 import { ToastProvider } from '../ui/feedback/ToastProvider'
@@ -39,6 +34,7 @@ import { PortCard } from './tooltips/PortCard'
 import type { Rect } from './tooltips/tooltip-placement'
 import { useDriveKeys } from './use-drive-keys'
 import { useEscapeKey } from './use-escape-key'
+import { useScreenSelection } from './use-screen-selection'
 import { useSelectionHash } from './use-selection-hash'
 
 const TEXT = {
@@ -99,12 +95,8 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
   const [legend, setLegend] = useState<LegendContent | null>(null)
   const [legendExpanded, setLegendExpanded] = useState(false)
   const [aboutOpen, setAboutOpen] = useState(false)
-  const [selection, setSelection] = useState<ScreenSelection | null>(null)
-  const [sheetOpen, setSheetOpen] = useState(false)
-  // A symbol found by the search: its file's sheet opens its code at its line.
-  const [openLine, setOpenLine] = useState<{ path: string; line: number; request: number } | null>(
-    null,
-  )
+  const { selection, sheetOpen, setSheetOpen, openLine, choose, selectFromCity, openAtLine } =
+    useScreenSelection(engine, index)
 
   const handleEngine = useCallback(
     (next: CityEngine | null) => {
@@ -114,27 +106,14 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
     [onEngine],
   )
 
-  // Set while the screen moves the engine's selection: it does not hear its own move back.
-  const driving = useRef(false)
-
   useEffect(() => {
     engine?.setListeners({
       hover: setHover,
       port: setPort,
       view: setView,
-      // A click in the city selects and opens the sheet; a click on the sea clears both.
-      select: (item: CityItem | null) => {
-        if (driving.current) {
-          return
-        }
-        setSelection(
-          item ? { kind: item.target.kind === 'building' ? 'file' : 'dir', path: item.path } : null,
-        )
-        setSheetOpen(item !== null)
-        setOpenLine(null)
-      },
+      select: selectFromCity,
     })
-  }, [engine])
+  }, [engine, selectFromCity])
 
   // The legend lists the ways the engine drew links: known once the city is loaded, which the
   // view's own effect does first (a new result is a new index).
@@ -143,38 +122,6 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
       setLegend(legendContent(repoContents(index, engine.getLinkStats())))
     }
   }, [engine, index])
-
-  /**
-   * Selects a file or a folder from the interface: its sheet opens, the city follows. With `fly`,
-   * the camera flies to it too.
-   */
-  const choose = useCallback(
-    (next: ScreenSelection | null, { fly = false }: { fly?: boolean } = {}) => {
-      // A path the result does not hold selects nothing.
-      const known =
-        next &&
-        (next.kind === 'file' ? index.fileAt(next.path) : index.folderAt(next.path)) !== undefined
-          ? next
-          : null
-      setSelection(known)
-      setSheetOpen(known !== null)
-      setOpenLine(null)
-      if (!engine) {
-        return
-      }
-      driving.current = true
-      try {
-        // A folder that holds islands has no place of its own in the city.
-        const shown = known && (fly ? engine.flyTo(known.path) : engine.selectPath(known.path))
-        if (!shown) {
-          engine.clearSelection()
-        }
-      } finally {
-        driving.current = false
-      }
-    },
-    [engine, index],
-  )
 
   useSelectionHash(engine, selection, choose)
 
@@ -214,7 +161,7 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
 
   const portOpen = port !== null
   const closeAbout = useCallback(() => setAboutOpen(false), [])
-  const closeSheet = useCallback(() => setSheetOpen(false), [])
+  const closeSheet = useCallback(() => setSheetOpen(false), [setSheetOpen])
   const clearSelection = useCallback(() => choose(null), [choose])
   useEscapeKey(
     engine,
@@ -227,13 +174,11 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
   const cameraAction = useCameraActions(engine)
   useDriveKeys(engine)
 
-  const openLineRequest = useRef(0)
   // Flies to what was found and selects it.
   const search = useSearch(searchIndex, (hit) => {
     if (hit.kind === 'symbol') {
       choose({ kind: 'file', path: hit.file }, FLY)
-      openLineRequest.current++
-      setOpenLine({ path: hit.file, line: hit.line, request: openLineRequest.current })
+      openAtLine(hit.file, hit.line)
     } else {
       choose({ kind: hit.kind === 'file' ? 'file' : 'dir', path: hit.path }, FLY)
     }
