@@ -1,0 +1,55 @@
+/* An open port's card: its links, listed. Unlike the hover cards, it takes the pointer. */
+
+.card {
+  pointer-events: auto;
+  min-width: 300px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 28px;
+  padding: 0 var(--space-1-5);
+  border-radius: var(--radius-sm);
+  font: var(--body-s);
+  letter-spacing: var(--body-s-tracking);
+  font-variant-numeric: tabular-nums;
+}
+
+.row:hover {
+  background: var(--color-bg-sunken);
+}
+
+/* One stroke per way the link goes, as in the city. */
+.ways {
+  display: inline-flex;
+  flex: none;
+  flex-direction: column;
+  gap: 2px;
+  width: 14px;
+}
+
+.island {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font: var(--code-s);
+  letter-spacing: var(--code-s-tracking);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.imports {
+  flex: none;
+  color: var(--color-text-secondary);
+}
