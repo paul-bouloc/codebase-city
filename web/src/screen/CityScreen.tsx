@@ -19,7 +19,6 @@ import { CityView } from './CityView'
 import { CameraControls } from './camera/CameraControls'
 import { MapScale } from './camera/MapScale'
 import { useCameraActions } from './camera/use-camera-actions'
-import { escapeTarget } from './city-escape'
 import { githubTreeUrl } from './github-links'
 import { CityLegend } from './legend/CityLegend'
 import { repoContents } from './legend/legend'
@@ -39,6 +38,7 @@ import { CityHoverCard } from './tooltips/CityHoverCard'
 import { PortCard } from './tooltips/PortCard'
 import type { Rect } from './tooltips/tooltip-placement'
 import { useDriveKeys } from './use-drive-keys'
+import { useEscapeKey } from './use-escape-key'
 import { useSelectionHash } from './use-selection-hash'
 
 const TEXT = {
@@ -213,31 +213,16 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
   }, [engine, sheetShown])
 
   const portOpen = port !== null
-  // Esc that no panel took: the open panel first, then the selection.
-  useEffect(() => {
-    const handleKey = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape' || event.defaultPrevented) {
-        return
-      }
-      const target = escapeTarget({
-        panelOpen: portOpen || aboutOpen || sheetShown,
-        hasSelection: selection !== null,
-      })
-      if (target === 'panel') {
-        if (portOpen) {
-          engine?.closePort()
-        } else if (aboutOpen) {
-          setAboutOpen(false)
-        } else {
-          setSheetOpen(false)
-        }
-      } else if (target === 'selection') {
-        choose(null)
-      }
-    }
-    window.addEventListener('keydown', handleKey)
-    return () => window.removeEventListener('keydown', handleKey)
-  }, [engine, portOpen, aboutOpen, sheetShown, selection, choose])
+  const closeAbout = useCallback(() => setAboutOpen(false), [])
+  const closeSheet = useCallback(() => setSheetOpen(false), [])
+  const clearSelection = useCallback(() => choose(null), [choose])
+  useEscapeKey(
+    engine,
+    { portOpen, aboutOpen, sheetShown, hasSelection: selection !== null },
+    closeAbout,
+    closeSheet,
+    clearSelection,
+  )
 
   const cameraAction = useCameraActions(engine)
   useDriveKeys(engine)
