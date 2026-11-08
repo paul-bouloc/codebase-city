@@ -1,4 +1,4 @@
-import { type Ref, useRef } from 'react'
+import { type FocusEvent, type KeyboardEvent, type Ref, useRef } from 'react'
 import { Icon } from '../Icon'
 import { Kbd } from '../Kbd'
 import styles from './CitySearchField.module.css'
@@ -16,7 +16,12 @@ interface CitySearchFieldProps {
   // The results palette, once open (outside this component).
   expanded?: boolean
   listboxId?: string
+  /** The id of the option the arrows have reached, while the results are open. */
+  activeDescendant?: string
   inputRef?: Ref<HTMLInputElement>
+  onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void
+  onFocus?: (event: FocusEvent<HTMLInputElement>) => void
+  onBlur?: (event: FocusEvent<HTMLInputElement>) => void
   // Until the search index has arrived.
   disabled?: boolean
 }
@@ -27,7 +32,11 @@ export function CitySearchField({
   onChange,
   expanded = false,
   listboxId,
+  activeDescendant,
   inputRef,
+  onKeyDown,
+  onFocus,
+  onBlur,
   disabled = false,
 }: CitySearchFieldProps) {
   const ownRef = useRef<HTMLInputElement>(null)
@@ -51,6 +60,7 @@ export function CitySearchField({
         aria-label={TEXT.label}
         aria-expanded={expanded}
         aria-controls={expanded ? listboxId : undefined}
+        aria-activedescendant={expanded ? activeDescendant : undefined}
         aria-autocomplete="list"
         aria-keyshortcuts="/"
         className={styles.input}
@@ -60,6 +70,9 @@ export function CitySearchField({
         autoComplete="off"
         spellCheck={false}
         onChange={(event) => onChange(event.target.value)}
+        onKeyDown={onKeyDown}
+        onFocus={onFocus}
+        onBlur={onBlur}
       />
       {value ? (
         <button

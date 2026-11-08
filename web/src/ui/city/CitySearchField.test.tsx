@@ -4,7 +4,13 @@ import { CitySearchField } from './CitySearchField'
 
 const render = (value: string, expanded = false) =>
   renderToStaticMarkup(
-    <CitySearchField value={value} onChange={() => {}} expanded={expanded} listboxId="results" />,
+    <CitySearchField
+      value={value}
+      onChange={() => {}}
+      expanded={expanded}
+      listboxId="results"
+      activeDescendant="results-option-0"
+    />,
   )
 
 describe('CitySearchField', () => {
@@ -18,6 +24,11 @@ describe('CitySearchField', () => {
   it('points at the results only while they are open', () => {
     expect(render('term')).not.toContain('aria-controls')
     expect(render('term', true)).toContain('aria-controls="results"')
+  })
+
+  it('points at the active option only while the results are open', () => {
+    expect(render('term')).not.toContain('aria-activedescendant')
+    expect(render('term', true)).toContain('aria-activedescendant="results-option-0"')
   })
 
   it('shows the / key at rest and the clear button once typed into', () => {
