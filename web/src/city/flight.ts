@@ -118,7 +118,7 @@ export function revealShift(left: number, right: number, viewport: Viewport): nu
   return clear <= room ? clear : Math.max(0, centre - free / 2)
 }
 
-/** After a flight to a file, the camera goes round it once in this many seconds. */
+/** After a flight, the camera goes round what it framed once in this many seconds. */
 export const ORBIT_SECONDS = 60
 
 /**

@@ -178,8 +178,8 @@ export class CityEngine {
   private placed: readonly PlacedBuilding[] = []
   // Pixels a panel covers on the right of the canvas: the camera frames and reveals left of them.
   private inset = 0
-  // The building the camera goes round once its flight there ends, until the next gesture.
-  private orbit: { centre: Vec3; started: boolean } | null = null
+  // What the camera goes round, from the moment it flies there until the next gesture.
+  private orbit: { centre: Vec3 } | null = null
   // The last click that selected, for a second one to fly there.
   private lastClick: { time: number; x: number; y: number } | null = null
   // The tilt the top view left, to go back to.
@@ -356,7 +356,6 @@ export class CityEngine {
 
   /** Frames the lots of these files, at the same heading and tilt. */
   frameFiles(paths: readonly string[]): void {
-    this.stopOrbit()
     const points = paths.flatMap((path) => this.targets?.lotOf(path) ?? [])
     if (points.length === 0) {
       return
@@ -371,14 +370,9 @@ export class CityEngine {
 
   /** Flies to a file's building and its block, or to a folder whole, at the same heading and tilt. */
   private fly(target: CityTarget): void {
-    this.stopOrbit()
     const extent = this.layout && extentOf(target, this.layout, this.placed)
     if (extent) {
       this.frameSphere(extent.centre, flightRadius(extent))
-      // Once there, the camera goes round a building, slowly; never with less motion asked for.
-      if (!extent.folder && !this.lessMotion.matches) {
-        this.orbit = { centre: extent.centre, started: false }
-      }
     }
   }
 
@@ -386,31 +380,42 @@ export class CityEngine {
     this.orbit = null
   }
 
-  /** Turns the camera and what it looks at about the building it goes round, for `seconds`. */
+  /**
+   * Turns where the camera is going about what it goes round, for `seconds`: the camera follows
+   * with its usual smoothing, so the turn starts with the flight and blends into it.
+   */
   private goRound(seconds: number): void {
     const orbit = this.orbit
-    if (!orbit?.started) {
+    if (!orbit) {
       return
     }
     const angle = ((2 * Math.PI) / ORBIT_SECONDS) * seconds
     const target = this.controls.getTarget(this.aimedAt, true)
     const [x, z] = turnAbout([target.x, target.z], [orbit.centre[0], orbit.centre[2]], angle)
-    void this.controls.moveTo(x, target.y, z, false)
-    void this.controls.rotate(angle, 0, false)
+    void this.controls.moveTo(x, target.y, z, true)
+    void this.controls.rotate(angle, 0, true)
   }
 
-  /** Frames a sphere on the ground in the part of the canvas no panel covers. */
-  private frameSphere([x, , z]: Vec3, radius: number): void {
+  /**
+   * Frames a sphere on the ground in the part of the canvas no panel covers, then goes round it,
+   * slowly, until the next gesture; never with less motion asked for.
+   */
+  private frameSphere(centre: Vec3, radius: number): void {
+    this.stopOrbit()
     const canvas = this.renderer.domElement
     if (canvas.clientWidth === 0 || canvas.clientHeight === 0) {
       return
     }
+    const [x, , z] = centre
     const { distance, shift } = frameInView(radius, this.viewport())
     // The camera looks `shift` u to the right of the centre, at the heading it turns to.
     const { theta } = this.controls.getSpherical(this.heading, true)
     const smooth = !this.lessMotion.matches
     void this.controls.moveTo(x + Math.cos(theta) * shift, 0, z - Math.sin(theta) * shift, smooth)
     void this.controls.dollyTo(distance, smooth)
+    if (smooth) {
+      this.orbit = { centre }
+    }
     this.needsRender = true
   }
 
@@ -961,10 +966,6 @@ export class CityEngine {
     }
     this.controls.limitTilt(tilt)
     const moved = this.controls.update(delta)
-    // The flight has ended: the camera starts going round.
-    if (this.orbit && !moved) {
-      this.orbit.started = true
-    }
     if (moved !== this.cameraMoving) {
       this.cameraMoving = moved
       // No card while the camera moves; once it rests, what lies under the pointer may differ.
