@@ -25,6 +25,7 @@ import {
 } from './city-ui-samples'
 import { SheetsBoard } from './SheetsBoard'
 import { StageSheet } from './StageSheet'
+import { StageTooltip } from './StageTooltip'
 import { ABOUT } from './sheet-samples'
 import { HOVER_LABELS, type Hover, SELECTION_LABELS, type Selection } from './stage-states'
 
@@ -296,27 +297,6 @@ export function CityUiPage() {
       <SheetsBoard />
     </>
   )
-}
-
-function StageTooltip({
-  hover,
-  pointer,
-  obstacles,
-}: {
-  hover: Exclude<Hover, 'off'>
-  pointer: Point
-  obstacles: Rect[]
-}) {
-  switch (hover) {
-    case 'file':
-      return <FileTooltip {...FILE} pointer={pointer} obstacles={obstacles} />
-    case 'long':
-      return <FileTooltip {...LONG_FILE} pointer={pointer} obstacles={obstacles} />
-    case 'parcel':
-      return <AreaTooltip {...PARCEL} pointer={pointer} obstacles={obstacles} />
-    case 'island':
-      return <AreaTooltip {...ISLAND} pointer={pointer} obstacles={obstacles} />
-  }
 }
 
 function Toggle({
