@@ -82,6 +82,7 @@ describe('FolderSheet', () => {
     const html = render({ ...FOLDER, kind: 'island' })
     expect(html).toContain('>Island<')
     expect(html).not.toContain('layer')
+    expect(render({ ...FOLDER, kind: 'folder' })).toContain('>Folder<')
   })
 
   it('opens GitHub in a new tab and drops a README link that is not on github.com', () => {

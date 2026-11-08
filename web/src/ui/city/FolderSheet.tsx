@@ -28,6 +28,8 @@ const TEXT = {
   island: (layer: number, of: number) => `Island · layer ${layer} of ${of}`,
   // An island without production code stands on no layer.
   plainIsland: 'Island',
+  // A folder that holds islands, without being one.
+  plainFolder: 'Folder',
   parcel: (island: string) => `Folder · on ${island}`,
   tests: 'Tests · park',
   files: 'Files',
@@ -206,6 +208,9 @@ export function FolderSheet({
 function subtitle(kind: FolderSheetData['kind']): string {
   if (kind === 'island') {
     return TEXT.plainIsland
+  }
+  if (kind === 'folder') {
+    return TEXT.plainFolder
   }
   if (kind === 'tests') {
     return TEXT.tests
