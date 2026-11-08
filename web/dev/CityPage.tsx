@@ -42,8 +42,14 @@ const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve))
  * one island: `?gallery`, or every combination of the low buildings' pieces: `?variants`. A result written by `just ingest owner/repo --out result.json` can be
  * loaded in its place, or dropped in `web/dev/results/` to get a button: `?result=name` opens it.
  * `?look=x,y,distance[,azimuth,polar]` points the camera at a board point, for close captures.
+ * `?stats=off` hides the frame stats, and with them the drawing of every frame: the city then draws
+ * only when something changes, as in the product.
  */
 export function CityPage() {
+  const showStats = useMemo(
+    () => new URLSearchParams(window.location.search).get('stats') !== 'off',
+    [],
+  )
   const synthetic = useMemo(() => {
     const query = new URLSearchParams(window.location.search)
     if (query.has('variants')) {
@@ -152,7 +158,7 @@ export function CityPage() {
 
   return (
     <main className={styles.page}>
-      <CityView key={mount} layout={layout} showStats onEngine={setEngine} />
+      <CityView key={mount} layout={layout} showStats={showStats} onEngine={setEngine} />
       <div className={styles.tools}>
         {Object.keys(RESULTS)
           .sort()
