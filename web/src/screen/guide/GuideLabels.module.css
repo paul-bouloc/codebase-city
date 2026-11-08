@@ -1,0 +1,6 @@
+/* Over the roof, its foot just above the pin's head; the city draws beneath, the panels over it. */
+.label {
+  position: fixed;
+  transform: translate(-50%, calc(-100% - var(--space-1)));
+  pointer-events: none;
+}

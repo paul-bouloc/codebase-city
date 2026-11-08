@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CityEngine } from '../city/engine/city-engine'
 import { cityCards } from '../city/interaction/city-cards'
-import type { CameraView, CityHover } from '../city/interaction/city-items'
+import type { GuidePaths } from '../city/interaction/city-guide'
+import type { CameraView, CityHover, GuideLabel } from '../city/interaction/city-items'
 import type { PortList } from '../city/interaction/open-port'
 import { cityFromResult } from '../city/world/from-result'
 import type { AnalysisResult } from '../data/generated/AnalysisResult'
@@ -16,6 +17,7 @@ import { CameraControls } from './camera/CameraControls'
 import { MapScale } from './camera/MapScale'
 import { useCameraActions } from './camera/use-camera-actions'
 import { githubTreeUrl } from './github-links'
+import { GuideLabels } from './guide/GuideLabels'
 import { useDriveKeys } from './keys/use-drive-keys'
 import { useEscapeKey } from './keys/use-escape-key'
 import { CityLegend } from './legend/CityLegend'
@@ -51,8 +53,16 @@ const FLY = { fly: true }
 
 type Sheet = { file: FileSheetData } | { folder: FolderSheetData }
 
+/** A step of the guide's tour on show: what it puts forward, and its labels' notes by path. */
+export interface ScreenGuide {
+  paths: GuidePaths
+  notes: ReadonlyMap<string, string>
+}
+
 interface CityScreenProps {
   result: AnalysisResult
+  /** The step of the guide's tour the city shows, if any. */
+  guide?: ScreenGuide | null
   /** Where the logo leads. */
   homeHref?: string
   /** Draw every frame and show the frame rate (development). */
@@ -70,7 +80,13 @@ export function CityScreen(props: CityScreenProps) {
   )
 }
 
-function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScreenProps) {
+function Screen({
+  result,
+  guide = null,
+  homeHref = '/',
+  showStats = false,
+  onEngine,
+}: CityScreenProps) {
   const index = useMemo(() => indexResult(result), [result])
   const layout = useMemo(() => cityFromResult(result), [result])
   const cards = useMemo(() => cityCards(result), [result])
@@ -95,6 +111,7 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
   const [legend, setLegend] = useState<LegendContent | null>(null)
   const [legendExpanded, setLegendExpanded] = useState(false)
   const [aboutOpen, setAboutOpen] = useState(false)
+  const [guideLabels, setGuideLabels] = useState<readonly GuideLabel[]>([])
   const { selection, sheetOpen, setSheetOpen, openLine, choose, selectFromCity, openAtLine } =
     useScreenSelection(engine, index)
 
@@ -112,8 +129,13 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
       port: setPort,
       view: setView,
       select: selectFromCity,
+      guideLabels: setGuideLabels,
     })
   }, [engine, selectFromCity])
+
+  useEffect(() => {
+    engine?.showGuide(guide?.paths ?? null)
+  }, [engine, guide])
 
   // The legend lists the ways the engine drew links: known once the city is loaded, which the
   // view's own effect does first (a new result is a new index).
@@ -207,6 +229,7 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
   return (
     <main ref={screen} className={styles.screen}>
       <CityView layout={layout} showStats={showStats} onEngine={handleEngine} />
+      {guide && <GuideLabels labels={guideLabels} notes={guide.notes} />}
 
       <div className={styles.topBar}>
         <CityTopBar
