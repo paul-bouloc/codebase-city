@@ -3,16 +3,3 @@
   flex-direction: column;
   gap: var(--space-3);
 }
-
-/* Flush with the sheet's edges, as the board draws them. */
-.tabs {
-  margin: 0 calc(-1 * var(--space-4));
-}
-
-.tabs [role="tablist"] {
-  padding: 0 var(--space-1-5);
-}
-
-.tabs [role="tabpanel"] {
-  padding: var(--space-3) var(--space-4) 0;
-}
