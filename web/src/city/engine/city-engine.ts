@@ -1,34 +1,23 @@
-import { Color, Group, PCFShadowMap, Scene, Timer, Vector3, WebGLRenderer } from 'three'
-import { createBuildings } from '../buildings/buildings'
+import { Color, type Group, PCFShadowMap, Scene, Timer, Vector3, WebGLRenderer } from 'three'
 import type { PlacedBuilding } from '../buildings/placed-buildings'
-import { cityDecor } from '../decor/decor'
-import { BOAT_LENGTH, createDecor, type DecorStats, decorStats } from '../decor/decor-mesh'
-import { Fleet } from '../decor/fleet'
-import { indexCycles } from '../flows/cycles'
-import { ExtraFerries } from '../flows/extra-ferries'
-import { indexImports } from '../flows/selection-links'
-import {
-  type CameraView,
+import { BOAT_LENGTH, type DecorStats } from '../decor/decor-mesh'
+import type { Fleet } from '../decor/fleet'
+import type {
+  CameraView,
   CityInteraction,
-  type CityItem,
-  type CityListeners,
+  CityItem,
+  CityListeners,
 } from '../interaction/city-interaction'
-import { CityPicker, type CityTarget } from '../interaction/picking'
-import { type CityTargets, cityTargets } from '../interaction/targets'
+import type { CityPicker, CityTarget } from '../interaction/picking'
+import type { CityTargets } from '../interaction/targets'
 import { DASH_PERIOD } from '../render/arc-mesh'
-import { createFading } from '../render/dimming'
 import { disposeObject } from '../render/dispose-object'
-import { islandShapes } from '../terrain/island-shape'
-import { createParcels } from '../terrain/plateaux'
-import { createSea, OPEN_SEA, seaSize } from '../terrain/sea'
-import { createTerrain } from '../terrain/terrain'
-import { createBridges } from '../waterways/bridges'
-import { createFerries } from '../waterways/ferries'
-import { cityLinks } from '../waterways/links'
+import { OPEN_SEA, seaSize } from '../terrain/sea'
 import type { CityLayout } from '../world/layout'
 import { boardToThree } from '../world/units'
 import { CameraRig } from './camera-rig'
 import { CityPointer } from './city-pointer'
+import { buildCity } from './city-scene'
 import { CitySun, SHADOW_MARGIN } from './city-sun'
 import { type Drive, STILL } from './drive'
 import { extentOf, FRAME_MARGIN, flightRadius } from './flight'
@@ -260,76 +249,27 @@ export class CityEngine {
       disposeObject(this.city)
     }
     this.dropInteraction()
-    const shapes = islandShapes(layout)
-    const links = cityLinks(layout, shapes)
-    const decor = cityDecor(layout, shapes, links)
-    this.decor = decorStats(decor, links.boats)
-    this.links = {
-      bridges: links.bridges.length,
-      ferries: links.ferries.length,
-      inPorts: links.inPorts,
-      hidden: links.hidden,
-    }
-    const pixelRatio = this.renderer.getPixelRatio()
-    const fading = createFading()
-    const buildings = createBuildings(layout, pixelRatio, fading)
-    const fleet = new Fleet(
-      links.boats.filter((boat) => boat.line),
-      links.ferries,
-      fading,
-    )
-    this.fleet = fleet
-    this.animatedAt = Number.NEGATIVE_INFINITY
-    this.picker = new CityPicker(shapes, buildings.placed)
-    this.targets = cityTargets(layout)
-    this.layout = layout
-    this.placed = buildings.placed
-    const files = layout.islands.reduce((sum, island) => sum + island.lots.length, 0)
-    const area = layout.islands.reduce(
-      (sum, { plateau }) => sum + plateau.width * plateau.height,
-      0,
-    )
-    this.density = area > 0 ? files / area : 0
-    this.view = null
-    const interaction = new CityInteraction(
+    const city = buildCity(
       layout,
-      shapes,
-      buildings,
-      {
-        imports: indexImports(layout),
-        cycles: indexCycles(layout),
-        bridges: links.bridges,
-        ferries: links.ferries,
-        unshown: links.unshown,
-        extra: new ExtraFerries(layout, shapes, links),
-        ports: links.ports,
-      },
-      fading,
-      pixelRatio,
+      this.renderer.getPixelRatio(),
       () => this.listeners,
       () => {
         this.needsRender = true
       },
     )
-    this.interaction = interaction
-    this.scene.add(interaction.overlay)
-    this.city = new Group().add(
-      createSea(
-        layout,
-        shapes.map((shape) => shape.reach),
-      ),
-      createTerrain(shapes),
-      createParcels(layout, decor.gardens),
-      createBridges(links),
-      createFerries(links.ferries, pixelRatio),
-      buildings.group,
-      createDecor(
-        decor,
-        links.boats.filter((boat) => !boat.line),
-        fading,
-      ),
-      fleet.mesh,
-    )
+    this.decor = city.decor
+    this.links = city.links
+    this.fleet = city.fleet
+    this.animatedAt = Number.NEGATIVE_INFINITY
+    this.picker = city.picker
+    this.targets = city.targets
+    this.layout = layout
+    this.placed = city.placed
+    this.density = city.density
+    this.view = null
+    this.interaction = city.interaction
+    this.scene.add(city.interaction.overlay)
+    this.city = city.group
     this.scene.add(this.city)
 
     const { bounds } = layout
@@ -339,8 +279,7 @@ export class CityEngine {
     this.sun.fit(centre, radius + SHADOW_MARGIN)
 
     // The target stays between the sea and the highest plateau.
-    const top = shapes.reduce((high, { altitudes }) => Math.max(high, altitudes[0] ?? 0), 0)
-    this.rig.frameCity(centre, radius, bounds, top, seaSize(layout))
+    this.rig.frameCity(centre, radius, bounds, city.top, seaSize(layout))
     this.renderer.shadowMap.needsUpdate = true
     this.needsRender = true
   }
