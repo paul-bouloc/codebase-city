@@ -45,6 +45,12 @@ export interface SelectionLinks {
 export interface ImportIndex {
   outgoing: Linked[][]
   incoming: Linked[][]
+  /** The buildings of each imported folder's grid, by `gridKey`. */
+  gridFiles: ReadonlyMap<string, readonly number[]>
+}
+
+export function gridKey(island: number, grid: number): string {
+  return `${island}/${grid}`
 }
 
 /** The index of each island's first building. */
@@ -69,7 +75,7 @@ export function indexImports(layout: CityLayout): ImportIndex {
   const incoming = Array.from({ length: count }, (): Linked[] => [])
   const gridFiles = new Map<string, number[]>()
   const filesOfGrid = (island: number, grid: number): number[] => {
-    const key = `${island}/${grid}`
+    const key = gridKey(island, grid)
     let files = gridFiles.get(key)
     if (!files) {
       const rect = layout.islands[island]?.grids?.[grid]?.rect
@@ -109,7 +115,7 @@ export function indexImports(layout: CityLayout): ImportIndex {
       }
     }
   }
-  return { outgoing, incoming }
+  return { outgoing, incoming, gridFiles }
 }
 
 /**
@@ -193,13 +199,20 @@ export function markedBuildings(links: SelectionLinks): Map<number, Direction> {
   return marked
 }
 
-/** Every building linked to the selection, with an arc of its own or in a bundle. */
-export function linkedBuildings(links: SelectionLinks): Set<number> {
+/**
+ * Every building linked to the selection, with an arc of its own or in a bundle; for an imported
+ * folder, each of its files.
+ */
+export function linkedBuildings(links: SelectionLinks, index: ImportIndex): Set<number> {
   const linked = new Set<number>()
   for (const side of [links.outgoing, links.incoming]) {
-    for (const link of [...side.single, ...side.bundles.flatMap((bundle) => bundle.ends)]) {
-      if ('building' in link.end) {
-        linked.add(link.end.building)
+    for (const { end } of [...side.single, ...side.bundles.flatMap((bundle) => bundle.ends)]) {
+      if ('building' in end) {
+        linked.add(end.building)
+      } else {
+        for (const building of index.gridFiles.get(gridKey(end.island, end.grid)) ?? []) {
+          linked.add(building)
+        }
       }
     }
   }

@@ -64,6 +64,9 @@ describe('indexImports', () => {
     expect(index.incoming[1]).toHaveLength(1)
     expect(index.incoming[2]).toHaveLength(1)
     expect(index.incoming[3]).toEqual([])
+    // The files of an imported folder are linked to the file that imports it
+    const links = selectionLinks(index, 0, () => 0)
+    expect([...linkedBuildings(links, index)].sort()).toEqual([1, 2])
   })
 })
 
@@ -145,6 +148,6 @@ describe('selectionLinks', () => {
       [1, 'outgoing'],
       [2, 'incoming'],
     ])
-    expect([...linkedBuildings(links)].sort()).toEqual([1, 2])
+    expect([...linkedBuildings(links, indexImports(layout))].sort()).toEqual([1, 2])
   })
 })

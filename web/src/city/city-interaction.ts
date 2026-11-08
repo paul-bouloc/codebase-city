@@ -349,7 +349,7 @@ export class CityInteraction {
     const { placed } = this.buildings
     const area = this.fading.keptArea.value
     if (target.kind === 'building') {
-      const linked = this.links ? linkedBuildings(this.links) : new Set<number>()
+      const linked = this.links ? linkedBuildings(this.links, this.imports) : new Set<number>()
       this.buildings.setKept((index) => index === target.index || linked.has(index))
       area.set(1, 1, 0, 0)
       return
