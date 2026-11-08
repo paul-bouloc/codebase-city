@@ -1,7 +1,6 @@
 import CameraControls from 'camera-controls'
 import type { PerspectiveCamera } from 'three'
 import type { Drive } from './drive'
-import { WheelSorter } from './wheel-gesture'
 
 const { ACTION } = CameraControls
 
@@ -14,17 +13,17 @@ const MAX_GROUND_STRETCH = 3
 const DRIVE_SPEED = 0.8
 /** and turns the view this many radians. */
 const TURN_SPEED = Math.PI / 2
-/** One notch of a wheel zooms as much as camera-controls does; a pinch, this much more. */
+/** A wheel's notch zooms as much as camera-controls does; a trackpad's pinch, this much more. */
 const PINCH_SPEED = 2
 const IS_MAC = /Mac/.test(globalThis.navigator?.platform ?? '')
 
 /**
- * The city's camera moves like a map: the left button or two fingers on a trackpad drag the
- * ground, the right button (or the left one with Alt or Ctrl) turns and tilts, the wheel or a
- * pinch zooms to the pointer.
+ * The city's camera moves like a map: the left button drags the ground, the right button (or the
+ * left one with Alt or Ctrl) turns and tilts, the wheel, two fingers or a pinch zoom to the
+ * pointer. Two fingers on a trackpad send the same events as some mouse wheels: they cannot pan
+ * without a wheel panning too.
  */
 export class CityControls extends CameraControls {
-  private readonly sorter = new WheelSorter()
   private readonly removeListeners: () => void
 
   constructor(camera: PerspectiveCamera, canvas: HTMLElement) {
@@ -32,7 +31,7 @@ export class CityControls extends CameraControls {
     this.mouseButtons.left = ACTION.SCREEN_PAN
     this.mouseButtons.right = ACTION.ROTATE
     this.mouseButtons.middle = ACTION.DOLLY
-    // The wheel is read here: camera-controls takes every wheel event for the same gesture.
+    // The wheel is read here: camera-controls zooms a pinch with the field of view.
     this.mouseButtons.wheel = ACTION.NONE
     this.touches.one = ACTION.TOUCH_SCREEN_PAN
     this.touches.two = ACTION.TOUCH_DOLLY_ROTATE
@@ -87,22 +86,17 @@ export class CityControls extends CameraControls {
       return
     }
     event.preventDefault()
-    const gesture = this.sorter.sort(event, event.timeStamp)
     this._getClientRect(this._elementRect)
-    if (gesture === 'scroll') {
-      this._truckInternal(event.deltaX, event.deltaY, false, true)
-      this._isUserControllingTruck = true
-    } else {
-      // As camera-controls reads a wheel's notches, and a pinch's steps.
-      const lines = event.deltaMode === 1 && gesture === 'wheel'
-      const factor = IS_MAC ? -1 : -3
-      const delta = lines ? event.deltaY / factor : event.deltaY / (factor * 10)
-      const rect = this._elementRect
-      const x = ((event.clientX - rect.x) / rect.width) * 2 - 1
-      const y = ((event.clientY - rect.y) / rect.height) * -2 + 1
-      this._dollyInternal(-delta * (gesture === 'pinch' ? PINCH_SPEED : 1), x, y)
-      this._isUserControllingDolly = true
-    }
+    // As camera-controls reads a wheel's notches; a pinch comes as a wheel with `ctrlKey`.
+    const pinch = event.ctrlKey
+    const factor = IS_MAC ? -1 : -3
+    const delta =
+      event.deltaMode === 1 && !pinch ? event.deltaY / factor : event.deltaY / (factor * 10)
+    const rect = this._elementRect
+    const x = ((event.clientX - rect.x) / rect.width) * 2 - 1
+    const y = ((event.clientY - rect.y) / rect.height) * -2 + 1
+    this._dollyInternal(-delta * (pinch ? PINCH_SPEED : 1), x, y)
+    this._isUserControllingDolly = true
     this.dispatchEvent({ type: 'control' })
   }
 }
