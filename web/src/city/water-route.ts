@@ -259,7 +259,7 @@ const NEIGHBOURS = [
 /**
  * A ferry's way from the tip of one pier to the tip of another, leaving each straight out along
  * its normal: a smooth curve on the water, null if none. Once found, it weighs on the ferries
- * routed after it.
+ * routed after it, unless `weigh` is false (a line shown for a while only).
  */
 export function ferryRoute(
   grid: WaterGrid,
@@ -267,6 +267,7 @@ export function ferryRoute(
   fromNormal: Point,
   to: Point,
   toNormal: Point,
+  weigh = true,
 ): Point[] | null {
   const out = departure(grid, from, fromNormal)
   const back = departure(grid, to, toNormal)
@@ -284,7 +285,9 @@ export function ferryRoute(
   const line = curve.every((point) => !onLand(grid, point))
     ? curve
     : smoothed(grid, [from, ...turns, to])
-  addTraffic(grid, line)
+  if (weigh) {
+    addTraffic(grid, line)
+  }
   return line
 }
 
