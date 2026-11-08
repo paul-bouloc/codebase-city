@@ -56,10 +56,12 @@ export interface PortRow {
 
 /** The links of a port, the largest first, which way each goes from its island. */
 export function portRows(port: Port, links: readonly IslandLink[]): PortRow[] {
+  const ways = new Set(
+    links.filter((link) => link.imports > 0).map((link) => `${link.from}>${link.to}`),
+  )
+  const goes = (from: number, to: number) => ways.has(`${from}>${to}`)
   return port.pairs.map((pair) => {
     const island = pair.a === port.island ? pair.b : pair.a
-    const goes = (from: number, to: number) =>
-      links.some((link) => link.from === from && link.to === to && link.imports > 0)
     return {
       island,
       imports: pair.imports,
