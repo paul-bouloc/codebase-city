@@ -8,6 +8,7 @@ import {
   flightRadius,
   frameInView,
   freeWidth,
+  orbitTilt,
   revealShift,
   turnAbout,
   type Viewport,
@@ -134,5 +135,28 @@ describe('turnAbout', () => {
     const [x, z] = turnAbout([13, 4], [10, 0], Math.PI)
     expect(x).toBeCloseTo(7)
     expect(z).toBeCloseTo(-4)
+  })
+})
+
+describe('orbitTilt', () => {
+  const polar = (55 * Math.PI) / 180
+  const degrees = (radians: number) => (radians * 180) / Math.PI
+
+  it('sets off from the tilt the camera flew in at', () => {
+    expect(orbitTilt(polar, 0)).toBe(polar)
+  })
+
+  it('rises 14° at most, halfway through a swell, and comes back down', () => {
+    expect(degrees(orbitTilt(polar, 15))).toBeCloseTo(41)
+    expect(orbitTilt(polar, 30)).toBeCloseTo(polar)
+    for (let second = 0; second < 60; second += 0.5) {
+      expect(orbitTilt(polar, second)).toBeLessThanOrEqual(polar)
+    }
+  })
+
+  it('stays off the vertical when the camera already looks almost straight down', () => {
+    const steep = (10 * Math.PI) / 180
+    expect(degrees(orbitTilt(steep, 15))).toBeCloseTo(5)
+    expect(orbitTilt(0, 15)).toBe(0)
   })
 })

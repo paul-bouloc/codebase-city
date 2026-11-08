@@ -136,3 +136,20 @@ export function turnAbout(
   const sin = Math.sin(angle)
   return [cx + dx * cos + dz * sin, cz - dx * sin + dz * cos]
 }
+
+/** Going round, the camera rises this many radians at most above the tilt it flew in at, */
+const ORBIT_RISE = (14 * Math.PI) / 180
+/** and comes back down, twice a turn. */
+const ORBIT_SWELL_SECONDS = ORBIT_SECONDS / 2
+/** Never closer to straight down than this, in radians from the vertical. */
+const ORBIT_MIN_POLAR = (5 * Math.PI) / 180
+
+/**
+ * The tilt from the vertical `seconds` into a turn begun at `polar`: it rises towards the top
+ * view and comes back down, setting off and turning back smoothly; never lower than it began,
+ * so never past the tilt's bounds.
+ */
+export function orbitTilt(polar: number, seconds: number): number {
+  const swell = (1 - Math.cos((2 * Math.PI * seconds) / ORBIT_SWELL_SECONDS)) / 2
+  return Math.max(Math.min(polar, ORBIT_MIN_POLAR), polar - ORBIT_RISE * swell)
+}
