@@ -17,7 +17,12 @@ import { slabTop } from './units'
 const TENTHS = 10
 
 /** The languages the analyzer reads; it reports the others' lines only. */
-const ANALYZED = new Set(['TypeScript', 'JavaScript', 'Python', 'Go'])
+export const ANALYZED_LANGUAGES: ReadonlySet<string> = new Set([
+  'TypeScript',
+  'JavaScript',
+  'Python',
+  'Go',
+])
 
 /** Languages the analyzer does not read, by the shade of concrete they take; docs otherwise. */
 const FAMILIES: Record<string, ConcreteFamily> = {
@@ -210,8 +215,8 @@ export function cityFromResult(result: AnalysisResult): CityLayout {
         lines: files.lines[file] ?? 0,
         complexity: files.complexity[file] ?? 0,
         test: scope === 'test' || scope === 'fixture',
-        analyzed: ANALYZED.has(language),
-        ...(ANALYZED.has(language) ? {} : { family: FAMILIES[language] ?? 'docs' }),
+        analyzed: ANALYZED_LANGUAGES.has(language),
+        ...(ANALYZED_LANGUAGES.has(language) ? {} : { family: FAMILIES[language] ?? 'docs' }),
         generated: files.generated[file] ?? false,
       },
     }
