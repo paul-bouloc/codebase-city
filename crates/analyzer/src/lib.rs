@@ -4,7 +4,6 @@
 
 mod analyze;
 mod cycles;
-mod entries;
 pub mod files;
 pub mod graph;
 mod islands;
