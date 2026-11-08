@@ -14,10 +14,11 @@ default:
 # Everything CI runs: format, lint, types, tests and build, Rust and web
 check: check-rust check-web
 
-# Rust: format, lint and tests (starts the local Postgres for the integration tests)
+# Rust: format, lint, doc links and tests (starts the local Postgres for the integration tests)
 check-rust: db-up
     cargo fmt --all --check
     cargo clippy --workspace --all-targets --locked -- -D warnings
+    RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --document-private-items --locked
     cargo test --workspace --locked
 
 # Web: format and lint, types, tests and build
