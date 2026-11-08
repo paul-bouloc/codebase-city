@@ -11,9 +11,14 @@ import {
 } from 'three'
 import { buildingGeometry, type Shape, shapeKey, type Vertex } from './archetype-geometry'
 import { ARCHETYPES } from './archetypes'
-import { createFading, dimmingFragmentPars, type Fading } from './dimming'
 import { type PlacedBuilding, placeBuildings } from './placed-buildings'
-import { shadingFragmentPars, shadingUniforms, shadingVertex, shadingVertexPars } from './shading'
+import { createFading, dimmingFragmentPars, type Fading } from './render/dimming'
+import {
+  shadingFragmentPars,
+  shadingUniforms,
+  shadingVertex,
+  shadingVertexPars,
+} from './render/shading'
 import type { BuildingLanguage, CityLayout, ConcreteFamily, FileMetrics } from './world/layout'
 import { srgb, type Vec3 } from './world/units'
 

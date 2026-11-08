@@ -1,5 +1,4 @@
 import { Group } from 'three'
-import { ArcLayer } from './arc-mesh'
 import { type Area, AreaMark, HOVERED_AREA, SELECTED_AREA } from './area-marks'
 import {
   BuildingMark,
@@ -14,8 +13,6 @@ import {
 import { type CityBuildings, Highlight } from './buildings'
 import { CycleWayMarks, cycleWays, loopIslandPairs } from './cycle-ways'
 import { type CycleIndex, loopThrough } from './cycles'
-import type { Fading } from './dimming'
-import { easeStandard } from './easing'
 import { type ExtraFerries, islandExtras } from './extra-ferries'
 import { FolderLinkMarks, folderWays } from './folder-link-marks'
 import { folderFlows } from './folder-links'
@@ -24,6 +21,9 @@ import type { IslandShape } from './island-shape'
 import type { Bridge, Ferry, Pair, Port } from './links'
 import type { CityTarget } from './picking'
 import { PORT_ROWS, portLabels, portRows } from './port-links'
+import { ArcLayer } from './render/arc-mesh'
+import type { Fading } from './render/dimming'
+import { easeStandard } from './render/easing'
 import { type CycleOnShow, type Hub, selectionArcs } from './selection-arcs'
 import {
   type Direction,

@@ -1,6 +1,6 @@
-import type { ArcDot, ArcDrawing, ArcLabel, ArcLine } from './arc-mesh'
-import { ARC_SEGMENTS, arcPoints } from './arc-path'
-import { INCOMING_LINK, OUTGOING_LINK, UPWARD } from './palette'
+import type { ArcDot, ArcDrawing, ArcLabel, ArcLine } from './render/arc-mesh'
+import { ARC_SEGMENTS, arcPoints } from './render/arc-path'
+import { INCOMING_LINK, OUTGOING_LINK, UPWARD } from './render/palette'
 import type { Bundle, Direction, LinkEnd, Linked, SelectionLinks } from './selection-links'
 import { srgb, type Vec3 } from './world/units'
 

@@ -1,4 +1,4 @@
-import { mixSrgb } from './world/units'
+import { mixSrgb } from '../world/units'
 
 // Colours of the places between the buildings, from the art direction. The legend draws its
 // samples with them, so a sample is exactly what the city shows.

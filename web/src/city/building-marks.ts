@@ -19,8 +19,8 @@ import {
 } from 'three'
 import { buildingGeometry, type Vertex } from './archetype-geometry'
 import type { Building } from './archetypes'
-import { INCOMING_LINK, OUTGOING_LINK, UPWARD } from './palette'
 import type { PlacedBuilding } from './placed-buildings'
+import { INCOMING_LINK, OUTGOING_LINK, UPWARD } from './render/palette'
 import { srgb, type Vec3 } from './world/units'
 
 // What marks one building: an outline around its shape, a ring on the ground and, once

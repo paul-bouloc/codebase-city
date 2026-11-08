@@ -7,7 +7,7 @@ import {
   QUAY,
   TEST_PARK,
   TEST_PARK_EDGE,
-} from '../../city/palette'
+} from '../../city/render/palette'
 import { Icon } from '../Icon'
 import styles from './CityLegend.module.css'
 import { Glass } from './Glass'

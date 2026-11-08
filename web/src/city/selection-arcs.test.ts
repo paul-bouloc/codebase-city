@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { ARC_SEGMENTS } from './arc-path'
-import { INCOMING_LINK, OUTGOING_LINK, UPWARD } from './palette'
+import { ARC_SEGMENTS } from './render/arc-path'
+import { INCOMING_LINK, OUTGOING_LINK, UPWARD } from './render/palette'
 import { bundleWidth, HUB_RISE, selectionArcs } from './selection-arcs'
 import type { LinkEnd, Linked, SelectionLinks } from './selection-links'
 import { srgb, type Vec3 } from './world/units'

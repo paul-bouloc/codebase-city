@@ -1,7 +1,7 @@
 import { type InstancedMesh, Matrix4 } from 'three'
 import { createBoats } from './decor-mesh'
-import type { Fading } from './dimming'
 import type { Boat, Ferry } from './links'
+import type { Fading } from './render/dimming'
 import { Route, sail } from './sailing'
 import { boardToThree } from './world/units'
 

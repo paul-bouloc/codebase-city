@@ -9,8 +9,13 @@ import {
   Vector2,
   Vector3,
 } from 'three'
+import {
+  shadingFragmentPars,
+  shadingUniforms,
+  shadingVertex,
+  shadingVertexPars,
+} from './render/shading'
 import { DEPTH_BANDS, SEA_FIELD_RANGE, seaField } from './sea-field'
-import { shadingFragmentPars, shadingUniforms, shadingVertex, shadingVertexPars } from './shading'
 import type { CityLayout } from './world/layout'
 import { srgb } from './world/units'
 

@@ -24,7 +24,6 @@ import {
   Vector4,
   WebGLRenderer,
 } from 'three'
-import { DASH_PERIOD, LABEL_HEIGHT, LABEL_LIFT } from './arc-mesh'
 import { createBridges } from './bridges'
 import { createBuildings } from './buildings'
 import { CityControls } from './city-controls'
@@ -39,7 +38,6 @@ import {
 import { indexCycles } from './cycles'
 import { cityDecor } from './decor'
 import { BOAT_LENGTH, createDecor, type DecorStats, decorStats } from './decor-mesh'
-import { createFading } from './dimming'
 import { type Drive, STILL } from './drive'
 import { ExtraFerries } from './extra-ferries'
 import { createFerries } from './ferries'
@@ -56,13 +54,15 @@ import {
   type Viewport,
 } from './flight'
 import { islandShapes } from './island-shape'
-import { SUN_DIRECTION } from './light'
 import { cityLinks, type Port } from './links'
 import { bearingOf, northOf, scaleFiles } from './map-scale'
 import { CityPicker, type CityTarget } from './picking'
 import type { PlacedBuilding } from './placed-buildings'
 import { createParcels } from './plateaux'
 import { BADGE_HALF_WIDTH, badgeInView, portBadgeAt } from './port-links'
+import { DASH_PERIOD, LABEL_HEIGHT, LABEL_LIFT } from './render/arc-mesh'
+import { createFading } from './render/dimming'
+import { SUN_DIRECTION } from './render/light'
 import { createSea, OPEN_SEA, seaSize } from './sea'
 import { indexImports } from './selection-links'
 import { type CityTargets, cityTargets } from './targets'

@@ -14,9 +14,9 @@ import {
   Vector2,
   Vector3,
 } from 'three'
+import type { Vec3 } from '../world/units'
 import { easeStandard } from './easing'
 import { createScreenLines, lineGeometry } from './screen-lines'
-import type { Vec3 } from './world/units'
 
 // The arcs around a selected file, drawn over the city: ribbons a fixed width on screen over a
 // white halo, dashes that move from source to target, dots at their ends, and for the bundles a

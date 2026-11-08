@@ -1,7 +1,12 @@
 import { Mesh, ShaderMaterial } from 'three'
 import type { Garden } from './gardens'
-import { MeshBuilder } from './mesh-builder'
-import { shadingFragmentPars, shadingUniforms, shadingVertex, shadingVertexPars } from './shading'
+import { MeshBuilder } from './render/mesh-builder'
+import {
+  shadingFragmentPars,
+  shadingUniforms,
+  shadingVertex,
+  shadingVertexPars,
+} from './render/shading'
 import type { CityLayout, ParcelLayout, ParcelNature, Rect } from './world/layout'
 import { layerAltitude, mixSrgb, slabTop, srgb, type Vec3 } from './world/units'
 

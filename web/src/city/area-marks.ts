@@ -2,7 +2,7 @@ import { Group, type Mesh, type ShaderMaterial } from 'three'
 import { INK } from './building-marks'
 import type { IslandShape } from './island-shape'
 import { roundedOutline } from './plateaux'
-import { createScreenLines } from './screen-lines'
+import { createScreenLines } from './render/screen-lines'
 import type { Rect } from './world/layout'
 import { boardToThree, layerAltitude, slabTop, type Vec3 } from './world/units'
 
