@@ -59,6 +59,18 @@ function frame(bridge: Bridge) {
     bridge.axis === 'x' ? [s, bridge.at + t, z] : [bridge.at + t, s, z]
 }
 
+/**
+ * A line along a bridge's deck, from bank to bank, `t` across from its centre line and `rise`
+ * above its top, in board coordinates (z up).
+ */
+export function deckLine(bridge: Bridge, t: number, rise: number): [Vec3, Vec3] {
+  const at = frame(bridge)
+  return [
+    at(bridge.start - DECK_ANCHOR, t, bridge.startZ + DECK_RISE + rise),
+    at(bridge.end + DECK_ANCHOR, t, bridge.endZ + DECK_RISE + rise),
+  ]
+}
+
 export function addBridge(builder: MeshBuilder, bridge: Bridge): void {
   const at = frame(bridge)
   const s0 = bridge.start - DECK_ANCHOR
