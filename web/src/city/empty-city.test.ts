@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { createBuildings } from './buildings'
 import { islandShapes } from './island-shape'
-import { boundsOf, type CityLayout } from './layout'
 import { createSea } from './sea'
 import { createTerrain } from './terrain'
+import { boundsOf, type CityLayout } from './world/layout'
 
 const EMPTY: CityLayout = { islands: [], bounds: boundsOf([]) }
 

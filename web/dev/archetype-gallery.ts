@@ -1,6 +1,6 @@
 import { floorsFor } from '../src/city/archetypes'
-import type { BuildingLanguage, CityLayout, FileMetrics, Lot } from '../src/city/layout'
-import { LOT_SIZE } from '../src/city/units'
+import type { BuildingLanguage, CityLayout, FileMetrics, Lot } from '../src/city/world/layout'
+import { LOT_SIZE } from '../src/city/world/units'
 
 interface Sample {
   language: BuildingLanguage

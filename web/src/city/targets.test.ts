@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { decodeResult } from '../data/decode-result'
 import sample from '../data/generated/sample-result.json'
-import { cityFromResult } from './from-result'
 import { cityTargets } from './targets'
+import { cityFromResult } from './world/from-result'
 
 const layout = cityFromResult(decodeResult(sample))
 const targets = cityTargets(layout)

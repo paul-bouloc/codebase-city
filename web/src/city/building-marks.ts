@@ -21,7 +21,7 @@ import { buildingGeometry, type Vertex } from './archetype-geometry'
 import type { Building } from './archetypes'
 import { INCOMING_LINK, OUTGOING_LINK, UPWARD } from './palette'
 import type { PlacedBuilding } from './placed-buildings'
-import { srgb, type Vec3 } from './units'
+import { srgb, type Vec3 } from './world/units'
 
 // What marks one building: an outline around its shape, a ring on the ground and, once
 // selected, a pin above its roof. All keep their width in pixels at any distance.

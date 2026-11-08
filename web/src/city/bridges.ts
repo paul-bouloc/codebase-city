@@ -3,7 +3,7 @@ import type { Bridge, CityLinks, Quay } from './links'
 import { MeshBuilder } from './mesh-builder'
 import { BRIDGE_RAIL, BRIDGE_STONE, QUAY, UPWARD } from './palette'
 import { groundMaterial } from './plateaux'
-import { mixSrgb, srgb, type Vec3 } from './units'
+import { mixSrgb, srgb, type Vec3 } from './world/units'
 
 // Bridges and quays, in one draw call: stone decks from plateau to plateau on square piers, and
 // wooden piers (or a port's stone quay) from the beach out to the ferries.

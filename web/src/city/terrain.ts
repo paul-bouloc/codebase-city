@@ -4,7 +4,7 @@ import { FOAM_WIDTH, type IslandShape, type Side } from './island-shape'
 import { MeshBuilder } from './mesh-builder'
 import { groundMaterial, PAVING } from './plateaux'
 import { SHORE_BAND } from './sea'
-import { mixSrgb, srgb, type Vec3 } from './units'
+import { mixSrgb, srgb, type Vec3 } from './world/units'
 
 const CLIFF = srgb('#D2AE84')
 /** Terraces between the plateau and the beach, from the lowest to the highest: four at most. */

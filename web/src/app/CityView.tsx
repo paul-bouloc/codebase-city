@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { CityEngine } from '../city/city-engine'
-import type { CityLayout } from '../city/layout'
+import type { CityLayout } from '../city/world/layout'
 import { CityStats } from './CityStats'
 import styles from './CityView.module.css'
 

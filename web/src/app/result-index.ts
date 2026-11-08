@@ -1,4 +1,4 @@
-import { folderPaths } from '../city/from-result'
+import { folderPaths } from '../city/world/from-result'
 import type { AnalysisResult } from '../data/generated/AnalysisResult'
 import type { EntryReason } from '../data/generated/EntryReason'
 import type { Language } from '../ui/Badge'

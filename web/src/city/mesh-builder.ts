@@ -1,5 +1,5 @@
 import { BufferGeometry, Float32BufferAttribute } from 'three'
-import { boardToThree, type Vec3 } from './units'
+import { boardToThree, type Vec3 } from './world/units'
 
 /**
  * Flat-shaded triangles, one colour each, given in board coordinates (x, y on the ground, z up).

@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react'
 import { CityView } from '../src/app/CityView'
-import { syntheticCity } from '../src/city/synthetic'
+import { syntheticCity } from '../src/city/world/synthetic'
 import { AboutPanel } from '../src/ui/city/AboutPanel'
 import { AreaTooltip } from '../src/ui/city/AreaTooltip'
 import { CameraControls } from '../src/ui/city/CameraControls'

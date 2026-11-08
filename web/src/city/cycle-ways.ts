@@ -4,7 +4,7 @@ import type { ExtraFerries } from './extra-ferries'
 import type { Bridge, Ferry, Pair } from './links'
 import { FERRY_LINE, UPWARD } from './palette'
 import { createScreenLines } from './screen-lines'
-import { boardToThree, srgb, type Vec3 } from './units'
+import { boardToThree, srgb, type Vec3 } from './world/units'
 
 // A cycle that runs across islands outlines in red the bridges and ferry lines its loop takes:
 // a red edge along each side of a bridge's deck, a broad red line under a ferry's. A link the

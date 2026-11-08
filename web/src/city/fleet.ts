@@ -3,7 +3,7 @@ import { createBoats } from './decor-mesh'
 import type { Fading } from './dimming'
 import type { Boat, Ferry } from './links'
 import { Route, sail } from './sailing'
-import { boardToThree } from './units'
+import { boardToThree } from './world/units'
 
 // The boats that sail the ferry lines, moved at every frame of the animation. They cast no
 // shadow: the shadow map is drawn once per city, and would keep them where they started.

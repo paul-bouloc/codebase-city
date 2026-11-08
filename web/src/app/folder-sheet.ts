@@ -1,4 +1,4 @@
-import { ANALYZED_LANGUAGES } from '../city/from-result'
+import { ANALYZED_LANGUAGES } from '../city/world/from-result'
 import type { Language } from '../ui/Badge'
 import { githubTreeUrl } from '../ui/city/github-links'
 import type { FolderSheetData, IslandLink, KeyFile } from '../ui/city/sheet-data'

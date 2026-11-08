@@ -1,5 +1,5 @@
-import type { CityLayout } from './layout'
 import { buildingOffsets } from './selection-links'
+import type { CityLayout } from './world/layout'
 
 // The import cycles around a selected file: which cycle it is part of, and one of the shortest
 // loops through it, which the city draws.

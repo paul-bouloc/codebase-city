@@ -12,10 +12,10 @@ import {
 import { buildingGeometry, type Shape, shapeKey, type Vertex } from './archetype-geometry'
 import { ARCHETYPES } from './archetypes'
 import { createFading, dimmingFragmentPars, type Fading } from './dimming'
-import type { BuildingLanguage, CityLayout, ConcreteFamily, FileMetrics } from './layout'
 import { type PlacedBuilding, placeBuildings } from './placed-buildings'
 import { shadingFragmentPars, shadingUniforms, shadingVertex, shadingVertexPars } from './shading'
-import { srgb, type Vec3 } from './units'
+import type { BuildingLanguage, CityLayout, ConcreteFamily, FileMetrics } from './world/layout'
+import { srgb, type Vec3 } from './world/units'
 
 // TypeScript, JavaScript and CSS are tuned by hand; the others take their GitHub Linguist colour.
 const LANGUAGE_COLOURS: Record<BuildingLanguage, Vec3> = {

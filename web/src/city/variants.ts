@@ -1,5 +1,5 @@
-import { seededRandom } from './random'
 import { KIT, type Piece, type VariantArchetype } from './variants-kit'
+import { seededRandom } from './world/random'
 
 /** What the data fix about a building, which the kit's rules read. */
 export interface VariantContext {

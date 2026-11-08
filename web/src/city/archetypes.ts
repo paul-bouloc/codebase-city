@@ -1,7 +1,7 @@
-import type { FileMetrics } from './layout'
-import { FLOOR_HEIGHT } from './units'
 import { pickVariant } from './variants'
 import { PAVILION_HEIGHTS } from './variants-kit'
+import type { FileMetrics } from './world/layout'
+import { FLOOR_HEIGHT } from './world/units'
 
 export const ARCHETYPES = [
   'pavilion',

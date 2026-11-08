@@ -19,9 +19,9 @@ import {
   WALL,
   ZERO,
 } from './parts'
-import type { Vec3 } from './units'
 import { variantParts } from './variant-shapes'
 import type { VariantArchetype } from './variants-kit'
+import type { Vec3 } from './world/units'
 
 // Every archetype is one geometry shared by all its instances, made of the parts in `parts.ts`.
 

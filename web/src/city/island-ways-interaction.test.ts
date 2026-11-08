@@ -5,9 +5,9 @@ import { indexCycles } from './cycles'
 import { createFading } from './dimming'
 import { ExtraFerries } from './extra-ferries'
 import { islandShapes } from './island-shape'
-import { boundsOf, type CityLayout, type IslandLink, type Rect } from './layout'
 import { cityLinks } from './links'
 import { indexImports } from './selection-links'
+import { boundsOf, type CityLayout, type IslandLink, type Rect } from './world/layout'
 
 // A hub between six islands, far apart: four ferries leave it, its two smallest links go to its
 // port (the largest first), and the last one is too small to draw.

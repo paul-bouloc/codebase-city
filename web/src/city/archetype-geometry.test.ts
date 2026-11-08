@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildingGeometry, stretched } from './archetype-geometry'
 import { ARCHETYPES, type Archetype, type Building, buildingFor } from './archetypes'
-import type { Vec3 } from './units'
+import type { Vec3 } from './world/units'
 
 /** The archetypes of one model; the low ones have a geometry per combination (variant tests). */
 const TRIANGLES: Partial<Record<Archetype, number>> = {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { type Canals, islandCanals } from './canals'
-import type { IslandLayout, Rect } from './layout'
+import type { IslandLayout, Rect } from './world/layout'
 
 function island(plateau: Rect, folders: Rect[], square?: Rect): IslandLayout {
   return {

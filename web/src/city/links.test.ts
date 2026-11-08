@@ -1,14 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { type IslandShape, islandShapes } from './island-shape'
 import {
-  boundsOf,
-  type CityLayout,
-  type IslandLink,
-  type Lot,
-  type ParcelLayout,
-  type Rect,
-} from './layout'
-import {
   boatsFor,
   type CityLinks,
   cityLinks,
@@ -19,6 +11,14 @@ import {
   tipOf,
 } from './links'
 import { insidePolygon, landOutline } from './water-route'
+import {
+  boundsOf,
+  type CityLayout,
+  type IslandLink,
+  type Lot,
+  type ParcelLayout,
+  type Rect,
+} from './world/layout'
 
 interface Spec {
   plateau: Rect

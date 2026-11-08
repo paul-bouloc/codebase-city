@@ -1,6 +1,6 @@
 import { type IUniform, UniformsLib, UniformsUtils, Vector3 } from 'three'
 import { AMBIENT, DIFFUSE, NORMALIZER, SHADOW_COLOR, SHADOW_OPACITY, SUN_DIRECTION } from './light'
-import { srgb } from './units'
+import { srgb } from './world/units'
 
 // The city's materials shade in sRGB, like the design, instead of three.js lighting: a face
 // is scaled by k = (ambient + diffuse × n·L) / normalizer, and a cast shadow is a 16 % tint,

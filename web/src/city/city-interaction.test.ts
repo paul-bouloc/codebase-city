@@ -4,9 +4,9 @@ import { CityInteraction, type CityItem, isClick } from './city-interaction'
 import { indexCycles } from './cycles'
 import { createFading } from './dimming'
 import { islandShapes } from './island-shape'
-import type { CityLayout, FileMetrics } from './layout'
 import type { Ferry } from './links'
 import { indexImports } from './selection-links'
+import type { CityLayout, FileMetrics } from './world/layout'
 
 const file = (path: string): FileMetrics => ({
   path,

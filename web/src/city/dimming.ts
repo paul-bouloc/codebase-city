@@ -1,5 +1,5 @@
 import { type IUniform, Vector4 } from 'three'
-import { srgb } from './units'
+import { srgb } from './world/units'
 
 // Outside a selection, buildings and trees fade toward a pale stone (72 %), and the shadows cast
 // on them halve. The ground, the water and the bridges keep their colours: islands stay readable.

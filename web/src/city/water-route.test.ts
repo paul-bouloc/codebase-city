@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { islandShapes } from './island-shape'
-import { boundsOf, type CityLayout, type Point, type Rect } from './layout'
 import {
   ferryRoute,
   insidePolygon,
@@ -10,6 +9,7 @@ import {
   spline,
   waterGrid,
 } from './water-route'
+import { boundsOf, type CityLayout, type Point, type Rect } from './world/layout'
 
 function city(plateaux: Rect[]): CityLayout {
   return {

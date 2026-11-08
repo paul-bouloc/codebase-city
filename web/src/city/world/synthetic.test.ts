@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { ARCHETYPES, buildingFor } from './archetypes'
-import { islandShapes } from './island-shape'
+import { ARCHETYPES, buildingFor } from '../archetypes'
+import { islandShapes } from '../island-shape'
+import { cityLinks } from '../links'
 import { boundsOf, distanceToRect, type Rect } from './layout'
-import { cityLinks } from './links'
 import { channelWidth, syntheticCity, withCrossingCycles } from './synthetic'
 
 /** Shortest distance between two disjoint rectangles. */

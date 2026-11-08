@@ -9,10 +9,10 @@ import {
   Vector2,
   Vector3,
 } from 'three'
-import type { CityLayout } from './layout'
 import { DEPTH_BANDS, SEA_FIELD_RANGE, seaField } from './sea-field'
 import { shadingFragmentPars, shadingUniforms, shadingVertex, shadingVertexPars } from './shading'
-import { srgb } from './units'
+import type { CityLayout } from './world/layout'
+import { srgb } from './world/units'
 
 /** The open sea, past the last depth band; also the scene's background. */
 export const OPEN_SEA = '#4F9EA5'

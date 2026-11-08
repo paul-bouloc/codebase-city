@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { islandShapes } from './island-shape'
-import type { CityLayout, FileMetrics } from './layout'
 import { CityPicker, type Ray } from './picking'
 import { placeBuildings } from './placed-buildings'
-import { boardToThree, layerAltitude } from './units'
+import type { CityLayout, FileMetrics } from './world/layout'
+import { boardToThree, layerAltitude } from './world/units'
 
 const file = (path: string, complexity: number): FileMetrics => ({
   path,

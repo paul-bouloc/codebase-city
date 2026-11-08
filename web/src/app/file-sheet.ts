@@ -1,5 +1,5 @@
-import { ANALYZED_LANGUAGES } from '../city/from-result'
 import { SINGLE_ARCS } from '../city/selection-links'
+import { ANALYZED_LANGUAGES } from '../city/world/from-result'
 import type { EntryReason } from '../data/generated/EntryReason'
 import { githubBlobUrl } from '../ui/city/github-links'
 import type {

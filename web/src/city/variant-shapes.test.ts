@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { buildingGeometry, stretched } from './archetype-geometry'
 import type { Building } from './archetypes'
-import { FLOOR_HEIGHT, type Vec3 } from './units'
 import { KIT, PAVILION_HEIGHTS, type Piece, type VariantArchetype } from './variants-kit'
+import { FLOOR_HEIGHT, type Vec3 } from './world/units'
 
 const ARCHETYPES = ['house', 'pavilion', 'concreteBlock'] as const
 

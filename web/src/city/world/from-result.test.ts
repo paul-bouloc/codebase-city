@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { decodeResult } from '../data/decode-result'
-import type { AnalysisResult } from '../data/generated/AnalysisResult'
-import sample from '../data/generated/sample-result.json'
+import { decodeResult } from '../../data/decode-result'
+import type { AnalysisResult } from '../../data/generated/AnalysisResult'
+import sample from '../../data/generated/sample-result.json'
 import { cityFromResult } from './from-result'
 import { slabTop } from './units'
 

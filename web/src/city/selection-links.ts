@@ -1,4 +1,4 @@
-import { type CityLayout, rectContains } from './layout'
+import { type CityLayout, rectContains } from './world/layout'
 
 // Which files a selected file imports and which import it, and which of them get an arc of their
 // own: the nearest in each direction, and every import up the layers. The others gather by island

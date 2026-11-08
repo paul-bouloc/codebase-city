@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { buildingGeometry, stretched } from './archetype-geometry'
 import { buildingFor } from './archetypes'
-import type { FileMetrics } from './layout'
 import { baseTurnFor, placedReach, placementFor } from './scatter'
+import type { FileMetrics } from './world/layout'
 
 const file = (metrics: Partial<FileMetrics>): FileMetrics => ({
   language: 'typescript',

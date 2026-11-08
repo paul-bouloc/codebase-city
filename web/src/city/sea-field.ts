@@ -1,5 +1,5 @@
-import { type CityLayout, distanceToRect } from './layout'
-import { seededRandom } from './random'
+import { type CityLayout, distanceToRect } from './world/layout'
+import { seededRandom } from './world/random'
 
 /** Outer edges of the five depth bands, in u from the archipelago. */
 export const DEPTH_BANDS = [8, 15, 23, 31, 40] as const

@@ -9,9 +9,9 @@ import {
   ringAltitudes,
   SAMPLE_STEP,
 } from './island-shape'
-import { type CityLayout, distanceToRect, type IslandLayout, type Rect } from './layout'
-import { syntheticCity } from './synthetic'
-import { layerAltitude } from './units'
+import { type CityLayout, distanceToRect, type IslandLayout, type Rect } from './world/layout'
+import { syntheticCity } from './world/synthetic'
+import { layerAltitude } from './world/units'
 
 function island(path: string, plateau: Rect, layer = 1): IslandLayout {
   return { path, layer, plateau, parcels: [], lots: [] }

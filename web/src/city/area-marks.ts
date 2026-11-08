@@ -1,10 +1,10 @@
 import { Group, type Mesh, type ShaderMaterial } from 'three'
 import { INK } from './building-marks'
 import type { IslandShape } from './island-shape'
-import type { Rect } from './layout'
 import { roundedOutline } from './plateaux'
 import { createScreenLines } from './screen-lines'
-import { boardToThree, layerAltitude, slabTop, type Vec3 } from './units'
+import type { Rect } from './world/layout'
+import { boardToThree, layerAltitude, slabTop, type Vec3 } from './world/units'
 
 // The outline of a folder: along the edge of its island's plateau, or around its parcel.
 

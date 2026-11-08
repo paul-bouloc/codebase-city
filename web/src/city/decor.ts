@@ -1,10 +1,17 @@
 import { type CanalCell, islandCanals } from './canals'
 import { type Garden, islandGardens, squareGardens } from './gardens'
 import { type ContourSample, type IslandShape, SAMPLE_STEP } from './island-shape'
-import type { CityLayout, GridLayout, IslandLayout, ParcelNature, Point, Rect } from './layout'
 import type { Boat, Quay } from './links'
-import { seededRandom } from './random'
-import { LOT_SIZE, layerAltitude, slabTop } from './units'
+import type {
+  CityLayout,
+  GridLayout,
+  IslandLayout,
+  ParcelNature,
+  Point,
+  Rect,
+} from './world/layout'
+import { seededRandom } from './world/random'
+import { LOT_SIZE, layerAltitude, slabTop } from './world/units'
 
 // The decor says nothing about the files, but follows their ground: a park of tests has more
 // trees than an ordinary parcel, concrete has none. Every tree and rock is drawn from a seed of

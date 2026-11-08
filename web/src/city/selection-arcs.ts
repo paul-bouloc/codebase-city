@@ -2,7 +2,7 @@ import type { ArcDot, ArcDrawing, ArcLabel, ArcLine } from './arc-mesh'
 import { ARC_SEGMENTS, arcPoints } from './arc-path'
 import { INCOMING_LINK, OUTGOING_LINK, UPWARD } from './palette'
 import type { Bundle, Direction, LinkEnd, Linked, SelectionLinks } from './selection-links'
-import { srgb, type Vec3 } from './units'
+import { srgb, type Vec3 } from './world/units'
 
 // What the links of a selected file look like: an arc to each linked file, or to a bundle's hub,
 // coloured by its direction, red when it goes up the layers.

@@ -1,7 +1,7 @@
 import { type Building, buildingFor } from './archetypes'
-import type { CityLayout, FileMetrics } from './layout'
 import { baseTurnFor, placementFor } from './scatter'
-import { boardToThree, layerAltitude, type Vec3 } from './units'
+import type { CityLayout, FileMetrics } from './world/layout'
+import { boardToThree, layerAltitude, type Vec3 } from './world/units'
 
 /** A file's building, where it stands: what the city draws and what the pointer can hit. */
 export interface PlacedBuilding {

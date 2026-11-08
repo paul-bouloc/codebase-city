@@ -56,7 +56,6 @@ import {
   type Viewport,
 } from './flight'
 import { islandShapes } from './island-shape'
-import type { CityLayout } from './layout'
 import { SUN_DIRECTION } from './light'
 import { cityLinks, type Port } from './links'
 import { bearingOf, northOf, scaleFiles } from './map-scale'
@@ -69,7 +68,8 @@ import { indexImports } from './selection-links'
 import { type CityTargets, cityTargets } from './targets'
 import { createTerrain } from './terrain'
 import { maxTilt, NEAR_TILT } from './tilt'
-import { boardToThree, nearPlane, type Vec3 } from './units'
+import type { CityLayout } from './world/layout'
+import { boardToThree, nearPlane, type Vec3 } from './world/units'
 
 /** What a click opens: a bundle's hub, or a port. */
 type Mark = Extract<Pointed, { kind: 'hub' | 'port' }>

@@ -1,4 +1,4 @@
-import { boardToThree, type Vec3 } from './units'
+import { boardToThree, type Vec3 } from './world/units'
 
 function normalize([x, y, z]: Vec3): Vec3 {
   const length = Math.hypot(x, y, z)

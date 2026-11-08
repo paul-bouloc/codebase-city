@@ -1,9 +1,9 @@
 import { Mesh, ShaderMaterial } from 'three'
 import type { Garden } from './gardens'
-import type { CityLayout, ParcelLayout, ParcelNature, Rect } from './layout'
 import { MeshBuilder } from './mesh-builder'
 import { shadingFragmentPars, shadingUniforms, shadingVertex, shadingVertexPars } from './shading'
-import { layerAltitude, mixSrgb, slabTop, srgb, type Vec3 } from './units'
+import type { CityLayout, ParcelLayout, ParcelNature, Rect } from './world/layout'
+import { layerAltitude, mixSrgb, slabTop, srgb, type Vec3 } from './world/units'
 
 export const PAVING = srgb('#EDE3CF')
 const MEADOW = srgb('#C5DFA4')

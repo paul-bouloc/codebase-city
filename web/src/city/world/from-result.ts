@@ -1,4 +1,4 @@
-import type { AnalysisResult } from '../data/generated/AnalysisResult'
+import type { AnalysisResult } from '../../data/generated/AnalysisResult'
 import type {
   BuildingLanguage,
   CityLayout,

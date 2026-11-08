@@ -13,9 +13,9 @@ import {
   turnAbout,
   type Viewport,
 } from './flight'
-import { cityFromResult } from './from-result'
 import { placeBuildings } from './placed-buildings'
 import { cityTargets } from './targets'
+import { cityFromResult } from './world/from-result'
 
 const layout = cityFromResult(decodeResult(sample))
 const placed = placeBuildings(layout)

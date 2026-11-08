@@ -21,7 +21,6 @@ import { FolderLinkMarks, folderWays } from './folder-link-marks'
 import { folderFlows } from './folder-links'
 import { HoverTiming } from './hover-timing'
 import type { IslandShape } from './island-shape'
-import { type CityLayout, rectContains } from './layout'
 import type { Bridge, Ferry, Pair, Port } from './links'
 import type { CityTarget } from './picking'
 import { PORT_ROWS, portLabels, portRows } from './port-links'
@@ -38,7 +37,8 @@ import {
   type SelectionLinks,
   selectionLinks,
 } from './selection-links'
-import { boardToThree, layerAltitude, type Vec3 } from './units'
+import { type CityLayout, rectContains } from './world/layout'
+import { boardToThree, layerAltitude, type Vec3 } from './world/units'
 
 /** What the pointer rests on or what is selected, with the path of its file or folder. */
 export interface CityItem {

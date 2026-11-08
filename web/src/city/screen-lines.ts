@@ -7,7 +7,7 @@ import {
   Vector2,
   Vector3,
 } from 'three'
-import type { Vec3 } from './units'
+import type { Vec3 } from './world/units'
 
 // Lines a fixed number of pixels wide whatever their distance, solid or dashed in pixels: each
 // segment is a quad its vertex shader widens on screen, a little past its ends so that the

@@ -3,7 +3,7 @@ import { ARC_SEGMENTS } from './arc-path'
 import { INCOMING_LINK, OUTGOING_LINK, UPWARD } from './palette'
 import { bundleWidth, HUB_RISE, selectionArcs } from './selection-arcs'
 import type { LinkEnd, Linked, SelectionLinks } from './selection-links'
-import { srgb, type Vec3 } from './units'
+import { srgb, type Vec3 } from './world/units'
 
 const linked = (building: number, island: number, upward = false): Linked => ({
   end: { building },

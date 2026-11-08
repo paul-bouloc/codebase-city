@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { indexCycles, loopThrough } from './cycles'
-import type { CityLayout, FileCycle, IslandLayout } from './layout'
+import type { CityLayout, FileCycle, IslandLayout } from './world/layout'
 
 function island(lots: number): IslandLayout {
   return {

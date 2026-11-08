@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { type CityLayout, distanceToRect } from './layout'
 import { SEA_FIELD_RANGE, type SeaField, seaField } from './sea-field'
-import { syntheticCity } from './synthetic'
+import { type CityLayout, distanceToRect } from './world/layout'
+import { syntheticCity } from './world/synthetic'
 
 const square: CityLayout = {
   islands: [

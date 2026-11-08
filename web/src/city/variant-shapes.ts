@@ -31,8 +31,8 @@ import {
   WOOD,
   ZERO,
 } from './parts'
-import { mixSrgb, srgb } from './units'
 import { HOUSE_EAVE, KIT, type VariantArchetype } from './variants-kit'
+import { mixSrgb, srgb } from './world/units'
 
 // The low buildings, assembled from the pieces their file drew, as the design's generator does.
 // Board coordinates: x along the front, y in depth with the front towards y+, z up. Every

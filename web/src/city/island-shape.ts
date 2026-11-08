@@ -1,7 +1,7 @@
 import { type Canals, islandCanals } from './canals'
-import { type CityLayout, distanceToRect, type IslandLayout, type Rect } from './layout'
-import { seededRandom } from './random'
-import { clampLayer, layerAltitude } from './units'
+import { type CityLayout, distanceToRect, type IslandLayout, type Rect } from './world/layout'
+import { seededRandom } from './world/random'
+import { clampLayer, layerAltitude } from './world/units'
 
 // An island's terrain is a stack of rings around its plateau: the plateau's own edge, then one
 // ring per terrace, the last one the beach. Every ring is the plateau rectangle pushed outward

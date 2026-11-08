@@ -1,5 +1,5 @@
-import type { CityLayout, Point } from './layout'
 import type { CityTarget } from './picking'
+import type { CityLayout, Point } from './world/layout'
 
 /** The places of a city by the path of their file or folder. */
 export interface CityTargets {

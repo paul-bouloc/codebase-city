@@ -1,8 +1,8 @@
 import type { IslandShape, Side } from './island-shape'
-import { boundsOf, type CityLayout, type IslandLink, type Point, type Rect } from './layout'
-import { seededRandom } from './random'
-import { layerAltitude } from './units'
 import { ferryRoute, insidePolygon, landOutline, type WaterGrid, waterGrid } from './water-route'
+import { boundsOf, type CityLayout, type IslandLink, type Point, type Rect } from './world/layout'
+import { seededRandom } from './world/random'
+import { layerAltitude } from './world/units'
 
 // Imports between islands become works the city always shows. Two neighbours at most one layer
 // apart, face to face across one channel, get a stone bridge; every other pair a ferry line on

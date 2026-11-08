@@ -11,7 +11,7 @@ import {
 import { cityCards } from '../city/city-cards'
 import type { CityEngine } from '../city/city-engine'
 import type { CameraView, CityHover, CityItem, PortList } from '../city/city-interaction'
-import { cityFromResult } from '../city/from-result'
+import { cityFromResult } from '../city/world/from-result'
 import type { AnalysisResult } from '../data/generated/AnalysisResult'
 import { AboutPanel } from '../ui/city/AboutPanel'
 import { type CameraAction, CameraControls } from '../ui/city/CameraControls'

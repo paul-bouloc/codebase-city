@@ -1,4 +1,4 @@
-import type { Vec3 } from './units'
+import type { Vec3 } from './world/units'
 
 // The arc between two linked files: a parabola from roof to roof that rises higher the further
 // apart they stand, so that long links clear the city and read apart from short ones.

@@ -5,7 +5,7 @@ import type { Bridge, Ferry } from './links'
 import { INCOMING_LINK, OUTGOING_LINK } from './palette'
 import { createScreenLines } from './screen-lines'
 import type { Direction } from './selection-links'
-import { boardToThree, srgb, type Vec3 } from './units'
+import { boardToThree, srgb, type Vec3 } from './world/units'
 
 // The bridges and ferry lines of a selected folder: a band along each linked bridge's deck and a
 // line over each linked ferry's route, Marine where the folder imports the other side, Sun where
