@@ -13,9 +13,11 @@ const MIN_COMPLEXITY: u32 = 20;
 
 /// The most complex production files that other files import, one per
 /// folder. A file nothing imports is often a copied library or a script:
-/// complex, but not where the code's complexity lives.
+/// complex, but not where the code's complexity lives. When the repository
+/// was too large to count dependents, every production file is a candidate.
 pub(super) fn complex_areas(result: &AnalysisResult) -> Option<TourStep> {
     let files = &result.files;
+    let counted = files.dependents.iter().any(Option::is_some);
     let mut measured: Vec<u32> = Vec::new();
     let mut candidates: Vec<(u32, usize)> = Vec::new();
     for file in 0..files.dir.len() {
@@ -26,7 +28,7 @@ pub(super) fn complex_areas(result: &AnalysisResult) -> Option<TourStep> {
             continue;
         }
         measured.push(complexity);
-        if files.dependents[file].is_some_and(|dependents| dependents > 0) {
+        if !counted || files.dependents[file].is_some_and(|dependents| dependents > 0) {
             candidates.push((complexity, file));
         }
     }
@@ -104,6 +106,21 @@ mod tests {
             repo.result.files.complexity[file] = Some(7);
         }
         assert_eq!(complex_areas(&repo.result), None);
+    }
+
+    #[test]
+    fn without_counted_dependents_every_file_is_a_candidate() {
+        let mut repo = Fixture::layered();
+        repo.result.files.complexity[5] = Some(200);
+        assert_eq!(complex_areas(&repo.result), None);
+        repo.result.files.dependents.fill(None);
+        assert_eq!(
+            complex_areas(&repo.result),
+            Some(TourStep::ComplexAreas {
+                files: vec![5],
+                complexity: 205,
+            })
+        );
     }
 
     #[test]
