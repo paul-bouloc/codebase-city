@@ -104,11 +104,13 @@ pub(super) fn tour(result: &AnalysisResult) -> Result<(), InvalidResult> {
 
 /// A list of `min` to [`MAX_ROWS`] rows, each once.
 fn listed(row: usize, rows: &[u32], min: usize) -> Result<(), InvalidResult> {
-    let distinct = rows
-        .iter()
-        .enumerate()
-        .all(|(at, index)| !rows[..at].contains(index));
-    if (min..=MAX_ROWS).contains(&rows.len()) && distinct {
+    // The length first: checking each row against the others is quadratic
+    let distinct = || {
+        rows.iter()
+            .enumerate()
+            .all(|(at, index)| !rows[..at].contains(index))
+    };
+    if (min..=MAX_ROWS).contains(&rows.len()) && distinct() {
         Ok(())
     } else {
         Err(InvalidResult::TourList { row })
