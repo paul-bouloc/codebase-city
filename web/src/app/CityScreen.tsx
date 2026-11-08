@@ -354,7 +354,9 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
   const shownQuery = useDeferredValue(query)
   const searchResults = useMemo(() => searchIndex.search(shownQuery), [searchIndex, shownQuery])
   const options = useMemo(() => searchOptions(searchResults), [searchResults])
-  const paletteShown = searchFocused && normalizeQuery(query) !== ''
+  // Shown once the results are a query's, not the empty field's: no flash of "Nothing matches".
+  const paletteShown =
+    searchFocused && normalizeQuery(query) !== '' && normalizeQuery(shownQuery) !== ''
   // The option the arrows reached, within the results on show (fewer, after a new query).
   const active = options.length === 0 ? 0 : Math.min(activeOption, options.length - 1)
   const suggestion = useMemo(
