@@ -44,7 +44,7 @@ pub(crate) enum Outcome {
 }
 
 /// The files of the repository, looked up by path, folder and name.
-pub(crate) struct Index<'a> {
+struct Index<'a> {
     /// Paths of the files, sorted: a file's row is its position.
     paths: &'a [&'a str],
     by_path: HashMap<&'a str, u32>,
@@ -58,7 +58,7 @@ pub(crate) struct Index<'a> {
 
 impl<'a> Index<'a> {
     /// `paths` must be sorted: a file's row is its position.
-    pub(crate) fn new(paths: &'a [&'a str]) -> Self {
+    fn new(paths: &'a [&'a str]) -> Self {
         let mut index = Self {
             paths,
             by_path: HashMap::with_capacity(paths.len()),
@@ -149,7 +149,7 @@ fn join(dir: &str, relative: &str) -> Option<String> {
 
 /// Resolves imports for every analyzed language. Built once per analysis,
 /// then shared by the threads.
-pub(crate) struct Resolver<'a> {
+struct Resolver<'a> {
     index: &'a Index<'a>,
     javascript: javascript::Resolver,
     python: python::Resolver<'a>,
@@ -159,7 +159,7 @@ pub(crate) struct Resolver<'a> {
 impl<'a> Resolver<'a> {
     /// `manifests` are the contents of the configuration files resolution
     /// reads (`package.json`, `tsconfig.json`, `go.mod`…), by path.
-    pub(crate) fn new(index: &'a Index<'a>, manifests: &HashMap<&str, &[u8]>) -> Self {
+    fn new(index: &'a Index<'a>, manifests: &HashMap<&str, &[u8]>) -> Self {
         Self {
             index,
             javascript: javascript::Resolver::new(index, manifests),
@@ -169,7 +169,7 @@ impl<'a> Resolver<'a> {
     }
 
     /// Resolves one import of the file at `path`.
-    pub(crate) fn resolve(&self, path: &str, language: Language, import: &Import) -> Outcome {
+    fn resolve(&self, path: &str, language: Language, import: &Import) -> Outcome {
         match language {
             Language::TypeScript | Language::JavaScript => {
                 self.javascript.resolve(self.index, path, &import.specifier)
