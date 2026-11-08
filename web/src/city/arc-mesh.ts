@@ -74,9 +74,9 @@ const STILL_SPOTS = [1, 2] as const
 const STEM_WIDTH = 1.5
 const STEM_DASH: [number, number] = [2, 3]
 /** The count sits this many CSS pixels above its hub. */
-const LABEL_LIFT = 10
+export const LABEL_LIFT = 10
 const LABEL_FONT = '600 12px "Space Grotesk", system-ui, sans-serif'
-const LABEL_HEIGHT = 20
+export const LABEL_HEIGHT = 20
 const LABEL_PADDING = 7
 const LABEL_TEXT = '#23313A'
 /** Drawn after the city and the outlines of its marked buildings. */

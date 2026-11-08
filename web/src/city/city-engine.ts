@@ -24,7 +24,7 @@ import {
   Vector4,
   WebGLRenderer,
 } from 'three'
-import { DASH_PERIOD } from './arc-mesh'
+import { DASH_PERIOD, LABEL_HEIGHT, LABEL_LIFT } from './arc-mesh'
 import { createBridges } from './bridges'
 import { createBuildings } from './buildings'
 import { CityInteraction, type CityItem, type CityListeners, isClick } from './city-interaction'
@@ -78,8 +78,10 @@ const PICK_SLACK = 8
 const ANIMATION_FRAME = 1000 / 30 - 4
 /** Boats sail only while one at the camera's target spans this many device pixels or more. */
 const SAIL_PIXELS = 3
-/** The pointer this close to a bundle's hub, in CSS pixels, opens it. */
+/** The pointer this close to a bundle's hub, in CSS pixels, opens it, */
 const HUB_SLACK = 14
+/** and so does the pointer on its count, a pill at most this wide. */
+const HUB_LABEL_HALF_WIDTH = 40
 /**
  * The arcs' dashes move only while a period at the camera's target spans this many device pixels
  * or more: shorter, they have filled in (`SOLID_BELOW` of the arcs).
@@ -312,7 +314,11 @@ export class CityEngine {
       }
       const x = ((projected.x + 1) / 2) * canvas.clientWidth
       const y = ((1 - projected.y) / 2) * canvas.clientHeight
-      const distance = Math.hypot(x - pointer.x, y - pointer.y)
+      const onLabel =
+        Math.abs(pointer.x - x) <= HUB_LABEL_HALF_WIDTH &&
+        y - pointer.y >= LABEL_LIFT &&
+        y - pointer.y <= LABEL_LIFT + LABEL_HEIGHT
+      const distance = onLabel ? 0 : Math.hypot(x - pointer.x, y - pointer.y)
       if (distance <= nearest) {
         nearest = distance
         opened = hub
