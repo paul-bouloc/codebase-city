@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { pointAlong } from './links'
+import { pointAlong } from './boat-places'
 import { LANE, Route, SAIL_SPEED, sail } from './sailing'
 
 // An L: 10 u east, then 10 u north.

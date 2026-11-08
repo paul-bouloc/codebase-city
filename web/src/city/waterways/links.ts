@@ -1,9 +1,9 @@
 import type { IslandShape, Side } from '../terrain/island-shape'
 import { boundsOf, type CityLayout, type IslandLink, type Point } from '../world/layout'
-import { seededRandom } from '../world/random'
+import { boats } from './boat-places'
 import { bridgeFor } from './bridge-placement'
 import { bridgeSides, decksOn, mouthsOn, openSide, SIDES, sideToward } from './island-sides'
-import { loneQuay, QUAY_ROOT, quayAt, quayStretch, tipOf } from './quays'
+import { loneQuay, quayAt, quayStretch, tipOf } from './quays'
 import { ferryRoute, landOutline, type WaterGrid, waterGrid } from './water-route'
 
 // Imports between islands become works the city always shows. Two neighbours at most one layer
@@ -16,17 +16,8 @@ const MAX_FERRIES_PER_ISLAND = 4
 /** Links smaller than this share of the largest are hidden while nothing is selected. */
 const SMALL_LINK = 0.01
 
-/** Boats moored on each side of a quay, this far from its axis, this far out. */
-const MOORING = { across: 0.85, out: 1.5 }
-/** Boats moor only at a quay that reaches this far past the beach. */
-const MOORING_MIN = 2
 /** A city this small gets a quay and two boats even without ferries. */
 const SMALL_CITY = 50
-
-/** Boats along a ferry line: one per order of magnitude of its imports. */
-export function boatsFor(imports: number): number {
-  return Math.max(1, Math.floor(Math.log10(Math.max(imports, 1))) + 1)
-}
 
 /** Both ways between two islands, `a` the lower index. */
 export interface Pair {
@@ -278,73 +269,4 @@ export function cityLinks(layout: CityLayout, shapes: readonly IslandShape[]): C
   result.unshown = pairs.filter((pair) => unshown.has(pair))
   result.boats = boats(result, layout)
   return result
-}
-
-/** Two boats moored at every quay, and along each ferry line one per order of magnitude. */
-function boats(links: CityLinks, layout: CityLayout): Boat[] {
-  const boats: Boat[] = []
-  for (const quay of links.quays) {
-    if (quay.length - QUAY_ROOT < MOORING_MIN) {
-      continue
-    }
-    const random = seededRandom(
-      `boat/${layout.islands[quay.island]?.path ?? ''}/${quay.side}/${quay.x},${quay.y}`,
-    )
-    const out = quay.length - MOORING.out
-    for (const across of [-1, 1]) {
-      const offset = across * (quay.width / 2 + MOORING.across)
-      boats.push({
-        x: quay.x + quay.nx * out - quay.ny * offset,
-        y: quay.y + quay.ny * out + quay.nx * offset,
-        angle: Math.atan2(quay.ny, quay.nx) + (random() - 0.5) * 0.2,
-        seed: random(),
-      })
-    }
-  }
-  links.ferries.forEach((ferry, index) => {
-    const random = seededRandom(
-      `boat/${layout.islands[ferry.a]?.path ?? ''}/${layout.islands[ferry.b]?.path ?? ''}`,
-    )
-    const count = boatsFor(ferry.imports)
-    for (let k = 0; k < count; k++) {
-      const share = (k + 1) / (count + 1)
-      const { point, heading } = pointAlong(ferry.path, share)
-      boats.push({
-        x: point.x,
-        y: point.y,
-        angle: heading,
-        seed: random(),
-        line: { ferry: index, share },
-      })
-    }
-  })
-  return boats
-}
-
-/** The point `share` of the way along a line, and the line's heading there. */
-export function pointAlong(
-  line: readonly Point[],
-  share: number,
-): { point: Point; heading: number } {
-  let total = 0
-  for (let i = 1; i < line.length; i++) {
-    const a = line[i - 1] as Point
-    const b = line[i] as Point
-    total += Math.hypot(b.x - a.x, b.y - a.y)
-  }
-  let left = share * total
-  for (let i = 1; i < line.length; i++) {
-    const a = line[i - 1] as Point
-    const b = line[i] as Point
-    const length = Math.hypot(b.x - a.x, b.y - a.y)
-    if (left <= length || i === line.length - 1) {
-      const t = length > 0 ? Math.min(left / length, 1) : 0
-      return {
-        point: { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t },
-        heading: Math.atan2(b.y - a.y, b.x - a.x),
-      }
-    }
-    left -= length
-  }
-  return { point: line[0] ?? { x: 0, y: 0 }, heading: 0 }
 }

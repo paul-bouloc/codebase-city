@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { islandShapes } from '../terrain/island-shape'
-import { cityLinks, pointAlong } from '../waterways/links'
+import { pointAlong } from '../waterways/boat-places'
+import { cityLinks } from '../waterways/links'
 import { tipOf } from '../waterways/quays'
 import { insidePolygon, landOutline } from '../waterways/water-route'
 import { boundsOf, type CityLayout, type IslandLink, type Lot, type Rect } from '../world/layout'
