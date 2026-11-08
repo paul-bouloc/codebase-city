@@ -93,9 +93,10 @@
   white-space: nowrap;
 }
 
-/* Right to left, so the ellipsis eats the start of the folder, not the end. */
+/* Right to left, so the ellipsis eats the start of the folder, not the end. It gives way long
+ * before the name does. */
 .folder {
-  flex: 0 1 auto;
+  flex: 0 1000 auto;
   min-width: 0;
   overflow: hidden;
   color: var(--color-text-secondary);
