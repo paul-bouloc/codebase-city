@@ -1,12 +1,8 @@
 import { useState } from 'react'
+import type { FileRole, Language } from '../../src/data/file-kinds'
 import { QuotaIndicator } from '../../src/ui/account/QuotaIndicator'
 import { Button } from '../../src/ui/actions/Button'
-import {
-  type AnalysisStatus,
-  Badge,
-  type FileRole,
-  type Language,
-} from '../../src/ui/display/Badge'
+import { type AnalysisStatus, Badge } from '../../src/ui/display/Badge'
 import { ListRow } from '../../src/ui/display/ListRow'
 import { AnalysisProgress } from '../../src/ui/feedback/AnalysisProgress'
 import type { BuildStep, ProgressOutcome } from '../../src/ui/feedback/analysis-steps'

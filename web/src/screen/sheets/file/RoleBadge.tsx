@@ -1,6 +1,6 @@
 import { useId } from 'react'
+import type { FileRole } from '../../../data/file-kinds'
 import { Icon } from '../../../ui/brand/Icon'
-import type { FileRole } from '../../../ui/display/Badge'
 import { ROLE_NAMES } from '../../../ui/display/role-names'
 import styles from './RoleBadge.module.css'
 

@@ -1,4 +1,4 @@
-import type { FileRole, Language } from '../../ui/display/Badge'
+import type { FileRole, Language } from '../../data/file-kinds'
 import type { FileSymbol } from '../sheets/sheet-data'
 
 // What the search palette shows. The city screen finds it in the analysis result (`app/`).

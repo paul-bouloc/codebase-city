@@ -1,20 +1,10 @@
+import type { FileRole, Language } from '../../data/file-kinds'
 import { Icon } from '../brand/Icon'
 import type { IconName } from '../brand/icons'
 import { Spinner } from '../feedback/Spinner'
 import styles from './Badge.module.css'
 import { LANGUAGE_LABELS } from './language-labels'
 import { ROLE_NAMES } from './role-names'
-
-export type FileRole =
-  | 'entry-point'
-  | 'foundation'
-  | 'conductor'
-  | 'facade'
-  | 'test'
-  | 'config'
-  | 'generated'
-
-export type Language = 'typescript' | 'javascript' | 'python' | 'go' | 'css' | 'other'
 
 export type AnalysisStatus = 'queued' | 'building' | 'done' | 'failed' | 'cancelled'
 

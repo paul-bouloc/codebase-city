@@ -1,4 +1,4 @@
-import type { Language } from '../../ui/display/Badge'
+import type { Language } from '../../data/file-kinds'
 import {
   boundsOf,
   type CityLayout,

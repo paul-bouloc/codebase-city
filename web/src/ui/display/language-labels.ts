@@ -1,4 +1,4 @@
-import type { Language } from './Badge'
+import type { Language } from '../../data/file-kinds'
 
 // Language names on badges and file cards: unanalyzed files say so.
 export const LANGUAGE_LABELS: Record<Language, string> = {

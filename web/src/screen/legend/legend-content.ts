@@ -1,4 +1,4 @@
-import type { Language } from '../../ui/display/Badge'
+import type { Language } from '../../data/file-kinds'
 import { percent } from '../../ui/display/count-format'
 
 // Language names in the city's own lists. Unanalyzed files are "Other" here; a badge on a single

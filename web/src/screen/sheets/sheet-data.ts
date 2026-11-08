@@ -1,4 +1,4 @@
-import type { FileRole, Language } from '../../ui/display/Badge'
+import type { FileRole, Language } from '../../data/file-kinds'
 
 // What the sheets and the About panel show. The city screen reads them from the analysis result
 // (`app/`); the format does not carry folders' READMEs yet.

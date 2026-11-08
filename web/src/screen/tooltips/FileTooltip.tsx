@@ -1,4 +1,5 @@
-import { Badge, type FileRole, type Language } from '../../ui/display/Badge'
+import type { FileRole, Language } from '../../data/file-kinds'
+import { Badge } from '../../ui/display/Badge'
 import { exactCount } from '../../ui/display/count-format'
 import { LANGUAGE_LABELS } from '../../ui/display/language-labels'
 import { Glass } from '../parts/Glass'

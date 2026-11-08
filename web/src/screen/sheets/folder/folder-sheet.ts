@@ -1,5 +1,5 @@
 import { ANALYZED_LANGUAGES } from '../../../city/world/from-result'
-import type { Language } from '../../../ui/display/Badge'
+import type { Language } from '../../../data/file-kinds'
 import { githubTreeUrl } from '../../github-links'
 import { languageOf, type ResultIndex } from '../../result-index'
 import type { FolderSheetData, IslandLink, KeyFile } from '../sheet-data'
