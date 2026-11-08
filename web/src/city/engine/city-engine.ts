@@ -274,7 +274,6 @@ export class CityEngine {
     const radius = Math.hypot(bounds.width, bounds.height) / 2
     this.sun.fit(centre, radius + SHADOW_MARGIN)
 
-    // The target stays between the sea and the highest plateau.
     this.rig.frameCity(centre, radius, bounds, city.top, seaSize(layout))
     this.renderer.shadowMap.needsUpdate = true
     this.needsRender = true
