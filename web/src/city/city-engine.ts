@@ -44,12 +44,21 @@ import { type Drive, STILL } from './drive'
 import { ExtraFerries } from './extra-ferries'
 import { createFerries } from './ferries'
 import { Fleet } from './fleet'
+import {
+  extentOf,
+  FRAME_MARGIN,
+  flightRadius,
+  frameInView,
+  revealShift,
+  type Viewport,
+} from './flight'
 import { islandShapes } from './island-shape'
 import type { CityLayout } from './layout'
 import { SUN_DIRECTION } from './light'
 import { cityLinks, type Port } from './links'
 import { bearingOf, northOf, scaleFiles } from './map-scale'
 import { CityPicker, type CityTarget } from './picking'
+import type { PlacedBuilding } from './placed-buildings'
 import { createParcels } from './plateaux'
 import { BADGE_HALF_WIDTH, badgeInView, portBadgeAt } from './port-links'
 import { createSea, OPEN_SEA, seaSize } from './sea'
@@ -92,10 +101,11 @@ const START_POLAR_ANGLE = MathUtils.degToRad(55)
 const ZOOM_STEP = 1.6
 /** Closer to the vertical than this, the camera looks straight down. */
 const TOP_VIEW_POLAR = MathUtils.degToRad(1)
-/** Room around files the camera frames, in u: a lot and a half. */
-const FRAME_MARGIN = 3
 /** How far the camera target may leave the city's edge. */
 const TARGET_MARGIN = 20
+/** A second click this soon after the first, in ms, and this close, in CSS pixels, flies there. */
+const DOUBLE_CLICK_MS = 400
+const DOUBLE_CLICK_SLACK = 6
 /** A building this close to the pointer, in CSS pixels, is under it. */
 const PICK_SLACK = 8
 /**
@@ -162,6 +172,12 @@ export class CityEngine {
   // Files per square unit of the plateaux, for the scale.
   private density = 0
   private targets: CityTargets | null = null
+  private layout: CityLayout | null = null
+  private placed: readonly PlacedBuilding[] = []
+  // Pixels a panel covers on the right of the canvas: the camera frames and reveals left of them.
+  private inset = 0
+  // The last click that selected, for a second one to fly there.
+  private lastClick: { time: number; x: number; y: number } | null = null
   // The tilt the top view left, to go back to.
   private tiltBeforeTop = START_POLAR_ANGLE
   private view: CameraView | null = null
@@ -246,9 +262,35 @@ export class CityEngine {
     this.drive = drive
   }
 
-  /** Selects a building or a folder, or nothing. */
+  /**
+   * Selects a building or a folder, or nothing. The camera stays, unless a panel hides the
+   * selection: it then slides just clear of it.
+   */
   select(target: CityTarget | null): void {
     this.interaction?.select(target)
+    this.revealSelection()
+  }
+
+  /**
+   * Pixels a panel covers on the right of the canvas, 0 for none: flights frame left of them, and
+   * a selection they come to hide slides clear.
+   */
+  setViewInset(right: number): void {
+    const grew = right > this.inset
+    this.inset = right
+    if (grew) {
+      this.revealSelection()
+    }
+  }
+
+  /** Selects the building of a file or the island or parcel of a folder, and flies to it. */
+  flyTo(path: string): boolean {
+    const target = this.targets?.at(path) ?? null
+    if (target) {
+      this.interaction?.select(target)
+      this.fly(target)
+    }
+    return target !== null
   }
 
   clearSelection(): void {
@@ -310,9 +352,82 @@ export class CityEngine {
     const ys = points.map(({ y }) => y)
     const [minX, maxX] = [Math.min(...xs), Math.max(...xs)]
     const [minY, maxY] = [Math.min(...ys), Math.max(...ys)]
-    const [cx, , cz] = boardToThree((minX + maxX) / 2, (minY + maxY) / 2, 0)
-    const radius = Math.hypot(maxX - minX, maxY - minY) / 2 + FRAME_MARGIN
-    void this.controls.fitToSphere(new Sphere(new Vector3(cx, 0, cz), radius), true)
+    const centre = boardToThree((minX + maxX) / 2, (minY + maxY) / 2, 0)
+    this.frameSphere(centre, Math.hypot(maxX - minX, maxY - minY) / 2 + FRAME_MARGIN)
+  }
+
+  /** Flies to a file's building and its block, or to a folder whole, at the same heading and tilt. */
+  private fly(target: CityTarget): void {
+    const extent = this.layout && extentOf(target, this.layout, this.placed)
+    if (extent) {
+      this.frameSphere(extent.centre, flightRadius(extent))
+    }
+  }
+
+  /** Frames a sphere on the ground in the part of the canvas no panel covers. */
+  private frameSphere([x, , z]: Vec3, radius: number): void {
+    const canvas = this.renderer.domElement
+    if (canvas.clientWidth === 0 || canvas.clientHeight === 0) {
+      return
+    }
+    const { distance, shift } = frameInView(radius, this.viewport())
+    // The camera looks `shift` u to the right of the centre, at the heading it turns to.
+    const { theta } = this.controls.getSpherical(this.heading, true)
+    const smooth = !this.lessMotion.matches
+    void this.controls.moveTo(x + Math.cos(theta) * shift, 0, z - Math.sin(theta) * shift, smooth)
+    void this.controls.dollyTo(distance, smooth)
+    this.needsRender = true
+  }
+
+  /** Slides the camera sideways just enough for the selection to clear the panel that hides it. */
+  private revealSelection(): void {
+    const target = this.interaction?.getSelection()?.target
+    const extent = target && this.layout && extentOf(target, this.layout, this.placed)
+    const canvas = this.renderer.domElement
+    if (!extent || this.inset <= 0 || canvas.clientHeight === 0) {
+      return
+    }
+    // The camera may have been moved since the last frame: it is where it goes.
+    this.controls.update(0)
+    this.camera.updateMatrixWorld()
+    const projected = this.projected.set(...extent.centre).project(this.camera)
+    if (projected.z > 1 || Math.abs(projected.y) > 1) {
+      return
+    }
+    // How far ahead of the camera, along its axis, the selection stands.
+    const forward = this.camera.getWorldDirection(new Vector3())
+    const depth = this.aimedAt
+      .set(...extent.centre)
+      .sub(this.camera.position)
+      .dot(forward)
+    const tanV = Math.tan(MathUtils.degToRad(this.camera.fov) / 2)
+    const perPixel = (2 * depth * tanV) / canvas.clientHeight
+    const x = ((projected.x + 1) / 2) * canvas.clientWidth
+    const half = extent.radius / perPixel
+    const pixels = revealShift(x - half, x + half, this.viewport())
+    if (pixels <= 0) {
+      return
+    }
+    const { theta } = this.controls.getSpherical(this.heading, true)
+    const target3 = this.controls.getTarget(this.aimedAt, true)
+    const shift = pixels * perPixel
+    void this.controls.moveTo(
+      target3.x + Math.cos(theta) * shift,
+      target3.y,
+      target3.z - Math.sin(theta) * shift,
+      !this.lessMotion.matches,
+    )
+    this.needsRender = true
+  }
+
+  private viewport(): Viewport {
+    const canvas = this.renderer.domElement
+    return {
+      width: canvas.clientWidth,
+      height: canvas.clientHeight,
+      inset: this.inset,
+      fov: this.camera.fov,
+    }
   }
 
   private listenToPointer(canvas: HTMLCanvasElement): () => void {
@@ -348,6 +463,9 @@ export class CityEngine {
         return
       }
       move(event)
+      // Only two clicks in a row that select make a double click.
+      const last = this.lastClick
+      this.lastClick = null
       const interaction = this.interaction
       const mark = this.markAtPointer()
       // A click on a port's badge opens it, or closes it if open; any other click closes the
@@ -372,7 +490,22 @@ export class CityEngine {
         this.hoverAtPointer()
         return
       }
-      interaction?.select(this.pick())
+      // A second click on the spot flies to what the first one selected: the camera may have
+      // slid in between, so the pointer may now be on something else.
+      const click = { time: event.timeStamp, x: event.clientX, y: event.clientY }
+      if (
+        last &&
+        click.time - last.time <= DOUBLE_CLICK_MS &&
+        Math.hypot(click.x - last.x, click.y - last.y) <= DOUBLE_CLICK_SLACK
+      ) {
+        const selected = interaction?.getSelection()
+        if (selected) {
+          this.fly(selected.target)
+        }
+        return
+      }
+      this.lastClick = click
+      this.select(this.pick())
     }
     canvas.addEventListener('pointermove', move)
     canvas.addEventListener('pointerleave', leave)
@@ -549,6 +682,8 @@ export class CityEngine {
     this.animatedAt = Number.NEGATIVE_INFINITY
     this.picker = new CityPicker(shapes, buildings.placed)
     this.targets = cityTargets(layout)
+    this.layout = layout
+    this.placed = buildings.placed
     const files = layout.islands.reduce((sum, island) => sum + island.lots.length, 0)
     const area = layout.islands.reduce(
       (sum, { plateau }) => sum + plateau.width * plateau.height,
