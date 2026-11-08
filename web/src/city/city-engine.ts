@@ -28,9 +28,10 @@ import { createBridges } from './bridges'
 import { createBuildings } from './buildings'
 import { CityInteraction, type CityItem, type CityListeners, isClick } from './city-interaction'
 import { cityDecor } from './decor'
-import { createDecor, type DecorStats, decorStats } from './decor-mesh'
+import { BOAT_LENGTH, createDecor, type DecorStats, decorStats } from './decor-mesh'
 import { createFading } from './dimming'
 import { createFerries } from './ferries'
+import { Fleet } from './fleet'
 import { islandShapes } from './island-shape'
 import type { CityLayout } from './layout'
 import { SUN_DIRECTION } from './light'
@@ -68,6 +69,13 @@ const START_POLAR_ANGLE = MathUtils.degToRad(55)
 const TARGET_MARGIN = 20
 /** A building this close to the pointer, in CSS pixels, is under it. */
 const PICK_SLACK = 8
+/**
+ * Boats sail at 30 frames a second at most: every other frame at 60 Hz, a little under 1/30 s so
+ * that a frame a hair early does not wait for the next.
+ */
+const SAIL_FRAME = 1000 / 30 - 4
+/** Boats sail only while one at the camera's target spans this many device pixels or more. */
+const SAIL_PIXELS = 3
 
 const SHADOW_MAP_SIZE = 4096
 /** Room around the city for the shadows of the tallest towers. */
@@ -127,10 +135,14 @@ export class CityEngine {
     pickMs: 0,
   }
   private picker: CityPicker | null = null
+  private fleet: Fleet | null = null
+  private sailedAt = Number.NEGATIVE_INFINITY
+  private readonly lessMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
   private interaction: CityInteraction | null = null
   private listeners: CityListeners = {}
   private readonly raycaster = new Raycaster()
   private readonly ndc = new Vector2()
+  private readonly bufferSize = new Vector2()
   // Where the pointer is on the canvas, in CSS pixels; null when it is elsewhere.
   private pointer: { x: number; y: number; clientX: number; clientY: number } | null = null
   private pressedAt: { x: number; y: number } | null = null
@@ -289,6 +301,13 @@ export class CityEngine {
     const pixelRatio = this.renderer.getPixelRatio()
     const fading = createFading()
     const buildings = createBuildings(layout, pixelRatio, fading)
+    const fleet = new Fleet(
+      links.boats.filter((boat) => boat.line),
+      links.ferries,
+      fading,
+    )
+    this.fleet = fleet
+    this.sailedAt = Number.NEGATIVE_INFINITY
     this.picker = new CityPicker(shapes, buildings.placed)
     const interaction = new CityInteraction(
       layout,
@@ -313,7 +332,12 @@ export class CityEngine {
       createBridges(links),
       createFerries(links.ferries, pixelRatio),
       buildings.group,
-      createDecor(decor, links.boats, fading),
+      createDecor(
+        decor,
+        links.boats.filter((boat) => !boat.line),
+        fading,
+      ),
+      fleet.mesh,
     )
     this.scene.add(this.city)
 
@@ -411,6 +435,7 @@ export class CityEngine {
       }
     }
     this.picker = null
+    this.fleet = null
   }
 
   /** One square orthographic shadow camera over the whole city, along the fixed sun. */
@@ -433,6 +458,20 @@ export class CityEngine {
     this.sun.shadow.bias = -0.0002
   }
 
+  /**
+   * Whether the boats sail: not when the system asks for less motion, nor when they are too small
+   * to see (a hidden tab gets no frames at all).
+   */
+  private boatsSail(): boolean {
+    if (this.lessMotion.matches) {
+      return false
+    }
+    const height = this.renderer.getDrawingBufferSize(this.bufferSize).y
+    const pixelsPerUnit =
+      (height * this.camera.projectionMatrix.elements[5]) / 2 / this.controls.distance
+    return BOAT_LENGTH * pixelsPerUnit >= SAIL_PIXELS
+  }
+
   private frame(time: number): void {
     this.timer.update(time)
     const moved = this.controls.update(this.timer.getDelta())
@@ -446,6 +485,11 @@ export class CityEngine {
       }
     }
     if (this.interaction?.update(time)) {
+      this.needsRender = true
+    }
+    if (this.fleet?.sails && time - this.sailedAt >= SAIL_FRAME && this.boatsSail()) {
+      this.fleet.update(time / 1000)
+      this.sailedAt = time
       this.needsRender = true
     }
     if (moved || this.needsRender || this.continuous) {
