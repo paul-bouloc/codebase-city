@@ -86,6 +86,30 @@ describe('FileSheet', () => {
     expect(html).not.toContain('Imported by')
   })
 
+  it('offers the analysis actions only once they exist', () => {
+    const html = renderToStaticMarkup(
+      <FileSheet
+        open
+        file={FILE}
+        onClose={noop}
+        onOpenFolder={noop}
+        onSelectFile={noop}
+        onShowCycle={noop}
+        onCopyPath={noop}
+        onCopyLink={noop}
+        onRetryCode={noop}
+      />,
+    )
+    expect(html).not.toContain('<footer')
+    expect(html).not.toContain('Show impact')
+  })
+
+  it('leaves out the size of an unanalyzed file when it is unknown', () => {
+    const html = render({ ...FILE, analyzed: false, languageName: 'JSON', language: 'other' })
+    expect(html).not.toContain('Size')
+    expect(html).not.toContain('—')
+  })
+
   it('removes an empty list tab instead of greying it', () => {
     expect(tabLabels(render({ ...FILE, symbols: [] }))).toEqual(['Imports', 'Imported by', 'Code'])
   })

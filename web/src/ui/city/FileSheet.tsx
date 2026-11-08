@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Badge } from '../Badge'
 import { Button } from '../Button'
 import { exactCount, fileSize } from '../count-format'
@@ -68,8 +68,11 @@ interface FileSheetProps {
   onCopyPath: () => void
   onCopyLink: () => void
   onRetryCode: () => void
-  onShowImpact: () => void
-  onFindPath: () => void
+  // The Code tab is on show: its code is read from GitHub only then.
+  onOpenCode?: () => void
+  // The guide's questions on a file; the footer that offers them shows once they exist.
+  onShowImpact?: () => void
+  onFindPath?: () => void
   // For the demonstration page: open on a given tab, list or comment unfolded.
   defaultTab?: FileTab
   defaultExpanded?: boolean
@@ -86,6 +89,7 @@ export function FileSheet({
   onCopyPath,
   onCopyLink,
   onRetryCode,
+  onOpenCode,
   onShowImpact,
   onFindPath,
   defaultTab,
@@ -120,7 +124,7 @@ export function FileSheet({
   )
 
   const footer =
-    !loading && file.analyzed ? (
+    !loading && file.analyzed && onShowImpact && onFindPath ? (
       <>
         <Button onClick={onShowImpact}>{TEXT.showImpact}</Button>
         <Button onClick={onFindPath}>{TEXT.findPath}</Button>
@@ -158,6 +162,7 @@ export function FileSheet({
           onSelectFile={onSelectFile}
           onShowCycle={onShowCycle}
           onRetryCode={onRetryCode}
+          onOpenCode={onOpenCode}
           defaultTab={defaultTab}
           defaultExpanded={defaultExpanded}
         />
@@ -172,17 +177,30 @@ function FileDetails({
   onSelectFile,
   onShowCycle,
   onRetryCode,
+  onOpenCode,
   defaultTab,
   defaultExpanded = false,
 }: Pick<
   FileSheetProps,
-  'file' | 'onOpenFolder' | 'onSelectFile' | 'onShowCycle' | 'onRetryCode' | 'defaultTab'
+  | 'file'
+  | 'onOpenFolder'
+  | 'onSelectFile'
+  | 'onShowCycle'
+  | 'onRetryCode'
+  | 'onOpenCode'
+  | 'defaultTab'
 > & { defaultExpanded?: boolean }) {
   const tabs = fileTabs(file)
   const [tab, setTab] = useState<FileTab | undefined>(defaultTab)
   const [codeLine, setCodeLine] = useState<number>()
   // A tab that went away (or none chosen yet) falls back to the first one there is.
   const shownTab = tabs.find(({ id }) => id === tab)?.id ?? tabs[0]?.id ?? 'code'
+  const codeShown = shownTab === 'code'
+  useEffect(() => {
+    if (codeShown) {
+      onOpenCode?.()
+    }
+  }, [codeShown, onOpenCode])
 
   return (
     <>
