@@ -1,8 +1,8 @@
 import type { ComponentPropsWithRef, MouseEvent, ReactNode } from 'react'
+import { Icon } from '../Icon'
+import type { IconName } from '../icons'
+import { Spinner } from '../Spinner'
 import styles from './Button.module.css'
-import { Icon } from './Icon'
-import type { IconName } from './icons'
-import { Spinner } from './Spinner'
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'github' | 'danger' | 'guide'
 

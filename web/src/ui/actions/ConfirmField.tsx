@@ -1,7 +1,7 @@
 import { type Ref, useId } from 'react'
+import { Icon } from '../Icon'
 import styles from './ConfirmField.module.css'
 import { confirmationMatches } from './confirmation'
-import { Icon } from './Icon'
 
 const TEXT = {
   label: (expected: string) => (

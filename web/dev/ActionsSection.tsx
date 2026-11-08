@@ -1,10 +1,10 @@
 import { type ReactNode, useEffect, useState } from 'react'
-import { Button, type ButtonVariant } from '../src/ui/Button'
+import { Button, type ButtonVariant } from '../src/ui/actions/Button'
+import { Kbd } from '../src/ui/actions/Kbd'
+import { SegmentedControl, type SegmentedOption } from '../src/ui/actions/SegmentedControl'
+import { type TabItem, Tabs } from '../src/ui/actions/Tabs'
+import { UrlField, type UrlFieldSize, type UrlFieldState } from '../src/ui/actions/UrlField'
 import type { IconName } from '../src/ui/icons'
-import { Kbd } from '../src/ui/Kbd'
-import { SegmentedControl, type SegmentedOption } from '../src/ui/SegmentedControl'
-import { type TabItem, Tabs } from '../src/ui/Tabs'
-import { UrlField, type UrlFieldSize, type UrlFieldState } from '../src/ui/UrlField'
 import styles from './ActionsSection.module.css'
 
 const TEXT = {

@@ -1,8 +1,8 @@
 import { type FocusEvent, type KeyboardEvent, useEffect, useId, useRef, useState } from 'react'
 import styles from './AccountMenu.module.css'
 import { Avatar } from './Avatar'
+import { rovingIndex } from './actions/roving-index'
 import { Icon } from './Icon'
-import { rovingIndex } from './roving-index'
 
 const TEXT = {
   trigger: (login: string) => `Account menu for ${login}`,

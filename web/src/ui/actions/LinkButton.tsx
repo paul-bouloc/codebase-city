@@ -1,8 +1,8 @@
 import type { ComponentPropsWithRef, ReactNode } from 'react'
+import { Icon } from '../Icon'
+import type { IconName } from '../icons'
 import type { ButtonVariant } from './Button'
 import styles from './Button.module.css'
-import { Icon } from './Icon'
-import type { IconName } from './icons'
 
 const TEXT = {
   newTab: ' (opens in a new tab)',

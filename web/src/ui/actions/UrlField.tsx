@@ -1,7 +1,7 @@
 import { type FormEvent, type ReactNode, useId, useRef } from 'react'
+import { Icon } from '../Icon'
+import type { IconName } from '../icons'
 import { Button } from './Button'
-import { Icon } from './Icon'
-import type { IconName } from './icons'
 import styles from './UrlField.module.css'
 
 const TEXT = {

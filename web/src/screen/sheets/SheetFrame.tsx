@@ -1,5 +1,5 @@
 import { type KeyboardEvent, type ReactNode, useId } from 'react'
-import { Button } from '../../ui/Button'
+import { Button } from '../../ui/actions/Button'
 import { Icon } from '../../ui/Icon'
 import type { IconName } from '../../ui/icons'
 import { LiveRegion } from '../../ui/LiveRegion'

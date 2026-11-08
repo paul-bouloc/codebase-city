@@ -1,6 +1,6 @@
 import { type Ref, useRef } from 'react'
+import { Kbd } from '../../ui/actions/Kbd'
 import { Icon } from '../../ui/Icon'
-import { Kbd } from '../../ui/Kbd'
 import styles from './CitySearchField.module.css'
 
 const TEXT = {
