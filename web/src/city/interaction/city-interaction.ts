@@ -21,8 +21,6 @@ import type { CityTarget } from './picking'
 import { CYCLE_RINGS, RingSet } from './rings'
 import { SelectedLinks } from './selected-links'
 
-export type { PortLinkRow, PortList } from './open-port'
-
 /** What the pointer rests on or what is selected, with the path of its file or folder. */
 export interface CityItem {
   target: CityTarget

@@ -7,7 +7,8 @@ import { createFading } from '../render/dimming'
 import { islandShapes } from '../terrain/island-shape'
 import { cityLinks } from '../waterways/links'
 import { boundsOf, type CityLayout, type IslandLink, type Rect } from '../world/layout'
-import { type CityHover, CityInteraction, type PortList } from './city-interaction'
+import { type CityHover, CityInteraction } from './city-interaction'
+import type { PortList } from './open-port'
 
 // A hub between six islands, far apart: four ferries leave it, its two smallest links go to its
 // port (the largest first), and the last one is too small to draw.
