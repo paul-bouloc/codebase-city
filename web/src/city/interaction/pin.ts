@@ -29,6 +29,10 @@ const STEM_WIDTH = 2
 const HEAD = 12
 const HEAD_RIM = 2.5
 
+/** How high the pin's head stands over the roof, in u, and at least in CSS pixels. */
+export const PIN_TOP = STEM_FROM + STEM_LENGTH
+export const PIN_TOP_MINIMUM = STEM_MINIMUM + HEAD / 2 + HEAD_RIM
+
 // Where the pin's top is: up from its foot (`position`), by its length in u or more when far.
 const pinTop = /* glsl */ `
 uniform vec2 resolution;

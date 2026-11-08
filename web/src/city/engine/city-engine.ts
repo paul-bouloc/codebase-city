@@ -2,6 +2,7 @@ import { Color, type Group, PCFShadowMap, Scene, Timer, Vector3, WebGLRenderer }
 import type { PlacedBuilding } from '../buildings/placed-buildings'
 import { BOAT_LENGTH, type DecorStats } from '../decor/decor-mesh'
 import type { Fleet } from '../decor/fleet'
+import { cityGuideView, type GuidePaths } from '../interaction/city-guide'
 import type { CityInteraction } from '../interaction/city-interaction'
 import type { CameraView, CityItem, CityListeners } from '../interaction/city-items'
 import type { CityPicker, CityTarget } from '../interaction/picking'
@@ -18,6 +19,7 @@ import { CitySun, SHADOW_MARGIN } from './city-sun'
 import { type Drive, STILL } from './drive'
 import { extentOf, FRAME_MARGIN, flightRadius } from './flight'
 import { FrameCounter, type FrameStats, type LinkStats, NO_LINKS } from './frame-stats'
+import { GuideLabels } from './guide-labels'
 
 /**
  * Boats and arcs move at 30 frames a second at most: every other frame at 60 Hz, a little under
@@ -66,6 +68,7 @@ export class CityEngine {
   private cameraMoving = false
   private drive: Drive = STILL
   private readonly pointer: CityPointer
+  private readonly guideLabels: GuideLabels
 
   constructor(container: HTMLElement, { continuous = false }: CityEngineOptions = {}) {
     this.continuous = continuous
@@ -101,6 +104,7 @@ export class CityEngine {
         this.counter.stats.pickMs = ms
       },
     })
+    this.guideLabels = new GuideLabels(this.renderer.domElement, this.rig.camera)
     this.setSize(container.clientWidth, container.clientHeight)
     this.renderer.setAnimationLoop((time) => this.frame(time))
   }
@@ -157,6 +161,21 @@ export class CityEngine {
 
   getSelection(): CityItem | null {
     return this.interaction?.getSelection() ?? null
+  }
+
+  /**
+   * Shows what a step of the guide's tour puts forward, or nothing; the camera stays. Its labels
+   * are heard of by `guideLabels` as they move.
+   */
+  showGuide(paths: GuidePaths | null): void {
+    const { interaction, layout, targets } = this
+    if (!interaction || !layout || !targets) {
+      return
+    }
+    interaction.showGuide(
+      paths && cityGuideView(paths, layout, targets, (building) => interaction.cycleOf(building)),
+    )
+    this.needsRender = true
   }
 
   /** Selects the building of a file or the island or parcel of a folder; false for none. */
@@ -343,6 +362,7 @@ export class CityEngine {
     this.picker = null
     this.fleet = null
     this.targets = null
+    this.tellGuideLabels()
   }
 
   /**
@@ -368,6 +388,18 @@ export class CityEngine {
     ) {
       this.view = view
       this.listeners.view?.(view)
+    }
+  }
+
+  /** Tells the listeners where the guide's labels stand, when that changes. */
+  private tellGuideLabels(): void {
+    const roofs = (this.interaction?.guide.labels() ?? []).map(({ building, roof }) => ({
+      path: this.placed[building]?.file.path ?? '',
+      roof,
+    }))
+    const labels = this.guideLabels.place(roofs)
+    if (labels) {
+      this.listeners.guideLabels?.(labels)
     }
   }
 
@@ -417,6 +449,7 @@ export class CityEngine {
       this.needsRender = false
       // The view changes only with a frame drawn: the camera moved, or the window's size.
       this.tellView()
+      this.tellGuideLabels()
       // An open port's card keeps beside its badge.
       const port = this.interaction?.openedPort
       if (port) {
