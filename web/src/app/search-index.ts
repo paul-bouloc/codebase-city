@@ -7,7 +7,7 @@ import type {
   SymbolHit,
 } from '../ui/city/search-data'
 import { languageOf, type ResultIndex } from './result-index'
-import { editDistance, fuzzyMatch, type Match } from './search-match'
+import { editDistance, fuzzyMatch, lowerCase, type Match } from './search-match'
 
 // The city's search: file, folder and symbol names, matched in the browser on the result the city
 // was built from. A query with a `/` matches whole paths instead, and no symbols.
@@ -40,7 +40,7 @@ interface Target {
   lower: string
 }
 
-const target = (text: string): Target => ({ text, lower: text.toLowerCase() })
+const target = (text: string): Target => ({ text, lower: lowerCase(text) })
 
 /** The query as the search reads it: without spaces. */
 export function normalizeQuery(query: string): string {
@@ -165,7 +165,7 @@ export function buildSearchIndex(index: ResultIndex): SearchIndex {
 
   const search = (raw: string, limits = SEARCH_LIMITS): SearchResults => {
     const query = normalizeQuery(raw)
-    const lowerQuery = query.toLowerCase()
+    const lowerQuery = lowerCase(query)
     const byPath = query.includes('/')
     const fileBest = new Best<FileHit>(limits.files)
     const folderBest = new Best<FolderHit>(limits.folders)
@@ -274,7 +274,7 @@ export function buildSearchIndex(index: ResultIndex): SearchIndex {
   }
 
   const suggest = (raw: string): string | null => {
-    const query = normalizeQuery(raw).toLowerCase()
+    const query = lowerCase(normalizeQuery(raw))
     if (query.length < 3 || query.includes('/')) {
       return null
     }

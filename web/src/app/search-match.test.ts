@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { editDistance, fuzzyMatch } from './search-match'
+import { editDistance, fuzzyMatch, lowerCase } from './search-match'
 
 const match = (query: string, text: string) =>
   fuzzyMatch(query, query.toLowerCase(), text, text.toLowerCase())
@@ -83,5 +83,13 @@ describe('editDistance', () => {
   it('stops at the bound', () => {
     expect(editDistance('abc', 'xyz', 1)).toBe(2)
     expect(editDistance('a', 'abcdef', 2)).toBe(3)
+  })
+})
+
+describe('lowerCase', () => {
+  it('keeps one character for one', () => {
+    expect(lowerCase('TextModel')).toBe('textmodel')
+    expect(lowerCase('İstanbulHelper')).toHaveLength('İstanbulHelper'.length)
+    expect(lowerCase('İstanbulHelper')).toBe('İstanbulhelper')
   })
 })

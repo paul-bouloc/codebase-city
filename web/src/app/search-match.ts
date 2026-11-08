@@ -2,6 +2,23 @@
 // the name ("txtmdl" finds `textModel.ts`), scored so that whole words, word starts and runs of
 // letters come first. One letter finds the names it starts; two must appear side by side.
 
+/**
+ * The text in lower case, one character for one: a letter whose lower case is longer (`İ`) stays
+ * as it is, so that indices in one are indices in the other.
+ */
+export function lowerCase(text: string): string {
+  const lower = text.toLowerCase()
+  if (lower.length === text.length) {
+    return lower
+  }
+  let kept = ''
+  for (const char of text) {
+    const each = char.toLowerCase()
+    kept += each.length === char.length ? each : char
+  }
+  return kept
+}
+
 /** Where a query matches a text, and how well. */
 export interface Match {
   score: number
