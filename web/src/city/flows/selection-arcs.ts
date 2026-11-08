@@ -95,27 +95,8 @@ export function selectionArcs(
     rim: 0,
     rimColour: colour,
   })
-  const targetDot = (position: Vec3, colour: Vec3): ArcDot => ({
-    position,
-    colour,
-    size: TARGET_DOT,
-    rim: TARGET_RIM,
-    rimColour: WHITE,
-  })
   // The selection's own end of its arcs gets one dot of each kind, not one per arc on one point.
   const atSelection = new Map<Direction, ArcDot>()
-  const directionDots = (points: readonly Vec3[]) => {
-    for (const share of UPWARD_DOTS) {
-      const at = points[Math.round(share * (points.length - 1))] ?? selection
-      dots.push({
-        position: at,
-        colour: WHITE,
-        size: UPWARD_DOT,
-        rim: UPWARD_RIM,
-        rimColour: RED,
-      })
-    }
-  }
   const draw = (
     direction: Direction,
     there: Vec3,
@@ -133,7 +114,7 @@ export function selectionArcs(
       atSelection.set(direction, outgoing ? sourceDot(source, colour) : targetDot(target, colour))
     }
     if (upward) {
-      directionDots(points)
+      dots.push(...directionDots(points))
     }
   }
   // The links along the loop are drawn as part of it.
@@ -165,22 +146,11 @@ export function selectionArcs(
   }))
   if (loop && cycle) {
     const ends = loop.map((building, at) => (at === 0 ? selection : places.arcEnd({ building })))
-    ends.forEach((start, at) => {
-      const end = ends[(at + 1) % ends.length] ?? selection
-      const back = ends.length === 2 && at === 1
-      const points = arcPoints(start, end, ARC_SEGMENTS, back ? RETURN_RAISE : 1)
-      lines.push({ points, colour: RED, width: ARC_WIDTH, upward: false, solid: true })
-      directionDots(points)
-      if (at > 0) {
-        dots.push(targetDot(start, RED))
-      }
-    })
-    labels.push({
-      position: badgeOf(cycle.members, places.ground),
-      text: `Cycle · ${cycle.members.length} files`,
-      colour: RED,
-      rimmed: true,
-    })
+    // The selection has its own dots.
+    const drawn = loopDrawing(ends, cycle.members, places.ground, false)
+    lines.push(...drawn.lines)
+    dots.push(...drawn.dots)
+    labels.push(...drawn.labels)
   }
   return {
     drawing: {
@@ -194,6 +164,53 @@ export function selectionArcs(
     },
     hubs,
   }
+}
+
+/**
+ * The red loop of a cycle through `ends`, over its files' roofs in import order, and its badge
+ * over the middle of its `members`. Each end gets a dot, the first one only if `firstDot`.
+ */
+export function loopDrawing(
+  ends: readonly Vec3[],
+  members: readonly number[],
+  ground: (end: LinkEnd) => Vec3,
+  firstDot = true,
+): ArcDrawing {
+  const lines: ArcLine[] = []
+  const dots: ArcDot[] = []
+  ends.forEach((start, at) => {
+    const end = ends[(at + 1) % ends.length] ?? start
+    const back = ends.length === 2 && at === 1
+    const points = arcPoints(start, end, ARC_SEGMENTS, back ? RETURN_RAISE : 1)
+    lines.push({ points, colour: RED, width: ARC_WIDTH, upward: false, solid: true })
+    dots.push(...directionDots(points))
+    if (at > 0 || firstDot) {
+      dots.push(targetDot(start, RED))
+    }
+  })
+  const labels: ArcLabel[] = [
+    {
+      position: badgeOf(members, ground),
+      text: `Cycle · ${members.length} files`,
+      colour: RED,
+      rimmed: true,
+    },
+  ]
+  return { lines, dots, stems: [], labels }
+}
+
+function targetDot(position: Vec3, colour: Vec3): ArcDot {
+  return { position, colour, size: TARGET_DOT, rim: TARGET_RIM, rimColour: WHITE }
+}
+
+/** White dots with a red rim along an arc that goes up the layers, or around a loop. */
+function directionDots(points: readonly Vec3[]): ArcDot[] {
+  return UPWARD_DOTS.flatMap((share) => {
+    const at = points[Math.round(share * (points.length - 1))]
+    return at
+      ? [{ position: at, colour: WHITE, size: UPWARD_DOT, rim: UPWARD_RIM, rimColour: RED }]
+      : []
+  })
 }
 
 /** Over the middle of a cycle's files, as high above the highest foot as a hub over its plateau. */
