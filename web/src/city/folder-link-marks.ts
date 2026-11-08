@@ -30,6 +30,9 @@ const FERRY_DASH: [number, number] = [10, 7]
 const FERRY_APART = 0.35
 /** Just above the ferry lines (0.04 u). */
 const FERRY_ALTITUDE = 0.06
+/** What shows of the other ways while some stand out, and how much wider those are, in px. */
+const FADED = 0.3
+const FOCUS_WIDER = 1.5
 /** Over the bridges and the sea, under the arcs. */
 const ORDER = 6
 
@@ -91,12 +94,23 @@ export class FolderLinkMarks {
     this.group.visible = false
   }
 
-  /** Draws these ways, or none. */
-  show(ways: FolderWays | null): void {
+  /**
+   * Draws these ways, or none. With a `focus`, those stand out, wider, and the rest fade behind
+   * them.
+   */
+  show(ways: FolderWays | null, focus: FolderWays | null = null): void {
     this.clear()
     if (!ways) {
       return
     }
+    this.draw(ways, focus ? FADED : 1, 0)
+    if (focus) {
+      this.draw(focus, 1, FOCUS_WIDER)
+    }
+    this.group.visible = this.group.children.length > 0
+  }
+
+  private draw(ways: FolderWays, opacity: number, wider: number): void {
     for (const way of ['outgoing', 'incoming'] as const) {
       const colour = COLOURS[way]
       const bands = ways.bands[way]
@@ -104,14 +118,19 @@ export class FolderLinkMarks {
         this.add(
           createScreenLines(
             bands,
-            { width: BAND_HALO, colour: WHITE, opacity: HALO_OPACITY },
+            { width: BAND_HALO + wider, colour: WHITE, opacity: HALO_OPACITY * opacity },
             this.pixelRatio,
             false,
           ),
           ORDER,
         )
         this.add(
-          createScreenLines(bands, { width: BAND_WIDTH, colour }, this.pixelRatio, false),
+          createScreenLines(
+            bands,
+            { width: BAND_WIDTH + wider, colour, opacity },
+            this.pixelRatio,
+            false,
+          ),
           ORDER + 1,
         )
       }
@@ -120,7 +139,7 @@ export class FolderLinkMarks {
         this.add(
           createScreenLines(
             lines,
-            { width: FERRY_WIDTH, colour, dash: FERRY_DASH },
+            { width: FERRY_WIDTH + wider, colour, dash: FERRY_DASH, opacity },
             this.pixelRatio,
             false,
           ),
@@ -128,7 +147,6 @@ export class FolderLinkMarks {
         )
       }
     }
-    this.group.visible = this.group.children.length > 0
   }
 
   dispose(): void {
