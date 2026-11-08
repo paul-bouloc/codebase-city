@@ -97,7 +97,9 @@ pub enum InvalidResult {
     TourStart,
     #[error("tour.steps[{row}] must come after the previous step, each kind once, in order")]
     TourOrder { row: usize },
-    #[error("a list of tour.steps[{row}] must hold one to three rows, each once")]
+    #[error(
+        "a list of tour.steps[{row}] must hold up to three rows, each once, and only parks none"
+    )]
     TourList { row: usize },
     #[error("the counts of tour.steps[{row}] do not add up")]
     TourCount { row: usize },
