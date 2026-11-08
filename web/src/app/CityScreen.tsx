@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  type KeyboardEvent as ReactKeyboardEvent,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { cityCards } from '../city/city-cards'
 import type { CityEngine } from '../city/city-engine'
 import type { CameraView, CityHover, CityItem, PortList } from '../city/city-interaction'
@@ -15,6 +23,9 @@ import { githubTreeUrl } from '../ui/city/github-links'
 import { type LegendContent, legendContent } from '../ui/city/legend-content'
 import { MapScale } from '../ui/city/MapScale'
 import { PortCard } from '../ui/city/PortCard'
+import { SearchPalette, searchOptionId } from '../ui/city/SearchPalette'
+import { type SearchHit, searchOptions } from '../ui/city/search-data'
+import { searchKeyAction } from '../ui/city/search-keys'
 import type { CodeState, FileSheetData, FolderSheetData } from '../ui/city/sheet-data'
 import type { Rect } from '../ui/city/tooltip-placement'
 import { ToastProvider } from '../ui/ToastProvider'
@@ -28,7 +39,8 @@ import { folderSheetData } from './folder-sheet'
 import { fetchCode } from './github-code'
 import { repoContents } from './legend'
 import { indexResult } from './result-index'
-import { cameraKey, isTyping } from './screen-keys'
+import { cameraKey, isSearchKey, isTyping } from './screen-keys'
+import { buildSearchIndex, normalizeQuery } from './search-index'
 import { hashOf, type ScreenSelection, selectionOfHash } from './selection-hash'
 import { useDriveKeys } from './use-drive-keys'
 
@@ -72,6 +84,7 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
   const cards = useMemo(() => cityCards(result), [result])
   const symbols = useMemo(() => symbolsByFile(index), [index])
   const about = useMemo(() => aboutData(index), [index])
+  const searchIndex = useMemo(() => buildSearchIndex(index), [index])
   const repo = useMemo<CityRepo>(
     () => ({
       owner: result.repo.owner,
@@ -94,6 +107,10 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
   const [sheetOpen, setSheetOpen] = useState(false)
   // The code of one file at one commit: another result, even of the same repository, reads it again.
   const [code, setCode] = useState<{ sha: string; path: string; state: CodeState } | null>(null)
+  // A symbol found by the search: its file's sheet opens its code at its line.
+  const [openLine, setOpenLine] = useState<{ path: string; line: number; request: number } | null>(
+    null,
+  )
 
   const handleEngine = useCallback(
     (next: CityEngine | null) => {
@@ -120,6 +137,7 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
           item ? { kind: item.target.kind === 'building' ? 'file' : 'dir', path: item.path } : null,
         )
         setSheetOpen(item !== null)
+        setOpenLine(null)
       },
     })
   }, [engine])
@@ -146,6 +164,7 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
           : null
       setSelection(known)
       setSheetOpen(known !== null)
+      setOpenLine(null)
       if (!engine) {
         return
       }
@@ -324,6 +343,101 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
 
   useDriveKeys(engine)
 
+  // The search: the palette shows under the field while it has the focus and a query.
+  const searchListboxId = useId()
+  const searchInput = useRef<HTMLInputElement>(null)
+  const [query, setQuery] = useState('')
+  const [searchFocused, setSearchFocused] = useState(false)
+  const [activeOption, setActiveOption] = useState(0)
+  const searchResults = useMemo(() => searchIndex.search(query), [searchIndex, query])
+  const options = useMemo(() => searchOptions(searchResults), [searchResults])
+  const paletteShown = searchFocused && normalizeQuery(query) !== ''
+  const suggestion = useMemo(
+    () => (paletteShown && options.length === 0 ? searchIndex.suggest(query) : null),
+    [paletteShown, options, searchIndex, query],
+  )
+  const openLineRequest = useRef(0)
+
+  const changeQuery = (value: string) => {
+    setQuery(value)
+    setActiveOption(0)
+    setSearchFocused(true)
+  }
+
+  // Flies to what was found and selects it; the field lets go, so the city's keys work again.
+  const chooseHit = (hit: SearchHit) => {
+    searchInput.current?.blur()
+    setSearchFocused(false)
+    if (hit.kind === 'symbol') {
+      choose({ kind: 'file', path: hit.file }, FLY)
+      openLineRequest.current++
+      setOpenLine({ path: hit.file, line: hit.line, request: openLineRequest.current })
+    } else {
+      choose({ kind: hit.kind === 'file' ? 'file' : 'dir', path: hit.path }, FLY)
+    }
+  }
+
+  const handleSearchKey = (event: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (event.nativeEvent.isComposing) {
+      return
+    }
+    const action = searchKeyAction(event.key, {
+      open: paletteShown,
+      count: options.length,
+      active: activeOption,
+      query,
+    })
+    if (!action) {
+      return
+    }
+    // Esc taken here is not the screen's: it closes no sheet.
+    event.preventDefault()
+    switch (action.type) {
+      case 'move':
+        setActiveOption(action.index)
+        break
+      case 'open':
+        setSearchFocused(true)
+        break
+      case 'choose': {
+        const hit = options[activeOption]
+        if (hit) {
+          chooseHit(hit)
+        }
+        break
+      }
+      case 'close':
+        setSearchFocused(false)
+        break
+      case 'clear':
+        changeQuery('')
+        setSearchFocused(false)
+        break
+      case 'leave':
+        searchInput.current?.blur()
+        break
+    }
+  }
+
+  // / and ⌘K (Ctrl+K) go to the search field, its query selected to be typed over.
+  useEffect(() => {
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || !isSearchKey(event)) {
+        return
+      }
+      const input = searchInput.current
+      if (!input || input.disabled) {
+        return
+      }
+      event.preventDefault()
+      input.focus()
+      input.select()
+      setSearchFocused(true)
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [])
+
   const copy = (text: string, title: string) => {
     navigator.clipboard.writeText(text).then(
       () => toast.show({ tone: 'success', title }),
@@ -364,6 +478,29 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
           aboutOpen={aboutOpen}
           onAboutToggle={() => setAboutOpen(!aboutOpen)}
           aboutPanelId={ABOUT_ID}
+          searchValue={query}
+          onSearchChange={changeQuery}
+          searchExpanded={paletteShown && options.length > 0}
+          searchListboxId={searchListboxId}
+          searchActiveDescendant={searchOptionId(searchListboxId, activeOption)}
+          searchInputRef={searchInput}
+          onSearchKeyDown={handleSearchKey}
+          onSearchFocus={() => setSearchFocused(true)}
+          onSearchBlur={() => setSearchFocused(false)}
+          searchPalette={
+            paletteShown && (
+              <SearchPalette
+                id={searchListboxId}
+                query={normalizeQuery(query)}
+                results={searchResults}
+                active={activeOption}
+                suggestion={suggestion}
+                onActiveChange={setActiveOption}
+                onChoose={chooseHit}
+                onSuggest={changeQuery}
+              />
+            )
+          }
         />
       </div>
 
@@ -411,6 +548,7 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
               }
             }}
             onOpenCode={openCode}
+            openLine={openLine?.path === shownSheet.file.path ? openLine : undefined}
           />
         )}
         {shownSheet && 'folder' in shownSheet && (
