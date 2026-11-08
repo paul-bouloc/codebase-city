@@ -276,7 +276,7 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
           <FileSheet
             open={sheetShown}
             file={shownSheet.file}
-            onClose={() => setSheetOpen(false)}
+            onClose={closeSheet}
             onOpenFolder={(path) => choose({ kind: 'dir', path }, FLY)}
             onSelectFile={(path) => choose({ kind: 'file', path }, FLY)}
             onShowCycle={showCycle}
@@ -297,7 +297,7 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
           <FolderSheet
             open={sheetShown}
             folder={shownSheet.folder}
-            onClose={() => setSheetOpen(false)}
+            onClose={closeSheet}
             onOpenFolder={(path) => choose({ kind: 'dir', path }, FLY)}
             onSelectFile={(path) => choose({ kind: 'file', path }, FLY)}
             onCopyLink={() =>
