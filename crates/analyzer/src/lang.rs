@@ -5,6 +5,7 @@
 mod go;
 mod header;
 mod javascript;
+mod metrics;
 mod python;
 
 use std::collections::HashSet;
@@ -13,7 +14,6 @@ use model::{EdgeKind, SymbolKind};
 use tree_sitter::{Node, Parser};
 
 use crate::files::Language;
-use crate::metrics;
 
 /// What parsing tells about one file.
 #[derive(Debug, Clone, PartialEq, Eq)]
