@@ -1,23 +1,24 @@
 //! Assembling the analysis result from the files of a repository.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 
 use model::{
-    AnalysisResult, Confidence, Dirs, EdgeKind, Edges, FORMAT_VERSION, Files, Ignored, Islands,
-    Repo, Roles, Scope, Stats, Symbols,
+    AnalysisResult, Dirs, Edges, FORMAT_VERSION, Files, Ignored, Islands, Repo, Roles, Scope,
+    Stats, Symbols,
 };
 use rayon::prelude::*;
 
 use crate::files::{Language, SourceFile, scope, split_path};
 use crate::graph::cycles;
+use crate::graph::edges::{self, ImportReport};
 use crate::graph::entries;
 use crate::graph::reach::{self, Reach, Units};
 use crate::graph::roles::{self, RolesReport};
-use crate::graph::{self, BarrelReport, Graph, Node, strength};
+use crate::graph::{self, BarrelReport, Graph, Node};
 use crate::islands;
 use crate::lang::{self, Parsed};
 use crate::layout;
-use crate::resolve::{self, Outcome, Target};
+use crate::resolve;
 use crate::saturating_u32 as index;
 
 /// Version of the algorithms. Bumped whenever a change would give another
@@ -32,27 +33,6 @@ pub struct Report {
     /// The import graph, barrels seen through, that rankings use.
     pub graph: Graph,
     pub roles: RolesReport,
-}
-
-/// How the imports of an analysis were resolved, to check the resolution
-/// by hand on real repositories. Not part of the result.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct ImportReport {
-    /// Imports resolved by the language's own rules.
-    pub exact: u32,
-    /// Imports resolved only by the last-resort match on the path.
-    pub likely: u32,
-    pub external: u32,
-    pub unresolved: u32,
-    /// Imports of each kind, resolved or not.
-    pub by_kind: Vec<(EdgeKind, u32)>,
-    /// Modules that could not be resolved, with how many imports name
-    /// them; the most frequent first.
-    pub unresolved_modules: Vec<(String, u32)>,
-    /// Packages counted as external only because nothing declares them,
-    /// with how many imports name them; the most frequent first. An alias
-    /// the resolver missed shows up here.
-    pub undeclared_packages: Vec<(String, u32)>,
 }
 
 /// Analyzes the files of one commit. The result does not depend on the
@@ -145,67 +125,7 @@ pub fn analyze_with_report(
         }
     }
 
-    let mut report = ImportReport::default();
-    let mut by_kind: BTreeMap<u8, (EdgeKind, u32)> = BTreeMap::new();
-    let mut unresolved: HashMap<&str, u32> = HashMap::new();
-    let mut undeclared: HashMap<&str, u32> = HashMap::new();
-    // Importing file, then folder targets after file targets, then index
-    let mut edges: BTreeMap<(u32, bool, u32), (EdgeKind, Confidence)> = BTreeMap::new();
-    for (from, (imports, outcomes)) in imports.iter().zip(&outcomes).enumerate() {
-        let from = index(from);
-        for (import, outcome) in imports.iter().zip(outcomes) {
-            by_kind
-                .entry(strength(import.kind))
-                .or_insert((import.kind, 0))
-                .1 += 1;
-            let targets = match outcome {
-                Outcome::Resolved(targets) => targets,
-                Outcome::External => {
-                    report.external += 1;
-                    continue;
-                }
-                Outcome::Undeclared(package) => {
-                    report.external += 1;
-                    *undeclared.entry(package).or_default() += 1;
-                    continue;
-                }
-                Outcome::Unresolved => {
-                    report.unresolved += 1;
-                    *unresolved.entry(&import.specifier).or_default() += 1;
-                    continue;
-                }
-            };
-            if targets
-                .iter()
-                .any(|(_, confidence)| *confidence == Confidence::Exact)
-            {
-                report.exact += 1;
-            } else {
-                report.likely += 1;
-            }
-            for (target, confidence) in targets {
-                let key = match target {
-                    Target::File(file) if *file == from => continue,
-                    Target::File(file) => (from, false, *file),
-                    // A package folder holds files, so the tree has it
-                    Target::Dir(path) => match dirs.by_path.get(path.as_str()) {
-                        Some(&dir) => (from, true, dir),
-                        None => continue,
-                    },
-                };
-                let edge = edges.entry(key).or_insert((import.kind, *confidence));
-                if strength(import.kind) > strength(edge.0) {
-                    edge.0 = import.kind;
-                }
-                if *confidence == Confidence::Exact {
-                    edge.1 = Confidence::Exact;
-                }
-            }
-        }
-    }
-    report.by_kind = by_kind.into_values().rev().collect();
-    report.unresolved_modules = most_frequent(unresolved);
-    report.undeclared_packages = most_frequent(undeclared);
+    let (edges, report) = edges::edges(&imports, &outcomes, &dirs.by_path);
 
     let paths: Vec<&str> = files.iter().map(|file| file.path.as_str()).collect();
     let mut dir_paths = vec![""; dirs.dirs.parent.len()];
@@ -368,16 +288,6 @@ pub fn analyze_with_report(
         roles: roles_report,
     };
     (result, report)
-}
-
-/// Names with their count, the most frequent first, then by name.
-fn most_frequent(counts: HashMap<&str, u32>) -> Vec<(String, u32)> {
-    let mut sorted: Vec<(String, u32)> = counts
-        .into_iter()
-        .map(|(name, count)| (name.to_owned(), count))
-        .collect();
-    sorted.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
-    sorted
 }
 
 /// The folder table, built as files come: a folder is added the first time

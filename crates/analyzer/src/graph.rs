@@ -7,6 +7,7 @@
 //! examples, docs, build output or generated files.
 
 pub(crate) mod cycles;
+pub(crate) mod edges;
 pub(crate) mod entries;
 pub(crate) mod reach;
 pub(crate) mod roles;

@@ -10,7 +10,8 @@ pub mod lang;
 pub mod layout;
 mod resolve;
 
-pub use analyze::{ANALYZER_VERSION, ImportReport, Report, analyze, analyze_with_report};
+pub use analyze::{ANALYZER_VERSION, Report, analyze, analyze_with_report};
+pub use graph::edges::ImportReport;
 pub use graph::roles::RolesReport;
 
 /// Counts and indexes are `u32` in the result: far more than ingestion keeps.
