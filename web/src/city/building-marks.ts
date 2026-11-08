@@ -19,6 +19,7 @@ import {
 } from 'three'
 import { buildingGeometry, type Vertex } from './archetype-geometry'
 import type { Building } from './archetypes'
+import { INCOMING_LINK, OUTGOING_LINK } from './palette'
 import type { PlacedBuilding } from './placed-buildings'
 import { srgb, type Vec3 } from './units'
 
@@ -56,10 +57,21 @@ export interface MarkStyle {
   /** The ring's least radius on screen, in CSS pixels: a far building still gets a clear one. */
   ringMinimum: number
   pin: boolean
+  /** Of the outline and the ring; ink if absent. */
+  colour?: Vec3
 }
 
 export const HOVERED_MARK: MarkStyle = { outline: 2, ring: 1.5, ringMinimum: 12, pin: false }
 export const SELECTED_MARK: MarkStyle = { outline: 2.5, ring: 3, ringMinimum: 16, pin: true }
+/** A file linked to the selection: Marine if the selection imports it, Sun if it imports it. */
+export const OUTGOING_MARK: MarkStyle = {
+  outline: 2,
+  ring: 2,
+  ringMinimum: 12,
+  pin: false,
+  colour: srgb(OUTGOING_LINK),
+}
+export const INCOMING_MARK: MarkStyle = { ...OUTGOING_MARK, colour: srgb(INCOMING_LINK) }
 
 /** The ring sits a little above the ground it is drawn on. */
 const RING_LIFT = 0.03
@@ -272,7 +284,7 @@ export class BuildingMark {
       building: { value: new Vector3(building.side, building.height, building.split) },
       resolution: this.resolution,
       width: { value: this.style.outline * this.pixelRatio },
-      colour: { value: new Vector3(...INK) },
+      colour: { value: new Vector3(...(this.style.colour ?? INK)) },
     }
     const common = {
       uniforms,
@@ -321,7 +333,7 @@ export class BuildingMark {
         minimum: { value: this.style.ringMinimum * this.pixelRatio },
         resolution: this.resolution,
         width: { value: this.style.ring * this.pixelRatio },
-        colour: { value: new Vector3(...INK) },
+        colour: { value: new Vector3(...(this.style.colour ?? INK)) },
       },
       vertexShader: ringVertex,
       fragmentShader: ringFragment,

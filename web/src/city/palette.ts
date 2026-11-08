@@ -10,6 +10,9 @@ export const BRIDGE_RAIL = mixHex(BRIDGE_STONE, '#000000', 0.45)
 export const FERRY_LINE = '#1D6F78'
 // Imports that go up the layers, and nothing else: the city's only red.
 export const UPWARD = '#D1435B'
+// Around a selected file: Marine toward what it imports, Sun from what imports it.
+export const OUTGOING_LINK = '#1F4E9E'
+export const INCOMING_LINK = '#E3872D'
 // The quay of a canal and of a port.
 export const QUAY = '#C9B894'
 export const CANAL_WATER = '#79BFC0'
