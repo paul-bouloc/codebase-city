@@ -14,7 +14,7 @@ import {
   turnAbout,
   type Viewport,
 } from './flight'
-import { cityTargets } from './targets'
+import { cityTargets } from './interaction/targets'
 import { cityFromResult } from './world/from-result'
 
 const layout = cityFromResult(decodeResult(sample))

@@ -17,11 +17,11 @@ import {
   Vector2,
   Vector3,
 } from 'three'
-import { buildingGeometry, type Vertex } from './buildings/archetype-geometry'
-import type { Building } from './buildings/archetypes'
-import type { PlacedBuilding } from './buildings/placed-buildings'
-import { INCOMING_LINK, OUTGOING_LINK, UPWARD } from './render/palette'
-import { srgb, type Vec3 } from './world/units'
+import { buildingGeometry, type Vertex } from '../buildings/archetype-geometry'
+import type { Building } from '../buildings/archetypes'
+import type { PlacedBuilding } from '../buildings/placed-buildings'
+import { INCOMING_LINK, OUTGOING_LINK, UPWARD } from '../render/palette'
+import { srgb, type Vec3 } from '../world/units'
 
 // What marks one building: an outline around its shape, a ring on the ground and, once
 // selected, a pin above its roof. All keep their width in pixels at any distance.

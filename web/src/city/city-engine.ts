@@ -27,14 +27,6 @@ import {
 import { createBuildings } from './buildings/buildings'
 import type { PlacedBuilding } from './buildings/placed-buildings'
 import { CityControls } from './city-controls'
-import {
-  type CameraView,
-  CityInteraction,
-  type CityItem,
-  type CityListeners,
-  isClick,
-  type Pointed,
-} from './city-interaction'
 import { cityDecor } from './decor/decor'
 import { BOAT_LENGTH, createDecor, type DecorStats, decorStats } from './decor/decor-mesh'
 import { Fleet } from './decor/fleet'
@@ -54,12 +46,20 @@ import { indexCycles } from './flows/cycles'
 import { ExtraFerries } from './flows/extra-ferries'
 import { BADGE_HALF_WIDTH, badgeInView, portBadgeAt } from './flows/port-links'
 import { indexImports } from './flows/selection-links'
+import {
+  type CameraView,
+  CityInteraction,
+  type CityItem,
+  type CityListeners,
+  isClick,
+  type Pointed,
+} from './interaction/city-interaction'
+import { CityPicker, type CityTarget } from './interaction/picking'
+import { type CityTargets, cityTargets } from './interaction/targets'
 import { bearingOf, northOf, scaleFiles } from './map-scale'
-import { CityPicker, type CityTarget } from './picking'
 import { DASH_PERIOD, LABEL_HEIGHT, LABEL_LIFT } from './render/arc-mesh'
 import { createFading } from './render/dimming'
 import { SUN_DIRECTION } from './render/light'
-import { type CityTargets, cityTargets } from './targets'
 import { islandShapes } from './terrain/island-shape'
 import { createParcels } from './terrain/plateaux'
 import { createSea, OPEN_SEA, seaSize } from './terrain/sea'

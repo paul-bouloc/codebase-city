@@ -1,8 +1,8 @@
-import { buildingGeometry, shapeKey, type Vertex } from './buildings/archetype-geometry'
-import type { PlacedBuilding } from './buildings/placed-buildings'
-import type { IslandShape } from './terrain/island-shape'
-import { rectContains } from './world/layout'
-import type { Vec3 } from './world/units'
+import { buildingGeometry, shapeKey, type Vertex } from '../buildings/archetype-geometry'
+import type { PlacedBuilding } from '../buildings/placed-buildings'
+import type { IslandShape } from '../terrain/island-shape'
+import { rectContains } from '../world/layout'
+import type { Vec3 } from '../world/units'
 
 /** What the pointer can rest on. */
 export type CityTarget =

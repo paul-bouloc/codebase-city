@@ -1,5 +1,5 @@
-import type { CityCards } from '../city/city-cards'
-import type { CityHover } from '../city/city-interaction'
+import type { CityCards } from '../city/interaction/city-cards'
+import type { CityHover } from '../city/interaction/city-interaction'
 import { AreaTooltip } from '../ui/city/AreaTooltip'
 import { BundleTooltip } from '../ui/city/BundleTooltip'
 import { FileTooltip } from '../ui/city/FileTooltip'

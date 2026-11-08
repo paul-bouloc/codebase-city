@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { type CityBuildings, createBuildings, Highlight } from './buildings/buildings'
+import { type CityBuildings, createBuildings, Highlight } from '../buildings/buildings'
+import { indexCycles } from '../flows/cycles'
+import { indexImports } from '../flows/selection-links'
+import { createFading } from '../render/dimming'
+import { islandShapes } from '../terrain/island-shape'
+import type { Ferry } from '../waterways/links'
+import type { CityLayout, FileMetrics } from '../world/layout'
 import { CityInteraction, type CityItem, isClick } from './city-interaction'
-import { indexCycles } from './flows/cycles'
-import { indexImports } from './flows/selection-links'
-import { createFading } from './render/dimming'
-import { islandShapes } from './terrain/island-shape'
-import type { Ferry } from './waterways/links'
-import type { CityLayout, FileMetrics } from './world/layout'
 
 const file = (path: string): FileMetrics => ({
   path,

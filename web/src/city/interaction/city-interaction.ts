@@ -1,23 +1,12 @@
 import { Group } from 'three'
-import { type Area, AreaMark, HOVERED_AREA, SELECTED_AREA } from './area-marks'
-import {
-  BuildingMark,
-  CYCLE_RINGS,
-  HOVERED_MARK,
-  INCOMING_MARK,
-  OUTGOING_MARK,
-  RingSet,
-  roofHeight,
-  SELECTED_MARK,
-} from './building-marks'
-import { type CityBuildings, Highlight } from './buildings/buildings'
-import { CycleWayMarks, cycleWays, loopIslandPairs } from './flows/cycle-ways'
-import { type CycleIndex, loopThrough } from './flows/cycles'
-import { type ExtraFerries, islandExtras } from './flows/extra-ferries'
-import { FolderLinkMarks, folderWays } from './flows/folder-link-marks'
-import { folderFlows } from './flows/folder-links'
-import { PORT_ROWS, portLabels, portRows } from './flows/port-links'
-import { type CycleOnShow, type Hub, selectionArcs } from './flows/selection-arcs'
+import { type CityBuildings, Highlight } from '../buildings/buildings'
+import { CycleWayMarks, cycleWays, loopIslandPairs } from '../flows/cycle-ways'
+import { type CycleIndex, loopThrough } from '../flows/cycles'
+import { type ExtraFerries, islandExtras } from '../flows/extra-ferries'
+import { FolderLinkMarks, folderWays } from '../flows/folder-link-marks'
+import { folderFlows } from '../flows/folder-links'
+import { PORT_ROWS, portLabels, portRows } from '../flows/port-links'
+import { type CycleOnShow, type Hub, selectionArcs } from '../flows/selection-arcs'
 import {
   type Direction,
   type ImportIndex,
@@ -29,16 +18,27 @@ import {
   openBundle,
   type SelectionLinks,
   selectionLinks,
-} from './flows/selection-links'
+} from '../flows/selection-links'
+import { ArcLayer } from '../render/arc-mesh'
+import type { Fading } from '../render/dimming'
+import { easeStandard } from '../render/easing'
+import type { IslandShape } from '../terrain/island-shape'
+import type { Bridge, Ferry, Pair, Port } from '../waterways/links'
+import { type CityLayout, rectContains } from '../world/layout'
+import { boardToThree, layerAltitude, type Vec3 } from '../world/units'
+import { type Area, AreaMark, HOVERED_AREA, SELECTED_AREA } from './area-marks'
+import {
+  BuildingMark,
+  CYCLE_RINGS,
+  HOVERED_MARK,
+  INCOMING_MARK,
+  OUTGOING_MARK,
+  RingSet,
+  roofHeight,
+  SELECTED_MARK,
+} from './building-marks'
 import { HoverTiming } from './hover-timing'
 import type { CityTarget } from './picking'
-import { ArcLayer } from './render/arc-mesh'
-import type { Fading } from './render/dimming'
-import { easeStandard } from './render/easing'
-import type { IslandShape } from './terrain/island-shape'
-import type { Bridge, Ferry, Pair, Port } from './waterways/links'
-import { type CityLayout, rectContains } from './world/layout'
-import { boardToThree, layerAltitude, type Vec3 } from './world/units'
 
 /** What the pointer rests on or what is selected, with the path of its file or folder. */
 export interface CityItem {

@@ -1,5 +1,5 @@
 import type { PlacedBuilding } from './buildings/placed-buildings'
-import type { CityTarget } from './picking'
+import type { CityTarget } from './interaction/picking'
 import type { CityLayout, Rect } from './world/layout'
 import { boardToThree, type Vec3 } from './world/units'
 
