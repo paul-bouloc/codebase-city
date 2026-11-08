@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { Button } from '../../../ui/actions/Button'
 import { LinkButton } from '../../../ui/actions/LinkButton'
 import { type TabItem, Tabs } from '../../../ui/actions/Tabs'
-import { Badge } from '../../../ui/display/Badge'
 import { exactCount, fileSize } from '../../../ui/display/count-format'
 import { LiveRegion } from '../../../ui/feedback/LiveRegion'
 import { safeGithubHref } from '../../github-links'
@@ -14,11 +13,11 @@ import { SheetFrame } from '../SheetFrame'
 import type { FileSheetData } from '../sheet-data'
 import { UnanalyzedNote } from '../UnanalyzedNote'
 import { CodeView } from './CodeView'
+import { FileBadges } from './FileBadges'
 import { FileFacts } from './FileFacts'
 import styles from './FileSheet.module.css'
 import { HeaderComment } from './HeaderComment'
 import { ImportanceList } from './ImportanceList'
-import { RoleBadge } from './RoleBadge'
 import { SymbolList } from './SymbolList'
 
 const TEXT = {
@@ -320,16 +319,4 @@ function fileMetrics(file: FileSheetData) {
           : undefined,
     },
   ]
-}
-
-function FileBadges({ file }: { file: FileSheetData }) {
-  return (
-    <>
-      <Badge kind="language" language={file.language} name={file.languageName} />
-      {!file.analyzed && <Badge kind="language" language="other" />}
-      {file.roles.map(({ role, reason }) => (
-        <RoleBadge key={role} fileRole={role} reason={reason} />
-      ))}
-    </>
-  )
 }
