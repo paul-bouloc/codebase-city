@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { decodeResult } from '../data/decode-result'
+import type { AnalysisResult } from '../data/generated/AnalysisResult'
 import sample from '../data/generated/sample-result.json'
 import { indexResult } from './result-index'
 import { buildSearchIndex, normalizeQuery } from './search-index'
@@ -70,6 +71,18 @@ describe('buildSearchIndex', () => {
     const [hit] = search.search('ui/vi').files.hits
     expect(hit?.path).toBe('src/ui/view.ts')
     expect(hit?.positions).toEqual([4, 5, 6, 7, 8])
+  })
+
+  it('puts the weightier of two names as good first: more files depend on it', () => {
+    const json = structuredClone(decodeResult(sample)) as AnalysisResult
+    // tests/view.test.ts becomes tests/view.ts, and more depend on it than on src/ui/view.ts.
+    json.files.name[18] = 'view.ts'
+    json.files.dependents[18] = 50
+    const twins = buildSearchIndex(indexResult(json))
+    expect(twins.search('view').files.hits.map((hit) => hit.path)).toEqual([
+      'tests/view.ts',
+      'src/ui/view.ts',
+    ])
   })
 
   it('counts every match but keeps the best few', () => {

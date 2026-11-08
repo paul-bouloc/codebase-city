@@ -47,32 +47,41 @@ export function normalizeQuery(query: string): string {
   return query.replace(/\s+/g, '')
 }
 
-/** Keeps the `limit` best of what it is given, the best first: score, then shortest, then path. */
+/** What orders two hits: the score, then the shorter name, then the weightier, then the path. */
+interface Rank {
+  score: number
+  length: number
+  /** What a file weighs in the city: the files that depend on it (a folder: the files it holds). */
+  weight: number
+  key: string
+}
+
+/** Keeps the `limit` best of what it is given, the best first. */
 class Best<Hit> {
-  readonly hits: { hit: Hit; score: number; length: number; key: string }[] = []
+  readonly hits: { hit: Hit; rank: Rank }[] = []
   total = 0
 
   constructor(private readonly limit: number) {}
 
-  add(score: number, length: number, key: string, make: () => Hit) {
+  add(rank: Rank, make: () => Hit) {
     this.total++
     const { hits, limit } = this
     if (limit === 0) {
       return
     }
     const last = hits.at(-1)
-    if (hits.length === limit && last && !before(score, length, key, last)) {
+    if (hits.length === limit && last && !before(rank, last.rank)) {
       return
     }
     let at = hits.length
     while (at > 0) {
       const previous = hits[at - 1]
-      if (!previous || !before(score, length, key, previous)) {
+      if (!previous || !before(rank, previous.rank)) {
         break
       }
       at--
     }
-    hits.splice(at, 0, { hit: make(), score, length, key })
+    hits.splice(at, 0, { hit: make(), rank })
     if (hits.length > limit) {
       hits.pop()
     }
@@ -83,19 +92,17 @@ class Best<Hit> {
   }
 }
 
-function before(
-  score: number,
-  length: number,
-  key: string,
-  other: { score: number; length: number; key: string },
-): boolean {
-  if (score !== other.score) {
-    return score > other.score
+function before(rank: Rank, other: Rank): boolean {
+  if (rank.score !== other.score) {
+    return rank.score > other.score
   }
-  if (length !== other.length) {
-    return length < other.length
+  if (rank.length !== other.length) {
+    return rank.length < other.length
   }
-  return key < other.key
+  if (rank.weight !== other.weight) {
+    return rank.weight > other.weight
+  }
+  return rank.key < other.key
 }
 
 const nameStartOf = (path: string) => path.lastIndexOf('/') + 1
@@ -126,6 +133,9 @@ export function buildSearchIndex(index: ResultIndex): SearchIndex {
   })
 
   const symbolNames = symbols.name.map(target)
+
+  // Outside production, a file weighs nothing: the code the project ships comes first.
+  const weightOf = (file: number) => files.dependents[file] ?? 0
 
   const roleOf = (file: number): FileRole | null => {
     const graph = index.roles.get(file)?.find(({ role }) => GRAPH_ROLES.has(role))
@@ -175,7 +185,13 @@ export function buildSearchIndex(index: ResultIndex): SearchIndex {
       }
       const path = filePaths[file] ?? ''
       const offset = byPath ? 0 : nameStartOf(path)
-      fileBest.add(found.score, text.text.length, path, () =>
+      const rank = {
+        score: found.score,
+        length: text.text.length,
+        weight: weightOf(file),
+        key: path,
+      }
+      fileBest.add(rank, () =>
         fileHit(
           file,
           found.positions.map((position) => position + offset),
@@ -191,12 +207,14 @@ export function buildSearchIndex(index: ResultIndex): SearchIndex {
         return
       }
       const offset = byPath ? 0 : nameStartOf(folder.path)
-      folderBest.add(found.score, text.text.length, folder.path, () => ({
+      const files = filesUnder[folder.dir] ?? 0
+      const rank = { score: found.score, length: text.text.length, weight: files, key: folder.path }
+      folderBest.add(rank, () => ({
         kind: 'folder',
         path: folder.path,
         nameStart: nameStartOf(folder.path),
         positions: found.positions.map((position) => position + offset),
-        files: filesUnder[folder.dir] ?? 0,
+        files,
       }))
     })
 
@@ -206,9 +224,16 @@ export function buildSearchIndex(index: ResultIndex): SearchIndex {
         if (!found) {
           return
         }
-        const file = filePaths[symbols.file[row] ?? 0] ?? ''
+        const fileIndex = symbols.file[row] ?? 0
+        const file = filePaths[fileIndex] ?? ''
         const line = symbols.line[row] ?? 1
-        symbolBest.add(found.score, text.text.length, `${file}:${line}`, () => ({
+        const rank = {
+          score: found.score,
+          length: text.text.length,
+          weight: weightOf(fileIndex),
+          key: `${file}:${line}`,
+        }
+        symbolBest.add(rank, () => ({
           kind: 'symbol',
           name: text.text,
           positions: found.positions,
