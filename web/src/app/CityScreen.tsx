@@ -355,6 +355,8 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
   const searchResults = useMemo(() => searchIndex.search(shownQuery), [searchIndex, shownQuery])
   const options = useMemo(() => searchOptions(searchResults), [searchResults])
   const paletteShown = searchFocused && normalizeQuery(query) !== ''
+  // The option the arrows reached, within the results on show (fewer, after a new query).
+  const active = options.length === 0 ? 0 : Math.min(activeOption, options.length - 1)
   const suggestion = useMemo(
     () => (paletteShown && options.length === 0 ? searchIndex.suggest(shownQuery) : null),
     [paletteShown, options, searchIndex, shownQuery],
@@ -387,7 +389,7 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
     const action = searchKeyAction(event.key, {
       open: paletteShown,
       count: options.length,
-      active: activeOption,
+      active,
       query,
     })
     if (!action) {
@@ -403,7 +405,7 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
         setSearchFocused(true)
         break
       case 'choose': {
-        const hit = options[activeOption]
+        const hit = options[active]
         if (hit) {
           chooseHit(hit)
         }
@@ -485,7 +487,7 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
           onSearchChange={changeQuery}
           searchExpanded={paletteShown && options.length > 0}
           searchListboxId={searchListboxId}
-          searchActiveDescendant={searchOptionId(searchListboxId, activeOption)}
+          searchActiveDescendant={searchOptionId(searchListboxId, active)}
           searchInputRef={searchInput}
           onSearchKeyDown={handleSearchKey}
           onSearchFocus={() => setSearchFocused(true)}
@@ -496,7 +498,7 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
                 id={searchListboxId}
                 query={normalizeQuery(shownQuery)}
                 results={searchResults}
-                active={activeOption}
+                active={active}
                 suggestion={suggestion}
                 onActiveChange={setActiveOption}
                 onChoose={chooseHit}
