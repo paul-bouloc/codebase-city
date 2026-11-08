@@ -21,6 +21,7 @@ attribute vec3 end;
 attribute vec2 corner;
 attribute float distance;
 varying float vPixels;
+varying float vDistance;
 varying float vAcross;
 void main() {
   vec4 a = projectionMatrix * modelViewMatrix * vec4(start, 1.0);
@@ -34,21 +35,35 @@ void main() {
   // How many pixels one unit spans here: dashes keep their length in pixels.
   float unitPixels = projectionMatrix[1][1] * 0.5 * resolution.y / max(here.w, 1e-3);
   vPixels = distance * unitPixels;
+  vDistance = distance;
   vAcross = corner.y * reach;
 }
 `
+
+/** A scene dash period shorter than this many device pixels fills in, from the first to the second. */
+const SOLID_BELOW = [6, 12] as const
 
 const fragmentShader = /* glsl */ `
 uniform vec3 colour;
 uniform float width;
 uniform float opacity;
 uniform vec2 dash;
+uniform vec2 sceneDash;
 varying float vPixels;
+varying float vDistance;
 varying float vAcross;
 void main() {
   float cover = clamp(width * 0.5 - abs(vAcross) + 0.5, 0.0, 1.0);
   if (dash.y > 0.0 && mod(vPixels, dash.x + dash.y) > dash.x) {
     discard;
+  }
+  if (sceneDash.y > 0.0) {
+    // Painted on the scene: from afar, once a dash and its gap span too few pixels to read, the
+    // gaps fill in, gradually.
+    float period = sceneDash.x + sceneDash.y;
+    float pixels = period / max(fwidth(vDistance), 1e-6);
+    float solid = 1.0 - smoothstep(${SOLID_BELOW[0].toFixed(1)}, ${SOLID_BELOW[1].toFixed(1)}, pixels);
+    cover *= max(step(mod(vDistance, period), sceneDash.x), solid);
   }
   if (cover <= 0.0) {
     discard;
@@ -64,6 +79,13 @@ export interface LineStyle {
   colour: Vec3
   /** Dash and gap, in CSS pixels; solid if absent. */
   dash?: [number, number]
+  /**
+   * Dash and gap along the line in the scene, in u: they follow its perspective, like paint.
+   * Used instead of `dash`.
+   */
+  sceneDash?: [number, number]
+  /** 1 if absent. */
+  opacity?: number
 }
 
 /** Polylines, closed or not, in three.js coordinates, drawn a fixed width on screen. */
@@ -116,10 +138,11 @@ export function createScreenLines(
       resolution,
       width: { value: style.width * pixelRatio },
       colour: { value: new Vector3(...style.colour) },
-      opacity: { value: 1 },
+      opacity: { value: style.opacity ?? 1 },
       dash: {
         value: new Vector2(...(style.dash ?? [0, 0]).map((length) => length * pixelRatio)),
       },
+      sceneDash: { value: new Vector2(...(style.sceneDash ?? [0, 0])) },
     },
     vertexShader,
     fragmentShader,
