@@ -15,6 +15,7 @@ const RESULTS: SearchResults = {
         language: 'typescript',
         languageName: 'TypeScript',
         role: 'conductor',
+        inferred: true,
       },
       {
         kind: 'file',
@@ -24,6 +25,7 @@ const RESULTS: SearchResults = {
         language: 'other',
         languageName: 'Shell',
         role: 'config',
+        inferred: false,
       },
     ],
   },

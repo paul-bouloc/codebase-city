@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Badge, type FileRole } from '../Badge'
+import { Badge } from '../Badge'
 import { exactCount } from '../count-format'
 import { Icon } from '../Icon'
 import { Kbd } from '../Kbd'
@@ -29,14 +29,6 @@ const TEXT = {
   fly: 'fly there',
   close: 'close',
 }
-
-/** Roles the graph infers: they say "likely". The others are read from the path. */
-const INFERRED: ReadonlySet<FileRole> = new Set([
-  'entry-point',
-  'conductor',
-  'foundation',
-  'facade',
-])
 
 /** The id of the option at `index` of the palette `listboxId`. */
 export function searchOptionId(listboxId: string, index: number): string {
@@ -206,7 +198,7 @@ function FileOption({ hit }: { hit: FileHit }) {
           language={hit.language}
           name={hit.language === 'other' && hit.languageName ? hit.languageName : undefined}
         />
-        {hit.role && <Badge kind="role" fileRole={hit.role} likely={INFERRED.has(hit.role)} />}
+        {hit.role && <Badge kind="role" fileRole={hit.role} likely={hit.inferred} />}
       </span>
     </>
   )

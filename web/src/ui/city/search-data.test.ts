@@ -45,6 +45,7 @@ describe('searchOptions', () => {
             language: 'typescript',
             languageName: 'TypeScript',
             role: null,
+            inferred: false,
           },
         ],
       },

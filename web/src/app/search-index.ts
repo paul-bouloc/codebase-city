@@ -1,4 +1,3 @@
-import type { FileRole } from '../ui/Badge'
 import type {
   FileHit,
   FolderHit,
@@ -26,13 +25,6 @@ export interface SearchIndex {
   /** The name closest to a query that found nothing, if one is close enough. */
   suggest(query: string): string | null
 }
-
-const GRAPH_ROLES: ReadonlySet<string> = new Set([
-  'entry-point',
-  'conductor',
-  'foundation',
-  'facade',
-])
 
 /** A text the search matches, with its lower-case form worked out once. */
 interface Target {
@@ -137,16 +129,17 @@ export function buildSearchIndex(index: ResultIndex): SearchIndex {
   // Outside production, a file weighs nothing: the code the project ships comes first.
   const weightOf = (file: number) => files.dependents[file] ?? 0
 
-  const roleOf = (file: number): FileRole | null => {
-    const graph = index.roles.get(file)?.find(({ role }) => GRAPH_ROLES.has(role))
+  // The strongest role the graph infers, else what the path says the file is.
+  const roleOf = (file: number): Pick<FileHit, 'role' | 'inferred'> => {
+    const graph = index.roles.get(file)?.[0]
     if (graph) {
-      return graph.role
+      return { role: graph.role, inferred: true }
     }
     if (files.generated[file]) {
-      return 'generated'
+      return { role: 'generated', inferred: false }
     }
     const scope = files.scope[file]
-    return scope === 'test' || scope === 'config' ? scope : null
+    return { role: scope === 'test' || scope === 'config' ? scope : null, inferred: false }
   }
 
   const fileHit = (file: number, positions: number[]): FileHit => {
@@ -159,7 +152,7 @@ export function buildSearchIndex(index: ResultIndex): SearchIndex {
       positions,
       language: languageOf(languageName),
       languageName,
-      role: roleOf(file),
+      ...roleOf(file),
     }
   }
 

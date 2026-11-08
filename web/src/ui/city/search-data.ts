@@ -16,6 +16,8 @@ export interface FileHit {
   languageName: string
   /** The strongest role the graph gives it, else what the path says it is. */
   role: FileRole | null
+  /** Inferred from the graph, so only likely; else read from the path. */
+  inferred: boolean
 }
 
 /** A folder found by the search. */

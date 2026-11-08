@@ -35,8 +35,12 @@ describe('buildSearchIndex', () => {
       language: 'typescript',
       languageName: 'TypeScript',
       role: 'entry-point',
+      inferred: true,
     })
-    expect(search.search('schema').files.hits[0]?.role).toBe('generated')
+    expect(search.search('schema').files.hits[0]).toMatchObject({
+      role: 'generated',
+      inferred: false,
+    })
     expect(search.search('view.test').files.hits[0]?.role).toBe('test')
     expect(search.search('tsconfig').files.hits[0]?.role).toBe('config')
     expect(search.search('release').files.hits[0]).toMatchObject({
