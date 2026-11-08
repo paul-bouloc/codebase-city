@@ -132,6 +132,26 @@ describe('the ways between islands', () => {
     expect(ports.at(-1)).toBeNull()
   })
 
+  it('moves an open port’s card with its badge, hidden while out of the view', () => {
+    const { interaction, links, ports } = setup()
+    const port = links.ports[0]
+    if (!port) {
+      throw new Error('no port')
+    }
+    interaction.openPort(port, { x: 20, y: 30 })
+    const count = ports.length
+    interaction.movePort({ x: 20.2, y: 30 })
+    expect(ports).toHaveLength(count)
+    interaction.movePort({ x: 120, y: 30 })
+    expect(ports.at(-1)).toMatchObject({ path: 'island-0', pointer: { x: 120, y: 30 } })
+    interaction.movePort(null)
+    expect(ports.at(-1)?.pointer).toBeNull()
+    expect(ports.at(-1)?.links).toHaveLength(2)
+    interaction.closePort()
+    interaction.movePort({ x: 0, y: 0 })
+    expect(ports.at(-1)).toBeNull()
+  })
+
   it('withdraws an open port’s card when it goes', () => {
     const { interaction, links, ports } = setup()
     const port = links.ports[0]

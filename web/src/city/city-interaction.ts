@@ -83,8 +83,8 @@ export interface PortList {
   links: PortLinkRow[]
   /** Links past those listed. */
   more: number
-  /** Where it was opened, in the page's pixels. */
-  pointer: { x: number; y: number }
+  /** Where its badge stands, in the page's pixels; null while out of the view. */
+  pointer: { x: number; y: number } | null
 }
 
 /** How the city's files depend on each other. */
@@ -178,6 +178,7 @@ export class CityInteraction {
   readonly portBadges: ArcLayer
   readonly portLinks: FolderLinkMarks
   private openPortAt: Port | null = null
+  private portList: PortList | null = null
   private portFerries: { outgoing: boolean; incoming: boolean; ferry: Ferry | null }[] = []
 
   constructor(
@@ -325,7 +326,7 @@ export class CityInteraction {
    * Opens a port, opened at this point of the page: its links sail out of its quay, Marine where
    * its island imports the other one, Sun the other way, and its card lists them.
    */
-  openPort(port: Port, pointer: { x: number; y: number }): void {
+  openPort(port: Port, pointer: { x: number; y: number } | null): void {
     const { extra } = this.flows
     if (!extra || !this.getPorts().includes(port)) {
       return
@@ -344,7 +345,7 @@ export class CityInteraction {
     this.drawPort(null)
     this.timing.clear()
     this.highlight(this.highlighted)
-    this.listeners().port?.({
+    this.portList = {
       path: this.layout.islands[port.island]?.path ?? '',
       links: rows.slice(0, PORT_ROWS).map((row) => ({
         path: this.layout.islands[row.island]?.path ?? '',
@@ -354,7 +355,24 @@ export class CityInteraction {
       })),
       more: Math.max(rows.length - PORT_ROWS, 0),
       pointer,
-    })
+    }
+    this.listeners().port?.(this.portList)
+  }
+
+  /** The open port's badge now stands here on the page, or out of the view: its card follows. */
+  movePort(pointer: { x: number; y: number } | null): void {
+    const list = this.portList
+    if (!list) {
+      return
+    }
+    const was = list.pointer
+    const same =
+      was === pointer ||
+      (was && pointer && Math.abs(was.x - pointer.x) < 0.5 && Math.abs(was.y - pointer.y) < 0.5)
+    if (!same) {
+      this.portList = { ...list, pointer }
+      this.listeners().port?.(this.portList)
+    }
   }
 
   /** One of the open port's links stands out, the others faded; or none does. */
@@ -370,6 +388,7 @@ export class CityInteraction {
       return
     }
     this.openPortAt = null
+    this.portList = null
     this.portFerries = []
     this.portLinks.show(null)
     this.highlight(this.highlighted)
