@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import type { CityEngine, FrameStats } from '../city/engine/city-engine'
+import type { CityEngine } from '../city/engine/city-engine'
+import type { FrameStats } from '../city/engine/frame-stats'
 import styles from './CityStats.module.css'
 
 const REFRESH_MS = 500

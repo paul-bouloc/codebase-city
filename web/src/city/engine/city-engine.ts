@@ -63,6 +63,7 @@ import {
   turnAbout,
   type Viewport,
 } from './flight'
+import { FrameCounter, type FrameStats, type LinkStats, NO_LINKS } from './frame-stats'
 import { bearingOf, northOf, scaleFiles } from './map-scale'
 import { maxTilt, NEAR_TILT } from './tilt'
 
@@ -123,29 +124,6 @@ const HUB_LABEL_HALF_WIDTH = 40
  */
 const DASH_PIXELS = 6
 
-export interface FrameStats {
-  fps: number
-  drawCalls: number
-  triangles: number
-  /** Trees, rocks and boats of the city, and their triangles at full size. */
-  decor: DecorStats
-  links: LinkStats
-  /** How long the last search for what the pointer rests on took, in ms. */
-  pickMs: number
-}
-
-/** How the imports between islands are drawn. */
-export interface LinkStats {
-  bridges: number
-  ferries: number
-  /** Links gathered at a port, not drawn. */
-  inPorts: number
-  /** Links not drawn: too small while nothing is selected, or with no way by water. */
-  hidden: number
-}
-
-const NO_LINKS: LinkStats = { bridges: 0, ferries: 0, inPorts: 0, hidden: 0 }
-
 export interface CityEngineOptions {
   /** Draw every frame, even when nothing moves: to measure the frame rate. */
   continuous?: boolean
@@ -183,18 +161,9 @@ export class CityEngine {
   // The distance the camera frames it from, whatever the window's shape.
   private framingDistance = 0
   private needsRender = true
-  private framesSince = 0
-  private statsSince = 0
   private decor: DecorStats = { instances: 0, triangles: 0 }
   private links: LinkStats = NO_LINKS
-  private stats: FrameStats = {
-    fps: 0,
-    drawCalls: 0,
-    triangles: 0,
-    decor: { instances: 0, triangles: 0 },
-    links: NO_LINKS,
-    pickMs: 0,
-  }
+  private readonly counter = new FrameCounter()
   private picker: CityPicker | null = null
   private fleet: Fleet | null = null
   // Boats and arcs move together, on one clock: never more than 30 frames a second between them.
@@ -600,7 +569,7 @@ export class CityEngine {
       },
       PICK_SLACK * perPixel,
     )
-    this.stats.pickMs = performance.now() - started
+    this.counter.stats.pickMs = performance.now() - started
     return target
   }
 
@@ -853,7 +822,7 @@ export class CityEngine {
   }
 
   getStats(): FrameStats {
-    return this.stats
+    return this.counter.stats
   }
 
   /** How the city on show draws the imports between islands, as soon as it is loaded. */
@@ -1011,17 +980,8 @@ export class CityEngine {
       if (port) {
         this.interaction?.movePort(this.badgeOnPage(port))
       }
-      this.framesSince++
-      this.stats.drawCalls = this.renderer.info.render.calls
-      this.stats.triangles = this.renderer.info.render.triangles
-      this.stats.decor = this.decor
-      this.stats.links = this.links
+      this.counter.drawn(this.renderer.info, this.decor, this.links)
     }
-    const elapsed = time - this.statsSince
-    if (elapsed >= 500) {
-      this.stats.fps = Math.round((this.framesSince * 1000) / elapsed)
-      this.framesSince = 0
-      this.statsSince = time
-    }
+    this.counter.tick(time)
   }
 }

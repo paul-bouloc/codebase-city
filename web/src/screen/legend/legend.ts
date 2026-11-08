@@ -1,4 +1,4 @@
-import type { LinkStats } from '../../city/engine/city-engine'
+import type { LinkStats } from '../../city/engine/frame-stats'
 import { languageOf, type ResultIndex } from '../result-index'
 import type { LegendPlace, RepoContents } from './legend-content'
 
