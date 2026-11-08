@@ -110,6 +110,14 @@ function islandLinks(
     if (toIsland === null || fromIsland === null || toIsland === fromIsland) {
       return
     }
+    const intoFolder =
+      to !== null && to !== undefined
+        ? inside.has(to)
+        : toDir !== null && toDir !== undefined && insideDirs.has(toDir)
+    // Between two islands of a folder that holds them: not a link with another island.
+    if (inside.has(from) && intoFolder) {
+      return
+    }
     if (inside.has(from)) {
       const toLayer = layerOf(toIsland)
       const reexport = files.barrel[from] && edges.kind[row] === 'reexport'
@@ -120,11 +128,7 @@ function islandLinks(
         link.upward++
       }
       out.set(toIsland, link)
-    } else if (
-      to !== null && to !== undefined
-        ? inside.has(to)
-        : toDir !== null && toDir !== undefined && insideDirs.has(toDir)
-    ) {
+    } else if (intoFolder) {
       into.set(fromIsland, (into.get(fromIsland) ?? 0) + 1)
     }
   })
@@ -174,11 +178,13 @@ export function folderSheetData(index: ResultIndex, path: string): FolderSheetDa
   const islandName = islandDir === undefined ? '/' : result.dirs.name[islandDir] || '/'
   const kind: FolderSheetData['kind'] = tests
     ? 'tests'
-    : ownIsland === undefined
-      ? { parcel: { island: islandName } }
-      : layer === null
-        ? 'island'
-        : { island: { layer, of: index.layers } }
+    : island === null
+      ? 'folder'
+      : ownIsland === undefined
+        ? { parcel: { island: islandName } }
+        : layer === null
+          ? 'island'
+          : { island: { layer, of: index.layers } }
 
   const byLanguage = new Map<Language, number>()
   let lines = 0
@@ -198,9 +204,10 @@ export function folderSheetData(index: ResultIndex, path: string): FolderSheetDa
         Number(a.language === 'other') - Number(b.language === 'other') || b.share - a.share,
     )
 
-  // Sub-folders on the same island: one that is an island of its own stands apart.
+  // An island's sub-folders on it: one that is an island of its own stands apart. A folder that
+  // holds islands counts them all.
   const subFolders = (index.children[dir] ?? []).filter(
-    (child) => !index.islandOfDir.has(child),
+    (child) => island === null || !index.islandOfDir.has(child),
   ).length
 
   return {

@@ -102,6 +102,24 @@ describe('folderSheetData', () => {
     })
   })
 
+  it('reads a folder that holds islands, links between them left out', () => {
+    // `src/pkg` holds the islands `core` and `ui`, moved into it
+    const json = structuredClone(sample) as unknown as AnalysisResult
+    json.dirs.parent.push(1, 8, 8)
+    json.dirs.name.push('pkg', 'core', 'ui')
+    json.dirs.island.push(null, 2, 3)
+    json.islands.dir[2] = 9
+    json.islands.dir[3] = 10
+    json.files.dir = json.files.dir.map((dir) => (dir === 2 ? 9 : dir === 3 ? 10 : dir))
+    const pkg = folderSheetData(indexResult(json), 'src/pkg')
+    expect(pkg).toMatchObject({ kind: 'folder', files: 10, subFolders: 2 })
+    expect(pkg?.links).toEqual([
+      { island: 'api', islandPath: 'src/api', direction: 'importedBy', upward: false, count: 2 },
+      { island: 'src', islandPath: 'src', direction: 'importedBy', upward: false, count: 2 },
+      { island: 'tests', islandPath: 'tests', direction: 'importedBy', upward: false, count: 2 },
+    ])
+  })
+
   it('reads a parcel by its subtree, on its island', () => {
     // `utils.ts` moved to `src/core/sub`, a folder inside the `core` island
     const json = structuredClone(sample) as unknown as AnalysisResult
