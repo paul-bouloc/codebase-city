@@ -124,9 +124,10 @@ function decodeStep(value: unknown, row: number, tables: Tables): TourStep {
         config: count('config'),
         rootConfig: count('rootConfig'),
         parkCount: count('parkCount'),
+        parkTests: count('parkTests'),
         parks: list('parks', tables.dirs.parent.length, 0),
       }
-      if (step.parks.length > step.parkCount) {
+      if (step.parks.length > step.parkCount || step.parkTests > step.tests) {
         fail(`the counts of ${path} do not add up`)
       }
       return step

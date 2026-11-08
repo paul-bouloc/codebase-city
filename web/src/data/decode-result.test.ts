@@ -593,5 +593,10 @@ describe('decodeResult', () => {
         ;(json.tour.steps[6] as { parkCount: number }).parkCount = 0
       }),
     ).toThrow('the counts of tour.steps[6] do not add up')
+    expect(
+      decodeChanged((json) => {
+        ;(json.tour.steps[6] as { parkTests: number }).parkTests = 3
+      }),
+    ).toThrow('the counts of tour.steps[6] do not add up')
   })
 })
