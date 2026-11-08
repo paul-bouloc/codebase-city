@@ -61,3 +61,10 @@ export function safeGithubHref(url: string | undefined): string | undefined {
     return undefined
   }
 }
+
+// A file's raw content at a commit, as the browser may read it (raw.githubusercontent.com allows
+// any origin).
+export function githubRawUrl(repo: GithubRepo, sha: string, path: string): string {
+  repoBase(repo)
+  return `https://raw.githubusercontent.com/${repo.owner}/${repo.name}/${checkedSha(sha)}/${encodedPath(path)}`
+}
