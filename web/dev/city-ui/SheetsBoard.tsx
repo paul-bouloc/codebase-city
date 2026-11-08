@@ -1,8 +1,8 @@
 import { type ReactNode, useEffect, useRef } from 'react'
-import { AboutPanel, type NewerVersion } from '../src/screen/about/AboutPanel'
-import { FileSheet, type FileTab } from '../src/screen/sheets/file/FileSheet'
-import { FolderSheet } from '../src/screen/sheets/folder/FolderSheet'
-import type { FileSheetData, FolderSheetData } from '../src/screen/sheets/sheet-data'
+import { AboutPanel, type NewerVersion } from '../../src/screen/about/AboutPanel'
+import { FileSheet, type FileTab } from '../../src/screen/sheets/file/FileSheet'
+import { FolderSheet } from '../../src/screen/sheets/folder/FolderSheet'
+import type { FileSheetData, FolderSheetData } from '../../src/screen/sheets/sheet-data'
 import styles from './SheetsBoard.module.css'
 import {
   ABOUT,

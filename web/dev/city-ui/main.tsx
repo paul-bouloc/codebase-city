@@ -1,7 +1,7 @@
 // Development-only page: served by the dev server, never part of the production build.
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import '../src/ui/styles/global.css'
+import '../../src/ui/styles/global.css'
 import { CityUiPage } from './CityUiPage'
 
 const root = document.getElementById('root')

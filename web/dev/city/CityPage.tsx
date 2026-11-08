@@ -27,7 +27,11 @@ const REMOUNTS = 10
 /** Results dropped in `web/dev/results/`, by name, to their URL: fetched only when shown. */
 const RESULTS = Object.fromEntries(
   Object.entries(
-    import.meta.glob<string>('../results/*.json', { query: '?url', import: 'default', eager: true }),
+    import.meta.glob<string>('../results/*.json', {
+      query: '?url',
+      import: 'default',
+      eager: true,
+    }),
   ).map(([path, url]) => [path.replace(/^.*\/(.*)\.json$/, '$1'), url]),
 )
 
