@@ -65,7 +65,8 @@ interface CityTopBarProps {
   searchListboxId?: string
   searchActiveDescendant?: string
   searchInputRef?: Ref<HTMLInputElement>
-  onSearchKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void
+  // Keys pressed in the field or in its results.
+  onSearchKeyDown?: (event: KeyboardEvent) => void
   // The focus coming into the search (field or results), and leaving it.
   onSearchFocus?: (event: FocusEvent) => void
   onSearchBlur?: (event: FocusEvent) => void
@@ -172,9 +173,10 @@ export function CityTopBar({
         {onSearchChange && (
           // The search keeps the focus while it moves between the field and its results (the
           // suggestion of a query that found nothing): leaving both is leaving the search.
-          // biome-ignore lint/a11y/noStaticElementInteractions: follows the focus of its children only
+          // biome-ignore lint/a11y/noStaticElementInteractions: follows the focus and keys of its children only
           <span
             className={styles.searchBox}
+            onKeyDown={onSearchKeyDown}
             onFocus={onSearchFocus}
             onBlur={(event) => {
               if (
@@ -192,7 +194,6 @@ export function CityTopBar({
               listboxId={searchListboxId}
               activeDescendant={searchActiveDescendant}
               inputRef={searchInputRef}
-              onKeyDown={onSearchKeyDown}
               disabled={searchDisabled}
             />
             {searchPalette && <span className={styles.palette}>{searchPalette}</span>}

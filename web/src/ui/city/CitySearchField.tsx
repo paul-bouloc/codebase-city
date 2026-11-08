@@ -1,4 +1,4 @@
-import { type FocusEvent, type KeyboardEvent, type Ref, useRef } from 'react'
+import { type Ref, useRef } from 'react'
 import { Icon } from '../Icon'
 import { Kbd } from '../Kbd'
 import styles from './CitySearchField.module.css'
@@ -19,9 +19,8 @@ interface CitySearchFieldProps {
   /** The id of the option the arrows have reached, while the results are open. */
   activeDescendant?: string
   inputRef?: Ref<HTMLInputElement>
-  onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void
-  onFocus?: (event: FocusEvent<HTMLInputElement>) => void
-  onBlur?: (event: FocusEvent<HTMLInputElement>) => void
+  // A click in the field, which may already have the focus.
+  onClick?: () => void
   // Until the search index has arrived.
   disabled?: boolean
 }
@@ -34,9 +33,7 @@ export function CitySearchField({
   listboxId,
   activeDescendant,
   inputRef,
-  onKeyDown,
-  onFocus,
-  onBlur,
+  onClick,
   disabled = false,
 }: CitySearchFieldProps) {
   const ownRef = useRef<HTMLInputElement>(null)
@@ -70,9 +67,7 @@ export function CitySearchField({
         autoComplete="off"
         spellCheck={false}
         onChange={(event) => onChange(event.target.value)}
-        onKeyDown={onKeyDown}
-        onFocus={onFocus}
-        onBlur={onBlur}
+        onClick={onClick}
       />
       {value ? (
         <button

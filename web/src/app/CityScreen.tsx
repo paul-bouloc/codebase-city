@@ -384,8 +384,17 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
     }
   }
 
-  const handleSearchKey = (event: ReactKeyboardEvent<HTMLInputElement>) => {
-    if (event.nativeEvent.isComposing) {
+  // Keys in the field or in its results (the suggestion): Enter and Space on a button are its own.
+  const handleSearchKey = (event: ReactKeyboardEvent) => {
+    const onButton = event.target !== searchInput.current
+    // A button is no field: without this, the city's keys (arrows, Esc) would act behind it.
+    if (onButton) {
+      event.stopPropagation()
+    }
+    if (
+      event.nativeEvent.isComposing ||
+      (onButton && (event.key === 'Enter' || event.key === ' '))
+    ) {
       return
     }
     const action = searchKeyAction(event.key, {
@@ -417,6 +426,8 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
       }
       case 'close':
         setSearchFocused(false)
+        // From the suggestion, which goes with the results: back to the field.
+        searchInput.current?.focus()
         break
       case 'clear':
         changeQuery('')
