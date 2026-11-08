@@ -500,7 +500,11 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
                 suggestion={suggestion}
                 onActiveChange={setActiveOption}
                 onChoose={chooseHit}
-                onSuggest={changeQuery}
+                onSuggest={(name) => {
+                  changeQuery(name)
+                  // The suggestion goes with the empty results: the field takes the focus back.
+                  searchInput.current?.focus()
+                }}
               />
             )
           }

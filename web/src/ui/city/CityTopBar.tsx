@@ -66,8 +66,9 @@ interface CityTopBarProps {
   searchActiveDescendant?: string
   searchInputRef?: Ref<HTMLInputElement>
   onSearchKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void
-  onSearchFocus?: (event: FocusEvent<HTMLInputElement>) => void
-  onSearchBlur?: (event: FocusEvent<HTMLInputElement>) => void
+  // The focus coming into the search (field or results), and leaving it.
+  onSearchFocus?: (event: FocusEvent) => void
+  onSearchBlur?: (event: FocusEvent) => void
   // The results, hung under the field.
   searchPalette?: ReactNode
   // Until the search index has arrived.
@@ -169,7 +170,21 @@ export function CityTopBar({
       {/* Holds the middle even empty: the controls on the right stay on the right. */}
       <span className={styles.search}>
         {onSearchChange && (
-          <span className={styles.searchBox}>
+          // The search keeps the focus while it moves between the field and its results (the
+          // suggestion of a query that found nothing): leaving both is leaving the search.
+          // biome-ignore lint/a11y/noStaticElementInteractions: follows the focus of its children only
+          <span
+            className={styles.searchBox}
+            onFocus={onSearchFocus}
+            onBlur={(event) => {
+              if (
+                !(event.relatedTarget instanceof Node) ||
+                !event.currentTarget.contains(event.relatedTarget)
+              ) {
+                onSearchBlur?.(event)
+              }
+            }}
+          >
             <CitySearchField
               value={searchValue}
               onChange={onSearchChange}
@@ -178,8 +193,6 @@ export function CityTopBar({
               activeDescendant={searchActiveDescendant}
               inputRef={searchInputRef}
               onKeyDown={onSearchKeyDown}
-              onFocus={onSearchFocus}
-              onBlur={onSearchBlur}
               disabled={searchDisabled}
             />
             {searchPalette && <span className={styles.palette}>{searchPalette}</span>}
