@@ -1,8 +1,8 @@
-import { type ArcLabel, LABEL_HEIGHT, LABEL_LIFT } from './render/arc-mesh'
-import { FERRY_LINE } from './render/palette'
-import { type Port, tipOf } from './waterways/links'
-import type { IslandLink } from './world/layout'
-import { boardToThree, srgb, type Vec3 } from './world/units'
+import { type ArcLabel, LABEL_HEIGHT, LABEL_LIFT } from '../render/arc-mesh'
+import { FERRY_LINE } from '../render/palette'
+import { type Port, tipOf } from '../waterways/links'
+import type { IslandLink } from '../world/layout'
+import { boardToThree, srgb, type Vec3 } from '../world/units'
 
 // A port gathers the links its island has no room to draw. A badge at the end of its quay says
 // how many (« +17 »); a click lists them and sails them out.

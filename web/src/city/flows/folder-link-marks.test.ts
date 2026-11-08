@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import type { Bridge, Ferry } from '../waterways/links'
 import { folderWays } from './folder-link-marks'
-import type { Bridge, Ferry } from './waterways/links'
 
 // A bridge east-west across y = 5, from island 0 to island 1; a ferry from island 0 to island 2,
 // along y = 0; another between islands 1 and 2.

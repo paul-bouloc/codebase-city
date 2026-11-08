@@ -11,18 +11,13 @@ import {
   SELECTED_MARK,
 } from './building-marks'
 import { type CityBuildings, Highlight } from './buildings/buildings'
-import { CycleWayMarks, cycleWays, loopIslandPairs } from './cycle-ways'
-import { type CycleIndex, loopThrough } from './cycles'
-import { type ExtraFerries, islandExtras } from './extra-ferries'
-import { FolderLinkMarks, folderWays } from './folder-link-marks'
-import { folderFlows } from './folder-links'
-import { HoverTiming } from './hover-timing'
-import type { CityTarget } from './picking'
-import { PORT_ROWS, portLabels, portRows } from './port-links'
-import { ArcLayer } from './render/arc-mesh'
-import type { Fading } from './render/dimming'
-import { easeStandard } from './render/easing'
-import { type CycleOnShow, type Hub, selectionArcs } from './selection-arcs'
+import { CycleWayMarks, cycleWays, loopIslandPairs } from './flows/cycle-ways'
+import { type CycleIndex, loopThrough } from './flows/cycles'
+import { type ExtraFerries, islandExtras } from './flows/extra-ferries'
+import { FolderLinkMarks, folderWays } from './flows/folder-link-marks'
+import { folderFlows } from './flows/folder-links'
+import { PORT_ROWS, portLabels, portRows } from './flows/port-links'
+import { type CycleOnShow, type Hub, selectionArcs } from './flows/selection-arcs'
 import {
   type Direction,
   type ImportIndex,
@@ -34,7 +29,12 @@ import {
   openBundle,
   type SelectionLinks,
   selectionLinks,
-} from './selection-links'
+} from './flows/selection-links'
+import { HoverTiming } from './hover-timing'
+import type { CityTarget } from './picking'
+import { ArcLayer } from './render/arc-mesh'
+import type { Fading } from './render/dimming'
+import { easeStandard } from './render/easing'
 import type { IslandShape } from './terrain/island-shape'
 import type { Bridge, Ferry, Pair, Port } from './waterways/links'
 import { type CityLayout, rectContains } from './world/layout'

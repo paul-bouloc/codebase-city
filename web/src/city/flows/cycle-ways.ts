@@ -1,10 +1,10 @@
 import { Group, Mesh, type ShaderMaterial } from 'three'
+import { FERRY_LINE, UPWARD } from '../render/palette'
+import { createScreenLines } from '../render/screen-lines'
+import { deckLine } from '../waterways/bridges'
+import type { Bridge, Ferry, Pair } from '../waterways/links'
+import { boardToThree, srgb, type Vec3 } from '../world/units'
 import type { ExtraFerries } from './extra-ferries'
-import { FERRY_LINE, UPWARD } from './render/palette'
-import { createScreenLines } from './render/screen-lines'
-import { deckLine } from './waterways/bridges'
-import type { Bridge, Ferry, Pair } from './waterways/links'
-import { boardToThree, srgb, type Vec3 } from './world/units'
 
 // A cycle that runs across islands outlines in red the bridges and ferry lines its loop takes:
 // a red edge along each side of a bridge's deck, a broad red line under a ferry's. A link the

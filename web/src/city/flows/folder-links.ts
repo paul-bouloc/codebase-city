@@ -1,4 +1,4 @@
-import { type CityLayout, type Rect, rectContains } from './world/layout'
+import { type CityLayout, type Rect, rectContains } from '../world/layout'
 
 // Which other islands a selected folder imports and which import it: their bridges and ferry
 // lines stand out, Marine one way, Sun the other.

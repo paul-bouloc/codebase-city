@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import type { CityLayout, IslandLayout, Point } from '../world/layout'
 import { folderFlows } from './folder-links'
-import type { CityLayout, IslandLayout, Point } from './world/layout'
 
 function island(lots: Point[]): IslandLayout {
   return {

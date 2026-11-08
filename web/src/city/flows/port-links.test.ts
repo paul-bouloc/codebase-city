@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import type { Port } from '../waterways/links'
 import { badgeInView, portBadgeAt, portLabels, portRows } from './port-links'
-import type { Port } from './waterways/links'
 
 const PORT: Port = {
   island: 2,

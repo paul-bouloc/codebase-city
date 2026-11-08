@@ -35,12 +35,10 @@ import {
   isClick,
   type Pointed,
 } from './city-interaction'
-import { indexCycles } from './cycles'
 import { cityDecor } from './decor/decor'
 import { BOAT_LENGTH, createDecor, type DecorStats, decorStats } from './decor/decor-mesh'
 import { Fleet } from './decor/fleet'
 import { type Drive, STILL } from './drive'
-import { ExtraFerries } from './extra-ferries'
 import {
   extentOf,
   FRAME_MARGIN,
@@ -52,13 +50,15 @@ import {
   turnAbout,
   type Viewport,
 } from './flight'
+import { indexCycles } from './flows/cycles'
+import { ExtraFerries } from './flows/extra-ferries'
+import { BADGE_HALF_WIDTH, badgeInView, portBadgeAt } from './flows/port-links'
+import { indexImports } from './flows/selection-links'
 import { bearingOf, northOf, scaleFiles } from './map-scale'
 import { CityPicker, type CityTarget } from './picking'
-import { BADGE_HALF_WIDTH, badgeInView, portBadgeAt } from './port-links'
 import { DASH_PERIOD, LABEL_HEIGHT, LABEL_LIFT } from './render/arc-mesh'
 import { createFading } from './render/dimming'
 import { SUN_DIRECTION } from './render/light'
-import { indexImports } from './selection-links'
 import { type CityTargets, cityTargets } from './targets'
 import { islandShapes } from './terrain/island-shape'
 import { createParcels } from './terrain/plateaux'

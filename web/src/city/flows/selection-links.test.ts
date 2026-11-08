@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { CityLayout, FileImport, IslandLayout, Lot } from '../world/layout'
 import {
   indexImports,
   type LinkEnd,
@@ -9,7 +10,6 @@ import {
   SINGLE_ARCS,
   selectionLinks,
 } from './selection-links'
-import type { CityLayout, FileImport, IslandLayout, Lot } from './world/layout'
 
 const FILE = { language: 'typescript', lines: 10, complexity: 1, test: false } as const
 
