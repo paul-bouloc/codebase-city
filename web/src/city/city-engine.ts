@@ -647,7 +647,7 @@ export class CityEngine {
     // A frame late by more than this (a hidden tab, a long task) does not throw the camera away.
     this.controls.drive(this.drive, Math.min(delta, MAX_DRIVE_STEP))
     // Further away, the camera may come down closer to the horizon.
-    this.controls.limitTilt(maxTilt(this.controls.distance, this.framingDistance))
+    this.controls.limitTilt(maxTilt(this.controls.distance, MIN_DISTANCE, this.framingDistance))
     const moved = this.controls.update(delta)
     if (moved !== this.cameraMoving) {
       this.cameraMoving = moved
