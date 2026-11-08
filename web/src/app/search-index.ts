@@ -1,62 +1,16 @@
-import type { SymbolKind } from '../data/generated/SymbolKind'
-import type { FileRole, Language } from '../ui/Badge'
+import type { FileRole } from '../ui/Badge'
+import type {
+  FileHit,
+  FolderHit,
+  SearchGroup,
+  SearchResults,
+  SymbolHit,
+} from '../ui/city/search-data'
 import { languageOf, type ResultIndex } from './result-index'
 import { editDistance, fuzzyMatch, type Match } from './search-match'
 
 // The city's search: file, folder and symbol names, matched in the browser on the result the city
 // was built from. A query with a `/` matches whole paths instead, and no symbols.
-
-/** A file found by the search. */
-export interface FileHit {
-  kind: 'file'
-  path: string
-  /** Where the name starts in the path. */
-  nameStart: number
-  /** The matched characters' indices in the path. */
-  positions: number[]
-  language: Language
-  /** The language's own name, for one the interface has no colour for. */
-  languageName: string
-  /** The strongest role the graph gives it, else what the path says it is. */
-  role: FileRole | null
-}
-
-/** A folder found by the search. */
-export interface FolderHit {
-  kind: 'folder'
-  path: string
-  nameStart: number
-  positions: number[]
-  /** Files in it, at any depth. */
-  files: number
-}
-
-/** An exported symbol found by the search. */
-export interface SymbolHit {
-  kind: 'symbol'
-  name: string
-  /** The matched characters' indices in the name. */
-  positions: number[]
-  symbolKind: SymbolKind
-  /** The file that exports it. */
-  file: string
-  line: number
-}
-
-export type SearchHit = FileHit | FolderHit | SymbolHit
-
-export interface SearchGroup<Hit> {
-  /** How many match in all. */
-  total: number
-  /** The best of them, the best first. */
-  hits: Hit[]
-}
-
-export interface SearchResults {
-  files: SearchGroup<FileHit>
-  folders: SearchGroup<FolderHit>
-  symbols: SearchGroup<SymbolHit>
-}
 
 export interface SearchLimits {
   files: number
