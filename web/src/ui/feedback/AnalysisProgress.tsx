@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Badge } from '../Badge'
+import { Badge } from '../display/Badge'
 import { Icon } from '../Icon'
 import styles from './AnalysisProgress.module.css'
 import {

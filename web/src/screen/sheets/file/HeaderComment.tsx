@@ -1,5 +1,5 @@
 import { useId, useState } from 'react'
-import { ScrollArea } from '../../../ui/ScrollArea'
+import { ScrollArea } from '../../../ui/display/ScrollArea'
 import styles from './HeaderComment.module.css'
 
 const TEXT = {

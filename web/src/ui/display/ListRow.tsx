@@ -1,7 +1,7 @@
 import type { ComponentPropsWithRef } from 'react'
+import { Icon } from '../Icon'
 import { Badge, type FileRole } from './Badge'
 import { exactCount } from './count-format'
-import { Icon } from './Icon'
 import styles from './ListRow.module.css'
 import { useTruncatedPath } from './use-truncated-path'
 

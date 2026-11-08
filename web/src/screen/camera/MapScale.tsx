@@ -1,4 +1,4 @@
-import { exactCount } from '../../ui/count-format'
+import { exactCount } from '../../ui/display/count-format'
 import { Glass } from '../parts/Glass'
 import styles from './MapScale.module.css'
 

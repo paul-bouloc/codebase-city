@@ -1,4 +1,4 @@
-import { exactCount } from '../../ui/count-format'
+import { exactCount } from '../../ui/display/count-format'
 import { Glass } from '../parts/Glass'
 import { shortenFolder, splitPath } from '../parts/shorten-folder'
 import tooltip from './CityTooltip.module.css'

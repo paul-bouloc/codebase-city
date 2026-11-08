@@ -1,4 +1,4 @@
-import type { Language } from '../../ui/Badge'
+import type { Language } from '../../ui/display/Badge'
 import styles from './LanguageDot.module.css'
 
 interface LanguageDotProps {

@@ -1,5 +1,5 @@
 import { ANALYZED_LANGUAGES } from '../../city/world/from-result'
-import type { Language } from '../../ui/Badge'
+import type { Language } from '../../ui/display/Badge'
 import { githubCommitUrl } from '../github-links'
 import { languageOf, type ResultIndex } from '../result-index'
 import type { AboutData } from '../sheets/sheet-data'

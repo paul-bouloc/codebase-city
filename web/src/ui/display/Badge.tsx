@@ -1,7 +1,7 @@
+import { Spinner } from '../feedback/Spinner'
+import { Icon } from '../Icon'
+import type { IconName } from '../icons'
 import styles from './Badge.module.css'
-import { Spinner } from './feedback/Spinner'
-import { Icon } from './Icon'
-import type { IconName } from './icons'
 import { LANGUAGE_LABELS } from './language-labels'
 import { ROLE_NAMES } from './role-names'
 

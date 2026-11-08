@@ -1,5 +1,5 @@
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
-import { exactCount } from '../../../ui/count-format'
+import { exactCount } from '../../../ui/display/count-format'
 import { splitPath } from '../../parts/shorten-folder'
 import { FOLDED_ROWS, rankedRows } from '../ranked-files'
 import type { RankedFile } from '../sheet-data'

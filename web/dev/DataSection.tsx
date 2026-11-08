@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { QuotaIndicator } from '../src/ui/account/QuotaIndicator'
 import { Button } from '../src/ui/actions/Button'
-import { type AnalysisStatus, Badge, type FileRole, type Language } from '../src/ui/Badge'
+import { type AnalysisStatus, Badge, type FileRole, type Language } from '../src/ui/display/Badge'
+import { ListRow } from '../src/ui/display/ListRow'
 import { AnalysisProgress } from '../src/ui/feedback/AnalysisProgress'
 import type { BuildStep, ProgressOutcome } from '../src/ui/feedback/analysis-steps'
-import { ListRow } from '../src/ui/ListRow'
 import styles from './DataSection.module.css'
 
 const TEXT = {

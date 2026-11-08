@@ -1,4 +1,4 @@
-import type { Language } from '../../ui/Badge'
+import type { Language } from '../../ui/display/Badge'
 
 /** An axis-aligned rectangle on the ground, in board coordinates (x, y), in u. */
 export interface Rect {

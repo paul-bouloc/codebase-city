@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
-import type { Language } from '../../ui/Badge'
-import { percent } from '../../ui/count-format'
+import type { Language } from '../../ui/display/Badge'
+import { percent } from '../../ui/display/count-format'
 import styles from './LanguageBar.module.css'
 import { LANGUAGE_NAMES } from './legend-content'
 

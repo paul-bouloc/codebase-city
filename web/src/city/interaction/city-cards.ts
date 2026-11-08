@@ -1,5 +1,5 @@
 import type { AnalysisResult } from '../../data/generated/AnalysisResult'
-import type { FileRole, Language } from '../../ui/Badge'
+import type { FileRole, Language } from '../../ui/display/Badge'
 import { folderPaths } from '../world/from-result'
 
 // What the hover cards of the city say, read from an analysis result once per city.

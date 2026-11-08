@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { exactCount } from '../../../ui/count-format'
+import { exactCount } from '../../../ui/display/count-format'
 import { Icon } from '../../../ui/Icon'
 import { FOLDED_ROWS } from '../ranked-files'
 import type { FileSymbol } from '../sheet-data'

@@ -1,7 +1,7 @@
 import { useId } from 'react'
-import type { FileRole } from '../../../ui/Badge'
+import type { FileRole } from '../../../ui/display/Badge'
+import { ROLE_NAMES } from '../../../ui/display/role-names'
 import { Icon } from '../../../ui/Icon'
-import { ROLE_NAMES } from '../../../ui/role-names'
 import styles from './RoleBadge.module.css'
 
 const TEXT = {

@@ -1,5 +1,5 @@
 import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef } from 'react'
-import { exactCount, shortCount } from '../count-format'
+import { exactCount, shortCount } from '../display/count-format'
 import { rovingIndex } from './roving-index'
 import styles from './Tabs.module.css'
 

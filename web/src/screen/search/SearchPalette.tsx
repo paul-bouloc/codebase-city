@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { Kbd } from '../../ui/actions/Kbd'
-import { Badge } from '../../ui/Badge'
-import { exactCount } from '../../ui/count-format'
+import { Badge } from '../../ui/display/Badge'
+import { exactCount } from '../../ui/display/count-format'
 import { Icon } from '../../ui/Icon'
 import styles from './SearchPalette.module.css'
 import {

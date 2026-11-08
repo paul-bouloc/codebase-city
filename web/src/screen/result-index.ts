@@ -1,7 +1,7 @@
 import { folderPaths } from '../city/world/from-result'
 import type { AnalysisResult } from '../data/generated/AnalysisResult'
 import type { EntryReason } from '../data/generated/EntryReason'
-import type { Language } from '../ui/Badge'
+import type { Language } from '../ui/display/Badge'
 
 // What the city screen reads from an analysis result again and again, worked out once per city:
 // paths both ways, the direct imports of each file both ways, roles and complexity ranks.

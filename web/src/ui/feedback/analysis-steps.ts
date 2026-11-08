@@ -1,4 +1,4 @@
-import type { AnalysisStatus } from '../Badge'
+import type { AnalysisStatus } from '../display/Badge'
 
 export const BUILD_STEPS = [
   'queued',
