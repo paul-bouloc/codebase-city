@@ -1,4 +1,4 @@
-import { exactCount } from '../count-format'
+import { exactCount } from '../../ui/count-format'
 import styles from './CityMarker.module.css'
 
 const TEXT = {

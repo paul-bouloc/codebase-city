@@ -8,7 +8,6 @@ import {
   useRef,
   useState,
 } from 'react'
-import { CityHoverCard } from '../app/CityHoverCard'
 import type { CityEngine } from '../city/engine/city-engine'
 import { cityCards } from '../city/interaction/city-cards'
 import type {
@@ -19,8 +18,6 @@ import type {
 } from '../city/interaction/city-interaction'
 import { cityFromResult } from '../city/world/from-result'
 import type { AnalysisResult } from '../data/generated/AnalysisResult'
-import { PortCard } from '../ui/city/PortCard'
-import type { Rect } from '../ui/city/tooltip-placement'
 import { ToastProvider } from '../ui/ToastProvider'
 import { useToast } from '../ui/use-toast'
 import { AboutPanel } from './about/AboutPanel'
@@ -48,6 +45,9 @@ import { fetchCode } from './sheets/file/github-code'
 import { FolderSheet } from './sheets/folder/FolderSheet'
 import { folderSheetData } from './sheets/folder/folder-sheet'
 import type { CodeState, FileSheetData, FolderSheetData } from './sheets/sheet-data'
+import { CityHoverCard } from './tooltips/CityHoverCard'
+import { PortCard } from './tooltips/PortCard'
+import type { Rect } from './tooltips/tooltip-placement'
 import { useDriveKeys } from './use-drive-keys'
 
 const TEXT = {

@@ -1,10 +1,10 @@
-import type { CityCards } from '../city/interaction/city-cards'
-import type { CityHover } from '../city/interaction/city-interaction'
-import { AreaTooltip } from '../ui/city/AreaTooltip'
-import { BundleTooltip } from '../ui/city/BundleTooltip'
-import { FileTooltip } from '../ui/city/FileTooltip'
-import { PortTooltip } from '../ui/city/PortTooltip'
-import type { Rect } from '../ui/city/tooltip-placement'
+import type { CityCards } from '../../city/interaction/city-cards'
+import type { CityHover } from '../../city/interaction/city-interaction'
+import { AreaTooltip } from './AreaTooltip'
+import { BundleTooltip } from './BundleTooltip'
+import { FileTooltip } from './FileTooltip'
+import { PortTooltip } from './PortTooltip'
+import type { Rect } from './tooltip-placement'
 
 interface CityHoverCardProps {
   hover: CityHover
