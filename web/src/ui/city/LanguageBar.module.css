@@ -22,6 +22,14 @@
   background: var(--lang-javascript);
 }
 
+.segment[data-language="python"] {
+  background: var(--lang-python);
+}
+
+.segment[data-language="go"] {
+  background: var(--lang-go);
+}
+
 .segment[data-language="css"] {
   background: var(--lang-css);
 }

@@ -6,6 +6,8 @@ import { percent } from '../count-format'
 export const LANGUAGE_NAMES: Record<Language, string> = {
   typescript: 'TypeScript',
   javascript: 'JavaScript',
+  python: 'Python',
+  go: 'Go',
   css: 'CSS',
   other: 'Other',
 }

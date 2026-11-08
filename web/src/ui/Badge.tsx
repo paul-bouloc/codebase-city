@@ -14,7 +14,7 @@ export type FileRole =
   | 'config'
   | 'generated'
 
-export type Language = 'typescript' | 'javascript' | 'css' | 'other'
+export type Language = 'typescript' | 'javascript' | 'python' | 'go' | 'css' | 'other'
 
 export type AnalysisStatus = 'queued' | 'building' | 'done' | 'failed' | 'cancelled'
 
