@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import type { CityEngine } from '../city/engine/city-engine'
+import type { CityEngine } from '../../city/engine/city-engine'
 import { hashOf, type ScreenSelection, selectionOfHash } from './selection-hash'
 
 /**

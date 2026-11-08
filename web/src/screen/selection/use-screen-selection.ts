@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
-import type { CityEngine } from '../city/engine/city-engine'
-import type { CityItem } from '../city/interaction/city-items'
-import type { ResultIndex } from './result-index'
+import type { CityEngine } from '../../city/engine/city-engine'
+import type { CityItem } from '../../city/interaction/city-items'
+import type { ResultIndex } from '../result-index'
 import type { ScreenSelection } from './selection-hash'
 
 /** A line of a file to open its code at; each request opens it again. */
