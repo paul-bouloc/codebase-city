@@ -1,0 +1,212 @@
+/* "City UI · 11 · Search": 560 px under the search field, on the opaque glass. */
+
+.palette {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 560px;
+  max-width: calc(100vw - 2 * var(--space-3));
+  padding: var(--space-2);
+  border: var(--glass-border);
+  border-radius: var(--radius-lg);
+  background: var(--glass-bg-fallback);
+  color: var(--color-text-primary);
+  box-shadow: var(--shadow-md);
+}
+
+/* Eight rows of 52 px and the titles of the three groups, then it scrolls. */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-height: calc(8 * 52px + 3 * 28px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+}
+
+.groupTitle {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  color: var(--color-text-secondary);
+  font: var(--eyebrow-mono);
+  letter-spacing: var(--eyebrow-mono-tracking);
+  text-transform: uppercase;
+}
+
+.option {
+  position: relative;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-2-5);
+  min-height: 52px;
+  padding: var(--space-1-5) var(--space-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.active {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-strong);
+}
+
+/* The 2 px Harbor marker, inside the row. */
+.active::before {
+  position: absolute;
+  top: var(--space-2);
+  bottom: var(--space-2);
+  left: 0;
+  width: 2px;
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
+  content: "";
+}
+
+.icon {
+  color: var(--color-text-secondary);
+}
+
+.active .icon {
+  color: var(--color-accent-strong);
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0-5);
+  min-width: 0;
+}
+
+/* One line: the folder gives way, the name keeps its place. */
+.path {
+  display: flex;
+  min-width: 0;
+  font: var(--code-m);
+  letter-spacing: var(--code-m-tracking);
+  white-space: nowrap;
+}
+
+/* Right to left, so the ellipsis eats the start of the folder, not the end. */
+.folder {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  text-overflow: ellipsis;
+  direction: rtl;
+}
+
+.folderText {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+.name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+}
+
+.match {
+  border-radius: var(--radius-xs);
+  background: var(--color-accent-soft);
+  color: var(--color-accent-strong);
+  font-weight: 700;
+}
+
+/* On the active row, already on the soft accent: the match stands out by its weight. */
+.active .match {
+  background: transparent;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.subline {
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  font: var(--caption);
+  font-family: var(--font-family-mono);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.badges {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.enter {
+  display: inline-flex;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-2);
+}
+
+.emptyTitle {
+  margin: 0;
+  font: var(--body-m);
+  font-weight: 600;
+}
+
+.query {
+  font-family: var(--font-family-mono);
+}
+
+.emptyBody {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font: var(--body-s);
+}
+
+.suggestion {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-accent-strong);
+  font: var(--code-s);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.suggestion:focus-visible {
+  border-radius: var(--radius-xs);
+  box-shadow: var(--focus-ring);
+}
+
+.footer {
+  display: flex;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  border-top: var(--border-width-default) solid var(--color-border-subtle);
+  color: var(--color-text-secondary);
+  font: var(--caption);
+}
+
+.footer > span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* No arrows nor Enter under a finger. */
+@media (pointer: coarse) {
+  .footer,
+  .enter {
+    display: none;
+  }
+}
