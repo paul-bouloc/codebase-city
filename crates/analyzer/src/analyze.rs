@@ -8,8 +8,8 @@ use model::{
 };
 use rayon::prelude::*;
 
-use crate::cycles;
 use crate::files::{Language, SourceFile, scope, split_path};
+use crate::graph::cycles;
 use crate::graph::entries;
 use crate::graph::reach::{self, Reach, Units};
 use crate::graph::roles::{self, RolesReport};

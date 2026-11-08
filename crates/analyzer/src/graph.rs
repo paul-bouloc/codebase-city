@@ -6,6 +6,7 @@
 //! production graph keeps only the code the project ships: no tests,
 //! examples, docs, build output or generated files.
 
+pub(crate) mod cycles;
 pub(crate) mod entries;
 pub(crate) mod reach;
 pub(crate) mod roles;

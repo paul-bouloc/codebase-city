@@ -3,7 +3,6 @@
 #![forbid(unsafe_code)]
 
 mod analyze;
-mod cycles;
 pub mod files;
 pub mod graph;
 mod islands;
