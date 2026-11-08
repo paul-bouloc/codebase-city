@@ -307,15 +307,7 @@ export function createDecor(
       seed: rock.seed,
     })
   }
-  for (const boat of boats) {
-    byModel.boat.push({
-      position: boardToThree(boat.x, boat.y, 0),
-      angle: boat.angle,
-      size: 1,
-      tint: HULL,
-      seed: boat.seed,
-    })
-  }
+  byModel.boat.push(...boats.map(boatInstance))
   const group = new Group()
   for (const model of ['conifer', 'round', 'rock', 'boat'] as const) {
     const instances = byModel[model]
@@ -326,6 +318,33 @@ export function createDecor(
   }
   return group
 }
+
+/** Boats that sail, apart from the rest: their places change at every frame. */
+export function createBoats(boats: readonly Boat[], fading: Fading): InstancedMesh {
+  const mesh = instancedModel(
+    DECOR_MODELS.boat,
+    MODEL_WIDTH.boat,
+    boats.map(boatInstance),
+    fading,
+    false,
+  )
+  // Moving, its instances leave the bounds three.js would compute once.
+  mesh.frustumCulled = false
+  return mesh
+}
+
+function boatInstance(boat: Boat): Instance {
+  return {
+    position: boardToThree(boat.x, boat.y, 0),
+    angle: boat.angle,
+    size: 1,
+    tint: HULL,
+    seed: boat.seed,
+  }
+}
+
+/** A boat's length, in u: how big it is on screen tells whether its sailing shows. */
+export const BOAT_LENGTH = HULL_SIZE.length
 
 function instancedModel(
   vertices: ModelVertex[],
