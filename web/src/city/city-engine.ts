@@ -27,6 +27,7 @@ import {
 import { DASH_PERIOD, LABEL_HEIGHT, LABEL_LIFT } from './arc-mesh'
 import { createBridges } from './bridges'
 import { createBuildings } from './buildings'
+import { CityControls } from './city-controls'
 import {
   CityInteraction,
   type CityItem,
@@ -138,7 +139,7 @@ export class CityEngine {
   private readonly renderer: WebGLRenderer
   private readonly scene = new Scene()
   private readonly camera: PerspectiveCamera
-  private readonly controls: CameraControls
+  private readonly controls: CityControls
   private readonly sun = new DirectionalLight()
   private readonly timer = new Timer()
   private readonly continuous: boolean
@@ -193,10 +194,9 @@ export class CityEngine {
 
     this.scene.background = new Color(OPEN_SEA)
     this.camera = new PerspectiveCamera(FIELD_OF_VIEW, 1, 1, 1000)
-    this.controls = new CameraControls(this.camera, this.renderer.domElement)
+    this.controls = new CityControls(this.camera, this.renderer.domElement)
     this.controls.minDistance = MIN_DISTANCE
     this.controls.maxPolarAngle = MAX_POLAR_ANGLE
-    this.controls.dollyToCursor = true
 
     this.sun.castShadow = true
     const mapSize = Math.min(SHADOW_MAP_SIZE, this.renderer.capabilities.maxTextureSize)
