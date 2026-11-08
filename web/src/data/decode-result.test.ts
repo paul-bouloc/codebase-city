@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { decodeResult, FORMAT_VERSION, InvalidResultError } from './decode-result'
+import { InvalidResultError } from './decode/checks'
+import { decodeResult, FORMAT_VERSION } from './decode-result'
 import type { AnalysisResult } from './generated/AnalysisResult'
 import sample from './generated/sample-result.json'
 

@@ -4,8 +4,6 @@ import { decodeCycles, decodeEdges, decodeIslands, decodeLinks, decodeRoles } fr
 import { decodeLayout } from './decode/layout'
 import type { AnalysisResult } from './generated/AnalysisResult'
 
-export { InvalidResultError } from './decode/checks'
-
 // FORMAT_VERSION in crates/model; the generated sample result keeps the two in step.
 export const FORMAT_VERSION = 9
 
