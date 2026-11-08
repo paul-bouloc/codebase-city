@@ -7,6 +7,8 @@
   --sheet-travel: calc(100% + var(--space-3));
 
   display: grid;
+  /* One column as wide as the sheet: a long name or line of code never widens it. */
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) auto;
   width: 420px;
   height: 100%;
