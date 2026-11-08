@@ -12,7 +12,7 @@ use crate::resolve::{Outcome, Target};
 
 /// An edge of the result: the importing file, whether the target is a
 /// folder, and the target's row. Folder targets sort after file targets.
-pub(crate) type Key = (u32, bool, u32);
+type Key = (u32, bool, u32);
 
 /// How the imports of an analysis were resolved, to check the resolution
 /// by hand on real repositories. Not part of the result.

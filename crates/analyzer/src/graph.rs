@@ -248,7 +248,7 @@ pub(crate) fn build(input: &Input<'_>) -> (Graph, BarrelReport) {
 
 /// Which kind an edge keeps when a file imports the same target several
 /// ways: the one that weighs most on the structure.
-pub(crate) fn strength(kind: EdgeKind) -> u8 {
+fn strength(kind: EdgeKind) -> u8 {
     match kind {
         EdgeKind::Reexport => 4,
         EdgeKind::Import => 3,
