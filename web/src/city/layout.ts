@@ -14,7 +14,7 @@ export interface Point {
 }
 
 /** The languages the city paints in their own colour; the others share one. */
-export type BuildingLanguage = Language | 'python' | 'go'
+export type BuildingLanguage = Language
 
 /** What a file the analyzer does not read holds: each family has its shade of concrete. */
 export type ConcreteFamily = 'docs' | 'markup' | 'data' | 'styles' | 'scripts'
