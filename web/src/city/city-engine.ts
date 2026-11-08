@@ -39,6 +39,7 @@ import { cityLinks } from './links'
 import { CityPicker, type CityTarget } from './picking'
 import { createParcels } from './plateaux'
 import { createSea, OPEN_SEA, seaSize } from './sea'
+import { indexImports } from './selection-links'
 import { createTerrain } from './terrain'
 import { boardToThree, nearPlane } from './units'
 
@@ -313,6 +314,7 @@ export class CityEngine {
       layout,
       shapes,
       buildings,
+      indexImports(layout),
       fading,
       pixelRatio,
       () => this.listeners,

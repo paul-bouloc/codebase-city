@@ -4,6 +4,7 @@ import { CityInteraction, type CityItem, isClick } from './city-interaction'
 import { createFading } from './dimming'
 import { islandShapes } from './island-shape'
 import type { CityLayout, FileMetrics } from './layout'
+import { indexImports } from './selection-links'
 
 const file = (path: string): FileMetrics => ({
   path,
@@ -40,9 +41,9 @@ const LAYOUT: CityLayout = {
 }
 
 /** The buildings, with what each one's highlight and kept flag are now. */
-function setup() {
+function setup(layout = LAYOUT) {
   const fading = createFading()
-  const real = createBuildings(LAYOUT, 1, fading)
+  const real = createBuildings(layout, 1, fading)
   const highlights = real.placed.map(() => Highlight.none as Highlight)
   let kept: ((index: number) => boolean) | null = null
   const buildings: CityBuildings = {
@@ -58,9 +59,10 @@ function setup() {
   }
   const selections: (CityItem | null)[] = []
   const interaction = new CityInteraction(
-    LAYOUT,
-    islandShapes(LAYOUT),
+    layout,
+    islandShapes(layout),
     buildings,
+    indexImports(layout),
     fading,
     1,
     () => ({ select: (item) => selections.push(item) }),
@@ -133,6 +135,25 @@ describe('CityInteraction', () => {
     interaction.update(400)
     interaction.update(700)
     expect(fading.dim.value).toBe(0)
+  })
+
+  it('keeps the files linked to a selected one, and draws its arcs while it lasts', () => {
+    // `a/main.ts` imports `b/util.ts`
+    const { interaction, keptNow, highlights } = setup({
+      ...LAYOUT,
+      imports: [{ from: { island: 0, lot: 0 }, to: { island: 1, lot: 0 }, upward: false }],
+    })
+    interaction.select({ kind: 'building', index: 0 })
+    expect(keptNow()).toEqual([true, false, true])
+    expect(interaction.arcs.group.visible).toBe(true)
+    expect(interaction.getHubs()).toEqual([])
+    // A linked building still lights up under the pointer
+    interaction.point({ kind: 'building', index: 2 }, POINTER)
+    expect(highlights[2]).toBe(Highlight.hovered)
+    interaction.select({ kind: 'building', index: 1 })
+    expect(interaction.arcs.group.visible).toBe(false)
+    interaction.select(null)
+    expect(interaction.arcs.group.visible).toBe(false)
   })
 
   it('does not tell twice of the same selection', () => {
