@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use model::{
     AnalysisResult, Dirs, Edges, FORMAT_VERSION, Files, Ignored, Islands, Repo, Roles, Scope,
-    Stats, Symbols,
+    Stats, Symbols, Tour,
 };
 use rayon::prelude::*;
 
@@ -23,7 +23,7 @@ use crate::saturating_u32 as index;
 
 /// Version of the algorithms. Bumped whenever a change would give another
 /// result for the same commit, so stored results are recomputed.
-pub const ANALYZER_VERSION: &str = "0.8.0";
+pub const ANALYZER_VERSION: &str = "0.9.0";
 
 /// What an analysis found beyond its result.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -252,7 +252,7 @@ pub fn analyze_with_report(
         scopes: &table.scope,
         analyzed: &analyzed,
     });
-    let result = AnalysisResult {
+    let mut result = AnalysisResult {
         format_version: FORMAT_VERSION,
         analyzer_version: ANALYZER_VERSION.to_owned(),
         repo,
@@ -274,6 +274,7 @@ pub fn analyze_with_report(
         links,
         cycles: cycles::cycles(&graph),
         layout,
+        tour: Tour::default(),
         stats: Stats {
             ignored,
             imports_total: report.exact + report.likely + report.external + report.unresolved,
@@ -281,6 +282,7 @@ pub fn analyze_with_report(
             imports_external: report.external,
         },
     };
+    result.tour = crate::tour::of_result(&result);
     let report = Report {
         imports: report,
         barrels: barrel_report,

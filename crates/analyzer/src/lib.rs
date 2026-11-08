@@ -9,6 +9,7 @@ mod islands;
 pub mod lang;
 pub mod layout;
 mod resolve;
+pub mod tour;
 
 pub use analyze::{ANALYZER_VERSION, Report, analyze, analyze_with_report};
 pub use graph::edges::ImportReport;
