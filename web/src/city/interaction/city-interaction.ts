@@ -5,7 +5,7 @@ import { loopThrough } from '../flows/cycles'
 import { islandExtras } from '../flows/extra-ferries'
 import { FolderLinkMarks, folderWays } from '../flows/folder-link-marks'
 import { folderFlows } from '../flows/folder-links'
-import type { CycleOnShow, Hub } from '../flows/selection-arcs'
+import type { Hub } from '../flows/selection-arcs'
 import { OPENED_ARCS } from '../flows/selection-links'
 import { ArcLayer } from '../render/arc-mesh'
 import type { Fading } from '../render/dimming'
@@ -49,7 +49,6 @@ export class CityInteraction {
   private readonly links: SelectedLinks
   /** The rings around the files of the selected file's cycle. */
   readonly cycleRings: RingSet
-  private cycle: CycleOnShow | null = null
   /** The bridges and ferry lines the loop of the selected file's cycle takes between islands. */
   readonly cycleWays: CycleWayMarks
   /** The bridges and ferry lines of a selected folder. */
@@ -153,15 +152,15 @@ export class CityInteraction {
     this.selectedBuilding.show(null)
     this.selectedArea.show(null, this.shapes)
     const cycle = target?.kind === 'building' ? this.flows.cycles.cycleOf.get(target.index) : null
-    this.cycle =
+    const onShow =
       cycle && target?.kind === 'building'
         ? { loop: loopThrough(cycle, target.index), members: cycle.members }
         : null
+    this.links.select(target?.kind === 'building' ? target.index : null, onShow)
     this.cycleRings.show(
-      this.cycle?.members.flatMap((member) => this.buildings.placed[member] ?? []) ?? [],
+      onShow?.members.flatMap((member) => this.buildings.placed[member] ?? []) ?? [],
     )
     this.showCycleWays()
-    this.links.select(target?.kind === 'building' ? target.index : null, this.cycle)
     if (target?.kind === 'building') {
       this.buildings.setHighlight(target.index, Highlight.selected)
       this.selectedBuilding.show(this.buildings.placed[target.index] ?? null)
@@ -264,7 +263,7 @@ export class CityInteraction {
 
   /** The ways the loop of the selected file's cycle takes between islands, outlined in red. */
   private showCycleWays(): void {
-    const loop = this.cycle?.loop
+    const loop = this.links.cycle?.loop
     if (!loop) {
       this.cycleWays.show(null)
       return
@@ -358,7 +357,7 @@ export class CityInteraction {
     const area = this.fading.keptArea.value
     if (target.kind === 'building') {
       const linked = this.links.linked()
-      for (const member of this.cycle?.members ?? []) {
+      for (const member of this.links.cycle?.members ?? []) {
         linked.add(member)
       }
       this.buildings.setKept((index) => index === target.index || linked.has(index))

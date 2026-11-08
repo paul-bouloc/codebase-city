@@ -28,7 +28,7 @@ const ARC_LIFT = 0.1
 export class SelectedLinks {
   private selected: number | null = null
   private links: SelectionLinks | null = null
-  private cycle: CycleOnShow | null = null
+  private shownCycle: CycleOnShow | null = null
   private marked = new Map<number, Direction>()
   private marks: BuildingMark[] = []
   private shownHubs: Hub[] = []
@@ -42,6 +42,11 @@ export class SelectedLinks {
     private readonly arcs: ArcLayer,
     private readonly pixelRatio: number,
   ) {}
+
+  /** The cycle of the selected file on show, if it has one. */
+  get cycle(): CycleOnShow | null {
+    return this.shownCycle
+  }
 
   /** The hubs of the bundles on show. */
   get hubs(): readonly Hub[] {
@@ -61,7 +66,7 @@ export class SelectedLinks {
   /** Shows the links of this file, with its cycle, or none. */
   select(index: number | null, cycle: CycleOnShow | null): void {
     this.selected = index
-    this.cycle = cycle
+    this.shownCycle = cycle
     this.links =
       index === null
         ? null
@@ -114,7 +119,7 @@ export class SelectedLinks {
         plateau: (island) => layerAltitude(this.layout.islands[island]?.layer ?? 1),
       },
       fresh,
-      this.cycle,
+      this.shownCycle,
     )
     this.shownHubs = hubs
     this.arcs.show(drawing)
