@@ -79,6 +79,8 @@ const FIELD_OF_VIEW = 38
 const MIN_DISTANCE = 6
 /** Never pull back further than twice the distance that frames the whole city. */
 const MAX_FRAMING = 2
+/** How high above the ground under it the camera stays, in u. */
+const CAMERA_CLEARANCE = 0.5
 /** The longest step, in seconds, the keys move the camera by in one frame. */
 const MAX_DRIVE_STEP = 0.1
 const START_AZIMUTH = MathUtils.degToRad(34)
@@ -174,6 +176,7 @@ export class CityEngine {
   private readonly ndc = new Vector2()
   private readonly bufferSize = new Vector2()
   private readonly projected = new Vector3()
+  private readonly aimedAt = new Vector3()
   // Where the pointer is on the canvas, in CSS pixels; null when it is elsewhere.
   private pointer: { x: number; y: number; clientX: number; clientY: number } | null = null
   private pressedAt: { x: number; y: number } | null = null
@@ -521,11 +524,16 @@ export class CityEngine {
     const framing = new Sphere(centre, Math.max(radius, MIN_DISTANCE))
     this.framingRadius = framing.radius
     this.fitMaxDistance()
-    // The target stays on the sea plane: zooming to the cursor would otherwise drag it, and the
-    // camera with it, under the water.
+    // The target stays between the sea and the highest plateau: zooming to the cursor would
+    // otherwise drag it, and the camera with it, under the water. Each frame sets it on the ground.
+    const top = shapes.reduce((high, { altitudes }) => Math.max(high, altitudes[0] ?? 0), 0)
     const box = new Box3(
       new Vector3(cx - bounds.width / 2 - TARGET_MARGIN, 0, cz - bounds.height / 2 - TARGET_MARGIN),
-      new Vector3(cx + bounds.width / 2 + TARGET_MARGIN, 0, cz + bounds.height / 2 + TARGET_MARGIN),
+      new Vector3(
+        cx + bounds.width / 2 + TARGET_MARGIN,
+        top,
+        cz + bounds.height / 2 + TARGET_MARGIN,
+      ),
     )
     this.controls.setBoundary(box)
     void this.controls.rotateTo(START_AZIMUTH, START_POLAR_ANGLE, false)
@@ -646,8 +654,21 @@ export class CityEngine {
     const delta = this.timer.getDelta()
     // A frame late by more than this (a hidden tab, a long task) does not throw the camera away.
     this.controls.drive(this.drive, Math.min(delta, MAX_DRIVE_STEP))
-    // Further away, the camera may come down closer to the horizon.
-    this.controls.limitTilt(maxTilt(this.controls.distance, MIN_DISTANCE, this.framingDistance))
+    // Further away, the camera may come down closer to the horizon,
+    let tilt = maxTilt(this.controls.distance, MIN_DISTANCE, this.framingDistance)
+    const picker = this.picker
+    if (picker) {
+      // around a target on the ground, and never closer to the ground under it than this.
+      const target = this.controls.getTarget(this.aimedAt, true)
+      const ground = picker.groundHeight(target.x, target.z)
+      this.controls.followGround(ground)
+      const { x, z } = this.camera.position
+      const rise = picker.groundHeight(x, z) + CAMERA_CLEARANCE - ground
+      if (rise > 0) {
+        tilt = Math.min(tilt, Math.acos(Math.min(rise / this.controls.distance, 1)))
+      }
+    }
+    this.controls.limitTilt(tilt)
     const moved = this.controls.update(delta)
     if (moved !== this.cameraMoving) {
       this.cameraMoving = moved
