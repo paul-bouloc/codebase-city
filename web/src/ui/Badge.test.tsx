@@ -17,6 +17,11 @@ describe('Badge', () => {
     expect(html).toContain('data-language="other"')
   })
 
+  it('writes a tag as it is given, on the neutral look', () => {
+    const html = renderToStaticMarkup(<Badge kind="tag" label="9 files" />)
+    expect(html).toMatch(/^<span class="[^"]+">9 files<\/span>$/)
+  })
+
   it('pairs every status with a word and a hidden icon', () => {
     for (const [status, word] of [
       ['queued', 'Queued'],

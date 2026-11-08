@@ -44,6 +44,8 @@ export type BadgeProps =
   // `name` writes a language without an analyzer ("PowerShell"), drawn in the `other` colour.
   | { kind: 'language'; language: Language; name?: string }
   | { kind: 'status'; status: AnalysisStatus }
+  // A neutral word: a symbol's kind ("class"), a folder's size ("9 files").
+  | { kind: 'tag'; label: string }
 
 export function Badge(props: BadgeProps) {
   if (props.kind === 'role') {
@@ -66,6 +68,10 @@ export function Badge(props: BadgeProps) {
         {props.name ?? LANGUAGE_LABELS[props.language]}
       </span>
     )
+  }
+
+  if (props.kind === 'tag') {
+    return <span className={styles.badge}>{props.label}</span>
   }
 
   const { status } = props
