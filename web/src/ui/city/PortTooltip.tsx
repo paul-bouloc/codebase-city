@@ -7,7 +7,8 @@ import { useTooltipPlacement } from './use-tooltip-placement'
 
 const TEXT = {
   links: (count: number) =>
-    `${exactCount(count)} more ${count === 1 ? 'link' : 'links'} to other islands`,
+    `${exactCount(count)} ${count === 1 ? 'link' : 'links'} to other islands not drawn`,
+  why: 'Only an island’s largest links are drawn. The others wait at its port.',
   show: (count: number) => (count === 1 ? 'Click to show it' : 'Click to show them'),
 }
 
@@ -47,6 +48,7 @@ export function PortTooltip({ path, links, pointer, obstacles }: PortTooltipProp
         </span>
       </p>
       <p className={styles.summary}>{TEXT.links(links)}</p>
+      <p className={`${styles.summary} ${styles.secondary}`}>{TEXT.why}</p>
       <p className={`${styles.summary} ${styles.action}`}>{TEXT.show(links)}</p>
     </Glass>
   )
