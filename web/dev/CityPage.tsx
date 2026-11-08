@@ -88,13 +88,14 @@ export function CityPage() {
   }, [engine])
 
   // Esc closes the port open, if any, or clears the selection, as on the city screen once no
-  // panel is open.
+  // panel is open. Only whether a port is open counts: its card moves with the camera.
+  const portOpen = port !== null
   useEffect(() => {
     const clear = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') {
         return
       }
-      if (port) {
+      if (portOpen) {
         engine?.closePort()
       } else {
         engine?.clearSelection()
@@ -102,7 +103,7 @@ export function CityPage() {
     }
     window.addEventListener('keydown', clear)
     return () => window.removeEventListener('keydown', clear)
-  }, [engine, port])
+  }, [engine, portOpen])
 
   // After the city loads (the view's effect runs first), the camera goes where `?look` says.
   // biome-ignore lint/correctness/useExhaustiveDependencies: again after each city loads
