@@ -1,7 +1,7 @@
-import type { PlacedBuilding } from './buildings/placed-buildings'
-import type { CityTarget } from './interaction/picking'
-import type { CityLayout, Rect } from './world/layout'
-import { boardToThree, type Vec3 } from './world/units'
+import type { PlacedBuilding } from '../buildings/placed-buildings'
+import type { CityTarget } from '../interaction/picking'
+import type { CityLayout, Rect } from '../world/layout'
+import { boardToThree, type Vec3 } from '../world/units'
 
 /** A file is framed with its neighbours, about five lots around it, whatever its size. */
 const BLOCK_RADIUS = 10

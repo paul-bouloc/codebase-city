@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
-import type { CityEngine } from '../city/city-engine'
-import { driveOf, isDriveKey, STILL } from '../city/drive'
+import type { CityEngine } from '../city/engine/city-engine'
+import { driveOf, isDriveKey, STILL } from '../city/engine/drive'
 import { isTyping } from './screen-keys'
 
 /** W A S D move the camera along the ground and Q E turn it, while held. */

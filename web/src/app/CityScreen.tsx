@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import type { CityEngine } from '../city/city-engine'
+import type { CityEngine } from '../city/engine/city-engine'
 import { cityCards } from '../city/interaction/city-cards'
 import type {
   CameraView,

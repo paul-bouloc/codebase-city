@@ -24,12 +24,38 @@ import {
   Vector4,
   WebGLRenderer,
 } from 'three'
-import { createBuildings } from './buildings/buildings'
-import type { PlacedBuilding } from './buildings/placed-buildings'
+import { createBuildings } from '../buildings/buildings'
+import type { PlacedBuilding } from '../buildings/placed-buildings'
+import { cityDecor } from '../decor/decor'
+import { BOAT_LENGTH, createDecor, type DecorStats, decorStats } from '../decor/decor-mesh'
+import { Fleet } from '../decor/fleet'
+import { indexCycles } from '../flows/cycles'
+import { ExtraFerries } from '../flows/extra-ferries'
+import { BADGE_HALF_WIDTH, badgeInView, portBadgeAt } from '../flows/port-links'
+import { indexImports } from '../flows/selection-links'
+import {
+  type CameraView,
+  CityInteraction,
+  type CityItem,
+  type CityListeners,
+  isClick,
+  type Pointed,
+} from '../interaction/city-interaction'
+import { CityPicker, type CityTarget } from '../interaction/picking'
+import { type CityTargets, cityTargets } from '../interaction/targets'
+import { DASH_PERIOD, LABEL_HEIGHT, LABEL_LIFT } from '../render/arc-mesh'
+import { createFading } from '../render/dimming'
+import { SUN_DIRECTION } from '../render/light'
+import { islandShapes } from '../terrain/island-shape'
+import { createParcels } from '../terrain/plateaux'
+import { createSea, OPEN_SEA, seaSize } from '../terrain/sea'
+import { createTerrain } from '../terrain/terrain'
+import { createBridges } from '../waterways/bridges'
+import { createFerries } from '../waterways/ferries'
+import { cityLinks, type Port } from '../waterways/links'
+import type { CityLayout } from '../world/layout'
+import { boardToThree, nearPlane, type Vec3 } from '../world/units'
 import { CityControls } from './city-controls'
-import { cityDecor } from './decor/decor'
-import { BOAT_LENGTH, createDecor, type DecorStats, decorStats } from './decor/decor-mesh'
-import { Fleet } from './decor/fleet'
 import { type Drive, STILL } from './drive'
 import {
   extentOf,
@@ -42,34 +68,8 @@ import {
   turnAbout,
   type Viewport,
 } from './flight'
-import { indexCycles } from './flows/cycles'
-import { ExtraFerries } from './flows/extra-ferries'
-import { BADGE_HALF_WIDTH, badgeInView, portBadgeAt } from './flows/port-links'
-import { indexImports } from './flows/selection-links'
-import {
-  type CameraView,
-  CityInteraction,
-  type CityItem,
-  type CityListeners,
-  isClick,
-  type Pointed,
-} from './interaction/city-interaction'
-import { CityPicker, type CityTarget } from './interaction/picking'
-import { type CityTargets, cityTargets } from './interaction/targets'
 import { bearingOf, northOf, scaleFiles } from './map-scale'
-import { DASH_PERIOD, LABEL_HEIGHT, LABEL_LIFT } from './render/arc-mesh'
-import { createFading } from './render/dimming'
-import { SUN_DIRECTION } from './render/light'
-import { islandShapes } from './terrain/island-shape'
-import { createParcels } from './terrain/plateaux'
-import { createSea, OPEN_SEA, seaSize } from './terrain/sea'
-import { createTerrain } from './terrain/terrain'
 import { maxTilt, NEAR_TILT } from './tilt'
-import { createBridges } from './waterways/bridges'
-import { createFerries } from './waterways/ferries'
-import { cityLinks, type Port } from './waterways/links'
-import type { CityLayout } from './world/layout'
-import { boardToThree, nearPlane, type Vec3 } from './world/units'
 
 /** What a click opens: a bundle's hub, or a port. */
 type Mark = Extract<Pointed, { kind: 'hub' | 'port' }>
