@@ -84,7 +84,12 @@ rootConfig: number,
  */
 parkCount: number, 
 /**
- * The parks with the most files: none to three, unlike the other
+ * Files of tests and test fixtures in those parks: the others
+ * stand among the code.
+ */
+parkTests: number, 
+/**
+ * The parks with the most tests: none to three, unlike the other
  * lists.
  */
 parks: Array<number>, };

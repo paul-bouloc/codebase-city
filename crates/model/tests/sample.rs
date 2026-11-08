@@ -301,6 +301,7 @@ fn tour() -> Tour {
                 config: 2,
                 root_config: 2,
                 park_count: 1,
+                park_tests: 2,
                 parks: vec![6],
             },
         ],

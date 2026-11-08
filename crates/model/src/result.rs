@@ -504,7 +504,10 @@ pub enum TourStep {
         root_config: u32,
         /// Folders shown as parks that are not inside another park.
         park_count: u32,
-        /// The parks with the most files: none to three, unlike the other
+        /// Files of tests and test fixtures in those parks: the others
+        /// stand among the code.
+        park_tests: u32,
+        /// The parks with the most tests: none to three, unlike the other
         /// lists.
         parks: Vec<u32>,
     },

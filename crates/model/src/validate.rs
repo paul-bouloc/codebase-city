@@ -578,6 +578,7 @@ mod tests {
                         config: 0,
                         root_config: 0,
                         park_count: 1,
+                        park_tests: 0,
                         parks: vec![1],
                     },
                 ],

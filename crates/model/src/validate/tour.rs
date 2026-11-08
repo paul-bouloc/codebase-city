@@ -89,11 +89,15 @@ pub(super) fn tour(result: &AnalysisResult) -> Result<(), InvalidResult> {
                 list("tour.files", files, file_count)?;
             }
             TourStep::Rest {
-                park_count, parks, ..
+                tests,
+                park_count,
+                park_tests,
+                parks,
+                ..
             } => {
                 listed(row, parks, 0)?;
                 in_bounds("tour.parks", parks, dir_count)?;
-                if parks.len() > *park_count as usize {
+                if parks.len() > *park_count as usize || park_tests > tests {
                     return Err(InvalidResult::TourCount { row });
                 }
             }
@@ -254,6 +258,14 @@ mod tests {
             invalid(|r| {
                 if let TourStep::Rest { park_count, .. } = step(r, 7) {
                     *park_count = 0;
+                }
+            }),
+            InvalidResult::TourCount { row: 7 }
+        );
+        assert_eq!(
+            invalid(|r| {
+                if let TourStep::Rest { park_tests, .. } = step(r, 7) {
+                    *park_tests = 1;
                 }
             }),
             InvalidResult::TourCount { row: 7 }
