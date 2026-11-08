@@ -202,12 +202,15 @@ function FileDetails({
   // A tab that went away (or none chosen yet) falls back to the first one there is.
   const shownTab = tabs.find(({ id }) => id === tab)?.id ?? tabs[0]?.id ?? 'code'
   const codeShown = shownTab === 'code'
+  // Each new request, not each render: the tabs stay free to change.
+  const lineRequest = openLine?.request
+  const requestedLine = openLine?.line
   useEffect(() => {
-    if (openLine) {
-      setCodeLine(openLine.line)
+    if (lineRequest !== undefined && requestedLine !== undefined) {
+      setCodeLine(requestedLine)
       setTab('code')
     }
-  }, [openLine])
+  }, [lineRequest, requestedLine])
   useEffect(() => {
     if (codeShown) {
       onOpenCode?.()
