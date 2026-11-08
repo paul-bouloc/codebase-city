@@ -3,6 +3,7 @@ import type {
   BuildingLanguage,
   CityLayout,
   ConcreteFamily,
+  FileCycle,
   FileImport,
   GridRef,
   IslandLayout,
@@ -233,7 +234,41 @@ export function cityFromResult(result: AnalysisResult): CityLayout {
     bounds: rect(0, 0, layout.width, layout.height),
     links,
     imports: fileImports(result, lotOf, gridRefOf),
+    cycles: fileCycles(result, lotOf),
   }
+}
+
+/** The import cycles by their members' lots, with the imports a loop can run along. */
+function fileCycles(result: AnalysisResult, lotOf: readonly (LotRef | undefined)[]): FileCycle[] {
+  const { cycles, edges } = result
+  // Where each file stands in its cycle, if it is in one.
+  const memberOf = new Map<number, { cycle: number; at: number }>()
+  cycles.members.forEach((files, cycle) => {
+    files.forEach((file, at) => {
+      memberOf.set(file, { cycle, at })
+    })
+  })
+  const found: FileCycle[] = cycles.members.map((files, cycle) => {
+    const at = new Map(files.map((file, index) => [file, index]))
+    return {
+      members: files.map((file) => lotOf[file] ?? { island: 0, lot: 0 }),
+      loop: (cycles.shortest[cycle] ?? []).map((file) => at.get(file) ?? 0),
+      imports: [],
+    }
+  })
+  edges.from.forEach((file, row) => {
+    const kind = edges.kind[row]
+    const to = edges.to[row]
+    if ((kind !== 'import' && kind !== 'reexport') || to === null || to === undefined) {
+      return
+    }
+    const source = memberOf.get(file)
+    const target = memberOf.get(to)
+    if (source && target && source.cycle === target.cycle) {
+      found[source.cycle]?.imports.push([source.at, target.at])
+    }
+  })
+  return found
 }
 
 /**

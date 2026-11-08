@@ -52,6 +52,20 @@ describe('cityFromResult', () => {
     ])
   })
 
+  it('keeps the cycles by their lots, with the plain imports between members', () => {
+    const pathOf = ({ island, lot }: { island: number; lot: number }) =>
+      city.islands[island]?.lots[lot]?.file.path
+    expect(city.cycles).toHaveLength(2)
+    const [store, view] = city.cycles ?? []
+    expect(store?.members.map(pathOf)).toEqual(['src/core/store.ts', 'src/core/events.ts'])
+    expect(store?.loop).toEqual([0, 1])
+    expect(store?.imports).toEqual([
+      [0, 1],
+      [1, 0],
+    ])
+    expect(view?.members.map(pathOf)).toEqual(['src/ui/view.ts', 'src/ui/panel.ts'])
+  })
+
   it('puts every file on its lot, with its metrics', () => {
     const lots = city.islands.flatMap((island) => island.lots)
     expect(lots).toHaveLength(result.files.dir.length)

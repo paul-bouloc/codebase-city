@@ -119,6 +119,15 @@ export interface FileImport {
   upward: boolean
 }
 
+/** Files that import each other in a loop: each reaches every other one. */
+export interface FileCycle {
+  members: LotRef[]
+  /** One of the shortest loops through them, in import order, by index in `members`. */
+  loop: number[]
+  /** The plain imports and re-exports between members, by index in `members`. */
+  imports: [number, number][]
+}
+
 export interface CityLayout {
   islands: IslandLayout[]
   /** The union of the plateaux. */
@@ -127,6 +136,8 @@ export interface CityLayout {
   links?: IslandLink[]
   /** Imports between files; none if absent. */
   imports?: FileImport[]
+  /** The import cycles, the largest first; none if absent. */
+  cycles?: FileCycle[]
 }
 
 export function boundsOf(rects: readonly Rect[]): Rect {
