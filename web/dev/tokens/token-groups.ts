@@ -1,4 +1,4 @@
-import tokensCss from '../src/ui/styles/tokens.css?raw'
+import tokensCss from '../../src/ui/styles/tokens.css?raw'
 
 export interface Token {
   name: string

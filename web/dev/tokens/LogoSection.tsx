@@ -1,4 +1,4 @@
-import { Logo, type LogoVariant } from '../src/ui/brand/Logo'
+import { Logo, type LogoVariant } from '../../src/ui/brand/Logo'
 import styles from './LogoSection.module.css'
 
 const TEXT = {

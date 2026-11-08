@@ -1,5 +1,5 @@
-import { Icon, type IconSize } from '../src/ui/brand/Icon'
-import { ICON_NAMES } from '../src/ui/brand/icons'
+import { Icon, type IconSize } from '../../src/ui/brand/Icon'
+import { ICON_NAMES } from '../../src/ui/brand/icons'
 import styles from './IconsSection.module.css'
 
 const TEXT = {
