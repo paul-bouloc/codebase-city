@@ -199,6 +199,13 @@ function FileDetails({
   const tabs = fileTabs(file)
   const [tab, setTab] = useState<FileTab | undefined>(defaultTab)
   const [codeLine, setCodeLine] = useState<number>()
+  // Each request of a line, even the line already shown, brings it back into view.
+  const [lineShown, setLineShown] = useState(0)
+  const showLine = (line: number) => {
+    setCodeLine(line)
+    setLineShown((count) => count + 1)
+    setTab('code')
+  }
   // A tab that went away (or none chosen yet) falls back to the first one there is.
   const shownTab = tabs.find(({ id }) => id === tab)?.id ?? tabs[0]?.id ?? 'code'
   const codeShown = shownTab === 'code'
@@ -208,6 +215,7 @@ function FileDetails({
   useEffect(() => {
     if (lineRequest !== undefined && requestedLine !== undefined) {
       setCodeLine(requestedLine)
+      setLineShown((count) => count + 1)
       setTab('code')
     }
   }, [lineRequest, requestedLine])
@@ -270,15 +278,13 @@ function FileDetails({
           {shownTab === 'symbols' && (
             <SymbolList
               symbols={file.symbols}
-              onOpenLine={(line) => {
-                setCodeLine(line)
-                setTab('code')
-              }}
+              onOpenLine={showLine}
               defaultExpanded={defaultExpanded}
             />
           )}
           {shownTab === 'code' && (
             <CodeView
+              key={lineShown}
               code={file.code}
               githubUrl={file.githubUrl}
               onRetry={onRetryCode}
