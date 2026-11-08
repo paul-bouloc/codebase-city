@@ -1,5 +1,5 @@
 import { githubBlobUrl, githubCommitUrl, githubTreeUrl } from '../src/screen/github-links'
-import type { AboutData, FileSheetData, FolderSheetData } from '../src/ui/city/sheet-data'
+import type { AboutData, FileSheetData, FolderSheetData } from '../src/screen/sheets/sheet-data'
 
 // The boards' demonstration content: microsoft/vscode at a1b2c3d. Counts are made up but kept
 // consistent with one another, and lists are sorted by importance (the boards' were not, A-c16).

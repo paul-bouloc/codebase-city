@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
+import { FOLDED_ROWS } from '../../screen/sheets/ranked-files'
+import type { FileSymbol } from '../../screen/sheets/sheet-data'
 import { exactCount } from '../count-format'
 import { Icon } from '../Icon'
-import { FOLDED_ROWS } from './ranked-files'
 import styles from './SymbolList.module.css'
-import type { FileSymbol } from './sheet-data'
 
 const TEXT = {
   line: (line: number) => `L${exactCount(line)}`,

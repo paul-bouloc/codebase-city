@@ -1,8 +1,8 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
+import type { FolderSheetData } from '../../screen/sheets/sheet-data'
 import { FolderSheet } from './FolderSheet'
 import { orderedLinks } from './island-links'
-import type { FolderSheetData } from './sheet-data'
 
 const FOLDER: FolderSheetData = {
   path: 'src/vs/editor',

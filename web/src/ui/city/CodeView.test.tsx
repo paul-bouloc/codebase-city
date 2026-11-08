@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
+import type { CodeState } from '../../screen/sheets/sheet-data'
 import { CodeView } from './CodeView'
-import type { CodeState } from './sheet-data'
 
 const render = (code: CodeState) =>
   renderToStaticMarkup(<CodeView code={code} githubUrl="https://github.com/x" onRetry={() => {}} />)

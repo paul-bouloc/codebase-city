@@ -9,7 +9,7 @@ import type {
   FileSymbol,
   InferredRole,
   RankedFile,
-} from '../ui/city/sheet-data'
+} from '../screen/sheets/sheet-data'
 import { exactCount } from '../ui/count-format'
 
 // A file's sheet, read from the analysis result. Its code comes from GitHub, apart.

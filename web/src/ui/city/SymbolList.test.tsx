@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
+import type { FileSymbol } from '../../screen/sheets/sheet-data'
 import { SymbolList } from './SymbolList'
-import type { FileSymbol } from './sheet-data'
 
 const symbols: FileSymbol[] = [
   { name: 'TextModel', kind: 'class', line: 284 },

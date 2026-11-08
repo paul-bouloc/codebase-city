@@ -1,8 +1,8 @@
 import { ANALYZED_LANGUAGES } from '../city/world/from-result'
 import { githubTreeUrl } from '../screen/github-links'
 import { languageOf, type ResultIndex } from '../screen/result-index'
+import type { FolderSheetData, IslandLink, KeyFile } from '../screen/sheets/sheet-data'
 import type { Language } from '../ui/Badge'
-import type { FolderSheetData, IslandLink, KeyFile } from '../ui/city/sheet-data'
 
 // A folder's sheet, read from the analysis result: an island's, or a parcel's on its island.
 
