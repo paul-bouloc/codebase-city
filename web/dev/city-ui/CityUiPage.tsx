@@ -28,6 +28,7 @@ import { StageSheet } from './StageSheet'
 import { StageTooltip } from './StageTooltip'
 import { ABOUT } from './sheet-samples'
 import { HOVER_LABELS, type Hover, SELECTION_LABELS, type Selection } from './stage-states'
+import { Toggle } from './Toggle'
 
 const TEXT = {
   tools: 'States',
@@ -296,27 +297,6 @@ export function CityUiPage() {
       <Board />
       <SheetsBoard />
     </>
-  )
-}
-
-function Toggle({
-  label,
-  checked,
-  onChange,
-}: {
-  label: string
-  checked: boolean
-  onChange: (checked: boolean) => void
-}) {
-  return (
-    <label className={styles.toggle}>
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(event) => onChange(event.target.checked)}
-      />
-      {label}
-    </label>
   )
 }
 
