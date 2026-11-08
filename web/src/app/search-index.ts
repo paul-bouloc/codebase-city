@@ -247,16 +247,15 @@ export function buildSearchIndex(index: ResultIndex): SearchIndex {
     return { files: fileBest.group(), folders: folderBest.group(), symbols: symbolBest.group() }
   }
 
-  // Every name once, without a file's extension: worked out on the first query that finds nothing.
-  let names: Target[] | null = null
-  const allNames = (): Target[] => {
+  // Every name once, without a file's extension, with how many carry it: worked out on the first
+  // query that finds nothing.
+  let names: { name: Target; count: number }[] | null = null
+  const allNames = () => {
     if (!names) {
-      const seen = new Set<string>()
-      const list: Target[] = []
+      const counts = new Map<string, number>()
       const add = (name: string) => {
-        if (name && !seen.has(name)) {
-          seen.add(name)
-          list.push(target(name))
+        if (name) {
+          counts.set(name, (counts.get(name) ?? 0) + 1)
         }
       }
       for (const { text } of fileNames) {
@@ -269,7 +268,7 @@ export function buildSearchIndex(index: ResultIndex): SearchIndex {
       for (const { text } of symbolNames) {
         add(text)
       }
-      names = list
+      names = [...counts].map(([name, count]) => ({ name: target(name), count }))
     }
     return names
   }
@@ -279,9 +278,9 @@ export function buildSearchIndex(index: ResultIndex): SearchIndex {
     if (query.length < 3 || query.includes('/')) {
       return null
     }
-    // The closest name; among names as close, the shortest, then the first in order.
-    let best: { text: string; distance: number } | null = null
-    for (const name of allNames()) {
+    // The closest name; among names as close, the one most carry, the shortest, the first in order.
+    let best: { text: string; distance: number; count: number } | null = null
+    for (const { name, count } of allNames()) {
       const max = best?.distance ?? suggestionDistance(query.length)
       const distance = editDistance(query, name.lower, max)
       if (distance === 0 || distance > max) {
@@ -290,10 +289,12 @@ export function buildSearchIndex(index: ResultIndex): SearchIndex {
       const better =
         !best ||
         distance < best.distance ||
-        name.text.length < best.text.length ||
-        (name.text.length === best.text.length && name.text < best.text)
+        count > best.count ||
+        (count === best.count &&
+          (name.text.length < best.text.length ||
+            (name.text.length === best.text.length && name.text < best.text)))
       if (better) {
-        best = { text: name.text, distance }
+        best = { text: name.text, distance, count }
       }
     }
     return best?.text ?? null

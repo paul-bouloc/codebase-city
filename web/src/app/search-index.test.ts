@@ -110,6 +110,15 @@ describe('suggest', () => {
     expect(search.suggest('craeteStore')).toBe('createStore')
   })
 
+  it('offers, of names as close, the one most files, folders and symbols carry', () => {
+    // One file is `view` (src/ui/view.ts), one class `View`: a tie, settled by order.
+    expect(search.suggest('veiw')).toBe('View')
+    // A second file named view.ts: `view` is carried twice.
+    const json = structuredClone(decodeResult(sample)) as AnalysisResult
+    json.files.name[18] = 'view.ts'
+    expect(buildSearchIndex(indexResult(json)).suggest('veiw')).toBe('view')
+  })
+
   it('offers nothing when no name is close, or the query is too short', () => {
     expect(search.suggest('zzzzzz')).toBeNull()
     expect(search.suggest('xy')).toBeNull()
