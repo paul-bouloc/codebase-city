@@ -1,5 +1,5 @@
 import { Mesh, ShaderMaterial } from 'three'
-import type { Garden } from './decor'
+import type { Garden } from './gardens'
 import type { CityLayout, ParcelLayout, ParcelNature, Rect } from './layout'
 import { MeshBuilder } from './mesh-builder'
 import { shadingFragmentPars, shadingUniforms, shadingVertex, shadingVertexPars } from './shading'

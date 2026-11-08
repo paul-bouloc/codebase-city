@@ -2,6 +2,13 @@ import { type CanalCell, ISLAND_MARGIN } from './canals'
 import type { IslandLayout, Rect } from './layout'
 import { LOT_SIZE } from './units'
 
+/** A meadow slab on the free room of a plateau or the empty lots of its square, in u. */
+export interface Garden {
+  rect: Rect
+  bottom: number
+  top: number
+}
+
 // The room the layout leaves on a plateau, between its folders, its square and its canals,
 // becomes gardens rather than bare paving: meadow slabs with trees. Small islands have the
 // most, the minimum plateau (10 × 6.6 u) being larger than what a few files need.

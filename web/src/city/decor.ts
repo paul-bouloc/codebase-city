@@ -1,5 +1,5 @@
 import { type CanalCell, islandCanals } from './canals'
-import { islandGardens, squareGardens } from './gardens'
+import { type Garden, islandGardens, squareGardens } from './gardens'
 import { type ContourSample, type IslandShape, SAMPLE_STEP } from './island-shape'
 import type { CityLayout, GridLayout, IslandLayout, ParcelNature, Point, Rect } from './layout'
 import type { Boat, Quay } from './links'
@@ -34,13 +34,6 @@ export interface Rock {
   radius: number
   angle: number
   seed: number
-}
-
-/** A meadow slab on the free room of a plateau or the empty lots of its square, in u. */
-export interface Garden {
-  rect: Rect
-  bottom: number
-  top: number
 }
 
 export interface Decor {
