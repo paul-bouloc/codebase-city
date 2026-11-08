@@ -29,6 +29,7 @@ import { createBridges } from './bridges'
 import { createBuildings } from './buildings'
 import { CityControls } from './city-controls'
 import {
+  type CameraView,
   CityInteraction,
   type CityItem,
   type CityListeners,
@@ -47,11 +48,13 @@ import { islandShapes } from './island-shape'
 import type { CityLayout } from './layout'
 import { SUN_DIRECTION } from './light'
 import { cityLinks, type Port } from './links'
+import { bearingOf, northOf, scaleFiles } from './map-scale'
 import { CityPicker, type CityTarget } from './picking'
 import { createParcels } from './plateaux'
 import { BADGE_HALF_WIDTH, badgeInView, portBadgeAt } from './port-links'
 import { createSea, OPEN_SEA, seaSize } from './sea'
 import { indexImports } from './selection-links'
+import { type CityTargets, cityTargets } from './targets'
 import { createTerrain } from './terrain'
 import { maxTilt, NEAR_TILT } from './tilt'
 import { boardToThree, nearPlane, type Vec3 } from './units'
@@ -85,6 +88,12 @@ const CAMERA_CLEARANCE = 0.5
 const MAX_DRIVE_STEP = 0.1
 const START_AZIMUTH = MathUtils.degToRad(34)
 const START_POLAR_ANGLE = MathUtils.degToRad(55)
+/** A button's zoom: the distance divided or multiplied by this. */
+const ZOOM_STEP = 1.6
+/** Closer to the vertical than this, the camera looks straight down. */
+const TOP_VIEW_POLAR = MathUtils.degToRad(1)
+/** Room around files the camera frames, in u: a lot and a half. */
+const FRAME_MARGIN = 3
 /** How far the camera target may leave the city's edge. */
 const TARGET_MARGIN = 20
 /** A building this close to the pointer, in CSS pixels, is under it. */
@@ -148,8 +157,14 @@ export class CityEngine {
   private readonly timer = new Timer()
   private readonly continuous: boolean
   private city: Group | null = null
-  // The radius the camera frames the city with, once a city is loaded.
-  private framingRadius: number | null = null
+  // The sphere the camera frames the city with, once a city is loaded.
+  private framing: Sphere | null = null
+  // Files per square unit of the plateaux, for the scale.
+  private density = 0
+  private targets: CityTargets | null = null
+  // The tilt the top view left, to go back to.
+  private tiltBeforeTop = START_POLAR_ANGLE
+  private view: CameraView | null = null
   // The distance the camera frames it from, whatever the window's shape.
   private framingDistance = 0
   private needsRender = true
@@ -219,6 +234,8 @@ export class CityEngine {
   /** Who hears of hover cards and selections. */
   setListeners(listeners: CityListeners): void {
     this.listeners = listeners
+    // The new listeners hear of the view at the next frame.
+    this.view = null
   }
 
   /** Moves the camera as the keys held down say, until told otherwise. */
@@ -237,6 +254,60 @@ export class CityEngine {
 
   getSelection(): CityItem | null {
     return this.interaction?.getSelection() ?? null
+  }
+
+  /** Selects the building of a file or the island or parcel of a folder; false for none. */
+  selectPath(path: string): boolean {
+    const target = this.targets?.at(path) ?? null
+    if (target) {
+      this.select(target)
+    }
+    return target !== null
+  }
+
+  /** Comes closer (1) or pulls back (-1) by a button's step, around the same target. */
+  zoom(direction: 1 | -1): void {
+    const distance = this.controls.distance * ZOOM_STEP ** -direction
+    void this.controls.dollyTo(distance, true)
+  }
+
+  /** Frames the whole city again, at the same heading and tilt. */
+  recenter(): void {
+    if (this.framing) {
+      void this.controls.fitToSphere(this.framing, true)
+    }
+  }
+
+  /** Looks straight down, or back at the tilt it left. */
+  toggleTopView(): void {
+    const { azimuthAngle, polarAngle } = this.controls
+    if (polarAngle <= TOP_VIEW_POLAR) {
+      void this.controls.rotateTo(azimuthAngle, this.tiltBeforeTop, true)
+    } else {
+      this.tiltBeforeTop = polarAngle
+      void this.controls.rotateTo(azimuthAngle, 0, true)
+    }
+  }
+
+  /** Turns to face north, the shorter way. */
+  faceNorth(): void {
+    const { azimuthAngle, polarAngle } = this.controls
+    void this.controls.rotateTo(northOf(azimuthAngle), polarAngle, true)
+  }
+
+  /** Frames the lots of these files, at the same heading and tilt. */
+  frameFiles(paths: readonly string[]): void {
+    const points = paths.flatMap((path) => this.targets?.lotOf(path) ?? [])
+    if (points.length === 0) {
+      return
+    }
+    const xs = points.map(({ x }) => x)
+    const ys = points.map(({ y }) => y)
+    const [minX, maxX] = [Math.min(...xs), Math.max(...xs)]
+    const [minY, maxY] = [Math.min(...ys), Math.max(...ys)]
+    const [cx, , cz] = boardToThree((minX + maxX) / 2, (minY + maxY) / 2, 0)
+    const radius = Math.hypot(maxX - minX, maxY - minY) / 2 + FRAME_MARGIN
+    void this.controls.fitToSphere(new Sphere(new Vector3(cx, 0, cz), radius), true)
   }
 
   private listenToPointer(canvas: HTMLCanvasElement): () => void {
@@ -472,6 +543,14 @@ export class CityEngine {
     this.fleet = fleet
     this.animatedAt = Number.NEGATIVE_INFINITY
     this.picker = new CityPicker(shapes, buildings.placed)
+    this.targets = cityTargets(layout)
+    const files = layout.islands.reduce((sum, island) => sum + island.lots.length, 0)
+    const area = layout.islands.reduce(
+      (sum, { plateau }) => sum + plateau.width * plateau.height,
+      0,
+    )
+    this.density = area > 0 ? files / area : 0
+    this.view = null
     const interaction = new CityInteraction(
       layout,
       shapes,
@@ -522,7 +601,7 @@ export class CityEngine {
     this.camera.far = seaSize(layout)
     this.camera.updateProjectionMatrix()
     const framing = new Sphere(centre, Math.max(radius, MIN_DISTANCE))
-    this.framingRadius = framing.radius
+    this.framing = framing
     this.fitMaxDistance()
     // The target stays between the sea and the highest plateau: zooming to the cursor would
     // otherwise drag it, and the camera with it, under the water. Each frame sets it on the ground.
@@ -566,8 +645,8 @@ export class CityEngine {
   }
 
   private fitMaxDistance(): void {
-    if (this.framingRadius !== null) {
-      this.framingDistance = this.controls.getDistanceToFitSphere(this.framingRadius)
+    if (this.framing !== null) {
+      this.framingDistance = this.controls.getDistanceToFitSphere(this.framing.radius)
       this.controls.maxDistance = MAX_FRAMING * this.framingDistance
     }
   }
@@ -613,6 +692,7 @@ export class CityEngine {
     }
     this.picker = null
     this.fleet = null
+    this.targets = null
   }
 
   /** One square orthographic shadow camera over the whole city, along the fixed sun. */
@@ -641,6 +721,29 @@ export class CityEngine {
    */
   private boatsSail(): boolean {
     return !this.lessMotion.matches && BOAT_LENGTH * this.pixelsPerUnit() >= SAIL_PIXELS
+  }
+
+  /** Tells the listeners where the camera looks from, when that changes. */
+  private tellView(): void {
+    if (!this.city) {
+      return
+    }
+    const pixelRatio = this.renderer.getPixelRatio()
+    const view: CameraView = {
+      bearing: bearingOf(this.controls.azimuthAngle),
+      topView: this.controls.polarAngle <= TOP_VIEW_POLAR,
+      scaleFiles: scaleFiles(this.pixelsPerUnit() / pixelRatio, this.density),
+    }
+    const last = this.view
+    if (
+      !last ||
+      last.bearing !== view.bearing ||
+      last.topView !== view.topView ||
+      last.scaleFiles !== view.scaleFiles
+    ) {
+      this.view = view
+      this.listeners.view?.(view)
+    }
   }
 
   /** How many device pixels one u spans at the camera's target. */
@@ -725,6 +828,7 @@ export class CityEngine {
       this.stats.decor = this.decor
       this.stats.links = this.links
     }
+    this.tellView()
     const elapsed = time - this.statsSince
     if (elapsed >= 500) {
       this.stats.fps = Math.round((this.framesSince * 1000) / elapsed)

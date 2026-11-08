@@ -104,6 +104,16 @@ export interface CityFlows {
 /** What the pointer can rest on: a place of the city, the hub of a selection's bundle, or a port. */
 export type Pointed = CityTarget | { kind: 'hub'; hub: Hub } | { kind: 'port'; port: Port }
 
+/** Where the camera looks from, as the camera controls and the scale tell it. */
+export interface CameraView {
+  /** Heading in whole degrees, clockwise from north. */
+  bearing: number
+  /** Looking straight down. */
+  topView: boolean
+  /** About how many files the scale bar spans at the camera's target. */
+  scaleFiles: number
+}
+
 export interface CityListeners {
   /** A card to show, or none. */
   hover?(hover: CityHover | null): void
@@ -111,6 +121,8 @@ export interface CityListeners {
   select?(item: CityItem | null): void
   /** The port open now, or none. */
   port?(list: PortList | null): void
+  /** The camera's view, once loaded and each time it changes. */
+  view?(view: CameraView): void
 }
 
 /** A press that moves less than this, in CSS pixels, is a click, not a drag of the camera. */
