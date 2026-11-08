@@ -23,7 +23,11 @@ describe('selectionArcs', () => {
     incoming: { single: [linked(-10, 0)], bundles: [] },
   }
   const selection: Vec3 = [0, 1, 0]
-  const { drawing, hubs } = selectionArcs(links, selection, place, plateau)
+  const { drawing, hubs } = selectionArcs(links, selection, {
+    arcEnd: place,
+    ground: place,
+    plateau,
+  })
 
   it('draws imports from the selection in Marine, importers to it in Sun, upward in red', () => {
     expect(drawing.lines.map((line) => line.colour)).toEqual([

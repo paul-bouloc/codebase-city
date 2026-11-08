@@ -42,15 +42,21 @@ export interface SelectionArcs {
   hubs: Hub[]
 }
 
-/**
- * The arcs of a selection standing at `selection` (its roof). `place` tells where a linked end's
- * arc lands; `plateau` how high an island's plateau stands.
- */
+/** Where things stand around a selection. */
+export interface LinkPlaces {
+  /** Where an arc to a linked end lands: over its roof. */
+  arcEnd(end: LinkEnd): Vec3
+  /** Where a linked end stands on the ground: a bundle's hub floats over the middle of its files. */
+  ground(end: LinkEnd): Vec3
+  /** How high an island's plateau stands. */
+  plateau(island: number): number
+}
+
+/** The arcs of a selection whose own arcs start at `selection` (over its roof). */
 export function selectionArcs(
   links: SelectionLinks,
   selection: Vec3,
-  place: (end: LinkEnd) => Vec3,
-  plateau: (island: number) => number,
+  places: LinkPlaces,
 ): SelectionArcs {
   const lines: ArcLine[] = []
   const dots: ArcDot[] = []
@@ -81,10 +87,10 @@ export function selectionArcs(
   for (const direction of ['outgoing', 'incoming'] as const) {
     const side = links[direction]
     for (const link of side.single) {
-      draw(direction, place(link.end), link.upward, ARC_WIDTH)
+      draw(direction, places.arcEnd(link.end), link.upward, ARC_WIDTH)
     }
     for (const bundle of side.bundles) {
-      const position = hubOf(bundle.ends, place, plateau(bundle.island))
+      const position = hubOf(bundle.ends, places.ground, places.plateau(bundle.island))
       hubs.push({ bundle, position })
       draw(direction, position, false, bundleWidth(bundle.ends.length))
       const foot: Vec3 = [position[0], position[1] - HUB_RISE, position[2]]
@@ -109,11 +115,11 @@ export function selectionArcs(
 }
 
 /** Above the middle of the files it gathers, `HUB_RISE` over their island's plateau. */
-function hubOf(ends: readonly Linked[], place: (end: LinkEnd) => Vec3, plateau: number): Vec3 {
+function hubOf(ends: readonly Linked[], ground: (end: LinkEnd) => Vec3, plateau: number): Vec3 {
   let x = 0
   let z = 0
   for (const { end } of ends) {
-    const [px, , pz] = place(end)
+    const [px, , pz] = ground(end)
     x += px
     z += pz
   }

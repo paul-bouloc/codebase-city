@@ -249,12 +249,11 @@ export class CityInteraction {
       this.overlay.add(mark.group)
       this.linkMarks.push(mark)
     }
-    const { drawing, hubs } = selectionArcs(
-      links,
-      this.roof(selected.index),
-      (end) => this.place(end),
-      (island) => layerAltitude(this.layout.islands[island]?.layer ?? 1),
-    )
+    const { drawing, hubs } = selectionArcs(links, this.roof(selected.index), {
+      arcEnd: (end) => this.place(end),
+      ground: (end) => this.ground(end),
+      plateau: (island) => layerAltitude(this.layout.islands[island]?.layer ?? 1),
+    })
     this.hubs = hubs
     this.arcs.show(drawing)
   }
@@ -297,13 +296,17 @@ export class CityInteraction {
     return roof
   }
 
+  /** Where a linked end stands: a building's foot, or the middle of a folder's grid. */
+  private ground(end: LinkEnd): Vec3 {
+    return 'building' in end
+      ? (this.buildings.placed[end.building]?.position ?? [0, 0, 0])
+      : this.place(end)
+  }
+
   /** How far a linked end stands from a building, across the ground. */
   private distance(index: number, end: LinkEnd): number {
     const [x, , z] = this.buildings.placed[index]?.position ?? [0, 0, 0]
-    const there =
-      'building' in end
-        ? (this.buildings.placed[end.building]?.position ?? [0, 0, 0])
-        : this.place(end)
+    const there = this.ground(end)
     return Math.hypot(there[0] - x, there[2] - z)
   }
 
