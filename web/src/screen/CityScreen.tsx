@@ -36,6 +36,7 @@ import { useDriveKeys } from './use-drive-keys'
 import { useEscapeKey } from './use-escape-key'
 import { useScreenSelection } from './use-screen-selection'
 import { useSelectionHash } from './use-selection-hash'
+import { useViewInset } from './use-view-inset'
 
 const TEXT = {
   pathCopied: 'Path copied',
@@ -46,8 +47,6 @@ const TEXT = {
 const ABOUT_ID = 'city-about'
 /** Moving from sheet to sheet, the camera follows. */
 const FLY = { fly: true }
-/** Room kept clear left of the open sheet, in px: as the camera controls keep (444 px). */
-const SHEET_GAP = 12
 
 type Sheet = { file: FileSheetData } | { folder: FolderSheetData }
 
@@ -147,17 +146,8 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
   const shownSheet = sheet ?? lastSheet.current
   const sheetShown = sheetOpen && sheet !== null
 
-  // The open sheet covers the right of the city: flights frame left of it, and a selection it
-  // hides slides clear. It covers its travel and the margin left of it.
   const screen = useRef<HTMLElement>(null)
-  useEffect(() => {
-    const element = screen.current
-    if (!engine || !element) {
-      return
-    }
-    const travel = Number.parseFloat(getComputedStyle(element).getPropertyValue('--sheet-travel'))
-    engine.setViewInset(sheetShown && Number.isFinite(travel) ? travel + SHEET_GAP : 0)
-  }, [engine, sheetShown])
+  useViewInset(engine, screen, sheetShown)
 
   const portOpen = port !== null
   const closeAbout = useCallback(() => setAboutOpen(false), [])
