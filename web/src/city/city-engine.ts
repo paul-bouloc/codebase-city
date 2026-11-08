@@ -50,6 +50,7 @@ import {
   flightRadius,
   frameInView,
   ORBIT_SECONDS,
+  orbitTilt,
   revealShift,
   turnAbout,
   type Viewport,
@@ -180,8 +181,9 @@ export class CityEngine {
   private inset = 0
   // Where the camera's target may go: between the sea and the highest plateau, around the city.
   private readonly boundary = new Box3()
-  // What the camera goes round, from the moment it flies there until the next gesture.
-  private orbit: { centre: Vec3 } | null = null
+  // What the camera goes round, from the moment it flies there until the next gesture,
+  // with the tilt it flew in at and how long it has gone round.
+  private orbit: { centre: Vec3; polar: number; seconds: number } | null = null
   // The last click that selected, for a second one to fly there.
   private lastClick: { time: number; x: number; y: number } | null = null
   // The tilt the top view left, to go back to.
@@ -383,7 +385,8 @@ export class CityEngine {
   }
 
   /**
-   * Turns where the camera is going about what it goes round, for `seconds`: the camera follows
+   * Turns where the camera is going about what it goes round, for `seconds`, rising and coming
+   * back down: the camera follows
    * with its usual smoothing, so the turn starts with the flight and blends into it.
    */
   private goRound(seconds: number): void {
@@ -391,11 +394,14 @@ export class CityEngine {
     if (!orbit) {
       return
     }
+    orbit.seconds += seconds
     const angle = ((2 * Math.PI) / ORBIT_SECONDS) * seconds
     const target = this.controls.getTarget(this.aimedAt, true)
     const [x, z] = turnAbout([target.x, target.z], [orbit.centre[0], orbit.centre[2]], angle)
     void this.controls.moveTo(x, target.y, z, true)
-    void this.controls.rotate(angle, 0, true)
+    // It rises and comes back down as it goes round.
+    const { theta } = this.controls.getSpherical(this.heading, true)
+    void this.controls.rotateTo(theta + angle, orbitTilt(orbit.polar, orbit.seconds), true)
   }
 
   /**
@@ -414,12 +420,12 @@ export class CityEngine {
     // circle: the target may go there, even past the city's edge.
     this.allowTarget(x, z, shift)
     // The camera looks `shift` u to the right of the centre, at the heading it turns to.
-    const { theta } = this.controls.getSpherical(this.heading, true)
+    const { theta, phi } = this.controls.getSpherical(this.heading, true)
     const smooth = !this.lessMotion.matches
     void this.controls.moveTo(x + Math.cos(theta) * shift, 0, z - Math.sin(theta) * shift, smooth)
     void this.controls.dollyTo(distance, smooth)
     if (smooth) {
-      this.orbit = { centre }
+      this.orbit = { centre, polar: phi, seconds: 0 }
     }
     this.needsRender = true
   }
