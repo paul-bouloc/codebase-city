@@ -42,10 +42,10 @@ import { searchKeyAction } from './search/search-keys'
 import { hashOf, type ScreenSelection } from './selection-hash'
 import { FileSheet } from './sheets/file/FileSheet'
 import { fileSheetData, symbolsByFile } from './sheets/file/file-sheet'
-import { fetchCode } from './sheets/file/github-code'
+import { useFileCode } from './sheets/file/use-file-code'
 import { FolderSheet } from './sheets/folder/FolderSheet'
 import { folderSheetData } from './sheets/folder/folder-sheet'
-import type { CodeState, FileSheetData, FolderSheetData } from './sheets/sheet-data'
+import type { FileSheetData, FolderSheetData } from './sheets/sheet-data'
 import { CityHoverCard } from './tooltips/CityHoverCard'
 import { PortCard } from './tooltips/PortCard'
 import type { Rect } from './tooltips/tooltip-placement'
@@ -59,7 +59,6 @@ const TEXT = {
 }
 
 const ABOUT_ID = 'city-about'
-const LOADING_CODE: CodeState = { status: 'loading' }
 /** Moving from sheet to sheet, the camera follows. */
 const FLY = { fly: true }
 /** Room kept clear left of the open sheet, in px: as the camera controls keep (444 px). */
@@ -113,8 +112,6 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
   const [aboutOpen, setAboutOpen] = useState(false)
   const [selection, setSelection] = useState<ScreenSelection | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
-  // The code of one file at one commit: another result, even of the same repository, reads it again.
-  const [code, setCode] = useState<{ sha: string; path: string; state: CodeState } | null>(null)
   // A symbol found by the search: its file's sheet opens its code at its line.
   const [openLine, setOpenLine] = useState<{ path: string; line: number; request: number } | null>(
     null,
@@ -192,50 +189,20 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
 
   useSelectionHash(engine, selection, choose)
 
-  // The selected file's code, read from GitHub once its tab shows, never twice for one file.
-  const codeRequest = useRef<AbortController | null>(null)
-  const loadCode = useCallback(
-    (path: string) => {
-      codeRequest.current?.abort()
-      const controller = new AbortController()
-      codeRequest.current = controller
-      const { sha } = result
-      setCode({ sha, path, state: LOADING_CODE })
-      const file = index.fileAt(path)
-      const lines = file === undefined ? 0 : (result.files.lines[file] ?? 0)
-      fetchCode(result.repo, sha, path, lines, controller.signal).then(
-        (state) => {
-          if (!controller.signal.aborted) {
-            setCode({ sha, path, state })
-          }
-        },
-        () => {},
-      )
-    },
-    [index, result],
-  )
-  useEffect(() => () => codeRequest.current?.abort(), [])
   const selectedFile = selection?.kind === 'file' ? selection.path : null
-  const codeFor = code ? `${code.sha}:${code.path}` : null
-  const openCode = useCallback(() => {
-    if (selectedFile && codeFor !== `${result.sha}:${selectedFile}`) {
-      loadCode(selectedFile)
-    }
-  }, [selectedFile, codeFor, result.sha, loadCode])
+  const { codeOf, loadCode, openCode } = useFileCode(result, index, selectedFile)
 
   const sheet = useMemo<Sheet | null>(() => {
     if (!selection) {
       return null
     }
     if (selection.kind === 'file') {
-      const state =
-        code?.path === selection.path && code.sha === result.sha ? code.state : LOADING_CODE
-      const file = fileSheetData(index, symbols, selection.path, state)
+      const file = fileSheetData(index, symbols, selection.path, codeOf(selection.path))
       return file ? { file } : null
     }
     const folder = folderSheetData(index, selection.path)
     return folder ? { folder } : null
-  }, [selection, code, index, symbols, result.sha])
+  }, [selection, codeOf, index, symbols])
   // A closed sheet keeps its content while it slides out.
   const lastSheet = useRef<Sheet | null>(null)
   if (sheet) {
