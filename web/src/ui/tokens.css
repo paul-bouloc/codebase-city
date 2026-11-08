@@ -96,6 +96,9 @@
   --lang-typescript: #5a8edb;
   --lang-javascript: #e2b23a;
   --lang-css: #b57bd0;
+  /* Linguist's colours, as the city paints them */
+  --lang-python: #3572a5;
+  --lang-go: #00add8;
   --lang-other: #b9ae9c;
   --lang-test: #cfc7b8;
 
