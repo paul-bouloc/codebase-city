@@ -1,7 +1,7 @@
 //! Production files that import each other in a loop, and one of the
 //! shortest loops that shows it.
 //!
-//! Only plain imports and re-exports count (P10): a lazy import is often
+//! Only plain imports and re-exports count: a lazy import is often
 //! there to break a loop at runtime, and a type import is erased. Barrels
 //! are seen through and left out, or every package that gathers its files
 //! in an `index.ts` would loop through it.

@@ -1,4 +1,4 @@
-//! Foundations and conductors (P9): the production units that the most code
+//! Foundations and conductors: the production units that the most code
 //! depends on, and those that pull the most code together without much
 //! depending on them. Barrels are facades and stay out of both.
 

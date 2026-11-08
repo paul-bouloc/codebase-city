@@ -1,5 +1,5 @@
 //! Entry points: where the code starts. Manifests and conventions first,
-//! the graph only to confirm them or, without them, to guess (P10).
+//! the graph only to confirm them or, without them, to guess.
 //!
 //! Each signal adds to a score; a file needs 4 to be kept, or, when none
 //! has, the best three are. Every entry keeps the reasons it was found by.

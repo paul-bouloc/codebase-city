@@ -1,5 +1,5 @@
 //! How many production files depend on each one, directly or not, and how
-//! many it depends on (P9): the measures that foundations and conductors are
+//! many it depends on: the measures that foundations and conductors are
 //! ranked by.
 //!
 //! The count runs on units: a production file, or a whole Go package, whose
