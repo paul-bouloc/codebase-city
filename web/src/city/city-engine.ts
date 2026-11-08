@@ -234,8 +234,9 @@ export class CityEngine {
   /** Who hears of hover cards and selections. */
   setListeners(listeners: CityListeners): void {
     this.listeners = listeners
-    // The new listeners hear of the view at the next frame.
+    // The new listeners hear of the view at the next frame drawn.
     this.view = null
+    this.needsRender = true
   }
 
   /** Moves the camera as the keys held down say, until told otherwise. */
@@ -822,6 +823,8 @@ export class CityEngine {
       }
       this.renderer.render(this.scene, this.camera)
       this.needsRender = false
+      // The view changes only with a frame drawn: the camera moved, or the window's size.
+      this.tellView()
       // An open port's card keeps beside its badge.
       const port = this.interaction?.openedPort
       if (port) {
@@ -833,7 +836,6 @@ export class CityEngine {
       this.stats.decor = this.decor
       this.stats.links = this.links
     }
-    this.tellView()
     const elapsed = time - this.statsSince
     if (elapsed >= 500) {
       this.stats.fps = Math.round((this.framesSince * 1000) / elapsed)
