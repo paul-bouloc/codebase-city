@@ -24,9 +24,13 @@ const HALO_OPACITY = 0.9
 const BAND_APART = 0.22
 /** Above the deck's top, in u. */
 const BAND_RISE = 0.05
-/** A ferry's line, in CSS pixels, its dash and gap too; side by side this far apart, in u. */
+/**
+ * A ferry's line, in CSS pixels; its dash and gap painted on the sea, in u, as the ferry lines'
+ * own (they keep their place when the camera moves, and fill in from afar); side by side this
+ * far apart, in u.
+ */
 const FERRY_WIDTH = 3
-const FERRY_DASH: [number, number] = [10, 7]
+const FERRY_DASH: [number, number] = [1.2, 0.9]
 const FERRY_APART = 0.35
 /** Just above the ferry lines (0.04 u). */
 const FERRY_ALTITUDE = 0.06
@@ -139,7 +143,7 @@ export class FolderLinkMarks {
         this.add(
           createScreenLines(
             lines,
-            { width: FERRY_WIDTH + wider, colour, dash: FERRY_DASH, opacity },
+            { width: FERRY_WIDTH + wider, colour, sceneDash: FERRY_DASH, opacity },
             this.pixelRatio,
             false,
           ),
