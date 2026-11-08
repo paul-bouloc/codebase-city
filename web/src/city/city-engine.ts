@@ -263,9 +263,9 @@ export class CityEngine {
       // A click on a port's badge opens it, or closes it if open; any other click closes the
       // port open, and does nothing else.
       if (mark?.kind === 'port') {
-        const open = interaction?.openedPort === mark.port
-        interaction?.closePort()
-        if (!open) {
+        if (interaction?.openedPort === mark.port) {
+          interaction.closePort()
+        } else {
           interaction?.openPort(mark.port, this.badgeOnPage(mark.port))
         }
         this.hoverAtPointer()
@@ -411,7 +411,6 @@ export class CityEngine {
     // The camera may have been moved since the last frame: it is where it goes.
     this.controls.update(0)
     this.camera.updateMatrixWorld()
-    interaction.closePort()
     interaction.openPort(port, this.badgeOnPage(port))
   }
 
