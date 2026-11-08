@@ -99,14 +99,26 @@ export function CityPage() {
     }
   }, [engine, layout])
 
-  // Then the file `?select` names is selected.
+  // Then the file or folder `?select` names is selected.
   useEffect(() => {
     const path = new URLSearchParams(window.location.search).get('select')
+    if (!engine || !path) {
+      return
+    }
     const index = layout.islands
       .flatMap((island) => island.lots)
       .findIndex((lot) => lot.file.path === path)
-    if (engine && index >= 0) {
+    const island = layout.islands.findIndex((each) => each.path === path)
+    const parcels = layout.islands.flatMap((each, at) =>
+      each.parcels.map((parcel, parcelAt) => ({ island: at, parcel: parcelAt, path: parcel.path })),
+    )
+    const parcel = parcels.find((each) => each.path === path)
+    if (index >= 0) {
       engine.select({ kind: 'building', index })
+    } else if (island >= 0) {
+      engine.select({ kind: 'island', island })
+    } else if (parcel) {
+      engine.select({ kind: 'parcel', island: parcel.island, parcel: parcel.parcel })
     }
   }, [engine, layout])
 
