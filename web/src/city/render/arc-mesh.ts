@@ -1,6 +1,5 @@
 import {
   BufferGeometry,
-  CanvasTexture,
   type DepthModes,
   Float32BufferAttribute,
   GreaterDepth,
@@ -14,7 +13,7 @@ import {
   Vector2,
 } from 'three'
 import type { Vec3 } from '../world/units'
-import { type ArcLabel, labelMesh } from './arc-label'
+import { type ArcLabel, disposeLabelTexture, labelMesh } from './arc-label'
 import { dotFragment, dotVertex, lineFragment, lineVertex } from './arc-shaders'
 import { easeStandard } from './easing'
 import { createScreenLines, lineGeometry } from './screen-lines'
@@ -322,9 +321,6 @@ function disposeDrawn(object: Object3D, geometries: Set<BufferGeometry>): void {
   }
   geometries.add(object.geometry)
   const material = object.material as ShaderMaterial
-  const map = material.uniforms.map?.value
-  if (map instanceof CanvasTexture) {
-    map.dispose()
-  }
+  disposeLabelTexture(material)
   material.dispose()
 }

@@ -122,3 +122,11 @@ export function labelMesh(
     }),
   )
 }
+
+/** Lets go of the texture a label's material draws, made by `labelMesh`; other materials hold none. */
+export function disposeLabelTexture(material: ShaderMaterial): void {
+  const map = material.uniforms.map?.value
+  if (map instanceof CanvasTexture) {
+    map.dispose()
+  }
+}
