@@ -49,7 +49,9 @@ import {
   FRAME_MARGIN,
   flightRadius,
   frameInView,
+  ORBIT_SECONDS,
   revealShift,
+  turnAbout,
   type Viewport,
 } from './flight'
 import { islandShapes } from './island-shape'
@@ -176,6 +178,8 @@ export class CityEngine {
   private placed: readonly PlacedBuilding[] = []
   // Pixels a panel covers on the right of the canvas: the camera frames and reveals left of them.
   private inset = 0
+  // The building the camera goes round once its flight there ends, until the next gesture.
+  private orbit: { centre: Vec3; started: boolean } | null = null
   // The last click that selected, for a second one to fly there.
   private lastClick: { time: number; x: number; y: number } | null = null
   // The tilt the top view left, to go back to.
@@ -259,6 +263,9 @@ export class CityEngine {
 
   /** Moves the camera as the keys held down say, until told otherwise. */
   setDrive(drive: Drive): void {
+    if (drive.right !== 0 || drive.forward !== 0 || drive.turn !== 0) {
+      this.stopOrbit()
+    }
     this.drive = drive
   }
 
@@ -267,6 +274,7 @@ export class CityEngine {
    * selection: it then slides just clear of it.
    */
   select(target: CityTarget | null): void {
+    this.stopOrbit()
     this.interaction?.select(target)
     this.revealSelection()
   }
@@ -312,6 +320,7 @@ export class CityEngine {
 
   /** Comes closer (1) or pulls back (-1) by a button's step, around the same target. */
   zoom(direction: 1 | -1): void {
+    this.stopOrbit()
     // From where a zoom under way ends: quick presses add up to whole steps.
     const { radius } = this.controls.getSpherical(this.heading, true)
     void this.controls.dollyTo(radius * ZOOM_STEP ** -direction, true)
@@ -319,6 +328,7 @@ export class CityEngine {
 
   /** Frames the whole city again, at the same heading and tilt. */
   recenter(): void {
+    this.stopOrbit()
     if (this.framing) {
       void this.controls.fitToSphere(this.framing, true)
     }
@@ -326,6 +336,7 @@ export class CityEngine {
 
   /** Looks straight down, or back at the tilt it left. */
   toggleTopView(): void {
+    this.stopOrbit()
     // Where a turn under way ends: a second press goes back, it does not keep the tilt halfway.
     const { theta, phi } = this.controls.getSpherical(this.heading, true)
     if (phi <= TOP_VIEW_POLAR) {
@@ -338,12 +349,14 @@ export class CityEngine {
 
   /** Turns to face north, the shorter way. */
   faceNorth(): void {
+    this.stopOrbit()
     const { theta, phi } = this.controls.getSpherical(this.heading, true)
     void this.controls.rotateTo(northOf(theta), phi, true)
   }
 
   /** Frames the lots of these files, at the same heading and tilt. */
   frameFiles(paths: readonly string[]): void {
+    this.stopOrbit()
     const points = paths.flatMap((path) => this.targets?.lotOf(path) ?? [])
     if (points.length === 0) {
       return
@@ -358,10 +371,32 @@ export class CityEngine {
 
   /** Flies to a file's building and its block, or to a folder whole, at the same heading and tilt. */
   private fly(target: CityTarget): void {
+    this.stopOrbit()
     const extent = this.layout && extentOf(target, this.layout, this.placed)
     if (extent) {
       this.frameSphere(extent.centre, flightRadius(extent))
+      // Once there, the camera goes round a building, slowly; never with less motion asked for.
+      if (!extent.folder && !this.lessMotion.matches) {
+        this.orbit = { centre: extent.centre, started: false }
+      }
     }
+  }
+
+  private stopOrbit(): void {
+    this.orbit = null
+  }
+
+  /** Turns the camera and what it looks at about the building it goes round, for `seconds`. */
+  private goRound(seconds: number): void {
+    const orbit = this.orbit
+    if (!orbit?.started) {
+      return
+    }
+    const angle = ((2 * Math.PI) / ORBIT_SECONDS) * seconds
+    const target = this.controls.getTarget(this.aimedAt, true)
+    const [x, z] = turnAbout([target.x, target.z], [orbit.centre[0], orbit.centre[2]], angle)
+    void this.controls.moveTo(x, target.y, z, false)
+    void this.controls.rotate(angle, 0, false)
   }
 
   /** Frames a sphere on the ground in the part of the canvas no panel covers. */
@@ -444,12 +479,15 @@ export class CityEngine {
         this.hoverAtPointer()
       }
     }
+    const stop = () => this.stopOrbit()
     const leave = () => {
       this.pointer = null
       this.showPointerOn(null)
       this.interaction?.point(null, { x: 0, y: 0 })
     }
     const down = (event: PointerEvent) => {
+      // Any press on the city takes the camera back: it stops going round.
+      this.stopOrbit()
       this.pressedAt = event.button === 0 ? { x: event.clientX, y: event.clientY } : null
     }
     const up = (event: PointerEvent) => {
@@ -510,11 +548,13 @@ export class CityEngine {
     canvas.addEventListener('pointermove', move)
     canvas.addEventListener('pointerleave', leave)
     canvas.addEventListener('pointerdown', down)
+    canvas.addEventListener('wheel', stop, { passive: true })
     canvas.addEventListener('pointerup', up)
     return () => {
       canvas.removeEventListener('pointermove', move)
       canvas.removeEventListener('pointerleave', leave)
       canvas.removeEventListener('pointerdown', down)
+      canvas.removeEventListener('wheel', stop)
       canvas.removeEventListener('pointerup', up)
     }
   }
@@ -655,6 +695,7 @@ export class CityEngine {
 
   /** Replaces the city on show and frames it. */
   load(layout: CityLayout): void {
+    this.stopOrbit()
     if (this.city) {
       this.scene.remove(this.city)
       disposeObject(this.city)
@@ -763,6 +804,7 @@ export class CityEngine {
 
   /** Points the camera at a board point from `distance` u away; angles in degrees if given. */
   lookAt(x: number, y: number, distance: number, azimuth?: number, polar?: number): void {
+    this.stopOrbit()
     const [tx, , tz] = boardToThree(x, y, 0)
     if (azimuth !== undefined && polar !== undefined) {
       void this.controls.rotateTo((azimuth * Math.PI) / 180, (polar * Math.PI) / 180, false)
@@ -902,6 +944,7 @@ export class CityEngine {
     const delta = this.timer.getDelta()
     // A frame late by more than this (a hidden tab, a long task) does not throw the camera away.
     this.controls.drive(this.drive, Math.min(delta, MAX_DRIVE_STEP))
+    this.goRound(Math.min(delta, MAX_DRIVE_STEP))
     // Further away, the camera may come down closer to the horizon,
     let tilt = maxTilt(this.controls.distance, MIN_DISTANCE, this.framingDistance)
     const picker = this.picker
@@ -918,6 +961,10 @@ export class CityEngine {
     }
     this.controls.limitTilt(tilt)
     const moved = this.controls.update(delta)
+    // The flight has ended: the camera starts going round.
+    if (this.orbit && !moved) {
+      this.orbit.started = true
+    }
     if (moved !== this.cameraMoving) {
       this.cameraMoving = moved
       // No card while the camera moves; once it rests, what lies under the pointer may differ.
