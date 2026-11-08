@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { safeGithubHref } from '../../screen/github-links'
+import { Skeleton } from '../../screen/parts/Skeleton'
+import { splitPath } from '../../screen/parts/shorten-folder'
 import { Badge } from '../Badge'
 import { Button } from '../Button'
 import { exactCount, fileSize } from '../count-format'
@@ -15,10 +17,8 @@ import { ImportanceList } from './ImportanceList'
 import { MetricPairs } from './MetricPairs'
 import { RoleBadge } from './RoleBadge'
 import { SheetFrame } from './SheetFrame'
-import { Skeleton } from './Skeleton'
 import { SymbolList } from './SymbolList'
 import type { FileSheetData } from './sheet-data'
-import { splitPath } from './shorten-folder'
 import { UnanalyzedNote } from './UnanalyzedNote'
 
 const TEXT = {

@@ -1,9 +1,9 @@
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
+import { splitPath } from '../../screen/parts/shorten-folder'
 import { exactCount } from '../count-format'
 import styles from './ImportanceList.module.css'
 import { FOLDED_ROWS, rankedRows } from './ranked-files'
 import type { RankedFile } from './sheet-data'
-import { splitPath } from './shorten-folder'
 
 const TEXT = {
   usedBy: (count: number) => `used by ${exactCount(count)}`,

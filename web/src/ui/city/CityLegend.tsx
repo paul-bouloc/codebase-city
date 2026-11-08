@@ -8,10 +8,10 @@ import {
   TEST_PARK,
   TEST_PARK_EDGE,
 } from '../../city/render/palette'
+import { Glass } from '../../screen/parts/Glass'
+import { LanguageDot } from '../../screen/parts/LanguageDot'
 import { Icon } from '../Icon'
 import styles from './CityLegend.module.css'
-import { Glass } from './Glass'
-import { LanguageDot } from './LanguageDot'
 import {
   LANGUAGE_NAMES,
   type Landmark,

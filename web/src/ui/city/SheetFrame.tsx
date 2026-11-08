@@ -1,11 +1,11 @@
 import { type KeyboardEvent, type ReactNode, useId } from 'react'
+import { ControlHint } from '../../screen/parts/ControlHint'
+import { Glass } from '../../screen/parts/Glass'
 import { Button } from '../Button'
 import { Icon } from '../Icon'
 import type { IconName } from '../icons'
 import { LiveRegion } from '../LiveRegion'
 import { ScrollArea } from '../ScrollArea'
-import { ControlHint } from './ControlHint'
-import { Glass } from './Glass'
 import styles from './SheetFrame.module.css'
 import { usePanelFocus } from './use-panel-focus'
 

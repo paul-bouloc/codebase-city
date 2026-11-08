@@ -1,10 +1,10 @@
+import { Glass } from '../../screen/parts/Glass'
+import { LanguageDot } from '../../screen/parts/LanguageDot'
+import { shortenFolder, splitPath } from '../../screen/parts/shorten-folder'
 import { Badge, type FileRole, type Language } from '../Badge'
 import { exactCount } from '../count-format'
 import { LANGUAGE_LABELS } from '../language-labels'
 import styles from './CityTooltip.module.css'
-import { Glass } from './Glass'
-import { LanguageDot } from './LanguageDot'
-import { shortenFolder, splitPath } from './shorten-folder'
 import type { Point, Rect } from './tooltip-placement'
 import { useTooltipPlacement } from './use-tooltip-placement'
 

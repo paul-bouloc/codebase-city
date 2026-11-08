@@ -1,7 +1,7 @@
+import { Glass } from '../../screen/parts/Glass'
+import { shortenFolder, splitPath } from '../../screen/parts/shorten-folder'
 import { exactCount } from '../count-format'
 import styles from './CityTooltip.module.css'
-import { Glass } from './Glass'
-import { shortenFolder, splitPath } from './shorten-folder'
 import type { Point, Rect } from './tooltip-placement'
 import { useTooltipPlacement } from './use-tooltip-placement'
 

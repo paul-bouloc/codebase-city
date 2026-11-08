@@ -1,5 +1,5 @@
+import { Glass } from '../../screen/parts/Glass'
 import { exactCount } from '../count-format'
-import { Glass } from './Glass'
 import styles from './MapScale.module.css'
 
 const TEXT = {

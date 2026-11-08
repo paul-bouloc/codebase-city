@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useId, useState } from 'react'
-import { Kbd } from '../Kbd'
+import { Kbd } from '../../ui/Kbd'
 import styles from './ControlHint.module.css'
 
 type HintSide = 'left' | 'bottom' | 'bottom-end'

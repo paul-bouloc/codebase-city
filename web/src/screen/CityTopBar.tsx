@@ -2,13 +2,13 @@ import type { FocusEvent, KeyboardEvent, ReactNode, Ref } from 'react'
 import { AccountMenu } from '../ui/AccountMenu'
 import { Button } from '../ui/Button'
 import { CitySearchField } from '../ui/city/CitySearchField'
-import { ControlHint } from '../ui/city/ControlHint'
-import { Glass } from '../ui/city/Glass'
 import { Icon } from '../ui/Icon'
 import { Logo } from '../ui/Logo'
 import { SegmentedControl, type SegmentedOption } from '../ui/SegmentedControl'
 import styles from './CityTopBar.module.css'
 import { safeGithubHref } from './github-links'
+import { ControlHint } from './parts/ControlHint'
+import { Glass } from './parts/Glass'
 
 const TEXT = {
   home: 'Codebase City, home',

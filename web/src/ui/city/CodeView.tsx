@@ -1,5 +1,6 @@
 import { type CSSProperties, useEffect, useRef } from 'react'
 import { safeGithubHref } from '../../screen/github-links'
+import { Skeleton } from '../../screen/parts/Skeleton'
 import { Button } from '../Button'
 import { exactCount } from '../count-format'
 import { ExternalLink } from '../ExternalLink'
@@ -7,7 +8,6 @@ import { InlineAlert } from '../InlineAlert'
 import { LinkButton } from '../LinkButton'
 import { ScrollArea } from '../ScrollArea'
 import styles from './CodeView.module.css'
-import { Skeleton } from './Skeleton'
 import type { CodeState } from './sheet-data'
 
 const TEXT = {
