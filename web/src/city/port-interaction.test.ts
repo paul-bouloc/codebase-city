@@ -1,0 +1,143 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { createBuildings } from './buildings'
+import { type CityHover, CityInteraction, type PortList } from './city-interaction'
+import { indexCycles } from './cycles'
+import { createFading } from './dimming'
+import { ExtraFerries } from './extra-ferries'
+import { islandShapes } from './island-shape'
+import { boundsOf, type CityLayout, type IslandLink, type Rect } from './layout'
+import { cityLinks } from './links'
+import { indexImports } from './selection-links'
+
+// A hub between six islands, far apart: four ferries leave it, its two smallest links go to its
+// port (the largest first), and the last one is too small to draw.
+const RING: Rect[] = [
+  { x: 100, y: 100, width: 20, height: 20 },
+  ...Array.from({ length: 7 }, (_, k) => ({
+    x: 40 * k,
+    y: k % 2 === 0 ? 0 : 200,
+    width: 16,
+    height: 12,
+  })),
+]
+const LINKS: IslandLink[] = [
+  ...[1, 2, 3, 4, 5].map((island) => ({ from: island, to: 0, imports: 1000 - island, upward: 0 })),
+  { from: 0, to: 6, imports: 900, upward: 0 },
+  { from: 6, to: 0, imports: 5, upward: 0 },
+  { from: 0, to: 7, imports: 3, upward: 0 },
+]
+
+const LAYOUT: CityLayout = {
+  islands: RING.map((plateau, index) => ({
+    path: `island-${index}`,
+    layer: index === 0 ? 1 : 3,
+    plateau,
+    parcels: [],
+    lots: [
+      {
+        x: plateau.x + 2,
+        y: plateau.y + 2,
+        file: {
+          path: `island-${index}/main.ts`,
+          language: 'typescript',
+          lines: 100,
+          complexity: 5,
+          test: false,
+        },
+      },
+    ],
+  })),
+  bounds: boundsOf(RING),
+  links: LINKS,
+}
+
+function setup() {
+  const shapes = islandShapes(LAYOUT)
+  const links = cityLinks(LAYOUT, shapes)
+  const fading = createFading()
+  const ports: (PortList | null)[] = []
+  const hovers: (CityHover | null)[] = []
+  const interaction = new CityInteraction(
+    LAYOUT,
+    shapes,
+    createBuildings(LAYOUT, 1, fading),
+    {
+      imports: indexImports(LAYOUT),
+      cycles: indexCycles(LAYOUT),
+      bridges: links.bridges,
+      ferries: links.ferries,
+      unshown: links.unshown,
+      extra: new ExtraFerries(LAYOUT, shapes, links),
+      ports: links.ports,
+    },
+    fading,
+    1,
+    () => ({ port: (list) => ports.push(list), hover: (hover) => hovers.push(hover) }),
+    () => {},
+  )
+  return { interaction, links, ports, hovers }
+}
+
+describe('a port', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    // The badges' pills are drawn on a canvas: none here, they stay blank.
+    vi.stubGlobal('document', { createElement: () => ({ getContext: () => null }) })
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+  })
+
+  it('shows its badge, and on hover a card with its island and its count', () => {
+    const { interaction, links, hovers } = setup()
+    const port = links.ports[0]
+    if (!port) {
+      throw new Error('no port')
+    }
+    expect(interaction.portBadges.group.visible).toBe(true)
+    interaction.point({ kind: 'port', port }, { x: 5, y: 5 })
+    vi.advanceTimersByTime(1000)
+    expect(hovers.at(-1)).toMatchObject({ path: 'island-0', port: { links: 2 } })
+  })
+
+  it('lists its links on a click and sails them out, each the way it goes', () => {
+    const { interaction, links, ports } = setup()
+    const port = links.ports[0]
+    if (!port) {
+      throw new Error('no port')
+    }
+    interaction.openPort(port, { x: 20, y: 30 })
+    expect(interaction.openedPort).toBe(port)
+    expect(ports.at(-1)).toEqual({
+      path: 'island-0',
+      links: [
+        { path: 'island-5', imports: 995, outgoing: false, incoming: true },
+        { path: 'island-6', imports: 905, outgoing: true, incoming: true },
+      ],
+      more: 0,
+      pointer: { x: 20, y: 30 },
+    })
+    // Two lines for the link that goes both ways, one for the other.
+    expect(interaction.portLinks.group.visible).toBe(true)
+    const drawn = interaction.portLinks.group.children.length
+    interaction.focusPortLink(0)
+    expect(interaction.portLinks.group.children.length).toBeGreaterThan(drawn)
+    interaction.focusPortLink(null)
+    expect(interaction.portLinks.group.children.length).toBe(drawn)
+
+    interaction.closePort()
+    expect(interaction.openedPort).toBeNull()
+    expect(interaction.portLinks.group.visible).toBe(false)
+    expect(ports.at(-1)).toBeNull()
+  })
+
+  it('leaves its links and the small ones to a selected island too', () => {
+    const { interaction, links } = setup()
+    expect(links.ports[0]?.pairs.map((pair) => pair.b)).toEqual([5, 6])
+    expect(links.unshown.map((pair) => pair.b)).toEqual([5, 6, 7])
+    interaction.select({ kind: 'island', island: 7 })
+    // Island 7 has one link, too small to draw: it sails out.
+    expect(interaction.folderLinks.group.visible).toBe(true)
+  })
+})

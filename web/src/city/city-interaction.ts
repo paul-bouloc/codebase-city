@@ -21,8 +21,9 @@ import { folderFlows } from './folder-links'
 import { HoverTiming } from './hover-timing'
 import type { IslandShape } from './island-shape'
 import { type CityLayout, rectContains } from './layout'
-import type { Bridge, Ferry, Pair } from './links'
+import type { Bridge, Ferry, Pair, Port } from './links'
 import type { CityTarget } from './picking'
+import { PORT_ROWS, portLabels, portRows } from './port-links'
 import { type CycleOnShow, type Hub, selectionArcs } from './selection-arcs'
 import {
   type Direction,
@@ -60,6 +61,29 @@ export interface CityHover extends CityItem {
   pointer: { x: number; y: number }
   /** For a bundle's hub, whose item is its island. */
   bundle?: BundleCard
+  /** For a port's badge, whose item is its island: how many links it gathers. */
+  port?: { links: number }
+}
+
+/** A link of an open port, as its card lists it. */
+export interface PortLinkRow {
+  /** The island across. */
+  path: string
+  imports: number
+  /** The port's island imports the other one. */
+  outgoing: boolean
+  /** The other island imports the port's. */
+  incoming: boolean
+}
+
+/** An open port's card: its island, its links (the largest, `PORT_ROWS` at most) and the rest. */
+export interface PortList {
+  path: string
+  links: PortLinkRow[]
+  /** Links past those listed. */
+  more: number
+  /** Where it was opened, in the page's pixels. */
+  pointer: { x: number; y: number }
 }
 
 /** How the city's files depend on each other. */
@@ -72,16 +96,20 @@ export interface CityFlows {
   /** The links between islands left undrawn, and how they sail out when asked for. */
   unshown?: readonly Pair[]
   extra?: ExtraFerries
+  /** The ports, where an island gathers the links it has no room to draw. */
+  ports?: readonly Port[]
 }
 
-/** What the pointer can rest on: a place of the city, or the hub of a selection's bundle. */
-export type Pointed = CityTarget | { kind: 'hub'; hub: Hub }
+/** What the pointer can rest on: a place of the city, the hub of a selection's bundle, or a port. */
+export type Pointed = CityTarget | { kind: 'hub'; hub: Hub } | { kind: 'port'; port: Port }
 
 export interface CityListeners {
   /** A card to show, or none. */
   hover?(hover: CityHover | null): void
   /** What is selected now, or nothing. */
   select?(item: CityItem | null): void
+  /** The port open now, or none. */
+  port?(list: PortList | null): void
 }
 
 /** A press that moves less than this, in CSS pixels, is a click, not a drag of the camera. */
@@ -101,6 +129,8 @@ export function sameTarget(a: Pointed, b: Pointed): boolean {
   switch (a.kind) {
     case 'hub':
       return b.kind === 'hub' && a.hub === b.hub
+    case 'port':
+      return b.kind === 'port' && a.port === b.port
     case 'building':
       return b.kind === 'building' && a.index === b.index
     case 'island':
@@ -141,6 +171,11 @@ export class CityInteraction {
   private cycle: CycleOnShow | null = null
   /** The bridges and ferry lines of a selected folder. */
   readonly folderLinks: FolderLinkMarks
+  /** The ports' badges, and the lines of the one open, if any. */
+  readonly portBadges: ArcLayer
+  readonly portLinks: FolderLinkMarks
+  private openPortAt: Port | null = null
+  private portFerries: { outgoing: boolean; incoming: boolean; ferry: Ferry | null }[] = []
 
   constructor(
     private readonly layout: CityLayout,
@@ -159,8 +194,13 @@ export class CityInteraction {
     this.selectedArea = new AreaMark(SELECTED_AREA, pixelRatio)
     this.cycleRings = new RingSet(CYCLE_RINGS, pixelRatio)
     this.folderLinks = new FolderLinkMarks(pixelRatio)
+    this.portLinks = new FolderLinkMarks(pixelRatio)
+    this.portBadges = new ArcLayer(pixelRatio)
+    this.portBadges.show({ lines: [], dots: [], stems: [], labels: portLabels(flows.ports ?? []) })
     this.overlay.add(
       this.folderLinks.group,
+      this.portLinks.group,
+      this.portBadges.group,
       this.cycleRings.group,
       this.hoveredArea.group,
       this.selectedArea.group,
@@ -265,6 +305,93 @@ export class CityInteraction {
     this.highlight(this.highlighted)
   }
 
+  /** The ports whose badges the pointer can rest on and click. */
+  getPorts(): readonly Port[] {
+    return this.flows.ports ?? []
+  }
+
+  /** The port open, if any. */
+  get openedPort(): Port | null {
+    return this.openPortAt
+  }
+
+  /**
+   * Opens a port, opened at this point of the page: its links sail out of its quay, Marine where
+   * its island imports the other one, Sun the other way, and its card lists them.
+   */
+  openPort(port: Port, pointer: { x: number; y: number }): void {
+    const { extra } = this.flows
+    if (!extra || !this.getPorts().includes(port)) {
+      return
+    }
+    const links = this.layout.links ?? []
+    const rows = portRows(port, links)
+    this.openPortAt = port
+    this.portFerries = rows.map((row, at) => {
+      const pair = port.pairs[at]
+      return {
+        outgoing: row.outgoing,
+        incoming: row.incoming,
+        ferry: pair ? extra.route(pair, port) : null,
+      }
+    })
+    this.drawPort(null)
+    this.timing.clear()
+    this.highlight(this.highlighted)
+    this.listeners().port?.({
+      path: this.layout.islands[port.island]?.path ?? '',
+      links: rows.slice(0, PORT_ROWS).map((row) => ({
+        path: this.layout.islands[row.island]?.path ?? '',
+        imports: row.imports,
+        outgoing: row.outgoing,
+        incoming: row.incoming,
+      })),
+      more: Math.max(rows.length - PORT_ROWS, 0),
+      pointer,
+    })
+  }
+
+  /** One of the open port's links stands out, the others faded; or none does. */
+  focusPortLink(index: number | null): void {
+    if (this.openPortAt) {
+      this.drawPort(index)
+      this.redraw()
+    }
+  }
+
+  closePort(): void {
+    if (!this.openPortAt) {
+      return
+    }
+    this.openPortAt = null
+    this.portFerries = []
+    this.portLinks.show(null)
+    this.highlight(this.highlighted)
+    this.listeners().port?.(null)
+  }
+
+  /** The open port's lines, `focus` the index of the one that stands out. */
+  private drawPort(focus: number | null): void {
+    const port = this.openPortAt
+    if (!port) {
+      this.portLinks.show(null)
+      return
+    }
+    const ways = (lines: typeof this.portFerries) => {
+      const flows = new Map<number, { outgoing: boolean; incoming: boolean }>()
+      const ferries: Ferry[] = []
+      for (const { ferry, outgoing, incoming } of lines) {
+        if (ferry) {
+          flows.set(ferry.a === port.island ? ferry.b : ferry.a, { outgoing, incoming })
+          ferries.push(ferry)
+        }
+      }
+      return folderWays(port.island, flows, [], ferries)
+    }
+    const focused = focus === null ? undefined : this.portFerries[focus]
+    this.portLinks.show(ways(this.portFerries), focused ? ways([focused]) : null)
+  }
+
   /** Moves the fading on; true while it still has a way to go. */
   update(now: number): boolean {
     const { dim } = this.fading
@@ -291,6 +418,8 @@ export class CityInteraction {
     this.selectedArea.dispose()
     this.cycleRings.dispose()
     this.folderLinks.dispose()
+    this.portLinks.dispose()
+    this.portBadges.dispose()
     this.clearLinkMarks()
     this.arcs.dispose()
   }
@@ -423,9 +552,13 @@ export class CityInteraction {
       this.buildings.setHighlight(previous.index, selected ? Highlight.selected : Highlight.none)
     }
     this.highlighted = pointed
-    // A hovered hub rims its count; nothing of the city stands out meanwhile.
+    // A hovered hub rims its count, a port its badge (the open one keeps it rimmed); nothing of
+    // the city stands out meanwhile.
     this.arcs.hoverLabel(pointed?.kind === 'hub' ? this.hubs.indexOf(pointed.hub) : null)
-    const target = pointed?.kind === 'hub' ? null : pointed
+    const ports = this.getPorts()
+    const rimmed = pointed?.kind === 'port' ? pointed.port : this.openPortAt
+    this.portBadges.hoverLabel(rimmed ? ports.indexOf(rimmed) : null)
+    const target = pointed?.kind === 'hub' || pointed?.kind === 'port' ? null : pointed
     const selected = target && this.selected && sameTarget(target, this.selected)
     const building = target?.kind === 'building' && !selected ? target : null
     // A linked building keeps its Marine or Sun mark: it says more than the hover.
@@ -453,6 +586,15 @@ export class CityInteraction {
           more: (bundle.shown ?? 0) > 0,
           opens: Math.min(bundle.ends.length, OPENED_ARCS),
         },
+      })
+      return
+    }
+    if (pointed?.kind === 'port') {
+      const { port } = pointed
+      this.listeners().hover?.({
+        ...this.item({ kind: 'island', island: port.island }),
+        pointer: this.pointer,
+        port: { links: port.pairs.length },
       })
       return
     }
