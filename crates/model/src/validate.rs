@@ -4,9 +4,11 @@
 //! (`web/src/data/decode-result.ts`); the two lists must stay in step.
 
 mod layout;
+mod tour;
 
 use crate::result::{AnalysisResult, Cycles, FORMAT_VERSION, Links};
 use layout::layout;
+use tour::tour;
 
 /// Why a result is inconsistent. Columns are named as in the JSON.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -91,6 +93,14 @@ pub enum InvalidResult {
         "stats.importsResolved and stats.importsExternal add up to more than stats.importsTotal"
     )]
     ImportCounts,
+    #[error("tour.steps must start with the overview")]
+    TourStart,
+    #[error("tour.steps[{row}] must come after the previous step, each kind once, in order")]
+    TourOrder { row: usize },
+    #[error("a list of tour.steps[{row}] must hold one to three rows, each once")]
+    TourList { row: usize },
+    #[error("the counts of tour.steps[{row}] do not add up")]
+    TourCount { row: usize },
 }
 
 impl AnalysisResult {
@@ -235,6 +245,7 @@ impl AnalysisResult {
         links(&self.links, &self.islands.layer)?;
         cycles(&self.cycles, file_count)?;
         layout(self)?;
+        tour(self)?;
 
         let stats = &self.stats;
         if u64::from(stats.imports_resolved) + u64::from(stats.imports_external)
@@ -425,6 +436,7 @@ mod tests {
     use crate::result::{
         Confidence, Dirs, EdgeKind, Edges, Entries, EntryReason, Files, Grids, Islands, Layout,
         Lots, ParcelNature, Parcels, Ranked, Rects, Repo, Roles, Scope, Stats, SymbolKind, Symbols,
+        Tour, TourStep,
     };
 
     /// Two folders, two files, an import between them and two of folders,
@@ -528,6 +540,47 @@ mod tests {
                     x: vec![219, 239],
                     y: vec![19, 19],
                 },
+            },
+            tour: Tour {
+                steps: vec![
+                    TourStep::Overview {
+                        files: 2,
+                        generated: 0,
+                        lines: 52,
+                        language: Some(0),
+                        language_lines: 52,
+                        biggest_island: Some(1),
+                        outside_island: None,
+                    },
+                    TourStep::EntryPoints { entries: vec![0] },
+                    TourStep::Conductors {
+                        conductors: vec![0],
+                    },
+                    TourStep::Foundations {
+                        foundations: vec![0],
+                        island: Some(1),
+                    },
+                    TourStep::Layers {
+                        down: 1,
+                        level: 0,
+                        up: 0,
+                        worst_link: None,
+                    },
+                    TourStep::Cycles { cycle: 0, dir: 1 },
+                    TourStep::ComplexAreas {
+                        files: vec![0],
+                        complexity: 8,
+                    },
+                    TourStep::Rest {
+                        tests: 0,
+                        examples: 0,
+                        docs: 0,
+                        config: 0,
+                        root_config: 0,
+                        park_count: 1,
+                        parks: vec![1],
+                    },
+                ],
             },
             stats: Stats {
                 imports_total: 6,

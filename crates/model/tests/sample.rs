@@ -11,7 +11,7 @@ use std::path::PathBuf;
 use model::{
     AnalysisResult, Confidence, Cycles, Dirs, EdgeKind, Edges, Entries, EntryReason,
     FORMAT_VERSION, Files, Ignored, Islands, Layout, Links, Lots, ParcelNature, Parcels, Ranked,
-    Repo, Roles, Scope, Stats, SymbolKind, Symbols,
+    Repo, Roles, Scope, Stats, SymbolKind, Symbols, Tour, TourStep,
 };
 
 const DIRS: &[(Option<u32>, &str)] = &[
@@ -262,6 +262,51 @@ fn layout() -> Layout {
     layout
 }
 
+/// The tour the analyzer finds in the sample. No complex areas: `store.ts`,
+/// the most complex file that others import, is not three times as complex
+/// as the median production file.
+fn tour() -> Tour {
+    Tour {
+        steps: vec![
+            TourStep::Overview {
+                files: 19,
+                generated: 1,
+                lines: 2352,
+                language: Some(0),
+                language_lines: 2212,
+                // `core` and `ui` tie at five files: the first island wins
+                biggest_island: Some(2),
+                outside_island: Some(6),
+            },
+            TourStep::EntryPoints { entries: vec![0] },
+            // `main.ts` is already shown as the entry point
+            TourStep::Conductors {
+                conductors: vec![1, 2],
+            },
+            TourStep::Foundations {
+                foundations: vec![0, 1, 2],
+                island: Some(2),
+            },
+            TourStep::Layers {
+                down: 8,
+                level: 0,
+                up: 0,
+                worst_link: None,
+            },
+            TourStep::Cycles { cycle: 0, dir: 2 },
+            TourStep::Rest {
+                tests: 2,
+                examples: 0,
+                docs: 0,
+                config: 2,
+                root_config: 2,
+                park_count: 1,
+                parks: vec![6],
+            },
+        ],
+    }
+}
+
 fn strings(values: impl IntoIterator<Item = &'static str>) -> Vec<String> {
     values.into_iter().map(str::to_owned).collect()
 }
@@ -361,6 +406,7 @@ fn sample() -> AnalysisResult {
             shortest: vec![vec![5, 6], vec![9, 12]],
         },
         layout: layout(),
+        tour: tour(),
         stats: Stats {
             ignored: Ignored {
                 vendored: 3,
@@ -406,6 +452,10 @@ fn json_uses_the_names_of_the_generated_types() {
     assert_eq!(json["cycles"]["shortest"][1][0], 9);
     assert_eq!(json["layout"]["grids"]["columns"][2], 3);
     assert_eq!(json["layout"]["lots"]["x"][0], 19);
+    assert_eq!(json["tour"]["steps"][0]["kind"], "overview");
+    assert_eq!(json["tour"]["steps"][0]["biggestIsland"], 2);
+    assert_eq!(json["tour"]["steps"][1]["kind"], "entryPoints");
+    assert!(json["tour"]["steps"][4]["worstLink"].is_null());
 }
 
 #[test]

@@ -11,6 +11,6 @@ mod validate;
 pub use result::{
     AnalysisResult, Confidence, Cycles, Dirs, EdgeKind, Edges, Entries, EntryReason,
     FORMAT_VERSION, Files, Grids, Ignored, Islands, Layout, Links, Lots, ParcelNature, Parcels,
-    Ranked, Rects, Repo, Roles, Scope, Stats, SymbolKind, Symbols,
+    Ranked, Rects, Repo, Roles, Scope, Stats, SymbolKind, Symbols, Tour, TourStep,
 };
 pub use validate::InvalidResult;

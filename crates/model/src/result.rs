@@ -10,7 +10,7 @@ use ts_rs::TS;
 
 /// Version of the shape of the data. Bumped on any change the web app has to
 /// know about; a result with another version is rejected, not guessed at.
-pub const FORMAT_VERSION: u32 = 9;
+pub const FORMAT_VERSION: u32 = 10;
 
 /// One analysis of one repository at one commit.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -36,6 +36,7 @@ pub struct AnalysisResult {
     pub links: Links,
     pub cycles: Cycles,
     pub layout: Layout,
+    pub tour: Tour,
     pub stats: Stats,
 }
 
@@ -407,6 +408,106 @@ pub struct Grids {
 pub struct Lots {
     pub x: Vec<u32>,
     pub y: Vec<u32>,
+}
+
+/// The guided tour of the city: the steps that have something measured to
+/// show, in the order they are shown. Steps hold what they point at and the
+/// numbers their sentences quote; the sentences themselves are the web
+/// app's.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct Tour {
+    /// Always starts with [`TourStep::Overview`]; the other kinds come at
+    /// most once each, in the order of [`TourStep`].
+    pub steps: Vec<TourStep>,
+}
+
+/// One step of the tour. Lists hold one to three rows, the first first.
+/// Production files are [`Scope::Source`] files that are not generated.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(
+    tag = "kind",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
+#[ts(export)]
+pub enum TourStep {
+    /// The whole city.
+    Overview {
+        /// Files shown in the city, generated ones left out.
+        files: u32,
+        /// Generated files, counted apart.
+        generated: u32,
+        /// Lines of production code.
+        lines: u32,
+        /// The language most of those lines are in, into
+        /// [`AnalysisResult::languages`]; `null` without production code.
+        language: Option<u32>,
+        /// Lines of production code in that language.
+        language_lines: u32,
+        /// The island with the most production files; without production
+        /// code, the island with the most files.
+        biggest_island: Option<u32>,
+        /// The island without production code with the most files, such as
+        /// `build/` or `test/`.
+        outside_island: Option<u32>,
+    },
+    /// Where the code starts: rows of [`Roles::entries`].
+    EntryPoints { entries: Vec<u32> },
+    /// What pulls the code together: rows of [`Roles::conductors`], none of
+    /// them already shown as an entry point.
+    Conductors { conductors: Vec<u32> },
+    /// What everything rests on: rows of [`Roles::foundations`].
+    Foundations {
+        foundations: Vec<u32>,
+        /// The island that holds most of the foundations, when it holds two
+        /// or more.
+        island: Option<u32>,
+    },
+    /// The layers of the islands, read from [`Islands::layer`], and how the
+    /// imports between islands in layers follow them.
+    Layers {
+        /// Imports to an island of a lower layer.
+        down: u32,
+        /// Imports to another island of the same layer.
+        level: u32,
+        /// Imports to an island of a higher layer, as [`Links::upward`]
+        /// counts them.
+        up: u32,
+        /// The row of [`Links`] with the most imports going up; `null`
+        /// when none does.
+        worst_link: Option<u32>,
+    },
+    /// The largest loop of imports.
+    Cycles {
+        /// A row of [`Cycles`].
+        cycle: u32,
+        /// The deepest folder that holds all its files.
+        dir: u32,
+    },
+    /// The most complex production files that other files import, each in
+    /// its own folder.
+    ComplexAreas {
+        files: Vec<u32>,
+        /// Complexity of all the production code, to give their share.
+        complexity: u32,
+    },
+    /// What is not production code.
+    Rest {
+        /// Files of tests and test fixtures.
+        tests: u32,
+        examples: u32,
+        docs: u32,
+        config: u32,
+        /// Configuration files at the root of the repository.
+        root_config: u32,
+        /// Folders shown as parks that are not inside another park.
+        park_count: u32,
+        /// The parks with the most files: none to three, unlike the other
+        /// lists.
+        parks: Vec<u32>,
+    },
 }
 
 /// Counts that describe the analysis itself.
