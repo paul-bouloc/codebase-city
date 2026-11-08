@@ -44,7 +44,7 @@ import { Fleet } from './fleet'
 import { islandShapes } from './island-shape'
 import type { CityLayout } from './layout'
 import { SUN_DIRECTION } from './light'
-import { cityLinks } from './links'
+import { cityLinks, type Port } from './links'
 import { CityPicker, type CityTarget } from './picking'
 import { createParcels } from './plateaux'
 import { portBadgeAt } from './port-links'
@@ -268,7 +268,7 @@ export class CityEngine {
         const open = interaction?.openedPort === mark.port
         interaction?.closePort()
         if (!open) {
-          interaction?.openPort(mark.port, { x: event.clientX, y: event.clientY })
+          interaction?.openPort(mark.port, this.badgeOnPage(mark.port))
         }
         this.hoverAtPointer()
         return
@@ -410,17 +410,25 @@ export class CityEngine {
     if (!interaction || !port) {
       return
     }
-    const canvas = this.renderer.domElement
-    const box = canvas.getBoundingClientRect()
     // The camera may have been moved since the last frame: it is where it goes.
     this.controls.update(0)
     this.camera.updateMatrixWorld()
-    const projected = this.projected.set(...portBadgeAt(port)).project(this.camera)
     interaction.closePort()
-    interaction.openPort(port, {
+    interaction.openPort(port, this.badgeOnPage(port))
+  }
+
+  /** Where a port's badge stands on the page, in its pixels; null out of the view. */
+  private badgeOnPage(port: Port): { x: number; y: number } | null {
+    const canvas = this.renderer.domElement
+    const projected = this.projected.set(...portBadgeAt(port)).project(this.camera)
+    if (projected.z > 1 || Math.abs(projected.x) > 1 || Math.abs(projected.y) > 1) {
+      return null
+    }
+    const box = canvas.getBoundingClientRect()
+    return {
       x: box.left + ((projected.x + 1) / 2) * canvas.clientWidth,
       y: box.top + ((1 - projected.y) / 2) * canvas.clientHeight,
-    })
+    }
   }
 
   /** Replaces the city on show and frames it. */
@@ -670,6 +678,11 @@ export class CityEngine {
       }
       this.renderer.render(this.scene, this.camera)
       this.needsRender = false
+      // An open port's card keeps beside its badge.
+      const port = this.interaction?.openedPort
+      if (port) {
+        this.interaction?.movePort(this.badgeOnPage(port))
+      }
       this.framesSince++
       this.stats.drawCalls = this.renderer.info.render.calls
       this.stats.triangles = this.renderer.info.render.triangles
