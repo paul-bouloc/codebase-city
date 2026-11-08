@@ -1,7 +1,8 @@
 import { SINGLE_ARCS } from '../city/flows/selection-links'
 import { ANALYZED_LANGUAGES } from '../city/world/from-result'
 import type { EntryReason } from '../data/generated/EntryReason'
-import { githubBlobUrl } from '../ui/city/github-links'
+import { githubBlobUrl } from '../screen/github-links'
+import { type GraphRole, languageOf, type ResultIndex, topPercent } from '../screen/result-index'
 import type {
   CodeState,
   FileSheetData,
@@ -10,7 +11,6 @@ import type {
   RankedFile,
 } from '../ui/city/sheet-data'
 import { exactCount } from '../ui/count-format'
-import { type GraphRole, languageOf, type ResultIndex, topPercent } from './result-index'
 
 // A file's sheet, read from the analysis result. Its code comes from GitHub, apart.
 

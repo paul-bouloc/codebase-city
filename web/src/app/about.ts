@@ -1,8 +1,8 @@
 import { ANALYZED_LANGUAGES } from '../city/world/from-result'
+import { githubCommitUrl } from '../screen/github-links'
+import { languageOf, type ResultIndex } from '../screen/result-index'
 import type { Language } from '../ui/Badge'
-import { githubCommitUrl } from '../ui/city/github-links'
 import type { AboutData } from '../ui/city/sheet-data'
-import { languageOf, type ResultIndex } from './result-index'
 
 // The About panel, read from the analysis result. When and on which branch the analysis ran is
 // stored beside the result, not in it: the screen adds it when it has it.

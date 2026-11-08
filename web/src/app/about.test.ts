@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { decodeResult } from '../data/decode-result'
 import type { AnalysisResult } from '../data/generated/AnalysisResult'
 import sample from '../data/generated/sample-result.json'
+import { indexResult } from '../screen/result-index'
 import { aboutData } from './about'
-import { indexResult } from './result-index'
 
 const index = indexResult(decodeResult(sample))
 

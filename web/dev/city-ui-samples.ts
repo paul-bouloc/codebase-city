@@ -1,5 +1,5 @@
-import type { CityAccount, CityRepo } from '../src/ui/city/CityTopBar'
-import { githubTreeUrl } from '../src/ui/city/github-links'
+import type { CityAccount, CityRepo } from '../src/screen/CityTopBar'
+import { githubTreeUrl } from '../src/screen/github-links'
 import { type LegendContent, legendContent } from '../src/ui/city/legend-content'
 
 // The demonstration content of the boards: microsoft/vscode at a1b2c3d.

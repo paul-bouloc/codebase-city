@@ -1,6 +1,6 @@
 import type { LinkStats } from '../city/engine/city-engine'
+import { languageOf, type ResultIndex } from '../screen/result-index'
 import type { LegendPlace, RepoContents } from '../ui/city/legend-content'
-import { languageOf, type ResultIndex } from './result-index'
 
 /**
  * What the legend lists for this city: what the result holds, and how the engine drew the links

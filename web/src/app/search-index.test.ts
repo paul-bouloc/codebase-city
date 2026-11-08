@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { decodeResult } from '../data/decode-result'
 import type { AnalysisResult } from '../data/generated/AnalysisResult'
 import sample from '../data/generated/sample-result.json'
-import { indexResult } from './result-index'
+import { indexResult } from '../screen/result-index'
 import { buildSearchIndex, normalizeQuery } from './search-index'
 
 const search = buildSearchIndex(indexResult(decodeResult(sample)))

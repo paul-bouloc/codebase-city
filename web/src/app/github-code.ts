@@ -1,5 +1,5 @@
-import type { GithubRepo } from '../ui/city/github-links'
-import { githubRawUrl } from '../ui/city/github-links'
+import type { GithubRepo } from '../screen/github-links'
+import { githubRawUrl } from '../screen/github-links'
 import type { CodeState } from '../ui/city/sheet-data'
 
 // A file's code, read from GitHub when its sheet shows it, never stored.

@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { decodeResult } from '../data/decode-result'
 import type { AnalysisResult } from '../data/generated/AnalysisResult'
 import sample from '../data/generated/sample-result.json'
+import { indexResult } from '../screen/result-index'
 import { repoContents } from './legend'
-import { indexResult } from './result-index'
 
 const index = indexResult(decodeResult(sample))
 const NO_LINKS = { bridges: 0, ferries: 0, inPorts: 0, hidden: 0 }
