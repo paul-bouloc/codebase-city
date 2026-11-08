@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
+import { islandShapes } from '../terrain/island-shape'
+import { cityLinks } from '../waterways/links'
+import type { CityLayout, IslandLayout, Lot, ParcelNature } from '../world/layout'
+import { layerAltitude, slabTop } from '../world/units'
 import { CROWN_RADIUS, cityDecor, type Tree } from './decor'
 import { DECOR_MODELS } from './decor-mesh'
-import { islandShapes } from './terrain/island-shape'
-import { cityLinks } from './waterways/links'
-import type { CityLayout, IslandLayout, Lot, ParcelNature } from './world/layout'
-import { layerAltitude, slabTop } from './world/units'
 
 const file = { language: 'typescript' as const, lines: 10, complexity: 1, test: false }
 const lot = (x: number, y: number): Lot => ({ x, y, file })

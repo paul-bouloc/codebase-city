@@ -1,9 +1,9 @@
 import { type InstancedMesh, Matrix4 } from 'three'
+import type { Fading } from '../render/dimming'
+import type { Boat, Ferry } from '../waterways/links'
+import { Route, sail } from '../waterways/sailing'
+import { boardToThree } from '../world/units'
 import { createBoats } from './decor-mesh'
-import type { Fading } from './render/dimming'
-import type { Boat, Ferry } from './waterways/links'
-import { Route, sail } from './waterways/sailing'
-import { boardToThree } from './world/units'
 
 // The boats that sail the ferry lines, moved at every frame of the animation. They cast no
 // shadow: the shadow map is drawn once per city, and would keep them where they started.

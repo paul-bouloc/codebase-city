@@ -35,11 +35,11 @@ import {
   type Pointed,
 } from './city-interaction'
 import { indexCycles } from './cycles'
-import { cityDecor } from './decor'
-import { BOAT_LENGTH, createDecor, type DecorStats, decorStats } from './decor-mesh'
+import { cityDecor } from './decor/decor'
+import { BOAT_LENGTH, createDecor, type DecorStats, decorStats } from './decor/decor-mesh'
+import { Fleet } from './decor/fleet'
 import { type Drive, STILL } from './drive'
 import { ExtraFerries } from './extra-ferries'
-import { Fleet } from './fleet'
 import {
   extentOf,
   FRAME_MARGIN,

@@ -8,16 +8,16 @@ import {
   ShaderMaterial,
   Vector2,
 } from 'three'
-import { CROWN_RADIUS, type Decor, FOLIAGE_TINTS, type TreeKind } from './decor'
-import { createFading, dimmingFragmentPars, type Fading } from './render/dimming'
+import { createFading, dimmingFragmentPars, type Fading } from '../render/dimming'
 import {
   shadingFragmentPars,
   shadingUniforms,
   shadingVertex,
   shadingVertexPars,
-} from './render/shading'
-import type { Boat } from './waterways/links'
-import { boardToThree, srgb, type Vec3 } from './world/units'
+} from '../render/shading'
+import type { Boat } from '../waterways/links'
+import { boardToThree, srgb, type Vec3 } from '../world/units'
+import { CROWN_RADIUS, type Decor, FOLIAGE_TINTS, type TreeKind } from './decor'
 
 // Trees, rocks and boats are a few models repeated, one instanced draw call each. A part of a model
 // takes the instance's tint (foliage) or a colour of its own (trunk, rock), then darkens (a
