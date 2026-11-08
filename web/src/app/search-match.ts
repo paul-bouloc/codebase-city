@@ -1,0 +1,233 @@
+// Approximate matching for the city's search: the letters of the query, in order, anywhere in
+// the name ("txtmdl" finds `textModel.ts`), scored so that whole words, word starts and runs of
+// letters come first.
+
+/** Where a query matches a text, and how well. */
+export interface Match {
+  score: number
+  /** The matched characters' indices in the text, ascending. */
+  positions: number[]
+}
+
+const START = 10
+const AFTER_SEPARATOR = 9
+const CAMEL = 8
+const RUN = 5
+const SAME_CASE = 1
+const GAP_START = 3
+const GAP_EXTEND = 1
+const LEADING_MAX = 10
+const WHOLE_TEXT = 20
+
+const SEPARATORS = new Set(['/', '.', '_', '-', ' ', '\\', ':'])
+
+/** How much a match at `index` is worth for starting a word there. */
+function boundaryBonus(text: string, index: number): number {
+  if (index === 0) {
+    return START
+  }
+  const previous = text[index - 1] ?? ''
+  if (SEPARATORS.has(previous)) {
+    return AFTER_SEPARATOR
+  }
+  const current = text[index] ?? ''
+  const isUpper = current !== current.toLowerCase()
+  const previousIsUpper = previous !== previous.toLowerCase()
+  if (isUpper && !previousIsUpper && previous !== previous.toUpperCase()) {
+    return CAMEL
+  }
+  if (isUpper && !previousIsUpper && /\d/.test(previous)) {
+    return CAMEL
+  }
+  return 0
+}
+
+/** The score of the query's characters matched at these positions of the text. */
+export function scorePositions(query: string, text: string, positions: readonly number[]): number {
+  let score = 0
+  let previous = -1
+  positions.forEach((position, at) => {
+    score += 1 + boundaryBonus(text, position)
+    if (text[position] === query[at]) {
+      score += SAME_CASE
+    }
+    if (previous >= 0) {
+      const gap = position - previous - 1
+      if (gap === 0) {
+        score += RUN
+      } else {
+        score -= GAP_START + (gap - 1) * GAP_EXTEND
+      }
+    }
+    previous = position
+  })
+  // Earlier is better, a little.
+  score -= Math.min(positions[0] ?? 0, LEADING_MAX) / 2
+  if (positions.length === text.length) {
+    score += WHOLE_TEXT
+  }
+  return score
+}
+
+/**
+ * Matches `query` against `text`, ignoring case. `lowerQuery` and `lowerText` are both in lower
+ * case, worked out once by the caller. Returns null when the query's letters are not all in the
+ * text, in order.
+ */
+export function fuzzyMatch(
+  query: string,
+  lowerQuery: string,
+  text: string,
+  lowerText: string,
+): Match | null {
+  const length = lowerQuery.length
+  if (length === 0 || length > lowerText.length) {
+    return null
+  }
+
+  // The first place the whole query fits, then the tightest window that ends there.
+  let at = 0
+  let end = -1
+  for (let index = 0; index < lowerText.length; index++) {
+    if (lowerText[index] === lowerQuery[at]) {
+      at++
+      if (at === length) {
+        end = index
+        break
+      }
+    }
+  }
+  if (end < 0) {
+    return null
+  }
+  let start = end
+  at = length - 1
+  for (let index = end; index >= 0; index--) {
+    if (lowerText[index] === lowerQuery[at]) {
+      at--
+      if (at < 0) {
+        start = index
+        break
+      }
+    }
+  }
+
+  // Each letter where it starts a word or continues a run, if it can: within that window, and
+  // across the whole text (the window can start inside a word that begins earlier).
+  let best: Match | null = null
+  for (const [from, to] of [
+    [start, end],
+    [lowerText.indexOf(lowerQuery[0] ?? ''), lowerText.length - 1],
+  ] as const) {
+    const positions = placeInWindow(lowerQuery, text, lowerText, from, to)
+    const score = scorePositions(query, text, positions)
+    if (!best || score > best.score) {
+      best = { score, positions }
+    }
+  }
+  if (!best) {
+    return null
+  }
+
+  // The query as one run beats scattered letters: try where it appears whole.
+  let from = lowerText.indexOf(lowerQuery)
+  let tries = 0
+  while (from >= 0 && tries < 8) {
+    const run = Array.from({ length }, (_, offset) => from + offset)
+    const score = scorePositions(query, text, run)
+    if (score > best.score) {
+      best = { score, positions: run }
+    }
+    from = lowerText.indexOf(lowerQuery, from + 1)
+    tries++
+  }
+  return best
+}
+
+/**
+ * Places the query's letters in `[start, end]`, which is known to hold them. Each letter goes at
+ * the latest word start that still leaves room for the rest, else at the first place it fits.
+ */
+function placeInWindow(
+  lowerQuery: string,
+  text: string,
+  lowerText: string,
+  start: number,
+  end: number,
+): number[] {
+  const length = lowerQuery.length
+  // The latest index each letter can take, the ones after it still fitting.
+  const latest = new Array<number>(length)
+  let index = end
+  for (let at = length - 1; at >= 0; at--) {
+    while (lowerText[index] !== lowerQuery[at]) {
+      index--
+    }
+    latest[at] = index
+    index--
+  }
+
+  const positions: number[] = []
+  let next = start
+  for (let at = 0; at < length; at++) {
+    const limit = latest[at] ?? next
+    let chosen = -1
+    let first = -1
+    for (let candidate = next; candidate <= limit; candidate++) {
+      if (lowerText[candidate] !== lowerQuery[at]) {
+        continue
+      }
+      if (first < 0) {
+        first = candidate
+      }
+      // Right after the previous letter: a run, take it.
+      const previous = positions.at(-1)
+      if (previous !== undefined && candidate === previous + 1) {
+        chosen = candidate
+        break
+      }
+      if (chosen < 0 && boundaryBonus(text, candidate) > 0) {
+        chosen = candidate
+      }
+    }
+    const position = chosen >= 0 ? chosen : first
+    positions.push(position)
+    next = position + 1
+  }
+  return positions
+}
+
+/**
+ * The edit distance between two words (insertions, deletions, substitutions and swaps of two
+ * neighbours), or `max + 1` as soon as it is known to be more than `max`.
+ */
+export function editDistance(a: string, b: string, max: number): number {
+  if (Math.abs(a.length - b.length) > max) {
+    return max + 1
+  }
+  let before = new Array<number>(b.length + 1).fill(0)
+  let previous = Array.from({ length: b.length + 1 }, (_, j) => j)
+  let current = new Array<number>(b.length + 1).fill(0)
+  for (let i = 1; i <= a.length; i++) {
+    current[0] = i
+    let rowBest = i
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1
+      let value = Math.min(
+        (previous[j] ?? 0) + 1,
+        (current[j - 1] ?? 0) + 1,
+        (previous[j - 1] ?? 0) + cost,
+      )
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+        value = Math.min(value, (before[j - 2] ?? 0) + 1)
+      }
+      current[j] = value
+      rowBest = Math.min(rowBest, value)
+    }
+    if (rowBest > max) {
+      return max + 1
+    }
+    ;[before, previous, current] = [previous, current, before]
+  }
+  return Math.min(previous[b.length] ?? max + 1, max + 1)
+}
