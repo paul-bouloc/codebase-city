@@ -12,6 +12,7 @@ import {
   SELECTED_MARK,
 } from './building-marks'
 import { type CityBuildings, Highlight } from './buildings'
+import { CycleWayMarks, cycleWays, loopIslandPairs } from './cycle-ways'
 import { type CycleIndex, loopThrough } from './cycles'
 import type { Fading } from './dimming'
 import { easeStandard } from './easing'
@@ -169,6 +170,8 @@ export class CityInteraction {
   /** The rings around the files of the selected file's cycle. */
   readonly cycleRings: RingSet
   private cycle: CycleOnShow | null = null
+  /** The bridges and ferry lines the loop of the selected file's cycle takes between islands. */
+  readonly cycleWays: CycleWayMarks
   /** The bridges and ferry lines of a selected folder. */
   readonly folderLinks: FolderLinkMarks
   /** The ports' badges, and the lines of the one open, if any. */
@@ -193,6 +196,7 @@ export class CityInteraction {
     this.hoveredArea = new AreaMark(HOVERED_AREA, pixelRatio)
     this.selectedArea = new AreaMark(SELECTED_AREA, pixelRatio)
     this.cycleRings = new RingSet(CYCLE_RINGS, pixelRatio)
+    this.cycleWays = new CycleWayMarks(pixelRatio)
     this.folderLinks = new FolderLinkMarks(pixelRatio)
     this.portLinks = new FolderLinkMarks(pixelRatio)
     this.portBadges = new ArcLayer(pixelRatio)
@@ -201,6 +205,7 @@ export class CityInteraction {
       this.folderLinks.group,
       this.portLinks.group,
       this.portBadges.group,
+      this.cycleWays.group,
       this.cycleRings.group,
       this.hoveredArea.group,
       this.selectedArea.group,
@@ -269,6 +274,7 @@ export class CityInteraction {
     this.cycleRings.show(
       this.cycle?.members.flatMap((member) => this.buildings.placed[member] ?? []) ?? [],
     )
+    this.showCycleWays()
     this.drawLinks()
     if (target?.kind === 'building') {
       this.buildings.setHighlight(target.index, Highlight.selected)
@@ -417,6 +423,7 @@ export class CityInteraction {
     this.hoveredArea.dispose()
     this.selectedArea.dispose()
     this.cycleRings.dispose()
+    this.cycleWays.dispose()
     this.folderLinks.dispose()
     this.portLinks.dispose()
     this.portBadges.dispose()
@@ -462,6 +469,18 @@ export class CityInteraction {
     )
     this.hubs = hubs
     this.arcs.show(drawing)
+  }
+
+  /** The ways the loop of the selected file's cycle takes between islands, outlined in red. */
+  private showCycleWays(): void {
+    const loop = this.cycle?.loop
+    if (!loop) {
+      this.cycleWays.show(null)
+      return
+    }
+    const pairs = loopIslandPairs(loop, (building) => this.buildings.placed[building]?.island)
+    const { bridges, ferries, unshown = [], extra } = this.flows
+    this.cycleWays.show(cycleWays(pairs, bridges, ferries, unshown, extra))
   }
 
   /** A selected folder's bridges and ferry lines stand out; none for a file. */

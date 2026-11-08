@@ -51,23 +51,23 @@ const LAYOUT: CityLayout = {
   links: LINKS,
 }
 
-function setup() {
-  const shapes = islandShapes(LAYOUT)
-  const links = cityLinks(LAYOUT, shapes)
+function setup(layout = LAYOUT) {
+  const shapes = islandShapes(layout)
+  const links = cityLinks(layout, shapes)
   const fading = createFading()
   const ports: (PortList | null)[] = []
   const hovers: (CityHover | null)[] = []
   const interaction = new CityInteraction(
-    LAYOUT,
+    layout,
     shapes,
-    createBuildings(LAYOUT, 1, fading),
+    createBuildings(layout, 1, fading),
     {
-      imports: indexImports(LAYOUT),
-      cycles: indexCycles(LAYOUT),
+      imports: indexImports(layout),
+      cycles: indexCycles(layout),
       bridges: links.bridges,
       ferries: links.ferries,
       unshown: links.unshown,
-      extra: new ExtraFerries(LAYOUT, shapes, links),
+      extra: new ExtraFerries(layout, shapes, links),
       ports: links.ports,
     },
     fading,
@@ -78,7 +78,7 @@ function setup() {
   return { interaction, links, ports, hovers }
 }
 
-describe('a port', () => {
+describe('the ways between islands', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     // The badges' pills are drawn on a canvas: none here, they stay blank.
@@ -139,5 +139,34 @@ describe('a port', () => {
     interaction.select({ kind: 'island', island: 7 })
     // Island 7 has one link, too small to draw: it sails out.
     expect(interaction.folderLinks.group.visible).toBe(true)
+  })
+
+  it('outlines the ways a cycle takes between islands, sailing out an undrawn one', () => {
+    // A loop from the hub to island 1 (a ferry) and island 7 (too small to draw), and back.
+    const looped: CityLayout = {
+      ...LAYOUT,
+      cycles: [
+        {
+          members: [
+            { island: 0, lot: 0 },
+            { island: 1, lot: 0 },
+            { island: 7, lot: 0 },
+          ],
+          loop: [0, 1, 2],
+          imports: [
+            [0, 1],
+            [1, 2],
+            [2, 0],
+          ],
+        },
+      ],
+    }
+    const { interaction } = setup(looped)
+    interaction.select({ kind: 'building', index: 0 })
+    // A broad red line under the ferry lines, and their own lines over it: no bridge here.
+    expect(interaction.cycleWays.group.visible).toBe(true)
+    expect(interaction.cycleWays.group.children).toHaveLength(2)
+    interaction.select({ kind: 'island', island: 0 })
+    expect(interaction.cycleWays.group.visible).toBe(false)
   })
 })
