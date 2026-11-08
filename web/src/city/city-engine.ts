@@ -178,6 +178,8 @@ export class CityEngine {
   private placed: readonly PlacedBuilding[] = []
   // Pixels a panel covers on the right of the canvas: the camera frames and reveals left of them.
   private inset = 0
+  // Where the camera's target may go: between the sea and the highest plateau, around the city.
+  private readonly boundary = new Box3()
   // What the camera goes round, from the moment it flies there until the next gesture.
   private orbit: { centre: Vec3 } | null = null
   // The last click that selected, for a second one to fly there.
@@ -408,6 +410,9 @@ export class CityEngine {
     }
     const [x, , z] = centre
     const { distance, shift } = frameInView(radius, this.viewport())
+    // Beside a panel, the camera looks to one side of the centre; going round, anywhere on that
+    // circle: the target may go there, even past the city's edge.
+    this.allowTarget(x, z, shift)
     // The camera looks `shift` u to the right of the centre, at the heading it turns to.
     const { theta } = this.controls.getSpherical(this.heading, true)
     const smooth = !this.lessMotion.matches
@@ -451,13 +456,27 @@ export class CityEngine {
     const { theta } = this.controls.getSpherical(this.heading, true)
     const target3 = this.controls.getTarget(this.aimedAt, true)
     const shift = pixels * perPixel
-    void this.controls.moveTo(
-      target3.x + Math.cos(theta) * shift,
-      target3.y,
-      target3.z - Math.sin(theta) * shift,
-      !this.lessMotion.matches,
-    )
+    const x2 = target3.x + Math.cos(theta) * shift
+    const z2 = target3.z - Math.sin(theta) * shift
+    this.allowTarget(x2, z2, 0)
+    void this.controls.moveTo(x2, target3.y, z2, !this.lessMotion.matches)
     this.needsRender = true
+  }
+
+  /**
+   * Widens where the camera's target may go to the square around a point on the ground, `reach`
+   * u on each side; never in height, which keeps it out of the sea. Until the next city.
+   */
+  private allowTarget(x: number, z: number, reach: number): void {
+    const { min, max } = this.boundary
+    if (min.x <= x - reach && max.x >= x + reach && min.z <= z - reach && max.z >= z + reach) {
+      return
+    }
+    min.x = Math.min(min.x, x - reach)
+    max.x = Math.max(max.x, x + reach)
+    min.z = Math.min(min.z, z - reach)
+    max.z = Math.max(max.z, z + reach)
+    this.controls.setBoundary(this.boundary)
   }
 
   private viewport(): Viewport {
@@ -800,6 +819,7 @@ export class CityEngine {
         cz + bounds.height / 2 + TARGET_MARGIN,
       ),
     )
+    this.boundary.copy(box)
     this.controls.setBoundary(box)
     void this.controls.rotateTo(START_AZIMUTH, START_POLAR_ANGLE, false)
     void this.controls.fitToSphere(framing, false)
