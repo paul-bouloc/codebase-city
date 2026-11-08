@@ -76,6 +76,8 @@ interface FileSheetProps {
   // For the demonstration page: open on a given tab, list or comment unfolded.
   defaultTab?: FileTab
   defaultExpanded?: boolean
+  // A line to show in the Code tab, as a symbol's from the search: each new `request` opens it.
+  openLine?: { line: number; request: number }
 }
 
 export function FileSheet({
@@ -94,6 +96,7 @@ export function FileSheet({
   onFindPath,
   defaultTab,
   defaultExpanded = false,
+  openLine,
 }: FileSheetProps) {
   const { folder, name } = splitPath(file.path)
   const folders = folder.split('/').filter(Boolean)
@@ -165,6 +168,7 @@ export function FileSheet({
           onOpenCode={onOpenCode}
           defaultTab={defaultTab}
           defaultExpanded={defaultExpanded}
+          openLine={openLine}
         />
       )}
     </SheetFrame>
@@ -180,6 +184,7 @@ function FileDetails({
   onOpenCode,
   defaultTab,
   defaultExpanded = false,
+  openLine,
 }: Pick<
   FileSheetProps,
   | 'file'
@@ -189,6 +194,7 @@ function FileDetails({
   | 'onRetryCode'
   | 'onOpenCode'
   | 'defaultTab'
+  | 'openLine'
 > & { defaultExpanded?: boolean }) {
   const tabs = fileTabs(file)
   const [tab, setTab] = useState<FileTab | undefined>(defaultTab)
@@ -196,6 +202,12 @@ function FileDetails({
   // A tab that went away (or none chosen yet) falls back to the first one there is.
   const shownTab = tabs.find(({ id }) => id === tab)?.id ?? tabs[0]?.id ?? 'code'
   const codeShown = shownTab === 'code'
+  useEffect(() => {
+    if (openLine) {
+      setCodeLine(openLine.line)
+      setTab('code')
+    }
+  }, [openLine])
   useEffect(() => {
     if (codeShown) {
       onOpenCode?.()
