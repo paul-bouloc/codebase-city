@@ -155,6 +155,37 @@ export class CityPicker {
   }
 
   /**
+   * How high the ground stands at a point of three.js's ground plane: the plateau, a terrace or
+   * the beach of the island there, each taken as flat at its top; 0 at sea. Buildings aside.
+   */
+  groundHeight(x: number, z: number): number {
+    const y = -z
+    for (let index = 0; index < this.islands.length; index++) {
+      const { bounds, rings } = this.islands[index] as IslandBoxes
+      const shape = this.shapes[index]
+      if (
+        !shape ||
+        x < (bounds[0] as number) ||
+        x > (bounds[3] as number) ||
+        z < (bounds[2] as number) ||
+        z > (bounds[5] as number)
+      ) {
+        continue
+      }
+      const { island, altitudes } = shape
+      for (let ring = 0; ring < altitudes.length; ring++) {
+        if (
+          (ring === 0 && rectContains(island.plateau, x, y)) ||
+          insideOutline(rings[ring] as Float64Array, x, y)
+        ) {
+          return altitudes[ring] as number
+        }
+      }
+    }
+    return 0
+  }
+
+  /**
    * Where the ray meets an island's ground, from the top: its plateau and the deepest folder
    * there, else a terrace or the beach, each taken as flat at its top.
    */

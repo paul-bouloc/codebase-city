@@ -119,6 +119,31 @@ describe('CityPicker', () => {
   })
 })
 
+describe('CityPicker.groundHeight', () => {
+  /** The height at a board point. */
+  const height = (x: number, y: number) => {
+    const [tx, , tz] = boardToThree(x, y, 0)
+    return picker.groundHeight(tx, tz)
+  }
+
+  it('is the plateau on the island, buildings aside', () => {
+    expect(height(5, 1)).toBe(layerAltitude(2))
+    expect(height(3, 3)).toBe(layerAltitude(2))
+  })
+
+  it('steps down the terraces to the beach, then the sea', () => {
+    const shape = shapes[0]
+    const sample = shape?.samples.find(({ nx, ny }) => nx === 0 && ny === -1)
+    if (!shape || !sample) {
+      throw new Error('no south side')
+    }
+    const heights = sample.offsets.map((offset) => height(sample.x, -(offset - 0.05)))
+    expect(heights).toEqual(shape.altitudes)
+    expect(height(sample.x, -((sample.offsets.at(-1) ?? 0) + 0.5))).toBe(0)
+    expect(height(50, 50)).toBe(0)
+  })
+})
+
 /** The east edge of a building's box, standing at `x` (three.js x is board x). */
 function boxEdge(x: number, side: number): number {
   const placedBox = picker.pick(down(x, 3))
