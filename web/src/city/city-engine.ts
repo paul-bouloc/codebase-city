@@ -53,6 +53,7 @@ import { BADGE_HALF_WIDTH, badgeInView, portBadgeAt } from './port-links'
 import { createSea, OPEN_SEA, seaSize } from './sea'
 import { indexImports } from './selection-links'
 import { createTerrain } from './terrain'
+import { maxTilt, NEAR_TILT } from './tilt'
 import { boardToThree, nearPlane, type Vec3 } from './units'
 
 /** What a click opens: a bundle's hub, or a port. */
@@ -78,8 +79,6 @@ const FIELD_OF_VIEW = 38
 const MIN_DISTANCE = 6
 /** Never pull back further than twice the distance that frames the whole city. */
 const MAX_FRAMING = 2
-/** 10° above the horizon. */
-const MAX_POLAR_ANGLE = MathUtils.degToRad(80)
 /** The longest step, in seconds, the keys move the camera by in one frame. */
 const MAX_DRIVE_STEP = 0.1
 const START_AZIMUTH = MathUtils.degToRad(34)
@@ -149,6 +148,8 @@ export class CityEngine {
   private city: Group | null = null
   // The radius the camera frames the city with, once a city is loaded.
   private framingRadius: number | null = null
+  // The distance the camera frames it from, whatever the window's shape.
+  private framingDistance = 0
   private needsRender = true
   private framesSince = 0
   private statsSince = 0
@@ -200,7 +201,7 @@ export class CityEngine {
     this.camera = new PerspectiveCamera(FIELD_OF_VIEW, 1, 1, 1000)
     this.controls = new CityControls(this.camera, this.renderer.domElement)
     this.controls.minDistance = MIN_DISTANCE
-    this.controls.maxPolarAngle = MAX_POLAR_ANGLE
+    this.controls.maxPolarAngle = NEAR_TILT
 
     this.sun.castShadow = true
     const mapSize = Math.min(SHADOW_MAP_SIZE, this.renderer.capabilities.maxTextureSize)
@@ -558,8 +559,8 @@ export class CityEngine {
 
   private fitMaxDistance(): void {
     if (this.framingRadius !== null) {
-      this.controls.maxDistance =
-        MAX_FRAMING * this.controls.getDistanceToFitSphere(this.framingRadius)
+      this.framingDistance = this.controls.getDistanceToFitSphere(this.framingRadius)
+      this.controls.maxDistance = MAX_FRAMING * this.framingDistance
     }
   }
 
@@ -645,6 +646,8 @@ export class CityEngine {
     const delta = this.timer.getDelta()
     // A frame late by more than this (a hidden tab, a long task) does not throw the camera away.
     this.controls.drive(this.drive, Math.min(delta, MAX_DRIVE_STEP))
+    // Further away, the camera may come down closer to the horizon.
+    this.controls.maxPolarAngle = maxTilt(this.controls.distance, this.framingDistance)
     const moved = this.controls.update(delta)
     if (moved !== this.cameraMoving) {
       this.cameraMoving = moved
