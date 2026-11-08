@@ -139,7 +139,12 @@ export class CityEngine {
 
   constructor(container: HTMLElement, { continuous = false }: CityEngineOptions = {}) {
     this.continuous = continuous
-    this.renderer = new WebGLRenderer({ antialias: true, powerPreference: 'high-performance' })
+    this.renderer = new WebGLRenderer({
+      antialias: true,
+      powerPreference: 'high-performance',
+      // The outline of a marked building is cut out with the stencil.
+      stencil: true,
+    })
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     this.renderer.shadowMap.enabled = true
     this.renderer.shadowMap.type = PCFShadowMap
