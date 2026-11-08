@@ -4,20 +4,15 @@ import {
   Color,
   DirectionalLight,
   Group,
-  InstancedMesh,
   MathUtils,
   Matrix4,
-  Mesh,
-  type Object3D,
   PCFShadowMap,
   PerspectiveCamera,
   Quaternion,
   Raycaster,
   Scene,
-  ShaderMaterial,
   Sphere,
   Spherical,
-  Texture,
   Timer,
   Vector2,
   Vector3,
@@ -45,6 +40,7 @@ import { CityPicker, type CityTarget } from '../interaction/picking'
 import { type CityTargets, cityTargets } from '../interaction/targets'
 import { DASH_PERIOD, LABEL_HEIGHT, LABEL_LIFT } from '../render/arc-mesh'
 import { createFading } from '../render/dimming'
+import { disposeObject } from '../render/dispose-object'
 import { SUN_DIRECTION } from '../render/light'
 import { islandShapes } from '../terrain/island-shape'
 import { createParcels } from '../terrain/plateaux'
@@ -1056,29 +1052,4 @@ export class CityEngine {
       this.statsSince = time
     }
   }
-}
-
-function disposeObject(root: Object3D): void {
-  root.traverse((object) => {
-    if (!(object instanceof Mesh)) {
-      return
-    }
-    object.geometry.dispose()
-    if (object instanceof InstancedMesh) {
-      object.dispose()
-    }
-    const materials = [object.material, object.customDepthMaterial]
-      .flat()
-      .filter((material) => material !== undefined)
-    for (const material of materials) {
-      if (material instanceof ShaderMaterial) {
-        for (const uniform of Object.values(material.uniforms)) {
-          if (uniform.value instanceof Texture) {
-            uniform.value.dispose()
-          }
-        }
-      }
-      material.dispose()
-    }
-  })
 }
