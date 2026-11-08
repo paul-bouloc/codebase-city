@@ -7,7 +7,7 @@ import type { Point } from './layout'
 // other.
 
 /** Average speed along a line, in u per second. */
-export const SAIL_SPEED = 2.5
+export const SAIL_SPEED = 3.5
 /** Where a boat turns round, short of a pier's tip: half its hull, and some water. */
 const BERTH = 1.5
 /** How far right of the line a boat sails, halfway; nothing at the piers. */
