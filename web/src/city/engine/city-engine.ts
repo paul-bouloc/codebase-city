@@ -2,12 +2,8 @@ import { Color, type Group, PCFShadowMap, Scene, Timer, Vector3, WebGLRenderer }
 import type { PlacedBuilding } from '../buildings/placed-buildings'
 import { BOAT_LENGTH, type DecorStats } from '../decor/decor-mesh'
 import type { Fleet } from '../decor/fleet'
-import type {
-  CameraView,
-  CityInteraction,
-  CityItem,
-  CityListeners,
-} from '../interaction/city-interaction'
+import type { CityInteraction } from '../interaction/city-interaction'
+import type { CameraView, CityItem, CityListeners } from '../interaction/city-items'
 import type { CityPicker, CityTarget } from '../interaction/picking'
 import type { CityTargets } from '../interaction/targets'
 import { DASH_PERIOD } from '../render/arc-mesh'

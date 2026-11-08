@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import type { CityEngine } from '../city/engine/city-engine'
-import type { CityItem } from '../city/interaction/city-interaction'
+import type { CityItem } from '../city/interaction/city-items'
 import type { ResultIndex } from './result-index'
 import type { ScreenSelection } from './selection-hash'
 

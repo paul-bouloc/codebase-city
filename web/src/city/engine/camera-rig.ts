@@ -13,7 +13,7 @@ import {
   Vector4,
   type WebGLRenderer,
 } from 'three'
-import type { CameraView } from '../interaction/city-interaction'
+import type { CameraView } from '../interaction/city-items'
 import type { CityPicker } from '../interaction/picking'
 import type { Rect } from '../world/layout'
 import { nearPlane, type Vec3 } from '../world/units'

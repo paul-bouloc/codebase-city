@@ -6,7 +6,8 @@ import { createFading } from '../render/dimming'
 import { islandShapes } from '../terrain/island-shape'
 import type { Ferry } from '../waterways/links'
 import type { CityLayout, FileMetrics } from '../world/layout'
-import { CityInteraction, type CityItem, isClick } from './city-interaction'
+import { CityInteraction } from './city-interaction'
+import { type CityItem, isClick } from './city-items'
 
 const file = (path: string): FileMetrics => ({
   path,

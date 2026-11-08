@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CityEngine } from '../city/engine/city-engine'
 import { cityCards } from '../city/interaction/city-cards'
-import type { CameraView, CityHover } from '../city/interaction/city-interaction'
+import type { CameraView, CityHover } from '../city/interaction/city-items'
 import type { PortList } from '../city/interaction/open-port'
 import { cityFromResult } from '../city/world/from-result'
 import type { AnalysisResult } from '../data/generated/AnalysisResult'

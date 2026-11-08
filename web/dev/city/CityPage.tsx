@@ -1,6 +1,6 @@
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 import type { CityEngine } from '../../src/city/engine/city-engine'
-import type { CityItem } from '../../src/city/interaction/city-interaction'
+import type { CityItem } from '../../src/city/interaction/city-items'
 import type { PortList } from '../../src/city/interaction/open-port'
 import { cityFromResult } from '../../src/city/world/from-result'
 import type { CityLayout } from '../../src/city/world/layout'
