@@ -11,9 +11,10 @@ import { ArcLayer } from '../render/arc-mesh'
 import type { Fading } from '../render/dimming'
 import type { IslandShape } from '../terrain/island-shape'
 import type { Port } from '../waterways/links'
-import { type CityLayout, rectContains } from '../world/layout'
+import type { CityLayout } from '../world/layout'
 import { type Area, AreaMark, HOVERED_AREA, SELECTED_AREA } from './area-marks'
 import { BuildingMark, HOVERED_MARK, SELECTED_MARK } from './building-marks'
+import { CityGuide, type CityGuideView } from './city-guide'
 import {
   type CityFlows,
   type CityItem,
@@ -23,6 +24,7 @@ import {
 } from './city-items'
 import { DimFade } from './dim-fade'
 import { HoverTiming } from './hover-timing'
+import { type KeptAreas, keptInAreas } from './kept-areas'
 import { OpenPort } from './open-port'
 import type { CityTarget } from './picking'
 import { CYCLE_RINGS, RingSet } from './rings'
@@ -57,6 +59,8 @@ export class CityInteraction {
   readonly portBadges: ArcLayer
   readonly portLinks: FolderLinkMarks
   private readonly ports: OpenPort
+  /** What a step of the guide's tour puts forward. */
+  readonly guide: CityGuide
 
   constructor(
     private readonly layout: CityLayout,
@@ -88,7 +92,9 @@ export class CityInteraction {
     this.ports = new OpenPort(layout, flows.ports ?? [], flows.extra, pixelRatio)
     this.portLinks = this.ports.links
     this.portBadges = this.ports.badges
+    this.guide = new CityGuide(layout, shapes, buildings, pixelRatio)
     this.overlay.add(
+      this.guide.group,
       this.folderLinks.group,
       this.portLinks.group,
       this.portBadges.group,
@@ -149,6 +155,7 @@ export class CityInteraction {
       this.timing.clear()
     }
     this.selected = target
+    this.guide.setSelected(target?.kind === 'building' ? target.index : null)
     this.selectedBuilding.show(null)
     this.selectedArea.show(null, this.shapes)
     const cycle = target?.kind === 'building' ? this.flows.cycles.cycleOf.get(target.index) : null
@@ -170,12 +177,20 @@ export class CityInteraction {
     this.showFolderLinks(target)
     // A hovered mark under the selected one would draw twice.
     this.highlight(this.highlighted)
-    if (target) {
-      this.keep(target)
-    }
-    this.dim.toward(target ? 1 : 0)
+    this.fade()
     this.listeners().select?.(target ? this.item(target) : null)
     this.redraw()
+  }
+
+  /**
+   * Shows what a step of the guide's tour puts forward, or nothing. A selection keeps its marks
+   * and its fading over the guide's.
+   */
+  showGuide(view: CityGuideView | null): void {
+    this.guide.show(view)
+    this.fade()
+    // A hovered building put forward loses its ink: the guide's Jade says more.
+    this.highlight(this.highlighted)
   }
 
   /** The hubs of the bundles on show, where a click opens them. */
@@ -249,6 +264,7 @@ export class CityInteraction {
   dispose(): void {
     this.timing.clear()
     this.closePort()
+    this.guide.dispose()
     this.hoveredBuilding.dispose()
     this.selectedBuilding.dispose()
     this.hoveredArea.dispose()
@@ -311,8 +327,11 @@ export class CityInteraction {
     const target = pointed?.kind === 'hub' || pointed?.kind === 'port' ? null : pointed
     const selected = target && this.selected && sameTarget(target, this.selected)
     const building = target?.kind === 'building' && !selected ? target : null
-    // A linked building keeps its Marine or Sun mark: it says more than the hover.
-    const inked = building && !this.links.isMarked(building.index) ? building : null
+    // A linked building keeps its Marine or Sun mark, one put forward its Jade: they say more.
+    const inked =
+      building && !this.links.isMarked(building.index) && !this.guide.has(building.index)
+        ? building
+        : null
     this.hoveredBuilding.show(inked ? (this.buildings.placed[inked.index] ?? null) : null)
     if (building) {
       this.buildings.setHighlight(building.index, Highlight.hovered)
@@ -351,38 +370,29 @@ export class CityInteraction {
     this.listeners().hover?.(pointed ? { ...this.item(pointed), pointer: this.pointer } : null)
   }
 
+  /** Fades what the selection leaves out, or else what the guide does, or nothing. */
+  private fade(): void {
+    const kept = this.selected ? this.keep(this.selected) : this.guide.kept()
+    if (!kept) {
+      this.dim.toward(0)
+      return
+    }
+    this.buildings.setKept(kept.kept)
+    this.fading.keptArea.value.set(...kept.trees)
+    this.dim.toward(1)
+  }
+
   /** The buildings and the trees that keep their colours around a selection. */
-  private keep(target: CityTarget): void {
-    const { placed } = this.buildings
-    const area = this.fading.keptArea.value
+  private keep(target: CityTarget): KeptAreas | null {
     if (target.kind === 'building') {
       const linked = this.links.linked()
       for (const member of this.links.cycle?.members ?? []) {
         linked.add(member)
       }
-      this.buildings.setKept((index) => index === target.index || linked.has(index))
-      area.set(1, 1, 0, 0)
-      return
+      return { kept: (index) => index === target.index || linked.has(index), trees: [1, 1, 0, 0] }
     }
-    const island = this.layout.islands[target.island]
-    const rect = target.kind === 'parcel' ? island?.parcels[target.parcel]?.rect : island?.plateau
-    if (!island || !rect) {
-      return
-    }
-    this.buildings.setKept((index) => {
-      const building = placed[index]
-      const lot = building && building.island === target.island ? island.lots[building.lot] : null
-      return lot !== null && lot !== undefined && rectContains(rect, lot.x, lot.y)
-    })
-    // An island's trees stand on its flanks too, down to its beach.
-    const margin = target.kind === 'island' ? (this.shapes[target.island]?.reach ?? 0) : 0
-    // Board y runs along three.js −z.
-    area.set(
-      rect.x - margin,
-      -(rect.y + rect.height) - margin,
-      rect.x + rect.width + margin,
-      -rect.y + margin,
-    )
+    const area = this.area(target)
+    return area ? keptInAreas(this.layout, this.buildings.placed, this.shapes, [area]) : null
   }
 
   private area(target: CityTarget): Area | null {
