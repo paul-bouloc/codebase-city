@@ -35,6 +35,15 @@ describe('decodeResult', () => {
     expect(result.cycles.shortest[0]).toEqual([5, 6])
     expect(result.layout.grids.columns[2]).toBe(3)
     expect(result.layout.lots.x[0]).toBe(19)
+    expect(result.tour.steps.map((step) => step.kind)).toEqual([
+      'overview',
+      'entryPoints',
+      'conductors',
+      'foundations',
+      'layers',
+      'cycles',
+      'rest',
+    ])
   })
 
   it('rejects anything but an object', () => {
@@ -47,7 +56,7 @@ describe('decodeResult', () => {
       decodeChanged((json) => {
         json.formatVersion = 8
       }),
-    ).toThrow('unsupported format version 8, expected 9')
+    ).toThrow('unsupported format version 8, expected 10')
   })
 
   it('rejects a grid without a nature, or of an unknown one', () => {
@@ -536,5 +545,53 @@ describe('decodeResult', () => {
         json.layout.lots.x[1] = 19
       }),
     ).toThrow('layout.lots[1] shares its lot with another file')
+  })
+
+  it('requires a tour that starts with the overview, each kind once, in order', () => {
+    expect(
+      decodeChanged((json) => {
+        json.tour.steps.shift()
+      }),
+    ).toThrow('tour.steps must start with the overview')
+    expect(
+      decodeChanged((json) => {
+        const [entryPoints, conductors] = [json.tour.steps[1], json.tour.steps[2]]
+        json.tour.steps[1] = conductors
+        json.tour.steps[2] = entryPoints
+      }),
+    ).toThrow('tour.steps[2] must come after the previous step')
+    expect(
+      decodeChanged((json) => {
+        ;(json.tour.steps[1] as { kind: string }).kind = 'tea'
+      }),
+    ).toThrow('tour.steps[1].kind is not a kind of step')
+  })
+
+  it('requires tour steps that point inside their tables, one to three rows each', () => {
+    expect(
+      decodeChanged((json) => {
+        ;(json.tour.steps[1] as { entries: number[] }).entries = [1]
+      }),
+    ).toThrow('tour.entries[0] points to row 1, but the table has 1 rows')
+    expect(
+      decodeChanged((json) => {
+        ;(json.tour.steps[2] as { conductors: number[] }).conductors = []
+      }),
+    ).toThrow('a list of tour.steps[2] must hold one to three rows, each once')
+    expect(
+      decodeChanged((json) => {
+        ;(json.tour.steps[5] as { dir: number }).dir = 8
+      }),
+    ).toThrow('tour.dir[0] points to row 8, but the table has 8 rows')
+    expect(
+      decodeChanged((json) => {
+        ;(json.tour.steps[0] as { languageLines: number }).languageLines = 9999
+      }),
+    ).toThrow('the counts of tour.steps[0] do not add up')
+    expect(
+      decodeChanged((json) => {
+        ;(json.tour.steps[6] as { parkCount: number }).parkCount = 0
+      }),
+    ).toThrow('the counts of tour.steps[6] do not add up')
   })
 })

@@ -2,10 +2,11 @@ import { fail, object, string, stringColumn, u32 } from './decode/checks'
 import { decodeDirs, decodeFiles, decodeStats, decodeSymbols } from './decode/files'
 import { decodeCycles, decodeEdges, decodeIslands, decodeLinks, decodeRoles } from './decode/graph'
 import { decodeLayout } from './decode/layout'
+import { decodeTour } from './decode/tour'
 import type { AnalysisResult } from './generated/AnalysisResult'
 
 // FORMAT_VERSION in crates/model; the generated sample result keeps the two in step.
-export const FORMAT_VERSION = 9
+export const FORMAT_VERSION = 10
 
 /**
  * Turns a parsed JSON analysis result into a typed one, or throws an
@@ -24,6 +25,9 @@ export function decodeResult(json: unknown): AnalysisResult {
   const languages = stringColumn(fields.languages, 'languages')
   const files = decodeFiles(fields.files, dirs.parent.length, languages.length)
   const islands = decodeIslands(fields.islands, dirs)
+  const roles = decodeRoles(fields.roles, files.dir.length, dirs.parent.length)
+  const links = decodeLinks(fields.links, islands.layer)
+  const cycles = decodeCycles(fields.cycles, files.dir.length)
   return {
     formatVersion,
     analyzerVersion: string(fields.analyzerVersion, 'analyzerVersion'),
@@ -37,11 +41,12 @@ export function decodeResult(json: unknown): AnalysisResult {
     files,
     symbols: decodeSymbols(fields.symbols, files.dir.length),
     edges: decodeEdges(fields.edges, files.dir.length, dirs.parent.length),
-    roles: decodeRoles(fields.roles, files.dir.length, dirs.parent.length),
+    roles,
     islands,
-    links: decodeLinks(fields.links, islands.layer),
-    cycles: decodeCycles(fields.cycles, files.dir.length),
+    links,
+    cycles,
     layout: decodeLayout(fields.layout, dirs, islands, files),
+    tour: decodeTour(fields.tour, { dirs, files, languages, roles, islands, links, cycles }),
     stats: decodeStats(fields.stats),
   }
 }
