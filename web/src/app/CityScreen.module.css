@@ -1,0 +1,85 @@
+/* The interface over the city, laid out as on the "City UI · City idle" board (1440 × 900). */
+
+.screen {
+  /* The sheet's width and right margin: how far the sheet, the camera and the scale move. */
+  --sheet-travel: 432px;
+
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  /* Under the canvas while it starts. */
+  background: var(--city-sea);
+}
+
+.topBar {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  left: var(--space-3);
+}
+
+.legend {
+  position: absolute;
+  top: 84px;
+  left: var(--space-3);
+}
+
+.camera {
+  position: absolute;
+  right: var(--space-3);
+  bottom: var(--space-3);
+}
+
+.scale {
+  position: absolute;
+  right: 88px;
+  bottom: var(--space-4);
+}
+
+/*
+ * The camera, the scale and the sheet move as one, on the floating panel's clock: in with
+ * `slow` and `enter`, out with `base` and `exit`. Each state carries the timing of the move
+ * that leads to it.
+ */
+.camera,
+.scale {
+  transition: transform var(--duration-base) var(--easing-exit);
+}
+
+/* 444 px from the right edge: the 420 px sheet, its 12 px margin and 12 px more. */
+.besideSheet {
+  transform: translateX(calc(-1 * var(--sheet-travel)));
+  transition: transform var(--duration-slow) var(--easing-enter);
+}
+
+/* Where the sheets stand; they slide in by themselves (SheetFrame). Not raised: the top bar's
+ * hints hang over them. */
+.sheet {
+  position: absolute;
+  top: 84px;
+  right: var(--space-3);
+  bottom: var(--space-3);
+}
+
+/* Under the repository button. */
+.about {
+  position: absolute;
+  top: 80px;
+  left: 56px;
+  bottom: var(--space-3);
+  z-index: var(--layer-menu);
+  pointer-events: none;
+}
+
+.about > * {
+  pointer-events: auto;
+}
+
+/* Reduced motion: the camera and the scale jump into place. */
+@media (prefers-reduced-motion: reduce) {
+  .camera,
+  .scale,
+  .besideSheet {
+    transition: none;
+  }
+}
