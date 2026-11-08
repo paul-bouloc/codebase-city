@@ -25,15 +25,16 @@ import { aboutData } from './about/about'
 import styles from './CityScreen.module.css'
 import { type CityRepo, CityTopBar } from './CityTopBar'
 import { CityView } from './CityView'
-import { type CameraAction, CameraControls } from './camera/CameraControls'
+import { CameraControls } from './camera/CameraControls'
 import { MapScale } from './camera/MapScale'
+import { useCameraActions } from './camera/use-camera-actions'
 import { escapeTarget } from './city-escape'
 import { githubTreeUrl } from './github-links'
 import { CityLegend } from './legend/CityLegend'
 import { repoContents } from './legend/legend'
 import { type LegendContent, legendContent } from './legend/legend-content'
 import { indexResult } from './result-index'
-import { cameraKey, isSearchKey, isTyping } from './screen-keys'
+import { isSearchKey } from './screen-keys'
 import { SearchPalette, searchOptionId } from './search/SearchPalette'
 import { type SearchHit, searchOptions } from './search/search-data'
 import { buildSearchIndex, normalizeQuery } from './search/search-index'
@@ -310,43 +311,7 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
     return () => window.removeEventListener('keydown', handleKey)
   }, [engine, portOpen, aboutOpen, sheetShown, selection, choose])
 
-  const cameraAction = useCallback(
-    (action: CameraAction) => {
-      switch (action) {
-        case 'north':
-          engine?.faceNorth()
-          break
-        case 'zoom-in':
-          engine?.zoom(1)
-          break
-        case 'zoom-out':
-          engine?.zoom(-1)
-          break
-        case 'recenter':
-          engine?.recenter()
-          break
-        case 'top-view':
-          engine?.toggleTopView()
-          break
-      }
-    },
-    [engine],
-  )
-
-  // + − F T, as the camera buttons' hints say.
-  useEffect(() => {
-    const handleKey = (event: KeyboardEvent) => {
-      const action = cameraKey(event)
-      if (!action || event.defaultPrevented || isTyping(event.target)) {
-        return
-      }
-      event.preventDefault()
-      cameraAction(action)
-    }
-    window.addEventListener('keydown', handleKey)
-    return () => window.removeEventListener('keydown', handleKey)
-  }, [cameraAction])
-
+  const cameraAction = useCameraActions(engine)
   useDriveKeys(engine)
 
   // The search: the palette shows under the field while it has the focus and a query.
