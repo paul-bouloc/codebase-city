@@ -88,13 +88,15 @@ export interface LineStyle {
   opacity?: number
 }
 
-/** Polylines, closed or not, in three.js coordinates, drawn a fixed width on screen. */
-export function createScreenLines(
+/**
+ * The quads of polylines, closed or not, for a screen-line shader: each segment's ends, its
+ * corner (which end, which side) and how far along its line each corner is, in u. Every polyline
+ * gives `4 × segments` vertices, in order.
+ */
+export function lineGeometry(
   polylines: readonly (readonly Vec3[])[],
-  style: LineStyle,
-  pixelRatio: number,
-  closed = true,
-): Mesh {
+  closed: boolean,
+): BufferGeometry {
   const starts: number[] = []
   const ends: number[] = []
   const corners: number[] = []
@@ -131,6 +133,17 @@ export function createScreenLines(
   geometry.setAttribute('corner', new Float32BufferAttribute(corners, 2))
   geometry.setAttribute('distance', new Float32BufferAttribute(distances, 1))
   geometry.setIndex(indices)
+  return geometry
+}
+
+/** Polylines, closed or not, in three.js coordinates, drawn a fixed width on screen. */
+export function createScreenLines(
+  polylines: readonly (readonly Vec3[])[],
+  style: LineStyle,
+  pixelRatio: number,
+  closed = true,
+): Mesh {
+  const geometry = lineGeometry(polylines, closed)
 
   const resolution: IUniform<Vector2> = { value: new Vector2(1, 1) }
   const material = new ShaderMaterial({
