@@ -163,11 +163,12 @@ pub(crate) fn print_tour(result: &AnalysisResult) {
                 config,
                 root_config,
                 park_count,
+                park_tests,
                 parks,
             } => {
                 println!(
-                    "  rest        {tests} tests in {park_count} parks, {examples} examples, \
-                     {docs} docs, {config} config ({root_config} at the root)"
+                    "  rest        {tests} tests, {park_tests} of them in {park_count} parks, \
+                     {examples} examples, {docs} docs, {config} config ({root_config} at the root)"
                 );
                 let parks: Vec<String> = parks.iter().map(|&dir| dir_path(result, dir)).collect();
                 println!("              largest parks: {}", parks.join(", "));
