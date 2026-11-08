@@ -1,9 +1,9 @@
 import styles from './Badge.module.css'
+import { Spinner } from './feedback/Spinner'
 import { Icon } from './Icon'
 import type { IconName } from './icons'
 import { LANGUAGE_LABELS } from './language-labels'
 import { ROLE_NAMES } from './role-names'
-import { Spinner } from './Spinner'
 
 export type FileRole =
   | 'entry-point'

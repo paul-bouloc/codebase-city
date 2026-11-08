@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
+import { ISLAND_COLORS, LOGO_COLORS } from '../logo-art'
 import styles from './EmptyState.module.css'
-import { ISLAND_COLORS, LOGO_COLORS } from './logo-art'
 
 const TEXT = {
   illustration: 'An empty island waiting for a city',

@@ -6,8 +6,8 @@ import {
   useRef,
   useState,
 } from 'react'
-import { Icon } from './Icon'
-import type { IconName } from './icons'
+import { Icon } from '../Icon'
+import type { IconName } from '../icons'
 import styles from './Toast.module.css'
 import { type ToastData, type ToastTone, toastDwell } from './toast-queue'
 

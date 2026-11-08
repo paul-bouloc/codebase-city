@@ -7,7 +7,7 @@ import {
   useId,
   useRef,
 } from 'react'
-import { Button } from './actions/Button'
+import { Button } from '../actions/Button'
 import styles from './Dialog.module.css'
 
 const TEXT = {

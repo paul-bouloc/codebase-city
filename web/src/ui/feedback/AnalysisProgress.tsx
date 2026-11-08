@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react'
+import { Badge } from '../Badge'
+import { Icon } from '../Icon'
 import styles from './AnalysisProgress.module.css'
 import {
   BUILD_STEPS,
@@ -8,8 +10,6 @@ import {
   type StepState,
   stepStates,
 } from './analysis-steps'
-import { Badge } from './Badge'
-import { Icon } from './Icon'
 
 const TEXT = {
   steps: {
