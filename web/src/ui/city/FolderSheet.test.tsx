@@ -78,6 +78,12 @@ describe('FolderSheet', () => {
     expect(render({ ...FOLDER, kind: 'tests' })).toContain('Tests · park')
   })
 
+  it('names an island without production code without a layer', () => {
+    const html = render({ ...FOLDER, kind: 'island' })
+    expect(html).toContain('>Island<')
+    expect(html).not.toContain('layer')
+  })
+
   it('opens GitHub in a new tab and drops a README link that is not on github.com', () => {
     expect(render(FOLDER)).toContain('target="_blank"')
     const html = render({ ...FOLDER, readme: { text: 'Hi', url: 'https://evil.example/x' } })

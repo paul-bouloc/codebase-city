@@ -76,8 +76,12 @@ export interface IslandLink {
 
 export interface FolderSheetData {
   path: string
-  // "Island · layer 3 of 5", "Tests · park".
-  kind: { island: { layer: number; of: number } } | { parcel: { island: string } } | 'tests'
+  // "Island · layer 3 of 5", "Island" (no production code, so no layer), "Tests · park".
+  kind:
+    | { island: { layer: number; of: number } }
+    | 'island'
+    | { parcel: { island: string } }
+    | 'tests'
   analyzed: boolean
   files: number
   lines: number

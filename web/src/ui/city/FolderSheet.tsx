@@ -26,6 +26,8 @@ const TEXT = {
   github: 'Open on GitHub',
   copyLink: 'Copy link to this folder',
   island: (layer: number, of: number) => `Island · layer ${layer} of ${of}`,
+  // An island without production code stands on no layer.
+  plainIsland: 'Island',
   parcel: (island: string) => `Folder · on ${island}`,
   tests: 'Tests · park',
   files: 'Files',
@@ -202,6 +204,9 @@ export function FolderSheet({
 }
 
 function subtitle(kind: FolderSheetData['kind']): string {
+  if (kind === 'island') {
+    return TEXT.plainIsland
+  }
   if (kind === 'tests') {
     return TEXT.tests
   }
