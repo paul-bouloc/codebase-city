@@ -77,6 +77,23 @@ describe('CityTopBar', () => {
     expect(html).toContain(`id="${hintId}" role="tooltip"`)
   })
 
+  it('shows only the controls whose feature exists, and the repository alone', () => {
+    const html = renderToStaticMarkup(
+      <CityTopBar
+        repo={{ ...PROPS.repo, analyzed: undefined }}
+        homeHref="/"
+        aboutOpen={false}
+        onAboutToggle={() => {}}
+      />,
+    )
+    expect(html).toContain('vscode')
+    expect(html).not.toContain('analyzed')
+    expect(html).not.toContain('role="combobox"')
+    expect(html).not.toContain('Building style')
+    expect(html).not.toContain('Share')
+    expect(html).not.toContain('Sign in')
+  })
+
   it('draws no GitHub link for an address that is not on github.com', () => {
     const html = render({ repo: { ...PROPS.repo, githubUrl: 'javascript:alert(1)' } })
     expect(html).not.toContain('javascript:')

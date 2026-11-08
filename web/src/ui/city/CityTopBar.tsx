@@ -36,8 +36,8 @@ export interface CityRepo {
   name: string
   // Short hash of the analysed commit.
   commit: string
-  // "2 days ago".
-  analyzed: string
+  // "2 days ago"; absent until the screen knows when the analysis ran.
+  analyzed?: string
   // The repository at that commit.
   githubUrl: string
 }
@@ -57,25 +57,27 @@ interface CityTopBarProps {
   onAboutToggle: () => void
   // Given once the About panel exists, so `aria-controls` never points at nothing.
   aboutPanelId?: string
-  searchValue: string
-  onSearchChange: (value: string) => void
+  // The controls below show only once their feature exists: search, building style, share and
+  // account each come with their own handler.
+  searchValue?: string
+  onSearchChange?: (value: string) => void
   searchExpanded?: boolean
   searchListboxId?: string
   searchInputRef?: Ref<HTMLInputElement>
   // Until the search index has arrived.
   searchDisabled?: boolean
-  mode: BuildingMode
-  onModeChange: (mode: BuildingMode) => void
+  mode?: BuildingMode
+  onModeChange?: (mode: BuildingMode) => void
   // While the city is building.
   modeDisabled?: boolean
   // The text fallback view has no building style.
   showMode?: boolean
-  shareOpen: boolean
-  onShareToggle: () => void
+  shareOpen?: boolean
+  onShareToggle?: () => void
   sharePanelId?: string
   // Null for a visitor: looking at a city never needs an account.
-  account: CityAccount | null
-  onSignIn: () => void
+  account?: CityAccount | null
+  onSignIn?: () => void
 }
 
 // Floats over the city. No quota chip here: the city is for looking, not building.
@@ -85,20 +87,20 @@ export function CityTopBar({
   aboutOpen,
   onAboutToggle,
   aboutPanelId,
-  searchValue,
+  searchValue = '',
   onSearchChange,
   searchExpanded,
   searchListboxId,
   searchInputRef,
   searchDisabled = false,
-  mode,
+  mode = 'simplified',
   onModeChange,
   modeDisabled = false,
   showMode = true,
-  shareOpen,
+  shareOpen = false,
   onShareToggle,
   sharePanelId,
-  account,
+  account = null,
   onSignIn,
 }: CityTopBarProps) {
   const fullName = `${repo.owner}/${repo.name}`
@@ -129,7 +131,7 @@ export function CityTopBar({
               </span>
               <span className={styles.repoMeta}>
                 <span className={styles.commit}>{repo.commit}</span>
-                {TEXT.analyzed(repo.analyzed)}
+                {repo.analyzed && TEXT.analyzed(repo.analyzed)}
               </span>
             </span>
             <Icon name="chevron-down" size={16} className={styles.chevron} />
@@ -153,18 +155,21 @@ export function CityTopBar({
         </ControlHint>
       )}
 
+      {/* Holds the middle even empty: the controls on the right stay on the right. */}
       <span className={styles.search}>
-        <CitySearchField
-          value={searchValue}
-          onChange={onSearchChange}
-          expanded={searchExpanded}
-          listboxId={searchListboxId}
-          inputRef={searchInputRef}
-          disabled={searchDisabled}
-        />
+        {onSearchChange && (
+          <CitySearchField
+            value={searchValue}
+            onChange={onSearchChange}
+            expanded={searchExpanded}
+            listboxId={searchListboxId}
+            inputRef={searchInputRef}
+            disabled={searchDisabled}
+          />
+        )}
       </span>
 
-      {showMode && (
+      {showMode && onModeChange && (
         <ControlHint text={TEXT.modeHint} shortcut={TEXT.modeShortcut}>
           {(hintId) => (
             <SegmentedControl
@@ -179,17 +184,19 @@ export function CityTopBar({
         </ControlHint>
       )}
 
-      <Button
-        variant="secondary"
-        icon="share"
-        className={styles.share}
-        aria-haspopup="dialog"
-        aria-expanded={shareOpen}
-        aria-controls={shareOpen ? sharePanelId : undefined}
-        onClick={onShareToggle}
-      >
-        {TEXT.share}
-      </Button>
+      {onShareToggle && (
+        <Button
+          variant="secondary"
+          icon="share"
+          className={styles.share}
+          aria-haspopup="dialog"
+          aria-expanded={shareOpen}
+          aria-controls={shareOpen ? sharePanelId : undefined}
+          onClick={onShareToggle}
+        >
+          {TEXT.share}
+        </Button>
+      )}
 
       {account ? (
         <AccountMenu
@@ -200,9 +207,11 @@ export function CityTopBar({
           onSignOut={account.onSignOut}
         />
       ) : (
-        <Button variant="github" icon="github" onClick={onSignIn}>
-          {TEXT.signIn}
-        </Button>
+        onSignIn && (
+          <Button variant="github" icon="github" onClick={onSignIn}>
+            {TEXT.signIn}
+          </Button>
+        )
       )}
     </Glass>
   )
