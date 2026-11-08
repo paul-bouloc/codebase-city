@@ -1,10 +1,19 @@
 import type { Point } from './layout'
 
 // A boat on a ferry line sails from one pier to the other and back, slowing down at each end: its
-// way along the line follows a half cosine, so that it eases out of a pier and into the next.
+// way along the line follows a half cosine, so that it eases out of a pier and into the next. It
+// stops short of a pier's tip, where the boats moored there lie; it turns round there while it
+// barely moves, and keeps to its right of the line, so that two boats meeting on a line pass each
+// other.
 
 /** Average speed along a line, in u per second. */
 export const SAIL_SPEED = 2.5
+/** Where a boat turns round, short of a pier's tip: half its hull, and some water. */
+const BERTH = 1.5
+/** How far right of the line a boat sails, halfway; nothing at the piers. */
+export const LANE = 0.6
+/** The turn takes this share of a leg before the end and as much after. */
+const TURN = 0.08
 
 /** Where a boat is and where it heads, on the board. */
 export interface Sail {
@@ -60,15 +69,32 @@ export class Route {
  * many seconds.
  */
 export function sail(route: Route, share: number, seconds: number, speed = SAIL_SPEED): Sail {
-  if (route.length <= 0) {
-    return route.at(0)
+  const { length } = route
+  const span = length - 2 * BERTH
+  if (span <= 0) {
+    return route.at(length / 2)
   }
-  // A leg is one way, eased; the start is the leg's phase whose eased place is `share`.
-  const start = Math.acos(1 - 2 * Math.min(Math.max(share, 0), 1)) / Math.PI
-  const leg = route.length / speed
-  const phase = (((start + seconds / leg) % 2) + 2) % 2
+  // A leg is one way, eased; the start is the leg's phase whose eased place is the boat's.
+  const from = Math.min(Math.max((share * length - BERTH) / span, 0), 1)
+  const start = Math.acos(1 - 2 * from) / Math.PI
+  const phase = (((start + (seconds * speed) / span) % 2) + 2) % 2
   const outward = phase < 1
   const progress = outward ? phase : 2 - phase
-  const place = route.at(((1 - Math.cos(Math.PI * progress)) / 2) * route.length)
-  return outward ? place : { ...place, angle: place.angle + Math.PI }
+  const place = route.at(BERTH + ((1 - Math.cos(Math.PI * progress)) / 2) * span)
+  // Half a turn around each end of a leg: at the far pier (phase 1), then back home (phase 2).
+  const wrapped = phase < 0.5 ? phase + 2 : phase
+  const turned = smoothstep(1 - TURN, 1 + TURN, wrapped) - smoothstep(2 - TURN, 2 + TURN, wrapped)
+  // To the right of the way it goes.
+  const heading = place.angle + (outward ? 0 : Math.PI)
+  const aside = LANE * Math.sin(Math.PI * progress)
+  return {
+    x: place.x + Math.sin(heading) * aside,
+    y: place.y - Math.cos(heading) * aside,
+    angle: place.angle + Math.PI * turned,
+  }
+}
+
+function smoothstep(from: number, to: number, x: number): number {
+  const t = Math.min(Math.max((x - from) / (to - from), 0), 1)
+  return t * t * (3 - 2 * t)
 }
