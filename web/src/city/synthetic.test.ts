@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { ARCHETYPES, buildingFor } from './archetypes'
+import { islandShapes } from './island-shape'
 import { boundsOf, distanceToRect, type Rect } from './layout'
-import { channelWidth, syntheticCity } from './synthetic'
+import { cityLinks } from './links'
+import { channelWidth, syntheticCity, withCrossingCycles } from './synthetic'
 
 /** Shortest distance between two disjoint rectangles. */
 function gapBetween(a: Rect, b: Rect): number {
@@ -107,5 +109,26 @@ describe('syntheticCity', () => {
   it('rejects impossible requests', () => {
     expect(() => syntheticCity({ islands: 0, files: 10 })).toThrow(RangeError)
     expect(() => syntheticCity({ islands: 5, files: 3 })).toThrow(RangeError)
+  })
+})
+
+describe('withCrossingCycles', () => {
+  it('loops across a bridge, a ferry line and a link too small to draw', () => {
+    const layout = withCrossingCycles(syntheticCity({ islands: 12, files: 2000 }))
+    const links = cityLinks(layout, islandShapes(layout))
+    const pairOf = (a: number, b: number) => `${Math.min(a, b)}-${Math.max(a, b)}`
+    const ways = (cycle: number) => {
+      const members = layout.cycles?.[cycle]?.members.map((member) => member.island) ?? []
+      return members.map((island, at) => pairOf(island, members[(at + 1) % members.length] ?? 0))
+    }
+    const bridges = new Set(links.bridges.map((bridge) => pairOf(bridge.a, bridge.b)))
+    const ferries = new Set(links.ferries.map((ferry) => pairOf(ferry.a, ferry.b)))
+    const unshown = new Set(links.unshown.map((pair) => pairOf(pair.a, pair.b)))
+    expect(layout.cycles).toHaveLength(2)
+    expect(ways(0).every((way) => bridges.has(way))).toBe(true)
+    const kinds = ways(1).map((way) =>
+      bridges.has(way) ? 'bridge' : ferries.has(way) ? 'ferry' : unshown.has(way) ? 'unshown' : '',
+    )
+    expect(kinds.sort()).toEqual(['bridge', 'ferry', 'unshown'])
   })
 })

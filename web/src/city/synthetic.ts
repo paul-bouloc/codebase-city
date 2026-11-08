@@ -112,6 +112,86 @@ function syntheticLinks(islands: readonly IslandLayout[], seed: string): IslandL
   return links
 }
 
+/**
+ * A city with import cycles across islands, to see how their ways are outlined: two neighbours
+ * on one layer, face to face across a channel, import each other heavily, so a bridge spans it,
+ * and their first files make a loop; the first files of three islands far apart make another,
+ * along two ferry lines and a link too small to draw. The links added never go up the layers.
+ */
+export function withCrossingCycles(layout: CityLayout): CityLayout {
+  const islands = layout.islands.map((island) => ({ ...island }))
+  const neighbours = facingPair(islands)
+  if (!neighbours) {
+    return layout
+  }
+  const [near, across] = neighbours
+  const nearIsland = islands[near] as IslandLayout
+  islands[across] = { ...(islands[across] as IslandLayout), layer: nearIsland.layer }
+  const others = islands
+    .map((_, index) => index)
+    .filter((index) => index !== near && index !== across)
+  const [first, second, third] = others
+  const links: IslandLink[] = (layout.links ?? []).filter(
+    (link) => ![near, across].includes(link.from) || ![near, across].includes(link.to),
+  )
+  const largest = Math.max(1, ...links.map((link) => link.imports))
+  const add = (from: number, to: number, imports: number) =>
+    links.push({ from, to, imports, upward: 0 })
+  add(near, across, 4 * largest)
+  add(across, near, largest)
+  const cycles: CityLayout['cycles'] = [
+    {
+      members: [
+        { island: near, lot: 0 },
+        { island: across, lot: 0 },
+      ],
+      loop: [0, 1],
+      imports: [
+        [0, 1],
+        [1, 0],
+      ],
+    },
+  ]
+  if (first !== undefined && second !== undefined && third !== undefined) {
+    add(first, second, largest)
+    add(second, third, largest)
+    // Under 1 % of the largest: left undrawn while nothing is selected.
+    add(third, first, 1)
+    cycles.push({
+      members: [
+        { island: first, lot: 0 },
+        { island: second, lot: 0 },
+        { island: third, lot: 0 },
+      ],
+      loop: [0, 1, 2],
+      imports: [
+        [0, 1],
+        [1, 2],
+        [2, 0],
+      ],
+    })
+  }
+  return { ...layout, islands, links, cycles }
+}
+
+/** Two islands face to face across one channel at most 24 u wide, the largest first. */
+function facingPair(islands: readonly IslandLayout[]): [number, number] | null {
+  for (let a = 0; a < islands.length; a++) {
+    for (let b = a + 1; b < islands.length; b++) {
+      const p = (islands[a] as IslandLayout).plateau
+      const q = (islands[b] as IslandLayout).plateau
+      const overlapY = Math.min(p.y + p.height, q.y + q.height) - Math.max(p.y, q.y)
+      const overlapX = Math.min(p.x + p.width, q.x + q.width) - Math.max(p.x, q.x)
+      const gapX = Math.max(q.x - (p.x + p.width), p.x - (q.x + q.width))
+      const gapY = Math.max(q.y - (p.y + p.height), p.y - (q.y + q.height))
+      if ((overlapY > 12 && gapX > 0 && gapX <= 24) || (overlapX > 12 && gapY > 0 && gapY <= 24)) {
+        return [a, b]
+      }
+    }
+  }
+  return null
+}
+
 /** Uneven shares that add up to `files`, at least one each. */
 function splitFiles(files: number, islands: number, seed: string): number[] {
   const random = seededRandom(`${seed}/split`)
