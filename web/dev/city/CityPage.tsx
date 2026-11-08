@@ -7,9 +7,13 @@ import type { CityLayout } from '../../src/city/world/layout'
 import { syntheticCity, withCrossingCycles } from '../../src/city/world/synthetic'
 import { decodeResult } from '../../src/data/decode-result'
 import type { AnalysisResult } from '../../src/data/generated/AnalysisResult'
-import { CityScreen } from '../../src/screen/CityScreen'
+import type { TourStep } from '../../src/data/generated/TourStep'
+import { guideView } from '../../src/guide/guide-view'
+import { CityScreen, type ScreenGuide } from '../../src/screen/CityScreen'
 import { CityView } from '../../src/screen/CityView'
+import { guidePaths } from '../../src/screen/guide/guide-paths'
 import { useDriveKeys } from '../../src/screen/keys/use-drive-keys'
+import { indexResult } from '../../src/screen/result-index'
 import { PortCard } from '../../src/screen/tooltips/PortCard'
 import { Button } from '../../src/ui/actions/Button'
 import { archetypeGallery } from './archetype-gallery'
@@ -21,6 +25,24 @@ const TEXT = {
   remounting: 'Remounting…',
   load: 'Load a result…',
   tools: 'Development',
+  step: 'Tour step',
+  noStep: 'None',
+}
+
+/** What a label says after its file's name, until the guide writes it. */
+function stepNote(result: AnalysisResult, step: TourStep): string {
+  switch (step.kind) {
+    case 'entryPoints':
+      return 'entry point'
+    case 'conductors':
+      return `pulls in ${result.roles.conductors.count[step.conductors[0] ?? 0]} files`
+    case 'foundations':
+      return `${result.roles.foundations.count[step.foundations[0] ?? 0]} dependents`
+    case 'complexAreas':
+      return `complexity ${result.files.complexity[step.files[0] ?? 0]}`
+    default:
+      return ''
+  }
 }
 
 const REMOUNTS = 10
@@ -53,7 +75,7 @@ const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve))
  * `?variants`.
  * `?look=x,y,distance[,azimuth,polar]` points the camera at a board point, for close captures.
  * `?select=path` selects the file or folder of that path once the city loads; `?port=path` opens
- * the port of that island.
+ * the port of that island; `?step=kind` shows that step of the tour (`entryPoints`, `cycles`…).
  * `?stats` shows the frame stats, and with them the drawing of every frame (on by default for a
  * synthetic city, `?stats=off` hides them); without, the city draws only when something changes,
  * as in the product.
@@ -85,6 +107,33 @@ export function CityPage() {
   const [mount, setMount] = useState(0)
   const [remounting, setRemounting] = useState(false)
   const [engine, setEngine] = useState<CityEngine | null>(null)
+  const [stepKind, setStepKind] = useState(query.get('step') ?? '')
+  const index = useMemo(() => (result ? indexResult(result) : null), [result])
+  const guide = useMemo<ScreenGuide | null>(() => {
+    const step = result?.tour.steps.find((each) => each.kind === stepKind)
+    if (!result || !index || !step) {
+      return null
+    }
+    const view = guideView(result, step)
+    const note = stepNote(result, step)
+    return {
+      paths: guidePaths(view, index),
+      notes: new Map(
+        view.labelled.flatMap((file) => index.filePaths[file] ?? []).map((path) => [path, note]),
+      ),
+    }
+  }, [result, index, stepKind])
+
+  function chooseStep(kind: string) {
+    setStepKind(kind)
+    const next = new URLSearchParams(window.location.search)
+    if (kind) {
+      next.set('step', kind)
+    } else {
+      next.delete('step')
+    }
+    window.history.replaceState(null, '', `?${next}${window.location.hash}`)
+  }
 
   // After the city loads (the view's effect runs first), the camera goes where `?look` says.
   // biome-ignore lint/correctness/useExhaustiveDependencies: again after each city loads
@@ -183,6 +232,19 @@ export function CityPage() {
       <Button variant="secondary" onClick={() => input.current?.click()}>
         {TEXT.load}
       </Button>
+      {result && (
+        <label className={styles.step}>
+          {TEXT.step}
+          <select value={stepKind} onChange={(event) => chooseStep(event.target.value)}>
+            <option value="">{TEXT.noStep}</option>
+            {result.tour.steps.map((step) => (
+              <option key={step.kind} value={step.kind}>
+                {step.kind}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <Button variant="secondary" onClick={remount} disabled={remounting}>
         {remounting ? TEXT.remounting : TEXT.remount}
       </Button>
@@ -200,7 +262,13 @@ export function CityPage() {
   if (result) {
     return (
       <>
-        <CityScreen key={mount} result={result} showStats={showStats} onEngine={setEngine} />
+        <CityScreen
+          key={mount}
+          result={result}
+          guide={guide}
+          showStats={showStats}
+          onEngine={setEngine}
+        />
         {/* Where the guide will live: folded, it hides nothing of the screen. */}
         <details className={styles.screenTools}>
           <summary>{TEXT.tools}</summary>
