@@ -29,16 +29,15 @@ import { boardToThree, layerAltitude, type Vec3 } from '../world/units'
 import { type Area, AreaMark, HOVERED_AREA, SELECTED_AREA } from './area-marks'
 import {
   BuildingMark,
-  CYCLE_RINGS,
   HOVERED_MARK,
   INCOMING_MARK,
   OUTGOING_MARK,
-  RingSet,
   roofHeight,
   SELECTED_MARK,
 } from './building-marks'
 import { HoverTiming } from './hover-timing'
 import type { CityTarget } from './picking'
+import { CYCLE_RINGS, RingSet } from './rings'
 
 /** What the pointer rests on or what is selected, with the path of its file or folder. */
 export interface CityItem {
