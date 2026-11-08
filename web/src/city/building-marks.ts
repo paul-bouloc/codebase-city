@@ -1,13 +1,18 @@
 import {
-  BackSide,
+  AlwaysStencilFunc,
   BufferGeometry,
   DoubleSide,
   Float32BufferAttribute,
   Group,
+  InstancedBufferAttribute,
+  InstancedBufferGeometry,
   type IUniform,
+  KeepStencilOp,
   Mesh,
+  NotEqualStencilFunc,
   PlaneGeometry,
   Points,
+  ReplaceStencilOp,
   ShaderMaterial,
   Vector2,
   Vector3,
@@ -29,21 +34,14 @@ export const ringRadius = (side: number) => 0.78 * side + 0.25
 export interface MarkStyle {
   /** Outline width, in CSS pixels. */
   outline: number
-  /** Ring width, and its dash and gap if dotted, in CSS pixels. */
+  /** Ring width, in CSS pixels. */
   ring: number
-  ringDash?: [number, number]
   /** The ring's least radius on screen, in CSS pixels: a far building still gets a clear one. */
   ringMinimum: number
   pin: boolean
 }
 
-export const HOVERED_MARK: MarkStyle = {
-  outline: 2,
-  ring: 1.5,
-  ringDash: [4, 3],
-  ringMinimum: 12,
-  pin: false,
-}
+export const HOVERED_MARK: MarkStyle = { outline: 2, ring: 1.5, ringMinimum: 12, pin: false }
 export const SELECTED_MARK: MarkStyle = { outline: 2.5, ring: 3, ringMinimum: 16, pin: true }
 
 /** The ring sits a little above the ground it is drawn on. */
@@ -57,29 +55,31 @@ const STEM_LENGTH = 36
 const STEM_WIDTH = 2
 const HEAD = 12
 const HEAD_RIM = 2.5
-/** Drawn after the city, over whatever stands in front. */
+/** Drawn after the city, over whatever stands in front: the outline, then the pin. */
+const OUTLINE_ORDER = 8
 const PIN_ORDER = 10
 
-// The outline is the shape's back faces, each vertex pushed away from the building's middle on
-// screen: a shell a fixed number of pixels wider than the building, seen only past its edge.
+// The outline goes around the building's whole silhouette, over whatever stands in front: the
+// building first marks its silhouette in the stencil, then copies of it shifted a few pixels all
+// around draw the ink, outside the silhouette only. Any shape gets an even band.
 const outlineVertex = /* glsl */ `
 uniform vec3 building;
-uniform vec3 middle;
 uniform vec2 resolution;
 uniform float width;
 attribute vec3 sideFactor;
 attribute vec2 heightFactor;
+attribute vec2 shift;
 void main() {
   vec3 stretched = position + sideFactor * building.x;
   stretched.y += dot(heightFactor, building.yz);
   vec4 clip = projectionMatrix * modelViewMatrix * vec4(stretched, 1.0);
-  vec4 centre = projectionMatrix * modelViewMatrix * vec4(middle, 1.0);
-  vec2 away = (clip.xy / clip.w - centre.xy / centre.w) * resolution;
-  vec2 push = length(away) > 1e-4 ? normalize(away) : vec2(0.0);
-  clip.xy += push * width * 2.0 / resolution * clip.w;
+  clip.xy += shift * width * 2.0 / resolution * clip.w;
   gl_Position = clip;
 }
 `
+
+/** Directions the copies are shifted in: the band's corners are this many-sided. */
+const OUTLINE_SHIFTS = 12
 
 const flatFragment = /* glsl */ `
 uniform vec3 colour;
@@ -109,7 +109,6 @@ void main() {
 
 const ringFragment = /* glsl */ `
 uniform float width;
-uniform vec2 dash;
 uniform vec3 colour;
 varying vec2 vLocal;
 varying float vRadius;
@@ -119,12 +118,6 @@ void main() {
   float perPixel = max(fwidth(d), 1e-6);
   float off = abs(d - radius) / perPixel;
   float cover = clamp(width * 0.5 - off + 0.5, 0.0, 1.0);
-  if (dash.y > 0.0) {
-    float around = (atan(vLocal.y, vLocal.x) + 3.14159265) * radius / perPixel;
-    if (mod(around, dash.x + dash.y) > dash.x) {
-      discard;
-    }
-  }
   if (cover <= 0.0) {
     discard;
   }
@@ -201,7 +194,7 @@ export class BuildingMark {
         p[1] + s[1] * building.side + h[0] * building.height + h[1] * building.split,
       )
     }
-    this.group.add(this.outline(placed, vertices, top), this.ring(position, building.side))
+    this.group.add(...this.outline(placed, vertices), this.ring(position, building.side))
     if (this.style.pin) {
       this.group.add(...this.pin([position[0], position[1] + top, position[2]]))
     }
@@ -230,12 +223,9 @@ export class BuildingMark {
     }
   }
 
-  private outline(
-    { building, position, angle }: PlacedBuilding,
-    vertices: readonly Vertex[],
-    top: number,
-  ): Mesh {
-    const geometry = new BufferGeometry()
+  /** The silhouette in the stencil, then the band of ink around it. */
+  private outline({ building, position, angle }: PlacedBuilding, vertices: readonly Vertex[]) {
+    const geometry = new InstancedBufferGeometry()
     const attribute = (name: 'position' | 'sideFactor' | 'heightFactor') => {
       const values = vertices.flatMap((vertex) => vertex[name])
       geometry.setAttribute(
@@ -246,24 +236,54 @@ export class BuildingMark {
     attribute('position')
     attribute('sideFactor')
     attribute('heightFactor')
-    const material = new ShaderMaterial({
-      uniforms: {
-        building: { value: new Vector3(building.side, building.height, building.split) },
-        middle: { value: new Vector3(0, top / 2, 0) },
-        resolution: this.resolution,
-        width: { value: this.style.outline * this.pixelRatio },
-        colour: { value: new Vector3(...INK) },
-      },
+    // The first copy stays in place: it is the silhouette.
+    const shifts = [0, 0]
+    for (let at = 0; at < OUTLINE_SHIFTS; at++) {
+      const turn = (at / OUTLINE_SHIFTS) * 2 * Math.PI
+      shifts.push(Math.cos(turn), Math.sin(turn))
+    }
+    geometry.setAttribute('shift', new InstancedBufferAttribute(new Float32Array(shifts), 2))
+    const uniforms = {
+      building: { value: new Vector3(building.side, building.height, building.split) },
+      resolution: this.resolution,
+      width: { value: this.style.outline * this.pixelRatio },
+      colour: { value: new Vector3(...INK) },
+    }
+    const common = {
+      uniforms,
       vertexShader: outlineVertex,
       fragmentShader: flatFragment,
-      side: BackSide,
+      side: DoubleSide,
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+      stencilWrite: true,
+      stencilRef: 1,
+    }
+    const silhouette = new ShaderMaterial({
+      ...common,
+      colorWrite: false,
+      stencilFunc: AlwaysStencilFunc,
+      stencilZPass: ReplaceStencilOp,
     })
-    const mesh = new Mesh(geometry, material)
-    mesh.position.set(...position)
-    mesh.rotation.y = angle
-    mesh.frustumCulled = false
-    this.follow(mesh)
-    return mesh
+    const ink = new ShaderMaterial({
+      ...common,
+      stencilFunc: NotEqualStencilFunc,
+      stencilZPass: KeepStencilOp,
+    })
+    const mask = new Mesh(geometry.clone(), silhouette)
+    ;(mask.geometry as InstancedBufferGeometry).instanceCount = 1
+    geometry.instanceCount = OUTLINE_SHIFTS + 1
+    const band = new Mesh(geometry, ink)
+    mask.renderOrder = OUTLINE_ORDER
+    band.renderOrder = OUTLINE_ORDER + 1
+    for (const mesh of [mask, band]) {
+      mesh.position.set(...position)
+      mesh.rotation.y = angle
+      mesh.frustumCulled = false
+      this.follow(mesh)
+    }
+    return [mask, band]
   }
 
   private ring(position: Vec3, side: number): Mesh {
@@ -276,9 +296,6 @@ export class BuildingMark {
         minimum: { value: this.style.ringMinimum * this.pixelRatio },
         resolution: this.resolution,
         width: { value: this.style.ring * this.pixelRatio },
-        dash: {
-          value: new Vector2(...(this.style.ringDash ?? [0, 0]).map((l) => l * this.pixelRatio)),
-        },
         colour: { value: new Vector3(...INK) },
       },
       vertexShader: ringVertex,
