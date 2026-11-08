@@ -115,8 +115,9 @@ function syntheticLinks(islands: readonly IslandLayout[], seed: string): IslandL
 /**
  * A city with import cycles across islands, to see how their ways are outlined: two neighbours
  * on one layer, face to face across a channel, import each other heavily, so a bridge spans it,
- * and their first files make a loop; the first files of three islands far apart make another,
- * along two ferry lines and a link too small to draw. The links added never go up the layers.
+ * and their first files make a loop; the first files of three other islands make another, along
+ * whatever joins them, its last link too small to draw. The links of the pairs it uses are
+ * replaced, so that none adds up with them; the links added never go up the layers.
  */
 export function withCrossingCycles(layout: CityLayout): CityLayout {
   const islands = layout.islands.map((island) => ({ ...island }))
@@ -131,9 +132,19 @@ export function withCrossingCycles(layout: CityLayout): CityLayout {
     .map((_, index) => index)
     .filter((index) => index !== near && index !== across)
   const [first, second, third] = others
-  const links: IslandLink[] = (layout.links ?? []).filter(
-    (link) => ![near, across].includes(link.from) || ![near, across].includes(link.to),
-  )
+  const pairKey = (a: number, b: number) => `${Math.min(a, b)}/${Math.max(a, b)}`
+  const used = new Set([pairKey(near, across)])
+  if (first !== undefined && second !== undefined && third !== undefined) {
+    used.add(pairKey(first, second)).add(pairKey(second, third)).add(pairKey(third, first))
+  }
+  // The others keep their imports; those of `across` go up the layers by its new one.
+  const layerOf = (island: number) => islands[island]?.layer ?? 1
+  const links: IslandLink[] = (layout.links ?? [])
+    .filter((link) => !used.has(pairKey(link.from, link.to)))
+    .map((link) => ({
+      ...link,
+      upward: layerOf(link.from) < layerOf(link.to) ? link.imports : 0,
+    }))
   const largest = Math.max(1, ...links.map((link) => link.imports))
   const add = (from: number, to: number, imports: number) =>
     links.push({ from, to, imports, upward: 0 })

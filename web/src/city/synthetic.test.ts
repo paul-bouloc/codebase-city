@@ -113,22 +113,26 @@ describe('syntheticCity', () => {
 })
 
 describe('withCrossingCycles', () => {
-  it('loops across a bridge, a ferry line and a link too small to draw', () => {
-    const layout = withCrossingCycles(syntheticCity({ islands: 12, files: 2000 }))
-    const links = cityLinks(layout, islandShapes(layout))
-    const pairOf = (a: number, b: number) => `${Math.min(a, b)}-${Math.max(a, b)}`
-    const ways = (cycle: number) => {
-      const members = layout.cycles?.[cycle]?.members.map((member) => member.island) ?? []
-      return members.map((island, at) => pairOf(island, members[(at + 1) % members.length] ?? 0))
-    }
-    const bridges = new Set(links.bridges.map((bridge) => pairOf(bridge.a, bridge.b)))
-    const ferries = new Set(links.ferries.map((ferry) => pairOf(ferry.a, ferry.b)))
-    const unshown = new Set(links.unshown.map((pair) => pairOf(pair.a, pair.b)))
-    expect(layout.cycles).toHaveLength(2)
-    expect(ways(0).every((way) => bridges.has(way))).toBe(true)
-    const kinds = ways(1).map((way) =>
-      bridges.has(way) ? 'bridge' : ferries.has(way) ? 'ferry' : unshown.has(way) ? 'unshown' : '',
-    )
-    expect(kinds.sort()).toEqual(['bridge', 'ferry', 'unshown'])
-  })
+  it.each(['synthetic', 's4', 's17', 's24'])(
+    'loops across a bridge and a link too small to draw (seed %s)',
+    (seed) => {
+      const layout = withCrossingCycles(syntheticCity({ islands: 12, files: 2000, seed }))
+      const links = cityLinks(layout, islandShapes(layout))
+      const pairOf = (a: number, b: number) => `${Math.min(a, b)}-${Math.max(a, b)}`
+      const ways = (cycle: number) => {
+        const members = layout.cycles?.[cycle]?.members.map((member) => member.island) ?? []
+        return members.map((island, at) => pairOf(island, members[(at + 1) % members.length] ?? 0))
+      }
+      const bridges = new Set(links.bridges.map((bridge) => pairOf(bridge.a, bridge.b)))
+      const ferries = new Set(links.ferries.map((ferry) => pairOf(ferry.a, ferry.b)))
+      const unshown = new Set(links.unshown.map((pair) => pairOf(pair.a, pair.b)))
+      expect(layout.cycles).toHaveLength(2)
+      expect(ways(0).every((way) => bridges.has(way))).toBe(true)
+      const kinds = ways(1).map((way) =>
+        bridges.has(way) ? 'drawn' : ferries.has(way) ? 'drawn' : unshown.has(way) ? 'unshown' : '',
+      )
+      // Its last link is too small to draw; the others are drawn, whichever way joins them.
+      expect(kinds).toEqual(['drawn', 'drawn', 'unshown'])
+    },
+  )
 })
