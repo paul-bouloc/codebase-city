@@ -9,8 +9,8 @@
 //! `DATABASE_URL`, retention included, without applying migrations.
 //!
 //! Given a result written by `--out` instead of a repository, lays it out
-//! again with the current code and prints the layout, without downloading
-//! anything: `just ingest result.json [--out result.json]`.
+//! and computes its tour again with the current code, and prints both,
+//! without downloading anything: `just ingest result.json [--out result.json]`.
 //!
 //! `--archive repo.tar.gz` reads a local gzipped tarball instead of
 //! downloading one, for a copy GitHub would not serve: every file under one
@@ -25,6 +25,7 @@ mod layout;
 mod paths;
 mod roles;
 mod structure;
+mod tour;
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -43,6 +44,7 @@ use expected::Expected;
 use layout::print_layout;
 use roles::print_roles;
 use structure::print_structure;
+use tour::print_tour;
 
 const MB: f64 = 1024.0 * 1024.0;
 
@@ -84,8 +86,12 @@ async fn main() -> anyhow::Result<()> {
         // Laying out an inconsistent result would index out of bounds: validate it first.
         result.validate()?;
         result.layout = analyzer::layout::of_result(&result);
+        let started = Instant::now();
+        result.tour = analyzer::tour::of_result(&result);
+        println!("tour in       {:.2?}", started.elapsed());
         result.validate()?;
         print_layout(&result);
+        print_tour(&result);
         if let Some(out) = out {
             std::fs::write(&out, serde_json::to_vec(&result)?)
                 .with_context(|| format!("writing {}", out.display()))?;
@@ -177,6 +183,7 @@ async fn main() -> anyhow::Result<()> {
     print_roles(&result, &report.roles, expected.as_ref());
     print_structure(&result, expected.as_ref());
     print_layout(&result);
+    print_tour(&result);
 
     let started = Instant::now();
     let (result, encoded) = tokio::task::spawn_blocking(move || {
