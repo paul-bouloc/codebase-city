@@ -9,12 +9,9 @@ import {
 } from 'three'
 import type { Vec3 } from './units'
 
-// Lines a fixed number of pixels wide whatever their distance, solid or dashed: each segment is
-// a quad its vertex shader widens on screen, a little past its ends so that the segments of a
-// polyline join without a notch. Dashes are laid along the line in the scene, so that they follow
-// its perspective; their length doubles or halves with the distance, so that on screen they stay
-// within √2 of the length asked for. A longer dash starts where a shorter one did: where the length
-// changes along a line, the dashes do not jump. (Blending the two lengths fills the gaps half.)
+// Lines a fixed number of pixels wide whatever their distance, solid or dashed in pixels: each
+// segment is a quad its vertex shader widens on screen, a little past its ends so that the
+// segments of a polyline join without a notch.
 
 const vertexShader = /* glsl */ `
 uniform vec2 resolution;
@@ -23,7 +20,7 @@ attribute vec3 start;
 attribute vec3 end;
 attribute vec2 corner;
 attribute float distance;
-varying float vDistance;
+varying float vPixels;
 varying float vAcross;
 void main() {
   vec4 a = projectionMatrix * modelViewMatrix * vec4(start, 1.0);
@@ -34,7 +31,9 @@ void main() {
   float reach = width * 0.5 + 0.5;
   vec2 offset = (normal * corner.y * reach + along * (corner.x * 2.0 - 1.0) * reach) / resolution;
   gl_Position = here + vec4(offset * 2.0 * here.w, 0.0, 0.0);
-  vDistance = distance;
+  // How many pixels one unit spans here: dashes keep their length in pixels.
+  float unitPixels = projectionMatrix[1][1] * 0.5 * resolution.y / max(here.w, 1e-3);
+  vPixels = distance * unitPixels;
   vAcross = corner.y * reach;
 }
 `
@@ -44,15 +43,12 @@ uniform vec3 colour;
 uniform float width;
 uniform float opacity;
 uniform vec2 dash;
-varying float vDistance;
+varying float vPixels;
 varying float vAcross;
-
 void main() {
   float cover = clamp(width * 0.5 - abs(vAcross) + 0.5, 0.0, 1.0);
-  if (dash.y > 0.0) {
-    // The period asked for, in u at this distance, to the nearest power of two.
-    float period = exp2(floor(log2((dash.x + dash.y) * max(fwidth(vDistance), 1e-6)) + 0.5));
-    cover *= step(fract(vDistance / period), dash.x / (dash.x + dash.y));
+  if (dash.y > 0.0 && mod(vPixels, dash.x + dash.y) > dash.x) {
+    discard;
   }
   if (cover <= 0.0) {
     discard;
@@ -68,8 +64,6 @@ export interface LineStyle {
   colour: Vec3
   /** Dash and gap, in CSS pixels; solid if absent. */
   dash?: [number, number]
-  /** 1 if absent. */
-  opacity?: number
 }
 
 /** Polylines, closed or not, in three.js coordinates, drawn a fixed width on screen. */
@@ -122,7 +116,7 @@ export function createScreenLines(
       resolution,
       width: { value: style.width * pixelRatio },
       colour: { value: new Vector3(...style.colour) },
-      opacity: { value: style.opacity ?? 1 },
+      opacity: { value: 1 },
       dash: {
         value: new Vector2(...(style.dash ?? [0, 0]).map((length) => length * pixelRatio)),
       },
