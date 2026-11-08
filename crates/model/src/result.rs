@@ -199,7 +199,7 @@ pub enum Confidence {
     Likely,
 }
 
-/// What the import graph says about the production code (P9): where it
+/// What the import graph says about the production code: where it
 /// starts, what everything rests on, and what pulls it together.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]

@@ -3,7 +3,7 @@ import type { Entries } from "./Entries";
 import type { Ranked } from "./Ranked";
 
 /**
- * What the import graph says about the production code (P9): where it
+ * What the import graph says about the production code: where it
  * starts, what everything rests on, and what pulls it together.
  */
 export type Roles = { entries: Entries, 
