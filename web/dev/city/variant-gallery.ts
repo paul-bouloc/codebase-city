@@ -1,6 +1,6 @@
-import { buildingFor, floorsFor } from '../src/city/buildings/archetypes'
-import type { CityLayout, FileMetrics, IslandLayout, Lot } from '../src/city/world/layout'
-import { LOT_SIZE } from '../src/city/world/units'
+import { buildingFor, floorsFor } from '../../src/city/buildings/archetypes'
+import type { CityLayout, FileMetrics, IslandLayout, Lot } from '../../src/city/world/layout'
+import { LOT_SIZE } from '../../src/city/world/units'
 
 // Every combination of the low buildings' pieces, an island per archetype, to compare with the
 // design's boards: each one stands on a file whose path draws it.

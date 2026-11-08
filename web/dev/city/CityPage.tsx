@@ -1,16 +1,16 @@
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
-import type { CityEngine } from '../src/city/engine/city-engine'
-import type { CityItem, PortList } from '../src/city/interaction/city-interaction'
-import { cityFromResult } from '../src/city/world/from-result'
-import type { CityLayout } from '../src/city/world/layout'
-import { syntheticCity, withCrossingCycles } from '../src/city/world/synthetic'
-import { decodeResult } from '../src/data/decode-result'
-import type { AnalysisResult } from '../src/data/generated/AnalysisResult'
-import { CityScreen } from '../src/screen/CityScreen'
-import { CityView } from '../src/screen/CityView'
-import { PortCard } from '../src/screen/tooltips/PortCard'
-import { useDriveKeys } from '../src/screen/use-drive-keys'
-import { Button } from '../src/ui/actions/Button'
+import type { CityEngine } from '../../src/city/engine/city-engine'
+import type { CityItem, PortList } from '../../src/city/interaction/city-interaction'
+import { cityFromResult } from '../../src/city/world/from-result'
+import type { CityLayout } from '../../src/city/world/layout'
+import { syntheticCity, withCrossingCycles } from '../../src/city/world/synthetic'
+import { decodeResult } from '../../src/data/decode-result'
+import type { AnalysisResult } from '../../src/data/generated/AnalysisResult'
+import { CityScreen } from '../../src/screen/CityScreen'
+import { CityView } from '../../src/screen/CityView'
+import { PortCard } from '../../src/screen/tooltips/PortCard'
+import { useDriveKeys } from '../../src/screen/use-drive-keys'
+import { Button } from '../../src/ui/actions/Button'
 import { archetypeGallery } from './archetype-gallery'
 import styles from './CityPage.module.css'
 import { variantGallery } from './variant-gallery'
@@ -27,7 +27,7 @@ const REMOUNTS = 10
 /** Results dropped in `web/dev/results/`, by name, to their URL: fetched only when shown. */
 const RESULTS = Object.fromEntries(
   Object.entries(
-    import.meta.glob<string>('./results/*.json', { query: '?url', import: 'default', eager: true }),
+    import.meta.glob<string>('../results/*.json', { query: '?url', import: 'default', eager: true }),
   ).map(([path, url]) => [path.replace(/^.*\/(.*)\.json$/, '$1'), url]),
 )
 
