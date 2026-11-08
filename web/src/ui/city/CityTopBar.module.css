@@ -134,6 +134,21 @@
   margin-right: var(--space-3);
 }
 
+/* The field, and the palette hung from its left edge. */
+.searchBox {
+  position: relative;
+  display: flex;
+  width: 380px;
+  max-width: 100%;
+}
+
+/* 80 px from the top of the screen: 16 px under the field, 8 px under the bar. */
+.palette {
+  position: absolute;
+  top: calc(100% + var(--space-4));
+  left: 0;
+}
+
 .share[aria-expanded="true"] {
   border-color: var(--color-border-strong);
   background: var(--color-bg-sunken);

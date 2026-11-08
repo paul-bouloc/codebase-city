@@ -1,4 +1,4 @@
-import type { Ref } from 'react'
+import type { FocusEvent, KeyboardEvent, ReactNode, Ref } from 'react'
 import { AccountMenu } from '../AccountMenu'
 import { Button } from '../Button'
 import { Icon } from '../Icon'
@@ -63,7 +63,13 @@ interface CityTopBarProps {
   onSearchChange?: (value: string) => void
   searchExpanded?: boolean
   searchListboxId?: string
+  searchActiveDescendant?: string
   searchInputRef?: Ref<HTMLInputElement>
+  onSearchKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void
+  onSearchFocus?: (event: FocusEvent<HTMLInputElement>) => void
+  onSearchBlur?: (event: FocusEvent<HTMLInputElement>) => void
+  // The results, hung under the field.
+  searchPalette?: ReactNode
   // Until the search index has arrived.
   searchDisabled?: boolean
   mode?: BuildingMode
@@ -91,7 +97,12 @@ export function CityTopBar({
   onSearchChange,
   searchExpanded,
   searchListboxId,
+  searchActiveDescendant,
   searchInputRef,
+  onSearchKeyDown,
+  onSearchFocus,
+  onSearchBlur,
+  searchPalette,
   searchDisabled = false,
   mode = 'simplified',
   onModeChange,
@@ -158,14 +169,21 @@ export function CityTopBar({
       {/* Holds the middle even empty: the controls on the right stay on the right. */}
       <span className={styles.search}>
         {onSearchChange && (
-          <CitySearchField
-            value={searchValue}
-            onChange={onSearchChange}
-            expanded={searchExpanded}
-            listboxId={searchListboxId}
-            inputRef={searchInputRef}
-            disabled={searchDisabled}
-          />
+          <span className={styles.searchBox}>
+            <CitySearchField
+              value={searchValue}
+              onChange={onSearchChange}
+              expanded={searchExpanded}
+              listboxId={searchListboxId}
+              activeDescendant={searchActiveDescendant}
+              inputRef={searchInputRef}
+              onKeyDown={onSearchKeyDown}
+              onFocus={onSearchFocus}
+              onBlur={onSearchBlur}
+              disabled={searchDisabled}
+            />
+            {searchPalette && <span className={styles.palette}>{searchPalette}</span>}
+          </span>
         )}
       </span>
 
