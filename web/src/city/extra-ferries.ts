@@ -1,0 +1,66 @@
+import type { IslandShape } from './island-shape'
+import { boundsOf, type CityLayout, type Point } from './layout'
+import { type CityLinks, type Ferry, type Pair, passingPier, type Quay, tipOf } from './links'
+import { ferryRoute, type WaterGrid, waterGrid } from './water-route'
+
+// The island links a city leaves undrawn, at a port or too small, sail out for a while when they
+// are asked for: from the port's quay, or from the beach of the side turned toward the other
+// island. They are routed on the water once, then kept, and weigh on nothing: a line comes out
+// the same whatever was shown before it.
+
+export class ExtraFerries {
+  private grid: WaterGrid | null
+  private readonly routes = new Map<string, Ferry | null>()
+
+  constructor(
+    private readonly layout: CityLayout,
+    private readonly shapes: readonly IslandShape[],
+    private readonly links: CityLinks,
+  ) {
+    this.grid = links.grid
+  }
+
+  /**
+   * The line of an undrawn pair, from the quay of the port that gathers it if given, by water;
+   * null if there is no way.
+   */
+  route(pair: Pair, port?: { island: number; quay: Quay }): Ferry | null {
+    const from = port?.island ?? pair.a
+    const to = from === pair.a ? pair.b : pair.a
+    const key = `${pair.a}/${pair.b}/${port ? `port ${from}` : ''}`
+    if (this.routes.has(key)) {
+      return this.routes.get(key) ?? null
+    }
+    const ferry = this.sail(pair, from, to, port?.quay ?? null)
+    this.routes.set(key, ferry)
+    return ferry
+  }
+
+  private sail(pair: Pair, from: number, to: number, quay: Quay | null): Ferry | null {
+    const start = quay ?? passingPier(this.layout, this.shapes, this.links, from, to)
+    const end = passingPier(this.layout, this.shapes, this.links, to, from)
+    if (!start || !end) {
+      return null
+    }
+    this.grid ??= waterGrid(
+      this.shapes,
+      boundsOf(this.layout.islands.map((island) => island.plateau)),
+    )
+    const path = ferryRoute(
+      this.grid,
+      tipOf(start),
+      { x: start.nx, y: start.ny },
+      tipOf(end),
+      { x: end.nx, y: end.ny },
+      false,
+    )
+    if (!path) {
+      return null
+    }
+    // No pier is built for it: the line comes ashore at the beach. A port's quay is there.
+    const ashore = (pier: Quay): Point => ({ x: pier.x, y: pier.y })
+    const line = [...(quay ? [] : [ashore(start)]), ...path, ashore(end)]
+    // From `a` to `b`, as every ferry runs.
+    return { ...pair, path: from === pair.a ? line : line.reverse() }
+  }
+}

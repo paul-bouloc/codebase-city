@@ -730,6 +730,33 @@ export function quayAt(
   }
 }
 
+/**
+ * A pier for a line shown for a while only: on the side of `island` that turns toward `toward`,
+ * clear of its canals' mouths, bridges and quays. Nothing is built there.
+ */
+export function passingPier(
+  layout: CityLayout,
+  shapes: readonly IslandShape[],
+  links: Pick<CityLinks, 'bridges' | 'quays'>,
+  island: number,
+  toward: number,
+): Quay | null {
+  const shape = shapes[island]
+  if (!shape) {
+    return null
+  }
+  const plateaux = layout.islands.map((each) => each.plateau)
+  const side = sideToward(plateaux, island, toward)
+  const taken = [
+    ...mouthsOn(shape, side),
+    ...decksOn(links.bridges, island, side),
+    ...links.quays
+      .filter((quay) => quay.island === island && quay.side === side)
+      .map((quay) => quayStretch(quay)),
+  ]
+  return quayAt(shape, island, side, 0.5, false, plateaux, taken)
+}
+
 /** The end of a quay, out on the water. */
 export function tipOf(quay: Quay): Point {
   return { x: quay.x + quay.nx * quay.length, y: quay.y + quay.ny * quay.length }
