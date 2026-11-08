@@ -21,8 +21,10 @@ import {
   type Direction,
   type ImportIndex,
   type LinkEnd,
+  type Linked,
   linkedBuildings,
   markedBuildings,
+  OPENED_ARCS,
   openBundle,
   type SelectionLinks,
   selectionLinks,
@@ -35,10 +37,26 @@ export interface CityItem {
   path: string
 }
 
+/** What a bundle's card tells: the files it holds, and what a click on it shows. */
+export interface BundleCard {
+  /** `outgoing`: the selection imports them; `incoming`: they import it. */
+  direction: Direction
+  files: number
+  /** Some of its island's files were opened out of it already: these are the rest. */
+  more: boolean
+  /** How many arcs a click opens. */
+  opens: number
+}
+
 /** A hover card to show, beside the pointer (in the page's pixels). */
 export interface CityHover extends CityItem {
   pointer: { x: number; y: number }
+  /** For a bundle's hub, whose item is its island. */
+  bundle?: BundleCard
 }
+
+/** What the pointer can rest on: a place of the city, or the hub of a selection's bundle. */
+export type Pointed = CityTarget | { kind: 'hub'; hub: Hub }
 
 export interface CityListeners {
   /** A card to show, or none. */
@@ -60,8 +78,10 @@ const DIM_DURATION = 280
 /** Arcs land this far above a roof or the ground, in u, clear of their surface. */
 const ARC_LIFT = 0.1
 
-export function sameTarget(a: CityTarget, b: CityTarget): boolean {
+export function sameTarget(a: Pointed, b: Pointed): boolean {
   switch (a.kind) {
+    case 'hub':
+      return b.kind === 'hub' && a.hub === b.hub
     case 'building':
       return b.kind === 'building' && a.index === b.index
     case 'island':
@@ -83,11 +103,11 @@ export class CityInteraction {
   private readonly selectedBuilding: BuildingMark
   private readonly hoveredArea: AreaMark
   private readonly selectedArea: AreaMark
-  private readonly timing: HoverTiming<CityTarget>
-  private highlighted: CityTarget | null = null
+  private readonly timing: HoverTiming<Pointed>
+  private highlighted: Pointed | null = null
   private selected: CityTarget | null = null
   private pointer = { x: 0, y: 0 }
-  private carded: CityTarget | null = null
+  private carded: Pointed | null = null
   private dimFrom = 0
   private dimTo = 0
   private dimSince = 0
@@ -120,7 +140,7 @@ export class CityInteraction {
       this.selectedBuilding.group,
       this.arcs.group,
     )
-    this.timing = new HoverTiming<CityTarget>(
+    this.timing = new HoverTiming<Pointed>(
       {
         highlight: (target) => this.highlight(target),
         card: (target) => {
@@ -133,7 +153,7 @@ export class CityInteraction {
   }
 
   /** The pointer is now on this, at this point of the page. */
-  point(target: CityTarget | null, pointer: { x: number; y: number }): void {
+  point(target: Pointed | null, pointer: { x: number; y: number }): void {
     this.pointer = pointer
     this.timing.point(target)
     // The card follows the pointer across what it shows.
@@ -160,6 +180,10 @@ export class CityInteraction {
       const hovered = this.highlighted && sameTarget(this.highlighted, previous)
       this.buildings.setHighlight(previous.index, hovered ? Highlight.hovered : Highlight.none)
     }
+    // The hubs of the last selection go with it, and so does the card of one under the pointer.
+    if (this.highlighted?.kind === 'hub') {
+      this.timing.clear()
+    }
     this.selected = target
     this.selectedBuilding.show(null)
     this.selectedArea.show(null, this.shapes)
@@ -184,18 +208,21 @@ export class CityInteraction {
     this.redraw()
   }
 
-  /** The hubs of the bundles on show, where the pointer opens them. */
+  /** The hubs of the bundles on show, where a click opens them. */
   getHubs(): readonly Hub[] {
     return this.hubs
   }
 
-  /** Opens a bundle into arcs of their own, its nearest files first. */
+  /** Opens a bundle into arcs of their own, its nearest files first: they grow out to them. */
   openHub(hub: Hub): void {
     if (!this.links || !this.hubs.includes(hub)) {
       return
     }
+    const fresh = new Set(hub.bundle.ends.slice(0, OPENED_ARCS))
     this.links = openBundle(this.links, hub.bundle)
-    this.drawLinks()
+    // The hub goes, or moves with what is left: its card and its rim go with it.
+    this.timing.clear()
+    this.drawLinks(fresh)
     this.highlight(this.highlighted)
   }
 
@@ -227,8 +254,11 @@ export class CityInteraction {
     this.arcs.dispose()
   }
 
-  /** Marks the linked buildings and draws the arcs of the selected file's links, if any. */
-  private drawLinks(): void {
+  /**
+   * Marks the linked buildings and draws the arcs of the selected file's links, if any; those in
+   * `fresh` were just opened out of a bundle.
+   */
+  private drawLinks(fresh: ReadonlySet<Linked> = new Set()): void {
     this.clearLinkMarks()
     const links = this.links
     const selected = this.selected
@@ -249,11 +279,16 @@ export class CityInteraction {
       this.overlay.add(mark.group)
       this.linkMarks.push(mark)
     }
-    const { drawing, hubs } = selectionArcs(links, this.roof(selected.index), {
-      arcEnd: (end) => this.place(end),
-      ground: (end) => this.ground(end),
-      plateau: (island) => layerAltitude(this.layout.islands[island]?.layer ?? 1),
-    })
+    const { drawing, hubs } = selectionArcs(
+      links,
+      this.roof(selected.index),
+      {
+        arcEnd: (end) => this.place(end),
+        ground: (end) => this.ground(end),
+        plateau: (island) => layerAltitude(this.layout.islands[island]?.layer ?? 1),
+      },
+      fresh,
+    )
     this.hubs = hubs
     this.arcs.show(drawing)
   }
@@ -319,13 +354,16 @@ export class CityInteraction {
     }
   }
 
-  private highlight(target: CityTarget | null): void {
+  private highlight(pointed: Pointed | null): void {
     const previous = this.highlighted
     if (previous?.kind === 'building') {
       const selected = this.selected && sameTarget(this.selected, previous)
       this.buildings.setHighlight(previous.index, selected ? Highlight.selected : Highlight.none)
     }
-    this.highlighted = target
+    this.highlighted = pointed
+    // A hovered hub rims its count; nothing of the city stands out meanwhile.
+    this.arcs.hoverLabel(pointed?.kind === 'hub' ? this.hubs.indexOf(pointed.hub) : null)
+    const target = pointed?.kind === 'hub' ? null : pointed
     const selected = target && this.selected && sameTarget(target, this.selected)
     const building = target?.kind === 'building' && !selected ? target : null
     // A linked building keeps its Marine or Sun mark: it says more than the hover.
@@ -340,8 +378,23 @@ export class CityInteraction {
   }
 
   private emitHover(): void {
-    const target = this.carded
-    this.listeners().hover?.(target ? { ...this.item(target), pointer: this.pointer } : null)
+    const pointed = this.carded
+    if (pointed?.kind === 'hub') {
+      const { bundle } = pointed.hub
+      const island: CityTarget = { kind: 'island', island: bundle.island }
+      this.listeners().hover?.({
+        ...this.item(island),
+        pointer: this.pointer,
+        bundle: {
+          direction: bundle.direction,
+          files: bundle.ends.length,
+          more: (bundle.shown ?? 0) > 0,
+          opens: Math.min(bundle.ends.length, OPENED_ARCS),
+        },
+      })
+      return
+    }
+    this.listeners().hover?.(pointed ? { ...this.item(pointed), pointer: this.pointer } : null)
   }
 
   /** The buildings and the trees that keep their colours around a selection. */

@@ -9,6 +9,7 @@ import { syntheticCity } from '../src/city/synthetic'
 import { decodeResult } from '../src/data/decode-result'
 import { Button } from '../src/ui/Button'
 import { AreaTooltip } from '../src/ui/city/AreaTooltip'
+import { BundleTooltip } from '../src/ui/city/BundleTooltip'
 import { FileTooltip } from '../src/ui/city/FileTooltip'
 import { archetypeGallery } from './archetype-gallery'
 import styles from './CityPage.module.css'
@@ -202,6 +203,9 @@ export function CityPage() {
 
 /** The card of what the pointer rests on, read from the result. */
 function HoverCard({ hover, cards }: { hover: CityHover; cards: CityCards }) {
+  if (hover.bundle) {
+    return <BundleTooltip path={hover.path} {...hover.bundle} pointer={hover.pointer} />
+  }
   if (hover.target.kind === 'building') {
     const card = cards.file(hover.path)
     return card ? <FileTooltip {...card} pointer={hover.pointer} /> : null

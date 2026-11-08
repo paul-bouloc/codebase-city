@@ -40,6 +40,7 @@ import { cityLinks } from './links'
 import { CityPicker, type CityTarget } from './picking'
 import { createParcels } from './plateaux'
 import { createSea, OPEN_SEA, seaSize } from './sea'
+import type { Hub } from './selection-arcs'
 import { indexImports } from './selection-links'
 import { createTerrain } from './terrain'
 import { boardToThree, nearPlane } from './units'
@@ -78,7 +79,7 @@ const PICK_SLACK = 8
 const ANIMATION_FRAME = 1000 / 30 - 4
 /** Boats sail only while one at the camera's target spans this many device pixels or more. */
 const SAIL_PIXELS = 3
-/** The pointer this close to a bundle's hub, in CSS pixels, opens it, */
+/** The pointer this close to a bundle's hub, in CSS pixels, is on it, */
 const HUB_SLACK = 14
 /** and so does the pointer on its count, a pill at most this wide. */
 const HUB_LABEL_HALF_WIDTH = 40
@@ -149,8 +150,6 @@ export class CityEngine {
   private fleet: Fleet | null = null
   // Boats and arcs move together, on one clock: never more than 30 frames a second between them.
   private animatedAt = Number.NEGATIVE_INFINITY
-  // Whether the pointer rests on a bundle's hub: it opens the bundle once, on arriving.
-  private onHub = false
   private readonly lessMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
   private interaction: CityInteraction | null = null
   private listeners: CityListeners = {}
@@ -231,7 +230,7 @@ export class CityEngine {
     }
     const leave = () => {
       this.pointer = null
-      this.onHub = false
+      this.showPointerOn(null)
       this.interaction?.point(null, { x: 0, y: 0 })
     }
     const down = (event: PointerEvent) => {
@@ -248,7 +247,13 @@ export class CityEngine {
         return
       }
       move(event)
-      // A click on the sea clears the selection.
+      // A click on a bundle's hub opens it; on the sea, it clears the selection.
+      const hub = this.hubAtPointer()
+      if (hub) {
+        this.interaction?.openHub(hub)
+        this.hoverAtPointer()
+        return
+      }
       this.interaction?.select(this.pick())
     }
     canvas.addEventListener('pointermove', move)
@@ -293,21 +298,29 @@ export class CityEngine {
   private hoverAtPointer(): void {
     const pointer = this.pointer
     if (pointer) {
-      this.openHubAtPointer(pointer)
-      this.interaction?.point(this.pick(), { x: pointer.clientX, y: pointer.clientY })
+      const hub = this.hubAtPointer()
+      this.showPointerOn(hub)
+      const pointed = hub ? { kind: 'hub' as const, hub } : this.pick()
+      this.interaction?.point(pointed, { x: pointer.clientX, y: pointer.clientY })
     }
   }
 
-  /** Opens the bundle whose hub the pointer arrives on, if any. */
-  private openHubAtPointer(pointer: { x: number; y: number }): void {
+  /** Over a hub, the pointer says it can be clicked. */
+  private showPointerOn(hub: Hub | null): void {
+    this.renderer.domElement.style.cursor = hub ? 'pointer' : ''
+  }
+
+  /** The bundle's hub under the pointer, or its count, if any. */
+  private hubAtPointer(): Hub | null {
     const interaction = this.interaction
+    const pointer = this.pointer
     const canvas = this.renderer.domElement
-    if (!interaction || canvas.clientWidth === 0) {
-      return
+    if (!interaction || !pointer || canvas.clientWidth === 0) {
+      return null
     }
     const projected = this.projected
     let nearest = HUB_SLACK
-    let opened = null
+    let found: Hub | null = null
     for (const hub of interaction.getHubs()) {
       projected.set(...hub.position).project(this.camera)
       if (projected.z > 1) {
@@ -322,13 +335,10 @@ export class CityEngine {
       const distance = onLabel ? 0 : Math.hypot(x - pointer.x, y - pointer.y)
       if (distance <= nearest) {
         nearest = distance
-        opened = hub
+        found = hub
       }
     }
-    if (opened && !this.onHub) {
-      interaction.openHub(opened)
-    }
-    this.onHub = opened !== null
+    return found
   }
 
   /** Replaces the city on show and frames it. */
@@ -475,7 +485,6 @@ export class CityEngine {
 
   /** Forgets the hover and the selection of the city on show, and says so. */
   private dropInteraction(): void {
-    this.onHub = false
     const interaction = this.interaction
     if (interaction) {
       const selected = interaction.getSelection() !== null
@@ -542,6 +551,10 @@ export class CityEngine {
     const tick = time - this.animatedAt >= ANIMATION_FRAME
     let animated = false
     const arcs = this.interaction?.arcs
+    if (arcs?.grows) {
+      arcs.grow(time, this.lessMotion.matches)
+      this.needsRender = true
+    }
     if (arcs?.moves) {
       // Still when the system asks for less motion: drawn once, their way shown by two spots.
       const still = this.lessMotion.matches
