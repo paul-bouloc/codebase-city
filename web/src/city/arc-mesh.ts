@@ -263,7 +263,7 @@ export class ArcLayer {
         this.pixelRatio,
         false,
       )
-      this.add(stem, ARC_ORDER + 3)
+      this.add(stem, ARC_ORDER + 3, true)
     }
     for (const label of drawing.labels) {
       this.add(this.label(label), ARC_ORDER + 6)
@@ -291,11 +291,14 @@ export class ArcLayer {
     this.clear()
   }
 
-  private add(object: Mesh | Points, order: number): void {
+  /** `own`: the object keeps the buffer size it measures against itself (a screen line). */
+  private add(object: Mesh | Points, order: number, own = false): void {
     object.renderOrder = order
     object.frustumCulled = false
-    object.onBeforeRender = (renderer) => {
-      renderer.getDrawingBufferSize(this.resolution.value)
+    if (!own) {
+      object.onBeforeRender = (renderer) => {
+        renderer.getDrawingBufferSize(this.resolution.value)
+      }
     }
     this.group.add(object)
   }
