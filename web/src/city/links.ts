@@ -44,8 +44,6 @@ const SMALL_CITY = 50
 const OPEN_ENOUGH = 30
 /** How much a pier prefers a side that looks out to sea over one that faces the other island. */
 const OPENNESS_WEIGHT = 0.6
-/** A ferry line's width on the water, in u: `0.3 + 0.9 × √(n ÷ max)`. */
-const FERRY_WIDTH = [0.3, 0.9] as const
 
 /** Width of a bridge's deck, in u, from the imports it carries. */
 export function deckWidth(imports: number): number {
@@ -100,8 +98,6 @@ export interface Quay {
 export interface Ferry extends Pair {
   /** From the pier of `a` to the pier of `b`, by water. */
   path: Point[]
-  /** Its wake's width on the water, in u. */
-  width: number
 }
 
 export interface Port {
@@ -271,11 +267,7 @@ export function cityLinks(layout: CityLayout, shapes: readonly IslandShape[]): C
         return
       }
       sailed.add(from).add(to)
-      result.ferries.push({
-        ...pair,
-        path,
-        width: FERRY_WIDTH[0] + FERRY_WIDTH[1] * Math.sqrt(pair.imports / Math.max(largest, 1)),
-      })
+      result.ferries.push({ ...pair, path })
     })
     // A pier no line leaves from has nothing to show.
     result.quays = result.quays.filter((quay) => quay.port || sailed.has(quay))

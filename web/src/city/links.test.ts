@@ -253,11 +253,9 @@ describe('cityLinks', () => {
     // one); two boats at each pier, and 4, 2 and 2 along the lines.
     expect(links.quays).toHaveLength(5)
     expect(links.boats).toHaveLength(2 * 5 + 4 + 2 + 2)
-    expect(links.ferries.map((ferry) => ferry.width)).toEqual([
-      1.2,
-      0.3 + 0.9 * Math.sqrt(0.012),
-      0.3 + 0.9 * Math.sqrt(0.01),
-    ])
+    // The largest first.
+    const imports = links.ferries.map((ferry) => ferry.imports)
+    expect(imports).toEqual([...imports].sort((x, y) => y - x))
   })
 
   it('keeps a pier to its half of a narrow channel, too short to moor at', () => {

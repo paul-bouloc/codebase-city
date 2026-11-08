@@ -7,7 +7,6 @@ const ferry = {
   b: 1,
   imports: 10,
   upward: false,
-  width: 0.8,
   path: [
     { x: 0, y: 0 },
     { x: 10, y: 0 },
