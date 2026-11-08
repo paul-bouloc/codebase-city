@@ -11,7 +11,7 @@ const TEXT = {
 
 interface RoleBadgeProps {
   fileRole: FileRole
-  // The transitive measure behind the role (P9), never a count of direct imports.
+  // The transitive measure behind the role, never a count of direct imports.
   reason: string
 }
 

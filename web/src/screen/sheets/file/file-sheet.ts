@@ -22,7 +22,7 @@ const ENTRY_REASONS: Record<EntryReason, string> = {
   noImporter: 'Nothing in the project imports it.',
 }
 
-/** The sentence under a role: the measure that grounds it (P9). */
+/** The sentence under a role: the measure that grounds it. */
 function roleReason(role: GraphRole, dependencies: number | null): string {
   switch (role.role) {
     case 'entry-point': {
