@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
-import { AccountMenu } from '../src/ui/AccountMenu'
-import { Avatar } from '../src/ui/Avatar'
+import { AccountMenu } from '../src/ui/account/AccountMenu'
+import { Avatar } from '../src/ui/account/Avatar'
 import { Button } from '../src/ui/actions/Button'
 import { ConfirmField } from '../src/ui/actions/ConfirmField'
 import { confirmationMatches } from '../src/ui/actions/confirmation'

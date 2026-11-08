@@ -1,5 +1,5 @@
 import type { FocusEvent, KeyboardEvent, ReactNode, Ref } from 'react'
-import { AccountMenu } from '../ui/AccountMenu'
+import { AccountMenu } from '../ui/account/AccountMenu'
 import { Button } from '../ui/actions/Button'
 import { SegmentedControl, type SegmentedOption } from '../ui/actions/SegmentedControl'
 import { Icon } from '../ui/Icon'
