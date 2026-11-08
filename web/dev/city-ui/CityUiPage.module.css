@@ -132,43 +132,6 @@
   max-width: 720px;
 }
 
-.sample {
-  display: grid;
-  gap: var(--space-4);
-}
-
-.cases {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: var(--space-6);
-}
-
-.case {
-  display: grid;
-  gap: var(--space-2);
-  margin: 0;
-  color: var(--color-text-secondary);
-}
-
-.wide {
-  width: min(1440px, 100%);
-}
-
-.sea {
-  padding: var(--space-6);
-  border-radius: var(--radius-lg);
-  background: var(--city-sea);
-}
-
-/* Contains the fixed tooltips: a transformed box is their containing block. */
-.frame {
-  position: relative;
-  width: 440px;
-  height: 200px;
-  transform: translateZ(0);
-}
-
 .row {
   display: inline-flex;
   gap: var(--space-2);

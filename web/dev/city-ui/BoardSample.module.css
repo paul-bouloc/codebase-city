@@ -1,0 +1,11 @@
+.sample {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.cases {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-6);
+}

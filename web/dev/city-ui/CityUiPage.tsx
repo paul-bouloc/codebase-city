@@ -12,6 +12,8 @@ import { AreaTooltip } from '../../src/screen/tooltips/AreaTooltip'
 import { CityMarker } from '../../src/screen/tooltips/CityMarker'
 import { FileTooltip } from '../../src/screen/tooltips/FileTooltip'
 import type { Point, Rect } from '../../src/screen/tooltips/tooltip-placement'
+import { BoardCase } from './BoardCase'
+import { BoardSample } from './BoardSample'
 import styles from './CityUiPage.module.css'
 import {
   ACCOUNT,
@@ -323,8 +325,8 @@ function Board() {
         <p className="body-m">{TEXT.boardIntro}</p>
       </header>
 
-      <Sample title={TEXT.topBar}>
-        <Case label={TEXT.topBarIdle} wide>
+      <BoardSample title={TEXT.topBar}>
+        <BoardCase label={TEXT.topBarIdle} wide>
           <CityTopBar
             {...bar}
             aboutOpen={false}
@@ -333,8 +335,8 @@ function Board() {
             shareOpen={false}
             account={ACCOUNT}
           />
-        </Case>
-        <Case label={TEXT.topBarTyping} wide>
+        </BoardCase>
+        <BoardCase label={TEXT.topBarTyping} wide>
           <CityTopBar
             {...bar}
             aboutOpen={false}
@@ -343,8 +345,8 @@ function Board() {
             shareOpen={false}
             account={null}
           />
-        </Case>
-        <Case label={TEXT.topBarOpen} wide>
+        </BoardCase>
+        <BoardCase label={TEXT.topBarOpen} wide>
           <CityTopBar
             {...bar}
             aboutOpen
@@ -353,8 +355,8 @@ function Board() {
             shareOpen
             account={ACCOUNT}
           />
-        </Case>
-        <Case label={TEXT.topBarFallback} wide>
+        </BoardCase>
+        <BoardCase label={TEXT.topBarFallback} wide>
           <CityTopBar
             {...bar}
             aboutOpen={false}
@@ -364,102 +366,73 @@ function Board() {
             shareOpen={false}
             account={ACCOUNT}
           />
-        </Case>
-      </Sample>
+        </BoardCase>
+      </BoardSample>
 
-      <Sample title={TEXT.camera}>
-        <Case label={TEXT.cameraIdle}>
+      <BoardSample title={TEXT.camera}>
+        <BoardCase label={TEXT.cameraIdle}>
           <CameraControls bearing={0} topView={false} onAction={noop} />
-        </Case>
-        <Case label={TEXT.cameraTop}>
+        </BoardCase>
+        <BoardCase label={TEXT.cameraTop}>
           <CameraControls bearing={30} topView onAction={noop} />
-        </Case>
-      </Sample>
+        </BoardCase>
+      </BoardSample>
 
-      <Sample title={TEXT.legend}>
-        <Case label={TEXT.legendCollapsed}>
+      <BoardSample title={TEXT.legend}>
+        <BoardCase label={TEXT.legendCollapsed}>
           <CityLegend content={FULL_LEGEND} expanded={false} onExpandedChange={noop} />
-        </Case>
-        <Case label={TEXT.legendFull}>
+        </BoardCase>
+        <BoardCase label={TEXT.legendFull}>
           <CityLegend content={FULL_LEGEND} expanded onExpandedChange={noop} />
-        </Case>
-        <Case label={TEXT.legendSmall}>
+        </BoardCase>
+        <BoardCase label={TEXT.legendSmall}>
           <CityLegend content={SMALL_LEGEND} expanded onExpandedChange={noop} />
-        </Case>
-      </Sample>
+        </BoardCase>
+      </BoardSample>
 
-      <Sample title={TEXT.scale}>
-        <Case label="500">
+      <BoardSample title={TEXT.scale}>
+        <BoardCase label="500">
           <MapScale files={500} />
-        </Case>
-        <Case label="12,000">
+        </BoardCase>
+        <BoardCase label="12,000">
           <MapScale files={12_000} />
-        </Case>
-      </Sample>
+        </BoardCase>
+      </BoardSample>
 
-      <Sample title={TEXT.tooltips}>
-        <Case label={TEXT.tooltipFile} framed>
+      <BoardSample title={TEXT.tooltips}>
+        <BoardCase label={TEXT.tooltipFile} framed>
           <FileTooltip {...FILE} pointer={FRAMED_POINTER} />
-        </Case>
-        <Case label={TEXT.tooltipLong} framed>
+        </BoardCase>
+        <BoardCase label={TEXT.tooltipLong} framed>
           <FileTooltip {...LONG_FILE} pointer={FRAMED_POINTER} />
-        </Case>
-        <Case label={TEXT.tooltipParcel} framed>
+        </BoardCase>
+        <BoardCase label={TEXT.tooltipParcel} framed>
           <AreaTooltip {...PARCEL} pointer={FRAMED_POINTER} />
-        </Case>
-        <Case label={TEXT.tooltipIsland} framed>
+        </BoardCase>
+        <BoardCase label={TEXT.tooltipIsland} framed>
           <AreaTooltip {...ISLAND} pointer={FRAMED_POINTER} />
-        </Case>
-      </Sample>
+        </BoardCase>
+      </BoardSample>
 
-      <Sample title={TEXT.markers}>
-        <Case label="Route">
+      <BoardSample title={TEXT.markers}>
+        <BoardCase label="Route">
           <span className={styles.row}>
             <CityMarker kind="route" step={1} end />
             <CityMarker kind="route" step={2} end={false} />
             <CityMarker kind="route" step={3} end={false} />
             <CityMarker kind="route" step={4} end />
           </span>
-        </Case>
-        <Case label="Cycle">
+        </BoardCase>
+        <BoardCase label="Cycle">
           <CityMarker kind="cycle" files={26} />
-        </Case>
-        <Case label="Impact">
+        </BoardCase>
+        <BoardCase label="Impact">
           <CityMarker kind="impact" name="nls.ts" dependents={6213} />
-        </Case>
-        <Case label="Guide">
+        </BoardCase>
+        <BoardCase label="Guide">
           <CityMarker kind="guide" name="main.ts" note="entry point" />
-        </Case>
-      </Sample>
+        </BoardCase>
+      </BoardSample>
     </main>
-  )
-}
-
-function Sample({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className={styles.sample}>
-      <h2 className="heading-2">{title}</h2>
-      <div className={styles.cases}>{children}</div>
-    </section>
-  )
-}
-
-function Case({
-  label,
-  wide = false,
-  framed = false,
-  children,
-}: {
-  label: string
-  wide?: boolean
-  framed?: boolean
-  children: ReactNode
-}) {
-  const classes = [styles.case, wide && styles.wide].filter(Boolean).join(' ')
-  return (
-    <figure className={classes}>
-      <figcaption className="eyebrow-mono">{label}</figcaption>
-      <div className={framed ? `${styles.sea} ${styles.frame}` : styles.sea}>{children}</div>
-    </figure>
   )
 }
