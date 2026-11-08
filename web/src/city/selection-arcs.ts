@@ -62,15 +62,32 @@ export function selectionArcs(
   const dots: ArcDot[] = []
   const hubs: Hub[] = []
   const stems = new Map<Direction, Vec3[][]>()
+  const sourceDot = (position: Vec3, colour: Vec3): ArcDot => ({
+    position,
+    colour,
+    size: SOURCE_DOT,
+    rim: 0,
+    rimColour: colour,
+  })
+  const targetDot = (position: Vec3, colour: Vec3): ArcDot => ({
+    position,
+    colour,
+    size: TARGET_DOT,
+    rim: TARGET_RIM,
+    rimColour: WHITE,
+  })
+  // The selection's own end of its arcs gets one dot of each kind, not one per arc on one point.
+  const atSelection = new Map<Direction, ArcDot>()
   const draw = (direction: Direction, there: Vec3, upward: boolean, width: number) => {
-    const [source, target] = direction === 'outgoing' ? [selection, there] : [there, selection]
+    const outgoing = direction === 'outgoing'
+    const [source, target] = outgoing ? [selection, there] : [there, selection]
     const points = arcPoints(source, target)
     const colour = upward ? RED : COLOURS[direction]
     lines.push({ points, colour, width, upward })
-    dots.push(
-      { position: source, colour, size: SOURCE_DOT, rim: 0, rimColour: colour },
-      { position: target, colour, size: TARGET_DOT, rim: TARGET_RIM, rimColour: WHITE },
-    )
+    dots.push(outgoing ? targetDot(target, colour) : sourceDot(source, colour))
+    if (!atSelection.has(direction)) {
+      atSelection.set(direction, outgoing ? sourceDot(source, colour) : targetDot(target, colour))
+    }
     if (upward) {
       for (const share of UPWARD_DOTS) {
         const at = points[Math.round(share * (points.length - 1))] ?? source
@@ -100,7 +117,7 @@ export function selectionArcs(
   return {
     drawing: {
       lines,
-      dots,
+      dots: [...dots, ...atSelection.values()],
       stems: [...stems].map(([direction, polylines]) => ({
         colour: COLOURS[direction],
         polylines,

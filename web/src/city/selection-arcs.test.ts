@@ -77,8 +77,9 @@ describe('selectionArcs', () => {
   })
 
   it('puts a dot at each end of an arc, and two white ones along an upward arc', () => {
-    // Two per arc, two more on the upward one
-    expect(drawing.dots).toHaveLength(2 * 4 + 2)
+    // One at the far end of each arc, one of each kind at the selection, two on the upward arc
+    expect(drawing.dots).toHaveLength(4 + 2 + 2)
+    expect(drawing.dots.filter((dot) => dot.position === selection)).toHaveLength(2)
     const white = drawing.dots.filter((dot) => dot.colour.every((channel) => channel === 1))
     expect(white).toHaveLength(2)
   })
