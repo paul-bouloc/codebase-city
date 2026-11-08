@@ -8,6 +8,7 @@
 //! path alone, before reading its bytes.
 
 mod attributes;
+pub(crate) mod scope;
 
 pub use attributes::{Attribute, Attributes};
 

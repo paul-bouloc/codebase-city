@@ -10,10 +10,9 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 
 use model::{Confidence, EdgeKind, Scope, Symbols};
 
-use crate::files::split_path;
+use crate::files::{scope, split_path};
 use crate::lang::{DefaultExport, Import};
 use crate::resolve::{Outcome, Target};
-use crate::scope;
 
 /// Re-export chains longer than this are not followed, which bounds the
 /// recursion.

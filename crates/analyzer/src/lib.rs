@@ -15,7 +15,6 @@ mod metrics;
 mod reach;
 mod resolve;
 mod roles;
-mod scope;
 
 pub use analyze::{ANALYZER_VERSION, ImportReport, Report, analyze, analyze_with_report};
 pub use roles::RolesReport;
