@@ -1,8 +1,8 @@
 import { type ReactNode, useEffect, useRef } from 'react'
 import { FileSheet, type FileTab } from '../src/screen/sheets/file/FileSheet'
+import { FolderSheet } from '../src/screen/sheets/folder/FolderSheet'
 import type { FileSheetData, FolderSheetData } from '../src/screen/sheets/sheet-data'
 import { AboutPanel, type NewerVersion } from '../src/ui/city/AboutPanel'
-import { FolderSheet } from '../src/ui/city/FolderSheet'
 import styles from './SheetsBoard.module.css'
 import {
   ABOUT,

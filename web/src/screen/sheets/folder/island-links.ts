@@ -1,4 +1,4 @@
-import type { IslandLink } from '../../screen/sheets/sheet-data'
+import type { IslandLink } from '../sheet-data'
 
 // Upward imports last, in red: they break the layers.
 export function orderedLinks(links: readonly IslandLink[]): IslandLink[] {
