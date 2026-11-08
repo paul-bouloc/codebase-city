@@ -32,6 +32,8 @@ export interface ArcLine {
   width: number
   /** Goes up the layers: dashed apart, with white dots along it. */
   upward: boolean
+  /** Part of an import cycle: drawn whole, without dashes. Dashed if absent. */
+  solid?: boolean
   /** Just shown: it grows from its start (1) or from its end (−1). Drawn whole if absent. */
   grows?: 1 | -1
 }
@@ -52,6 +54,8 @@ export interface ArcLabel {
   text: string
   /** The colour of its arc: its rim, once hovered. */
   colour: Vec3
+  /** Rimmed at all times, not only once hovered. */
+  rimmed?: boolean
 }
 
 export interface ArcDrawing {
@@ -70,6 +74,8 @@ const HIDDEN_OPACITY = 0.4
 /** Dashes and gaps along an arc, in u: one period goes by in `DASH_TIME` seconds. */
 const DASH: [number, number] = [0.6, 0.4]
 const UPWARD_DASH: [number, number] = [0.55, 0.45]
+/** A dash as long as its period, with no gap: a solid line. */
+const SOLID: [number, number] = [1, 0]
 /** Both dash periods, in u. */
 export const DASH_PERIOD = 1
 export const DASH_TIME = 1.2
@@ -278,7 +284,7 @@ export class ArcLayer {
   private growingSince: number | null = null
   private growing = false
   private moving = false
-  private labels: ShaderMaterial[] = []
+  private labels: { material: ShaderMaterial; rimmed: boolean }[] = []
 
   constructor(private readonly pixelRatio: number) {
     this.group.visible = false
@@ -290,7 +296,7 @@ export class ArcLayer {
     if (!drawing || (drawing.lines.length === 0 && drawing.labels.length === 0)) {
       return
     }
-    this.moving = drawing.lines.length > 0
+    this.moving = drawing.lines.some((line) => !line.solid)
     this.growing = drawing.lines.some((line) => line.grows)
     this.growth.value = this.growing ? 0 : 1
     this.growingSince = null
@@ -320,7 +326,7 @@ export class ArcLayer {
     }
     for (const label of drawing.labels) {
       const mesh = this.label(label)
-      this.labels.push(mesh.material as ShaderMaterial)
+      this.labels.push({ material: mesh.material as ShaderMaterial, rimmed: label.rimmed ?? false })
       this.add(mesh, ARC_ORDER + 6)
     }
     this.group.visible = true
@@ -333,10 +339,10 @@ export class ArcLayer {
 
   /** Rims the count of the hub at this index (in the order of the drawing's labels), or none. */
   hoverLabel(index: number | null): void {
-    this.labels.forEach((material, at) => {
+    this.labels.forEach(({ material, rimmed }, at) => {
       const uniform = material.uniforms.hovered
       if (uniform) {
-        uniform.value = at === index ? 1 : 0
+        uniform.value = rimmed || at === index ? 1 : 0
       }
     })
   }
@@ -418,7 +424,7 @@ export class ArcLayer {
         const b = arc.points[i] as Vec3
         total += Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2])
       }
-      const dash = arc.upward ? UPWARD_DASH : DASH
+      const dash = arc.solid ? SOLID : arc.upward ? UPWARD_DASH : DASH
       // Four corners per segment.
       for (let corner = 0; corner < 4 * (arc.points.length - 1); corner++) {
         totals.push(total)
@@ -507,7 +513,7 @@ export class ArcLayer {
   }
 
   /** A pill with the count, drawn on a canvas, a fixed size on screen above its hub. */
-  private label({ position, text, colour }: ArcLabel): Mesh {
+  private label({ position, text, colour, rimmed }: ArcLabel): Mesh {
     const ratio = this.pixelRatio
     const canvas = document.createElement('canvas')
     const context = canvas.getContext('2d')
@@ -548,7 +554,7 @@ export class ArcLayer {
           map: { value: texture },
           rim: { value: LABEL_RIM * ratio },
           rimColour: { value: new Vector3(...colour) },
-          hovered: { value: 0 },
+          hovered: { value: rimmed ? 1 : 0 },
         },
         vertexShader: labelVertex,
         fragmentShader: labelFragment,
