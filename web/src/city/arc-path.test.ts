@@ -25,15 +25,11 @@ describe('arcPoints', () => {
   })
 })
 
-describe('arcPoints, leaning', () => {
-  it('bends aside by a share of its length, the other way back', () => {
-    const there = arcPoints([0, 0, 0], [20, 0, 0], ARC_SEGMENTS, 0.15)
-    const back = arcPoints([20, 0, 0], [0, 0, 0], ARC_SEGMENTS, 0.15)
-    const middle = ARC_SEGMENTS / 2
-    // Going east, it bends north (three.js −z); going west, south
-    expect(there[middle]?.[2]).toBeCloseTo(-3)
-    expect(back[middle]?.[2]).toBeCloseTo(3)
-    expect(there[middle]?.[1]).toBeCloseTo(2 + 0.28 * 20)
-    expect(there.at(-1)?.[2]).toBeCloseTo(0)
+describe('arcPoints, raised', () => {
+  it('rises higher by its share, in the same vertical plane', () => {
+    const raised = arcPoints([0, 0, 0], [20, 0, 0], ARC_SEGMENTS, 1.5)
+    const middle = raised[ARC_SEGMENTS / 2] ?? []
+    expect(middle[1]).toBeCloseTo(1.5 * (2 + 0.28 * 20))
+    expect(raised.every((point) => point[2] === 0)).toBe(true)
   })
 })

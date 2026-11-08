@@ -25,8 +25,8 @@ const UPWARD_RIM = 1
 const UPWARD_DOTS = [0.35, 0.65] as const
 /** A bundle's hub floats this far above its island's plateau, in u. */
 export const HUB_RISE = 4
-/** A cycle's arcs bend aside by this share of their length: the two ways of a loop part. */
-const CYCLE_LEAN = 0.12
+/** The way back of a loop between two files rises this much higher than the way there. */
+const RETURN_RAISE = 1.6
 
 /** A bundle's width grows with how many files it holds: `2 + 1.4 × log10(n)` CSS pixels. */
 export function bundleWidth(files: number): number {
@@ -166,7 +166,8 @@ export function selectionArcs(
     const ends = loop.map((building, at) => (at === 0 ? selection : places.arcEnd({ building })))
     ends.forEach((start, at) => {
       const end = ends[(at + 1) % ends.length] ?? selection
-      const points = arcPoints(start, end, ARC_SEGMENTS, CYCLE_LEAN)
+      const back = ends.length === 2 && at === 1
+      const points = arcPoints(start, end, ARC_SEGMENTS, back ? RETURN_RAISE : 1)
       lines.push({ points, colour: RED, width: ARC_WIDTH, upward: false, solid: true })
       directionDots(points)
       if (at > 0) {

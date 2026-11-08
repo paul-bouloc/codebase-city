@@ -17,21 +17,13 @@ export function arcRise(a: Vec3, b: Vec3): number {
 
 /**
  * The arc from `a` to `b`, in three.js coordinates (y up): `ARC_SEGMENTS + 1` points of a
- * quadratic curve whose middle point is the peak. `lean` bends it aside, as a share of the
- * distance between its ends, to the left of its way seen from above: the arcs of a loop between
- * two files part, one each way.
+ * quadratic curve whose middle point is the peak. `raise` scales how high it rises: the way back
+ * of a loop between two files climbs higher than the way there, and the two part.
  */
-export function arcPoints(a: Vec3, b: Vec3, segments = ARC_SEGMENTS, lean = 0): Vec3[] {
-  const peak = Math.max(a[1], b[1]) + arcRise(a, b)
-  // A quadratic Bézier passes its middle at a quarter of each end and half of its control, which
-  // lies twice as far aside as the middle.
-  const dx = b[0] - a[0]
-  const dz = b[2] - a[2]
-  const control: Vec3 = [
-    (a[0] + b[0]) / 2 + 2 * lean * dz,
-    2 * peak - (a[1] + b[1]) / 2,
-    (a[2] + b[2]) / 2 - 2 * lean * dx,
-  ]
+export function arcPoints(a: Vec3, b: Vec3, segments = ARC_SEGMENTS, raise = 1): Vec3[] {
+  const peak = Math.max(a[1], b[1]) + raise * arcRise(a, b)
+  // A quadratic Bézier passes its middle at a quarter of each end and half of its control.
+  const control: Vec3 = [(a[0] + b[0]) / 2, 2 * peak - (a[1] + b[1]) / 2, (a[2] + b[2]) / 2]
   const points: Vec3[] = []
   for (let step = 0; step <= segments; step++) {
     const t = step / segments

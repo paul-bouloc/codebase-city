@@ -160,8 +160,10 @@ describe('selectionArcs', () => {
     )
     expect(arcs.drawing.lines).toHaveLength(2)
     const middle = ARC_SEGMENTS / 2
-    const [there, back] = arcs.drawing.lines.map((line) => line.points[middle]?.[2] ?? 0)
-    expect(there).toBeLessThan(-0.5)
-    expect(back).toBeGreaterThan(0.5)
+    const [there, back] = arcs.drawing.lines.map((line) => line.points[middle] ?? [0, 0, 0])
+    // Both upright, the way back higher
+    expect(there?.[2]).toBe(0)
+    expect(back?.[2]).toBe(0)
+    expect(back?.[1] ?? 0).toBeGreaterThan((there?.[1] ?? 0) + 2)
   })
 })
