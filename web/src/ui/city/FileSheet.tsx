@@ -274,8 +274,10 @@ function fileTabs(file: FileSheetData): (TabItem & { id: FileTab })[] {
 function fileMetrics(file: FileSheetData) {
   const lines = { label: TEXT.lines, value: exactCount(file.lines) }
   if (!file.analyzed) {
-    const size = file.sizeBytes === undefined ? '—' : fileSize(file.sizeBytes)
-    return [lines, { label: TEXT.size, value: size }]
+    // The analysis keeps no size: only the screen may know it.
+    return file.sizeBytes === undefined
+      ? [lines]
+      : [lines, { label: TEXT.size, value: fileSize(file.sizeBytes) }]
   }
   const { complexityTop: top, complexityRank: rank, repoFiles: of } = file
   return [
