@@ -1,7 +1,7 @@
 import { Group } from 'three'
 import { type CityBuildings, Highlight } from '../buildings/buildings'
 import { CycleWayMarks, cycleWays, loopIslandPairs } from '../flows/cycle-ways'
-import { loopThrough } from '../flows/cycles'
+import { type Cycle, loopThrough } from '../flows/cycles'
 import { islandExtras } from '../flows/extra-ferries'
 import { FolderLinkMarks, folderWays } from '../flows/folder-link-marks'
 import { folderFlows } from '../flows/folder-links'
@@ -12,7 +12,7 @@ import type { Fading } from '../render/dimming'
 import type { IslandShape } from '../terrain/island-shape'
 import type { Port } from '../waterways/links'
 import type { CityLayout } from '../world/layout'
-import { type Area, AreaMark, HOVERED_AREA, SELECTED_AREA } from './area-marks'
+import { type Area, AreaMark, areaOf, HOVERED_AREA, SELECTED_AREA } from './area-marks'
 import { BuildingMark, HOVERED_MARK, SELECTED_MARK } from './building-marks'
 import { CityGuide, type CityGuideView } from './city-guide'
 import {
@@ -396,14 +396,12 @@ export class CityInteraction {
   }
 
   private area(target: CityTarget): Area | null {
-    if (target.kind === 'island') {
-      return { island: target.island }
-    }
-    if (target.kind === 'parcel') {
-      const parcel = this.layout.islands[target.island]?.parcels[target.parcel]
-      return parcel ? { island: target.island, rect: parcel.rect, level: parcel.level } : null
-    }
-    return null
+    return areaOf(this.layout, target)
+  }
+
+  /** The cycle a building is part of, if any. */
+  cycleOf(building: number): Cycle | undefined {
+    return this.flows.cycles.cycleOf.get(building)
   }
 
   private item(target: CityTarget): CityItem {

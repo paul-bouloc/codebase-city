@@ -3,9 +3,10 @@ import { GUIDE } from '../render/palette'
 import { createScreenLines } from '../render/screen-lines'
 import type { IslandShape } from '../terrain/island-shape'
 import { roundedOutline } from '../terrain/plateaux'
-import type { Rect } from '../world/layout'
+import type { CityLayout, Rect } from '../world/layout'
 import { boardToThree, layerAltitude, slabTop, srgb, type Vec3 } from '../world/units'
 import { INK } from './ink'
+import type { CityTarget } from './picking'
 
 // The outline of a folder: along the edge of its island's plateau, or around its parcel.
 
@@ -33,6 +34,18 @@ const CORNER_RADIUS = 0.7
 
 /** What a folder outline goes around. */
 export type Area = { island: number } | { island: number; rect: Rect; level: number }
+
+/** What outlines the folder of a target: its island or its parcel; null for a building. */
+export function areaOf(layout: CityLayout, target: CityTarget): Area | null {
+  if (target.kind === 'island') {
+    return { island: target.island }
+  }
+  if (target.kind === 'parcel') {
+    const parcel = layout.islands[target.island]?.parcels[target.parcel]
+    return parcel ? { island: target.island, rect: parcel.rect, level: parcel.level } : null
+  }
+  return null
+}
 
 export class AreaMark {
   readonly group = new Group()

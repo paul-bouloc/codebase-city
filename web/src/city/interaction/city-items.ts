@@ -68,6 +68,15 @@ export interface CityListeners {
   port?(list: PortList | null): void
   /** The camera's view, once loaded and each time it changes. */
   view?(view: CameraView): void
+  /** Where the labels of the guide's step stand on the page, each time that changes. */
+  guideLabels?(labels: readonly GuideLabel[]): void
+}
+
+/** A label of the guide over a roof: the file, and where its foot stands on the page. */
+export interface GuideLabel {
+  path: string
+  x: number
+  y: number
 }
 
 /** A press that moves less than this, in CSS pixels, is a click, not a drag of the camera. */

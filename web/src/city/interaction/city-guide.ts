@@ -6,10 +6,11 @@ import { ArcLayer } from '../render/arc-mesh'
 import type { IslandShape } from '../terrain/island-shape'
 import type { CityLayout } from '../world/layout'
 import type { Vec3 } from '../world/units'
-import { type Area, AreaMark, GUIDE_AREA } from './area-marks'
+import { type Area, AreaMark, areaOf, GUIDE_AREA } from './area-marks'
 import { BuildingMark, GUIDE_MARK, GUIDE_PIN_MARK, roofHeight } from './building-marks'
 import { type KeptAreas, keptInAreas } from './kept-areas'
 import { CYCLE_RINGS, RingSet } from './rings'
+import type { CityTargets } from './targets'
 
 // What a step of the guide's tour puts forward in the city: buildings in Jade, folders ringed in
 // Jade, a cycle's loop, and what fades around them.
@@ -25,6 +26,42 @@ export interface CityGuideView {
   areas: readonly Area[]
   fade: GuideFade
   cycle: Cycle | null
+}
+
+/** What a step puts forward, by path: what the screen knows. */
+export interface GuidePaths {
+  files: readonly string[]
+  labelled: readonly string[]
+  /** Islands or parcels, by the path of their folder. */
+  folders: readonly string[]
+  fade: GuideFade
+  /** The path of a file of the cycle to draw, if any. */
+  cycle: string | null
+}
+
+/** The view of these paths in a city; paths the city does not show are left out. */
+export function cityGuideView(
+  paths: GuidePaths,
+  layout: CityLayout,
+  targets: CityTargets,
+  cycleOf: (building: number) => Cycle | undefined,
+): CityGuideView {
+  const building = (path: string) => {
+    const target = targets.at(path)
+    return target?.kind === 'building' ? [target.index] : []
+  }
+  const cycleAt = paths.cycle === null ? [] : building(paths.cycle)
+  return {
+    buildings: paths.files.flatMap(building),
+    labelled: paths.labelled.flatMap(building),
+    areas: paths.folders.flatMap((path) => {
+      const target = targets.at(path)
+      const area = target && areaOf(layout, target)
+      return area ? [area] : []
+    }),
+    fade: paths.fade,
+    cycle: cycleAt[0] === undefined ? null : (cycleOf(cycleAt[0]) ?? null),
+  }
 }
 
 /** Arcs and labels land this far above a roof, in u. */
