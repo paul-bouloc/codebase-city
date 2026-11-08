@@ -93,10 +93,9 @@
   white-space: nowrap;
 }
 
-/* Right to left, so the ellipsis eats the start of the folder, not the end. It gives way long
- * before the name does. */
+/* Right to left, so the ellipsis eats the start of the folder, not the end. */
 .folder {
-  flex: 0 1000 auto;
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   color: var(--color-text-secondary);
@@ -109,9 +108,11 @@
   unicode-bidi: isolate;
 }
 
+/* The name never gives way to its folder (not even a fraction of a pixel, which would show the
+ * ellipsis): it is cut only when it does not fit on its own. */
 .name {
-  flex: 0 1 auto;
-  min-width: 0;
+  flex: none;
+  max-width: 100%;
   overflow: hidden;
   font-weight: 700;
   text-overflow: ellipsis;
@@ -133,12 +134,17 @@
 }
 
 .subline {
-  overflow: hidden;
+  display: flex;
+  min-width: 0;
   color: var(--color-text-secondary);
   font: var(--caption);
   font-family: var(--font-family-mono);
   white-space: nowrap;
-  text-overflow: ellipsis;
+}
+
+.lineNumber {
+  flex: none;
+  white-space: pre;
 }
 
 .badges {

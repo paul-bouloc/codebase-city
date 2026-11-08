@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import type { SearchResults } from './search-data'
 import { SearchPalette, searchOptionId } from './SearchPalette'
+import type { SearchResults } from './search-data'
 
 const RESULTS: SearchResults = {
   files: {
@@ -113,7 +113,10 @@ describe('SearchPalette', () => {
     const html = render(RESULTS)
     expect(html).toContain('9 files')
     expect(html).toContain('class')
-    expect(html).toContain('src/vs/editor/common/model/textModel.ts · line 284')
+    // The file, which can give way, then its line, which cannot.
+    expect(html).toMatch(
+      /src\/vs\/editor\/common\/model\/textModel\.ts<\/span><\/span><span[^>]*> · line 284<\/span>/,
+    )
   })
 
   it('says when nothing matches, and offers the closest name', () => {

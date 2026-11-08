@@ -232,8 +232,15 @@ function SymbolOption({ hit }: { hit: SymbolHit }) {
         <span className={styles.path}>
           <Runs text={hit.name} positions={hit.positions} className={styles.name} />
         </span>
-        <span className={styles.subline}>
-          {hit.file} · {TEXT.line(hit.line)}
+        {/* The file gives way from its start; its line always shows. */}
+        <span className={styles.subline} title={hit.file}>
+          <span className={styles.folder}>
+            <span className={styles.folderText}>{hit.file}</span>
+          </span>
+          <span className={styles.lineNumber}>
+            {' · '}
+            {TEXT.line(hit.line)}
+          </span>
         </span>
       </span>
       <span className={styles.badges}>
