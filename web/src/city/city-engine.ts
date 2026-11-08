@@ -231,6 +231,7 @@ export class CityEngine {
     }
     const leave = () => {
       this.pointer = null
+      this.onHub = false
       this.interaction?.point(null, { x: 0, y: 0 })
     }
     const down = (event: PointerEvent) => {
@@ -474,6 +475,7 @@ export class CityEngine {
 
   /** Forgets the hover and the selection of the city on show, and says so. */
   private dropInteraction(): void {
+    this.onHub = false
     const interaction = this.interaction
     if (interaction) {
       const selected = interaction.getSelection() !== null
