@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { Button } from '../../../ui/actions/Button'
 import { LinkButton } from '../../../ui/actions/LinkButton'
 import { type TabItem, Tabs } from '../../../ui/actions/Tabs'
-import { Icon } from '../../../ui/brand/Icon'
 import { Badge } from '../../../ui/display/Badge'
 import { exactCount, fileSize } from '../../../ui/display/count-format'
 import { LiveRegion } from '../../../ui/feedback/LiveRegion'
@@ -15,6 +14,7 @@ import { SheetFrame } from '../SheetFrame'
 import type { FileSheetData } from '../sheet-data'
 import { UnanalyzedNote } from '../UnanalyzedNote'
 import { CodeView } from './CodeView'
+import { FileFacts } from './FileFacts'
 import styles from './FileSheet.module.css'
 import { HeaderComment } from './HeaderComment'
 import { ImportanceList } from './ImportanceList'
@@ -30,16 +30,6 @@ const TEXT = {
   size: 'Size',
   rank: (top: number, rank: number, of: number) =>
     `top ${top}% · rank ${exactCount(rank)} of ${exactCount(of)}`,
-  importedBy: 'Imported by',
-  filesDirectly: (count: number) => ` ${count === 1 ? 'file' : 'files'} directly · `,
-  inTotal: ' in total',
-  showing: (shown: number, of: number) =>
-    `Showing ${exactCount(shown)} of ${exactCount(of)} importers; the rest are grouped by island`,
-  imports: 'Imports',
-  filesSuffix: (count: number) => ` ${count === 1 ? 'file' : 'files'}`,
-  layer: (index: number, of: number) => `Layer ${index} of ${of} · `,
-  cycle: (files: number) => `Part of a cycle of ${exactCount(files)} files · `,
-  showCycle: 'show it',
   tabs: 'File details',
   tabImports: 'Imports',
   tabImportedBy: 'Imported by',
@@ -341,68 +331,5 @@ function FileBadges({ file }: { file: FileSheetData }) {
         <RoleBadge key={role} fileRole={role} reason={reason} />
       ))}
     </>
-  )
-}
-
-function FileFacts({
-  file,
-  onOpenFolder,
-  onShowCycle,
-}: {
-  file: FileSheetData
-  onOpenFolder: (path: string) => void
-  onShowCycle: (index: number) => void
-}) {
-  return (
-    <ul className={styles.facts}>
-      <li className={styles.fact}>
-        <span className={`${styles.trait} ${styles.incoming}`} />
-        <span>
-          {TEXT.importedBy} <strong>{exactCount(file.importers)}</strong>
-          {TEXT.filesDirectly(file.importers)}
-          <strong>{exactCount(file.dependents)}</strong>
-          {TEXT.inTotal}
-          {file.shownImporters !== undefined && (
-            <span className={styles.subFact}>
-              {TEXT.showing(file.shownImporters, file.importers)}
-            </span>
-          )}
-        </span>
-      </li>
-      <li className={styles.fact}>
-        <span className={`${styles.trait} ${styles.outgoing}`} />
-        <span>
-          {TEXT.imports} <strong>{exactCount(file.imports)}</strong>
-          {TEXT.filesSuffix(file.imports)}
-        </span>
-      </li>
-      {file.layer && (
-        <li className={styles.fact}>
-          <Icon name="layers" size={16} className={styles.factIcon} />
-          <span>
-            {TEXT.layer(file.layer.index, file.layer.of)}
-            <button
-              type="button"
-              className={`${styles.link} ${styles.mono}`}
-              onClick={() => file.layer && onOpenFolder(file.layer.islandPath)}
-            >
-              {file.layer.island}
-            </button>
-          </span>
-        </li>
-      )}
-      {file.cycles.map((files, index) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: cycles have no identity of their own here
-        <li key={index} className={`${styles.fact} ${styles.cycle}`}>
-          <Icon name="cycle" size={16} className={styles.factIcon} />
-          <span>
-            {TEXT.cycle(files)}
-            <button type="button" className={styles.link} onClick={() => onShowCycle(index)}>
-              {TEXT.showCycle}
-            </button>
-          </span>
-        </li>
-      ))}
-    </ul>
   )
 }
