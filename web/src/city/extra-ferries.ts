@@ -23,7 +23,7 @@ export class ExtraFerries {
   constructor(
     private readonly layout: CityLayout,
     private readonly shapes: readonly IslandShape[],
-    private readonly links: CityLinks,
+    private readonly links: Pick<CityLinks, 'bridges' | 'quays' | 'grid'>,
   ) {
     this.grid = links.grid
   }
