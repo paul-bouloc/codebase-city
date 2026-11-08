@@ -1,6 +1,6 @@
 // Approximate matching for the city's search: the letters of the query, in order, anywhere in
 // the name ("txtmdl" finds `textModel.ts`), scored so that whole words, word starts and runs of
-// letters come first.
+// letters come first. One letter finds the names it starts; two must appear side by side.
 
 /** Where a query matches a text, and how well. */
 export interface Match {
@@ -14,10 +14,12 @@ const AFTER_SEPARATOR = 9
 const CAMEL = 8
 const RUN = 5
 const SAME_CASE = 1
-const GAP_START = 3
+const GAP_START = 5
 const GAP_EXTEND = 1
 const LEADING_MAX = 10
 const WHOLE_TEXT = 20
+/** Earned in full by a query that covers the whole text: of two names, the one it fills more. */
+const COVERAGE = 10
 
 const SEPARATORS = new Set(['/', '.', '_', '-', ' ', '\\', ':'])
 
@@ -47,15 +49,17 @@ export function scorePositions(query: string, text: string, positions: readonly 
   let score = 0
   let previous = -1
   positions.forEach((position, at) => {
-    score += 1 + boundaryBonus(text, position)
+    score += 1
     if (text[position] === query[at]) {
       score += SAME_CASE
     }
-    if (previous >= 0) {
-      const gap = position - previous - 1
-      if (gap === 0) {
-        score += RUN
-      } else {
+    // A letter that continues a run is worth the run, not a new word: `TeX` is no `text`.
+    const gap = previous < 0 ? -1 : position - previous - 1
+    if (gap === 0) {
+      score += RUN
+    } else {
+      score += boundaryBonus(text, position)
+      if (gap > 0) {
         score -= GAP_START + (gap - 1) * GAP_EXTEND
       }
     }
@@ -63,16 +67,20 @@ export function scorePositions(query: string, text: string, positions: readonly 
   })
   // Earlier is better, a little.
   score -= Math.min(positions[0] ?? 0, LEADING_MAX) / 2
+  score += (COVERAGE * positions.length) / Math.max(text.length, 1)
   if (positions.length === text.length) {
     score += WHOLE_TEXT
   }
   return score
 }
 
+/** Under this many letters, a query must appear whole: one or two letters are no abbreviation. */
+const SHORT_QUERY = 3
+
 /**
  * Matches `query` against `text`, ignoring case. `lowerQuery` and `lowerText` are both in lower
  * case, worked out once by the caller. Returns null when the query's letters are not all in the
- * text, in order.
+ * text, in order (or, for a short query, not side by side).
  */
 export function fuzzyMatch(
   query: string,
@@ -83,6 +91,15 @@ export function fuzzyMatch(
   const length = lowerQuery.length
   if (length === 0 || length > lowerText.length) {
     return null
+  }
+  // One letter finds the names it starts.
+  if (length === 1) {
+    return lowerText[0] === lowerQuery
+      ? { score: scorePositions(query, text, [0]), positions: [0] }
+      : null
+  }
+  if (length < SHORT_QUERY) {
+    return bestRun(query, lowerQuery, text, lowerText, null)
   }
 
   // The first place the whole query fits, then the tightest window that ends there.
@@ -125,23 +142,32 @@ export function fuzzyMatch(
       best = { score, positions }
     }
   }
-  if (!best) {
-    return null
-  }
-
   // The query as one run beats scattered letters: try where it appears whole.
+  return bestRun(query, lowerQuery, text, lowerText, best)
+}
+
+/** The best of `best` and the places, the first few, where the query appears whole. */
+function bestRun(
+  query: string,
+  lowerQuery: string,
+  text: string,
+  lowerText: string,
+  best: Match | null,
+): Match | null {
+  let found = best
   let from = lowerText.indexOf(lowerQuery)
   let tries = 0
   while (from >= 0 && tries < 8) {
-    const run = Array.from({ length }, (_, offset) => from + offset)
+    const start = from
+    const run = Array.from({ length: lowerQuery.length }, (_, offset) => start + offset)
     const score = scorePositions(query, text, run)
-    if (score > best.score) {
-      best = { score, positions: run }
+    if (!found || score > found.score) {
+      found = { score, positions: run }
     }
     from = lowerText.indexOf(lowerQuery, from + 1)
     tries++
   }
-  return best
+  return found
 }
 
 /**

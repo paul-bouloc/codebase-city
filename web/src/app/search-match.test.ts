@@ -20,6 +20,28 @@ describe('fuzzyMatch', () => {
     expect(match('textModel.tsx', 'textModel.ts')).toBeNull()
   })
 
+  it('wants a query of one or two letters whole', () => {
+    expect(match('tl', 'textModel.ts')).toBeNull()
+    expect(match('xt', 'textModel.ts')?.positions).toEqual([2, 3])
+    // At a word start rather than inside one.
+    expect(match('mo', 'demo/model.ts')?.positions).toEqual([5, 6])
+  })
+
+  it('finds the names one letter starts', () => {
+    expect(match('m', 'model.ts')?.positions).toEqual([0])
+    expect(match('M', 'textModel.ts')).toBeNull()
+  })
+
+  it('prefers the name the query fills more', () => {
+    const score = (text: string) => match('textm', text)?.score ?? Number.NEGATIVE_INFINITY
+    expect(score('TextModel')).toBeGreaterThan(score('textmateColorsSchemaId'))
+  })
+
+  it('does not take letters that run on for a new word', () => {
+    const score = (text: string) => match('text', text)?.score ?? Number.NEGATIVE_INFINITY
+    expect(score('textEdit.ts')).toBeGreaterThan(score('TeX.tmLanguage.json'))
+  })
+
   it('matches word starts and camel humps rather than the first letters that fit', () => {
     // m of Model, not of nothing earlier; s of Search, not the s of textModel… there is none.
     expect(match('tms', 'textModelSearch.ts')?.positions).toEqual([0, 4, 9])
