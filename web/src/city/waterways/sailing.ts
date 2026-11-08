@@ -1,4 +1,4 @@
-import type { Point } from './world/layout'
+import type { Point } from '../world/layout'
 
 // A boat on a ferry line sails from one pier to the other and back, slowing down at each end: its
 // way along the line follows a half cosine, so that it eases out of a pier and into the next. It

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { cycleWays, loopIslandPairs } from './cycle-ways'
 import type { ExtraFerries } from './extra-ferries'
-import type { Bridge, Ferry, Pair } from './links'
+import type { Bridge, Ferry, Pair } from './waterways/links'
 
 const BRIDGE: Bridge = {
   a: 0,

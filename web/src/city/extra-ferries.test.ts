@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { ExtraFerries, islandExtras } from './extra-ferries'
-import { cityLinks, pointAlong, tipOf } from './links'
 import { islandShapes } from './terrain/island-shape'
-import { insidePolygon, landOutline } from './water-route'
+import { cityLinks, pointAlong, tipOf } from './waterways/links'
+import { insidePolygon, landOutline } from './waterways/water-route'
 import { boundsOf, type CityLayout, type IslandLink, type Lot, type Rect } from './world/layout'
 
 const FILE: Lot['file'] = { language: 'typescript', lines: 100, complexity: 5, test: false }

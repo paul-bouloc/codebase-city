@@ -1,5 +1,5 @@
-import type { IslandShape } from './terrain/island-shape'
-import type { Point, Rect } from './world/layout'
+import type { IslandShape } from '../terrain/island-shape'
+import type { Point, Rect } from '../world/layout'
 
 // Ferries sail on a grid of water cells: every cell whose centre stands on an island's land (its
 // plateau, terraces and beach, a little more for the wake's own width) is closed. Water costs

@@ -9,7 +9,6 @@ import {
   Vector2,
 } from 'three'
 import { CROWN_RADIUS, type Decor, FOLIAGE_TINTS, type TreeKind } from './decor'
-import type { Boat } from './links'
 import { createFading, dimmingFragmentPars, type Fading } from './render/dimming'
 import {
   shadingFragmentPars,
@@ -17,6 +16,7 @@ import {
   shadingVertex,
   shadingVertexPars,
 } from './render/shading'
+import type { Boat } from './waterways/links'
 import { boardToThree, srgb, type Vec3 } from './world/units'
 
 // Trees, rocks and boats are a few models repeated, one instanced draw call each. A part of a model

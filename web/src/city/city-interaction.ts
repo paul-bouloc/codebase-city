@@ -17,7 +17,6 @@ import { type ExtraFerries, islandExtras } from './extra-ferries'
 import { FolderLinkMarks, folderWays } from './folder-link-marks'
 import { folderFlows } from './folder-links'
 import { HoverTiming } from './hover-timing'
-import type { Bridge, Ferry, Pair, Port } from './links'
 import type { CityTarget } from './picking'
 import { PORT_ROWS, portLabels, portRows } from './port-links'
 import { ArcLayer } from './render/arc-mesh'
@@ -37,6 +36,7 @@ import {
   selectionLinks,
 } from './selection-links'
 import type { IslandShape } from './terrain/island-shape'
+import type { Bridge, Ferry, Pair, Port } from './waterways/links'
 import { type CityLayout, rectContains } from './world/layout'
 import { boardToThree, layerAltitude, type Vec3 } from './world/units'
 

@@ -24,7 +24,6 @@ import {
   Vector4,
   WebGLRenderer,
 } from 'three'
-import { createBridges } from './bridges'
 import { createBuildings } from './buildings'
 import { CityControls } from './city-controls'
 import {
@@ -40,7 +39,6 @@ import { cityDecor } from './decor'
 import { BOAT_LENGTH, createDecor, type DecorStats, decorStats } from './decor-mesh'
 import { type Drive, STILL } from './drive'
 import { ExtraFerries } from './extra-ferries'
-import { createFerries } from './ferries'
 import { Fleet } from './fleet'
 import {
   extentOf,
@@ -53,7 +51,6 @@ import {
   turnAbout,
   type Viewport,
 } from './flight'
-import { cityLinks, type Port } from './links'
 import { bearingOf, northOf, scaleFiles } from './map-scale'
 import { CityPicker, type CityTarget } from './picking'
 import type { PlacedBuilding } from './placed-buildings'
@@ -68,6 +65,9 @@ import { createParcels } from './terrain/plateaux'
 import { createSea, OPEN_SEA, seaSize } from './terrain/sea'
 import { createTerrain } from './terrain/terrain'
 import { maxTilt, NEAR_TILT } from './tilt'
+import { createBridges } from './waterways/bridges'
+import { createFerries } from './waterways/ferries'
+import { cityLinks, type Port } from './waterways/links'
 import type { CityLayout } from './world/layout'
 import { boardToThree, nearPlane, type Vec3 } from './world/units'
 

@@ -1,10 +1,10 @@
 import { Group, Mesh, type ShaderMaterial } from 'three'
-import { deckLine } from './bridges'
 import type { FolderFlow } from './folder-links'
-import type { Bridge, Ferry } from './links'
 import { INCOMING_LINK, OUTGOING_LINK } from './render/palette'
 import { createScreenLines } from './render/screen-lines'
 import type { Direction } from './selection-links'
+import { deckLine } from './waterways/bridges'
+import type { Bridge, Ferry } from './waterways/links'
 import { boardToThree, srgb, type Vec3 } from './world/units'
 
 // The bridges and ferry lines of a selected folder: a band along each linked bridge's deck and a

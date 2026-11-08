@@ -1,8 +1,8 @@
 import { type InstancedMesh, Matrix4 } from 'three'
 import { createBoats } from './decor-mesh'
-import type { Boat, Ferry } from './links'
 import type { Fading } from './render/dimming'
-import { Route, sail } from './sailing'
+import type { Boat, Ferry } from './waterways/links'
+import { Route, sail } from './waterways/sailing'
 import { boardToThree } from './world/units'
 
 // The boats that sail the ferry lines, moved at every frame of the animation. They cast no

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
+import { MeshBuilder } from '../render/mesh-builder'
 import { addBridge, addQuay } from './bridges'
 import type { Bridge } from './links'
-import { MeshBuilder } from './render/mesh-builder'
 
 const BRIDGE: Bridge = {
   a: 0,

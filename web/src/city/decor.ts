@@ -1,7 +1,7 @@
-import type { Boat, Quay } from './links'
 import { type CanalCell, islandCanals } from './terrain/canals'
 import { type Garden, islandGardens, squareGardens } from './terrain/gardens'
 import { type ContourSample, type IslandShape, SAMPLE_STEP } from './terrain/island-shape'
+import type { Boat, Quay } from './waterways/links'
 import type {
   CityLayout,
   GridLayout,

@@ -1,8 +1,8 @@
 import { Group } from 'three'
+import { FERRY_LINE, UPWARD } from '../render/palette'
+import { createScreenLines } from '../render/screen-lines'
+import { boardToThree, srgb } from '../world/units'
 import type { Ferry } from './links'
-import { FERRY_LINE, UPWARD } from './render/palette'
-import { createScreenLines } from './render/screen-lines'
-import { boardToThree, srgb } from './world/units'
 
 // A ferry line is a route drawn on the sea, as on a chart: as wide on screen at any distance,
 // its dashes painted along it in the scene's perspective, filling in from afar. Every line looks
