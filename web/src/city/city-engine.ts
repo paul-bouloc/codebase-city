@@ -72,10 +72,10 @@ const TARGET_MARGIN = 20
 /** A building this close to the pointer, in CSS pixels, is under it. */
 const PICK_SLACK = 8
 /**
- * Boats sail at 30 frames a second at most: every other frame at 60 Hz, a little under 1/30 s so
- * that a frame a hair early does not wait for the next.
+ * Boats and arcs move at 30 frames a second at most: every other frame at 60 Hz, a little under
+ * 1/30 s so that a frame a hair early does not wait for the next.
  */
-const SAIL_FRAME = 1000 / 30 - 4
+const ANIMATION_FRAME = 1000 / 30 - 4
 /** Boats sail only while one at the camera's target spans this many device pixels or more. */
 const SAIL_PIXELS = 3
 /** The pointer this close to a bundle's hub, in CSS pixels, opens it. */
@@ -145,8 +145,8 @@ export class CityEngine {
   }
   private picker: CityPicker | null = null
   private fleet: Fleet | null = null
-  private sailedAt = Number.NEGATIVE_INFINITY
-  private arcedAt = Number.NEGATIVE_INFINITY
+  // Boats and arcs move together, on one clock: never more than 30 frames a second between them.
+  private animatedAt = Number.NEGATIVE_INFINITY
   // Whether the pointer rests on a bundle's hub: it opens the bundle once, on arriving.
   private onHub = false
   private readonly lessMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -350,7 +350,7 @@ export class CityEngine {
       fading,
     )
     this.fleet = fleet
-    this.sailedAt = Number.NEGATIVE_INFINITY
+    this.animatedAt = Number.NEGATIVE_INFINITY
     this.picker = new CityPicker(shapes, buildings.placed)
     const interaction = new CityInteraction(
       layout,
@@ -531,20 +531,24 @@ export class CityEngine {
     if (this.interaction?.update(time)) {
       this.needsRender = true
     }
+    const tick = time - this.animatedAt >= ANIMATION_FRAME
+    let animated = false
     const arcs = this.interaction?.arcs
     if (arcs?.moves) {
       // Still when the system asks for less motion: drawn once, their way shown by two spots.
       const still = this.lessMotion.matches
       const seen = DASH_PERIOD * this.pixelsPerUnit() >= DASH_PIXELS
-      if (still !== arcs.still || (!still && seen && time - this.arcedAt >= SAIL_FRAME)) {
+      if (still !== arcs.still || (!still && seen && tick)) {
         arcs.update(time / 1000, still)
-        this.arcedAt = time
-        this.needsRender = true
+        animated = true
       }
     }
-    if (this.fleet?.sails && time - this.sailedAt >= SAIL_FRAME && this.boatsSail()) {
+    if (this.fleet?.sails && tick && this.boatsSail()) {
       this.fleet.update(time / 1000)
-      this.sailedAt = time
+      animated = true
+    }
+    if (animated) {
+      this.animatedAt = time
       this.needsRender = true
     }
     if (moved || this.needsRender || this.continuous) {
