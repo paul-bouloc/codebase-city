@@ -61,7 +61,7 @@ function decodeStep(value: unknown, row: number, tables: Tables): TourStep {
       fail(`${path}.${name} is not a list of indexes`)
     }
     if (rows.length < min || rows.length > MAX_ROWS || new Set(rows).size !== rows.length) {
-      fail(`a list of ${path} must hold one to three rows, each once`)
+      fail(`a list of ${path} must hold up to three rows, each once, and only parks none`)
     }
     inBounds(`tour.${name}`, rows, length)
     return rows

@@ -577,7 +577,7 @@ describe('decodeResult', () => {
       decodeChanged((json) => {
         ;(json.tour.steps[2] as { conductors: number[] }).conductors = []
       }),
-    ).toThrow('a list of tour.steps[2] must hold one to three rows, each once')
+    ).toThrow('a list of tour.steps[2] must hold up to three rows, each once, and only parks none')
     expect(
       decodeChanged((json) => {
         ;(json.tour.steps[5] as { dir: number }).dir = 8
