@@ -39,7 +39,7 @@ import { SearchPalette, searchOptionId } from './search/SearchPalette'
 import { type SearchHit, searchOptions } from './search/search-data'
 import { buildSearchIndex, normalizeQuery } from './search/search-index'
 import { searchKeyAction } from './search/search-keys'
-import { hashOf, type ScreenSelection, selectionOfHash } from './selection-hash'
+import { hashOf, type ScreenSelection } from './selection-hash'
 import { FileSheet } from './sheets/file/FileSheet'
 import { fileSheetData, symbolsByFile } from './sheets/file/file-sheet'
 import { fetchCode } from './sheets/file/github-code'
@@ -50,6 +50,7 @@ import { CityHoverCard } from './tooltips/CityHoverCard'
 import { PortCard } from './tooltips/PortCard'
 import type { Rect } from './tooltips/tooltip-placement'
 import { useDriveKeys } from './use-drive-keys'
+import { useSelectionHash } from './use-selection-hash'
 
 const TEXT = {
   pathCopied: 'Path copied',
@@ -189,36 +190,7 @@ function Screen({ result, homeHref = '/', showStats = false, onEngine }: CityScr
     [engine, index],
   )
 
-  // The fragment names the selection: read once the city is there (again for a new result, which
-  // makes a new `choose`), and on Back or Forward.
-  const hashRead = useRef(false)
-  useEffect(() => {
-    if (!engine) {
-      return
-    }
-    const apply = () => choose(selectionOfHash(window.location.hash))
-    apply()
-    hashRead.current = true
-    window.addEventListener('popstate', apply)
-    window.addEventListener('hashchange', apply)
-    return () => {
-      window.removeEventListener('popstate', apply)
-      window.removeEventListener('hashchange', apply)
-    }
-  }, [engine, choose])
-
-  // Each selection made in the city or the interface gets its own entry in the history.
-  useEffect(() => {
-    if (!hashRead.current) {
-      return
-    }
-    // The same selection spelt another way (`@` left unescaped) is no new entry.
-    const current = selectionOfHash(window.location.hash)
-    if (current?.kind !== selection?.kind || current?.path !== selection?.path) {
-      const { pathname, search } = window.location
-      window.history.pushState(null, '', hashOf(selection) || `${pathname}${search}`)
-    }
-  }, [selection])
+  useSelectionHash(engine, selection, choose)
 
   // The selected file's code, read from GitHub once its tab shows, never twice for one file.
   const codeRequest = useRef<AbortController | null>(null)
