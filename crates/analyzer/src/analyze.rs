@@ -94,7 +94,7 @@ pub fn analyze_with_report(
         })
         .collect();
 
-    let outcomes = resolve_imports(&files, &parsed);
+    let outcomes = resolve::imports(&files, &parsed);
 
     let mut dirs = DirTree::new();
     let mut languages: Vec<String> = Vec::new();
@@ -414,30 +414,6 @@ fn most_frequent(counts: HashMap<&str, u32>) -> Vec<(String, u32)> {
         .collect();
     sorted.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
     sorted
-}
-
-/// The outcome of every import of every file, in the same order.
-fn resolve_imports(files: &[SourceFile], parsed: &[Option<Parsed>]) -> Vec<Vec<Outcome>> {
-    let paths: Vec<&str> = files.iter().map(|file| file.path.as_str()).collect();
-    let manifests: HashMap<&str, &[u8]> = files
-        .iter()
-        .filter_map(|file| Some((file.path.as_str(), file.content.as_deref()?)))
-        .collect();
-    let index = resolve::Index::new(&paths);
-    let resolver = resolve::Resolver::new(&index, &manifests);
-    files
-        .par_iter()
-        .zip(parsed)
-        .map(|(file, parsed)| {
-            parsed.as_ref().map_or_else(Vec::new, |parsed| {
-                parsed
-                    .imports
-                    .iter()
-                    .map(|import| resolver.resolve(&file.path, file.language, import))
-                    .collect()
-            })
-        })
-        .collect()
 }
 
 /// The folder table, built as files come: a folder is added the first time

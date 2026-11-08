@@ -13,9 +13,10 @@ mod python;
 use std::collections::{HashMap, HashSet};
 
 use model::Confidence;
+use rayon::prelude::*;
 
-use crate::files::{Language, split_path};
-use crate::lang::Import;
+use crate::files::{Language, SourceFile, split_path};
+use crate::lang::{Import, Parsed};
 
 /// What an import points to.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -56,7 +57,7 @@ pub(crate) struct Index<'a> {
 }
 
 impl<'a> Index<'a> {
-    /// `paths` must be sorted, which [`crate::analyze`] does first.
+    /// `paths` must be sorted: a file's row is its position.
     pub(crate) fn new(paths: &'a [&'a str]) -> Self {
         let mut index = Self {
             paths,
@@ -178,6 +179,31 @@ impl<'a> Resolver<'a> {
             Language::Other(_) => Outcome::Unresolved,
         }
     }
+}
+
+/// The outcome of every import of every file, in the same order. `files`
+/// must be sorted by path: a file's row is its position.
+pub(crate) fn imports(files: &[SourceFile], parsed: &[Option<Parsed>]) -> Vec<Vec<Outcome>> {
+    let paths: Vec<&str> = files.iter().map(|file| file.path.as_str()).collect();
+    let manifests: HashMap<&str, &[u8]> = files
+        .iter()
+        .filter_map(|file| Some((file.path.as_str(), file.content.as_deref()?)))
+        .collect();
+    let index = Index::new(&paths);
+    let resolver = Resolver::new(&index, &manifests);
+    files
+        .par_iter()
+        .zip(parsed)
+        .map(|(file, parsed)| {
+            parsed.as_ref().map_or_else(Vec::new, |parsed| {
+                parsed
+                    .imports
+                    .iter()
+                    .map(|import| resolver.resolve(&file.path, file.language, import))
+                    .collect()
+            })
+        })
+        .collect()
 }
 
 #[cfg(test)]
