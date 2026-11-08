@@ -142,8 +142,10 @@ export function fuzzyMatch(
       best = { score, positions }
     }
   }
-  // The query as one run beats scattered letters: try where it appears whole.
-  return bestRun(query, lowerQuery, text, lowerText, best)
+  // The query as one run beats scattered letters: try where it appears whole. Letters strewn
+  // across a long name, scoring nothing, mean nothing: no match.
+  const found = bestRun(query, lowerQuery, text, lowerText, best)
+  return found && found.score > 0 ? found : null
 }
 
 /** The best of `best` and the places, the first few, where the query appears whole. */

@@ -20,6 +20,11 @@ describe('fuzzyMatch', () => {
     expect(match('textModel.tsx', 'textModel.ts')).toBeNull()
   })
 
+  it('finds nothing in letters strewn across a long name', () => {
+    expect(match('abc', 'axxxxxxxxbxxxxxxxxcxxxxxxxx')).toBeNull()
+    expect(match('abc', 'axbxc')).not.toBeNull()
+  })
+
   it('wants a query of one or two letters whole', () => {
     expect(match('tl', 'textModel.ts')).toBeNull()
     expect(match('xt', 'textModel.ts')?.positions).toEqual([2, 3])
