@@ -24,6 +24,7 @@ import {
   Vector4,
   WebGLRenderer,
 } from 'three'
+import { DASH_PERIOD } from './arc-mesh'
 import { createBridges } from './bridges'
 import { createBuildings } from './buildings'
 import { CityInteraction, type CityItem, type CityListeners, isClick } from './city-interaction'
@@ -79,6 +80,11 @@ const SAIL_FRAME = 1000 / 30 - 4
 const SAIL_PIXELS = 3
 /** The pointer this close to a bundle's hub, in CSS pixels, opens it. */
 const HUB_SLACK = 14
+/**
+ * The arcs' dashes move only while a period at the camera's target spans this many device pixels
+ * or more: shorter, they have filled in (`SOLID_BELOW` of the arcs).
+ */
+const DASH_PIXELS = 6
 
 const SHADOW_MAP_SIZE = 4096
 /** Room around the city for the shadows of the tallest towers. */
@@ -149,6 +155,7 @@ export class CityEngine {
   private readonly raycaster = new Raycaster()
   private readonly ndc = new Vector2()
   private readonly bufferSize = new Vector2()
+  private readonly projected = new Vector3()
   // Where the pointer is on the canvas, in CSS pixels; null when it is elsewhere.
   private pointer: { x: number; y: number; clientX: number; clientY: number } | null = null
   private pressedAt: { x: number; y: number } | null = null
@@ -295,7 +302,7 @@ export class CityEngine {
     if (!interaction || canvas.clientWidth === 0) {
       return
     }
-    const projected = new Vector3()
+    const projected = this.projected
     let nearest = HUB_SLACK
     let opened = null
     for (const hub of interaction.getHubs()) {
@@ -500,13 +507,13 @@ export class CityEngine {
    * to see (a hidden tab gets no frames at all).
    */
   private boatsSail(): boolean {
-    if (this.lessMotion.matches) {
-      return false
-    }
+    return !this.lessMotion.matches && BOAT_LENGTH * this.pixelsPerUnit() >= SAIL_PIXELS
+  }
+
+  /** How many device pixels one u spans at the camera's target. */
+  private pixelsPerUnit(): number {
     const height = this.renderer.getDrawingBufferSize(this.bufferSize).y
-    const pixelsPerUnit =
-      (height * this.camera.projectionMatrix.elements[5]) / 2 / this.controls.distance
-    return BOAT_LENGTH * pixelsPerUnit >= SAIL_PIXELS
+    return (height * this.camera.projectionMatrix.elements[5]) / 2 / this.controls.distance
   }
 
   private frame(time: number): void {
@@ -528,7 +535,8 @@ export class CityEngine {
     if (arcs?.moves) {
       // Still when the system asks for less motion: drawn once, their way shown by two spots.
       const still = this.lessMotion.matches
-      if (still !== arcs.still || (!still && time - this.arcedAt >= SAIL_FRAME)) {
+      const seen = DASH_PERIOD * this.pixelsPerUnit() >= DASH_PIXELS
+      if (still !== arcs.still || (!still && seen && time - this.arcedAt >= SAIL_FRAME)) {
         arcs.update(time / 1000, still)
         this.arcedAt = time
         this.needsRender = true

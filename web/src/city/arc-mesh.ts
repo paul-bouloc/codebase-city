@@ -64,6 +64,8 @@ const HIDDEN_OPACITY = 0.4
 /** Dashes and gaps along an arc, in u: one period goes by in `DASH_TIME` seconds. */
 const DASH: [number, number] = [0.6, 0.4]
 const UPWARD_DASH: [number, number] = [0.55, 0.45]
+/** Both dash periods, in u. */
+export const DASH_PERIOD = 1
 export const DASH_TIME = 1.2
 /** A dash period shorter than this many device pixels fills in, from the first to the second. */
 const SOLID_BELOW = [6, 12] as const
