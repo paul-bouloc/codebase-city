@@ -8,10 +8,11 @@ import { useTooltipPlacement } from './use-tooltip-placement'
 
 const TEXT = {
   label: (path: string) => `Links at the port of ${path}`,
-  links: (count: number) => `${exactCount(count)} more ${count === 1 ? 'link' : 'links'}`,
+  links: (count: number) =>
+    `${exactCount(count)} ${count === 1 ? 'link' : 'links'} not drawn, waiting at this port`,
   imports: (count: number) => `${exactCount(count)} ${count === 1 ? 'import' : 'imports'}`,
-  outgoing: 'imports it',
-  incoming: 'imported by it',
+  outgoing: (name: string) => `${name} imports it`,
+  incoming: (name: string) => `imports ${name}`,
   more: (count: number) => `and ${exactCount(count)} more`,
 }
 
@@ -67,15 +68,31 @@ export function PortCard({ path, links, more, pointer, obstacles, onFocusLink }:
         </span>
       </p>
       <p className={styles.summary}>{TEXT.links(total)}</p>
+      <p className={`${styles.relations} ${styles.secondary}`}>
+        <span className={styles.relation}>
+          <span className={`${styles.trait} ${styles.outgoing}`} aria-hidden="true" />
+          {TEXT.outgoing(name)}
+        </span>
+        <span className={styles.relation}>
+          <span className={`${styles.trait} ${styles.incoming}`} aria-hidden="true" />
+          {TEXT.incoming(name)}
+        </span>
+      </p>
       <ul className={own.list} onMouseLeave={() => onFocusLink?.(null)}>
         {links.map((link, index) => (
           <li key={link.path} className={own.row} onMouseEnter={() => onFocusLink?.(index)}>
             <span className={own.ways}>
               {link.outgoing && (
-                <span className={`${styles.trait} ${styles.outgoing}`} title={TEXT.outgoing} />
+                <span
+                  className={`${styles.trait} ${styles.outgoing}`}
+                  title={TEXT.outgoing(name)}
+                />
               )}
               {link.incoming && (
-                <span className={`${styles.trait} ${styles.incoming}`} title={TEXT.incoming} />
+                <span
+                  className={`${styles.trait} ${styles.incoming}`}
+                  title={TEXT.incoming(name)}
+                />
               )}
             </span>
             <span className={own.island}>{link.path}</span>

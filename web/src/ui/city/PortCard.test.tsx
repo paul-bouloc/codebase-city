@@ -13,13 +13,16 @@ describe('PortCard', () => {
       <PortCard path="src/vs/base" links={LINKS} more={0} pointer={{ x: 0, y: 0 }} />,
     )
     expect(html).toContain('aria-label="Links at the port of src/vs/base"')
-    expect(html).toContain('2 more links')
+    expect(html).toContain('2 links not drawn, waiting at this port')
+    // A legend says which way each stroke goes.
+    expect(html).toContain('base imports it')
+    expect(html).toContain('imports base')
     expect(html).toContain('src/vs/platform</span>')
     expect(html).toContain('212 imports')
     expect(html).toContain('1 import<')
     // Two strokes for the link both ways, one for the other.
-    expect(html.match(/title="imports it"/g)).toHaveLength(1)
-    expect(html.match(/title="imported by it"/g)).toHaveLength(2)
+    expect(html.match(/title="base imports it"/g)).toHaveLength(1)
+    expect(html.match(/title="imports base"/g)).toHaveLength(2)
     expect(html).not.toContain('and ')
   })
 
@@ -27,7 +30,7 @@ describe('PortCard', () => {
     const html = renderToStaticMarkup(
       <PortCard path="src" links={LINKS} more={5} pointer={{ x: 0, y: 0 }} />,
     )
-    expect(html).toContain('7 more links')
+    expect(html).toContain('7 links not drawn')
     expect(html).toContain('and 5 more')
   })
 })
