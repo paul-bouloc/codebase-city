@@ -11,7 +11,7 @@ mod treemap;
 use model::{AnalysisResult, Grids, Layout, Lots, ParcelNature, Parcels, Rects, Scope};
 
 use crate::files::Language;
-pub use treemap::{Audit, AuditLevel};
+pub use treemap::place::{Audit, AuditLevel};
 use treemap::{Gap, LOT, Node};
 
 /// Space between the content of an island and the edge of its plateau.
