@@ -10,7 +10,6 @@ import { CityLegend } from '../../src/screen/legend/CityLegend'
 import { Glass } from '../../src/screen/parts/Glass'
 import { FileSheet } from '../../src/screen/sheets/file/FileSheet'
 import { FolderSheet } from '../../src/screen/sheets/folder/FolderSheet'
-import type { FileSheetData, FolderSheetData } from '../../src/screen/sheets/sheet-data'
 import { AreaTooltip } from '../../src/screen/tooltips/AreaTooltip'
 import { CityMarker } from '../../src/screen/tooltips/CityMarker'
 import { FileTooltip } from '../../src/screen/tooltips/FileTooltip'
@@ -27,18 +26,14 @@ import {
   SMALL_LEGEND,
 } from './city-ui-samples'
 import { SheetsBoard } from './SheetsBoard'
+import { ABOUT } from './sheet-samples'
 import {
-  ABOUT,
-  FILE_CODE_GONE,
-  FILE_CODE_TIMEOUT,
-  FILE_CYCLES,
-  FOLDER,
-  FOLDER_NO_README,
-  FILE as SHEET_FILE,
-  TEST_PARK,
-  UNANALYZED_FILE,
-  UNANALYZED_FOLDER,
-} from './sheet-samples'
+  HOVER_LABELS,
+  type Hover,
+  SELECTION_LABELS,
+  SELECTIONS,
+  type Selection,
+} from './stage-states'
 
 const TEXT = {
   tools: 'States',
@@ -48,33 +43,12 @@ const TEXT = {
   aboutOpen: 'About open',
   shareOpen: 'Share open',
   selection: 'Selection (opens its sheet)',
-  selectionOptions: {
-    none: 'None',
-    file: 'File: textModel.ts',
-    'file-cycles': 'File in three cycles',
-    'file-loading': 'File, loading',
-    'file-unanalyzed': 'File, not analyzed',
-    'file-timeout': 'File, code timed out',
-    'file-gone': 'File, code gone from GitHub',
-    folder: 'Island: editor',
-    'folder-no-readme': 'Island without README',
-    'folder-unanalyzed': 'Folder, not analyzed',
-    'folder-tests': 'Test park',
-    'folder-loading': 'Island, loading',
-  },
   selected: (label: string, open: boolean) =>
     `Selected: ${label} · sheet ${open ? 'open' : 'closed'}`,
   newer: 'Newer version (About)',
   showMarkers: 'Markers',
   bearing: 'Camera bearing',
   hover: 'Tooltip under the pointer',
-  hoverOptions: {
-    off: 'None',
-    file: 'Building',
-    long: 'Long path',
-    parcel: 'Parcel',
-    island: 'Island',
-  },
   boardTitle: 'City UI components',
   boardIntro:
     'Development page. Compare with the “DS · Components 9”, “City UI · City idle” and “City UI · Hover” boards. Press Tab to see the focus rings and the control tooltips.',
@@ -97,26 +71,6 @@ const TEXT = {
   tooltipParcel: 'Parcel',
   tooltipIsland: 'Island',
   markers: 'Markers above roofs',
-}
-
-type Hover = keyof typeof TEXT.hoverOptions
-type Selection = Exclude<keyof typeof TEXT.selectionOptions, 'none'>
-
-const SELECTIONS: Record<
-  Selection,
-  { file: FileSheetData; loading?: boolean } | { folder: FolderSheetData; loading?: boolean }
-> = {
-  file: { file: SHEET_FILE },
-  'file-cycles': { file: FILE_CYCLES },
-  'file-loading': { file: SHEET_FILE, loading: true },
-  'file-unanalyzed': { file: UNANALYZED_FILE },
-  'file-timeout': { file: FILE_CODE_TIMEOUT },
-  'file-gone': { file: FILE_CODE_GONE },
-  folder: { folder: FOLDER },
-  'folder-no-readme': { folder: FOLDER_NO_README },
-  'folder-unanalyzed': { folder: UNANALYZED_FOLDER },
-  'folder-tests': { folder: TEST_PARK },
-  'folder-loading': { folder: FOLDER, loading: true },
 }
 
 const ABOUT_ID = 'about-panel'
@@ -305,7 +259,7 @@ export function CityUiPage() {
                   select(event.target.value === 'none' ? null : (event.target.value as Selection))
                 }
               >
-                {Object.entries(TEXT.selectionOptions).map(([value, label]) => (
+                {Object.entries(SELECTION_LABELS).map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
                   </option>
@@ -314,7 +268,7 @@ export function CityUiPage() {
             </label>
             {selection && (
               <p className={styles.note} role="status">
-                {TEXT.selected(TEXT.selectionOptions[selection], sheet)}
+                {TEXT.selected(SELECTION_LABELS[selection], sheet)}
               </p>
             )}
             <label className={styles.field}>
@@ -330,7 +284,7 @@ export function CityUiPage() {
             <label className={styles.field}>
               {TEXT.hover}
               <select value={hover} onChange={(event) => setHover(event.target.value as Hover)}>
-                {Object.entries(TEXT.hoverOptions).map(([value, label]) => (
+                {Object.entries(HOVER_LABELS).map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
                   </option>
