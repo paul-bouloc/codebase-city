@@ -1,7 +1,7 @@
 import type { FileRole, Language } from '../Badge'
 
-// What the sheets and the About panel show. The analysis format (v1) does not carry symbols,
-// header comments or READMEs yet: the city screen will fill these from it once it does.
+// What the sheets and the About panel show. The city screen reads them from the analysis result
+// (`app/`); the format does not carry folders' READMEs yet.
 
 // A role inferred from the graph, with the transitive measure that grounds it:
 // "Depends on 4,800 files, directly or not: most paths through the editor go through it."
