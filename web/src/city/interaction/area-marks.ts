@@ -1,9 +1,10 @@
 import { Group, type Mesh, type ShaderMaterial } from 'three'
+import { GUIDE } from '../render/palette'
 import { createScreenLines } from '../render/screen-lines'
 import type { IslandShape } from '../terrain/island-shape'
 import { roundedOutline } from '../terrain/plateaux'
 import type { Rect } from '../world/layout'
-import { boardToThree, layerAltitude, slabTop, type Vec3 } from '../world/units'
+import { boardToThree, layerAltitude, slabTop, srgb, type Vec3 } from '../world/units'
 import { INK } from './ink'
 
 // The outline of a folder: along the edge of its island's plateau, or around its parcel.
@@ -14,10 +15,14 @@ export interface AreaStyle {
   dash?: [number, number]
   /** Past the parcel's edge, in u. */
   gap: number
+  /** Ink if absent. */
+  colour?: Vec3
 }
 
 export const HOVERED_AREA: AreaStyle = { width: 1.6, dash: [5, 4], gap: 0.25 }
 export const SELECTED_AREA: AreaStyle = { width: 2.6, gap: 0.35 }
+/** A folder the guide's tour puts forward: as wide as a selection, in Jade. */
+export const GUIDE_AREA: AreaStyle = { ...SELECTED_AREA, colour: srgb(GUIDE) }
 
 /** Above the plateau, clear of the slabs of the first two levels. */
 const PARCEL_LIFT = 0.3
@@ -59,7 +64,7 @@ export class AreaMark {
     this.group.add(
       createScreenLines(
         [points],
-        { width: this.style.width, colour: INK, dash: this.style.dash },
+        { width: this.style.width, colour: this.style.colour ?? INK, dash: this.style.dash },
         this.pixelRatio,
       ),
     )

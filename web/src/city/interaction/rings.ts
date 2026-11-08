@@ -112,6 +112,8 @@ export interface BuildingRingStyle {
   ringMinimum: number
   /** Ink if absent. */
   colour?: Vec3
+  /** Past the usual radius, in u; none if absent. */
+  outset?: number
 }
 
 /**
@@ -125,7 +127,7 @@ export function buildingRing(
   resolution: IUniform<Vector2>,
   pixelRatio: number,
 ): Mesh {
-  const radius = ringRadius(side)
+  const radius = ringRadius(side) + (style.outset ?? 0)
   // Room for the widest ring past its radius.
   const extent = 2 * (radius + 0.5)
   const material = new ShaderMaterial({
@@ -148,6 +150,60 @@ export function buildingRing(
   mesh.rotation.x = -Math.PI / 2
   mesh.position.set(position[0], position[1] + RING_LIFT, position[2])
   mesh.frustumCulled = false
+  return mesh
+}
+
+// A disc filled up to its radius, its edge smoothed over a pixel.
+const discFragment = /* glsl */ `
+uniform vec3 colour;
+varying vec2 vLocal;
+varying float vRadius;
+void main() {
+  float d = length(vLocal);
+  float cover = clamp((vRadius - d) / max(fwidth(d), 1e-6) + 0.5, 0.0, 1.0);
+  if (cover <= 0.0) {
+    discard;
+  }
+  gl_FragColor = vec4(colour, cover);
+}
+`
+
+/** The ground under the building, drawn over the plateau and under the rings. */
+const DISC_ORDER = -1
+
+/**
+ * A disc on the ground under one building, `outset` u past its ring's radius; it keeps its size
+ * in the scene, so its building stands on it at any distance.
+ */
+export function buildingDisc(
+  position: Vec3,
+  side: number,
+  colour: Vec3,
+  outset: number,
+  resolution: IUniform<Vector2>,
+): Mesh {
+  const radius = ringRadius(side) + outset
+  const material = new ShaderMaterial({
+    uniforms: {
+      radius: { value: radius },
+      minimum: { value: 0 },
+      resolution,
+      colour: { value: new Vector3(...colour) },
+    },
+    vertexShader: ringVertex,
+    fragmentShader: discFragment,
+    transparent: true,
+    depthWrite: false,
+    polygonOffset: true,
+    polygonOffsetFactor: -1,
+    polygonOffsetUnits: -1,
+  })
+  const extent = 2 * (radius + 0.5)
+  const mesh = new Mesh(new PlaneGeometry(extent, extent), material)
+  mesh.rotation.x = -Math.PI / 2
+  mesh.position.set(position[0], position[1] + RING_LIFT / 2, position[2])
+  mesh.frustumCulled = false
+  mesh.renderOrder = DISC_ORDER
   return mesh
 }
 

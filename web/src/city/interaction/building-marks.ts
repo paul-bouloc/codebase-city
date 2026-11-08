@@ -18,11 +18,11 @@ import {
 import { buildingGeometry, type Vertex } from '../buildings/archetype-geometry'
 import type { Building } from '../buildings/archetypes'
 import type { PlacedBuilding } from '../buildings/placed-buildings'
-import { INCOMING_LINK, OUTGOING_LINK } from '../render/palette'
+import { GUIDE, GUIDE_GROUND, INCOMING_LINK, OUTGOING_LINK } from '../render/palette'
 import { srgb, type Vec3 } from '../world/units'
 import { flatFragment, INK } from './ink'
 import { pinParts } from './pin'
-import { buildingRing } from './rings'
+import { buildingDisc, buildingRing } from './rings'
 
 // What marks one building: an outline around its shape, a ring on the ground and, once
 // selected, a pin above its roof. All keep their width in pixels at any distance.
@@ -43,6 +43,13 @@ function topOf(vertices: readonly Vertex[], building: Building): number {
   return top
 }
 
+/** A second ring around a marked building. */
+interface OuterRing {
+  ring: number
+  ringMinimum: number
+  outset: number
+}
+
 /** How a building is marked. */
 export interface MarkStyle {
   /** Outline width, in CSS pixels. */
@@ -52,8 +59,12 @@ export interface MarkStyle {
   /** The ring's least radius on screen, in CSS pixels: a far building still gets a clear one. */
   ringMinimum: number
   pin: boolean
-  /** Of the outline and the ring; ink if absent. */
+  /** Of the outline, the rings and the pin; ink if absent. */
   colour?: Vec3
+  /** A second ring, `outset` u outside the first, with its own least radius; none if absent. */
+  outerRing?: OuterRing
+  /** A disc on the ground, `outset` u past the ring; none if absent. */
+  disc?: { colour: Vec3; outset: number }
 }
 
 export const HOVERED_MARK: MarkStyle = { outline: 2, ring: 1.5, ringMinimum: 12, pin: false }
@@ -67,6 +78,18 @@ export const OUTGOING_MARK: MarkStyle = {
   colour: srgb(OUTGOING_LINK),
 }
 export const INCOMING_MARK: MarkStyle = { ...OUTGOING_MARK, colour: srgb(INCOMING_LINK) }
+/** A file the guide's tour puts forward: two Jade rings on a Jade-tinted disc. */
+export const GUIDE_MARK: MarkStyle = {
+  outline: 2,
+  ring: 2,
+  ringMinimum: 12,
+  pin: false,
+  colour: srgb(GUIDE),
+  outerRing: { ring: 1.2, ringMinimum: 16, outset: 0.6 },
+  disc: { colour: srgb(GUIDE_GROUND), outset: 0.9 },
+}
+/** The one it labels carries a Jade pin. */
+export const GUIDE_PIN_MARK: MarkStyle = { ...GUIDE_MARK, pin: true }
 
 /** Drawn after the city, over whatever stands in front. */
 const OUTLINE_ORDER = 8
@@ -93,7 +116,7 @@ void main() {
 /** Directions the copies are shifted in: the band's corners are this many-sided. */
 const OUTLINE_SHIFTS = 12
 
-/** The marks of one building at a time: hovered or selected. */
+/** The marks of one building at a time: hovered, selected, linked or put forward. */
 export class BuildingMark {
   readonly group = new Group()
   private readonly resolution: IUniform<Vector2> = { value: new Vector2(1, 1) }
@@ -114,7 +137,16 @@ export class BuildingMark {
     const { building, position } = placed
     const vertices = buildingGeometry(building).flat()
     const top = topOf(vertices, building)
+    const { disc, outerRing } = this.style
+    if (disc) {
+      this.group.add(
+        buildingDisc(position, building.side, disc.colour, disc.outset, this.resolution),
+      )
+    }
     this.group.add(...this.outline(placed, vertices), this.ring(position, building.side))
+    if (outerRing) {
+      this.group.add(this.ring(position, building.side, outerRing))
+    }
     if (this.style.pin) {
       this.group.add(...this.pin([position[0], position[1] + top, position[2]]))
     }
@@ -206,14 +238,15 @@ export class BuildingMark {
     return [mask, band]
   }
 
-  private ring(position: Vec3, side: number): Mesh {
-    const mesh = buildingRing(position, side, this.style, this.resolution, this.pixelRatio)
+  private ring(position: Vec3, side: number, outer?: OuterRing): Mesh {
+    const style = outer ? { ...this.style, ...outer } : this.style
+    const mesh = buildingRing(position, side, style, this.resolution, this.pixelRatio)
     this.follow(mesh)
     return mesh
   }
 
   private pin(roof: Vec3): (Mesh | Points)[] {
-    const parts = pinParts(roof, this.resolution, this.pixelRatio)
+    const parts = pinParts(roof, this.resolution, this.pixelRatio, this.style.colour)
     for (const part of parts) {
       this.follow(part)
     }

@@ -92,6 +92,7 @@ export function pinParts(
   roof: Vec3,
   resolution: IUniform<Vector2>,
   pixelRatio: number,
+  colour: Vec3 = INK,
 ): (Mesh | Points)[] {
   const foot: Vec3 = [roof[0], roof[1] + STEM_FROM, roof[2]]
   const stemLength = { value: STEM_LENGTH }
@@ -111,7 +112,7 @@ export function pinParts(
         stemLength,
         stemMinimum,
         width: { value: STEM_WIDTH * pixelRatio },
-        colour: { value: new Vector3(...INK) },
+        colour: { value: new Vector3(...colour) },
       },
       vertexShader: stemVertex,
       fragmentShader: flatFragment,
@@ -130,7 +131,7 @@ export function pinParts(
         stemMinimum,
         size: { value: size },
         head: { value: HEAD * pixelRatio },
-        colour: { value: new Vector3(...INK) },
+        colour: { value: new Vector3(...colour) },
         rim: { value: new Vector3(...WHITE) },
       },
       vertexShader: headVertex,

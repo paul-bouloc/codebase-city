@@ -13,6 +13,10 @@ export const UPWARD = '#D1435B'
 // Around a selected file: Marine toward what it imports, Sun from what imports it.
 export const OUTGOING_LINK = '#1F4E9E'
 export const INCOMING_LINK = '#E3872D'
+// What the guide's tour puts forward, and nothing else: Jade.
+export const GUIDE = '#1F9E77'
+// The ground under a building the guide puts forward: the sand with 28 % Jade.
+export const GUIDE_GROUND = mixHex('#EDE3CF', GUIDE, 0.28)
 // The quay of a canal and of a port.
 export const QUAY = '#C9B894'
 export const CANAL_WATER = '#79BFC0'
