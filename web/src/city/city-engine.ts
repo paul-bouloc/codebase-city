@@ -76,7 +76,8 @@ const FIELD_OF_VIEW = 38
 const MIN_DISTANCE = 6
 /** Never pull back further than twice the distance that frames the whole city. */
 const MAX_FRAMING = 2
-const MAX_POLAR_ANGLE = MathUtils.degToRad(75)
+/** 10° above the horizon. */
+const MAX_POLAR_ANGLE = MathUtils.degToRad(80)
 const START_AZIMUTH = MathUtils.degToRad(34)
 const START_POLAR_ANGLE = MathUtils.degToRad(55)
 /** How far the camera target may leave the city's edge. */
