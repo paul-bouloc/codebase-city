@@ -64,6 +64,18 @@ describe('selectionArcs', () => {
     ])
   })
 
+  it('counts a lone file in the singular', () => {
+    const lone: SelectionLinks = {
+      outgoing: {
+        single: [],
+        bundles: [{ direction: 'outgoing', island: 0, ends: [linked(1, 0)] }],
+      },
+      incoming: { single: [], bundles: [] },
+    }
+    const arcs = selectionArcs(lone, selection, { arcEnd: place, ground: place, plateau })
+    expect(arcs.drawing.labels[0]?.text).toBe('1 file')
+  })
+
   it('puts a dot at each end of an arc, and two white ones along an upward arc', () => {
     // Two per arc, two more on the upward one
     expect(drawing.dots).toHaveLength(2 * 4 + 2)

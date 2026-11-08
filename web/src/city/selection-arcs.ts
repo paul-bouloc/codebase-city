@@ -107,7 +107,7 @@ export function selectionArcs(
       })),
       labels: hubs.map(({ bundle, position }) => ({
         position,
-        text: `${bundle.ends.length} files`,
+        text: bundle.ends.length === 1 ? '1 file' : `${bundle.ends.length} files`,
       })),
     },
     hubs,
