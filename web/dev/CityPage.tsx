@@ -232,11 +232,15 @@ export function CityPage() {
         {error && <p className={styles.error}>{error}</p>}
         {selection && <p className={styles.selection}>{selection.path}</p>}
       </div>
-      {port ? (
-        <PortCard {...port} onFocusLink={(index) => engine?.focusPortLink(index)} />
-      ) : (
-        hover && cards && <HoverCard hover={hover} cards={cards} />
-      )}
+      {port
+        ? port.pointer && (
+            <PortCard
+              {...port}
+              pointer={port.pointer}
+              onFocusLink={(index) => engine?.focusPortLink(index)}
+            />
+          )
+        : hover && cards && <HoverCard hover={hover} cards={cards} />}
     </main>
   )
 }
