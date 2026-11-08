@@ -54,3 +54,38 @@ export interface SearchResults {
   folders: SearchGroup<FolderHit>
   symbols: SearchGroup<SymbolHit>
 }
+
+/** The palette's options in their order: files, then folders, then symbols. */
+export function searchOptions(results: SearchResults): SearchHit[] {
+  return [...results.files.hits, ...results.folders.hits, ...results.symbols.hits]
+}
+
+/** A run of text, matched by the query or not. */
+export interface TextRun {
+  text: string
+  match: boolean
+}
+
+/**
+ * Cuts `text[from, to)` into runs, the characters at `positions` (indices in the whole text)
+ * marked as matched.
+ */
+export function highlightRuns(
+  text: string,
+  positions: readonly number[],
+  from = 0,
+  to = text.length,
+): TextRun[] {
+  const matched = new Set(positions)
+  const runs: TextRun[] = []
+  for (let index = from; index < to; index++) {
+    const match = matched.has(index)
+    const last = runs.at(-1)
+    if (last && last.match === match) {
+      last.text += text[index]
+    } else {
+      runs.push({ text: text[index] ?? '', match })
+    }
+  }
+  return runs
+}
