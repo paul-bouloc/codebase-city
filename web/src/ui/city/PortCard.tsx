@@ -1,23 +1,27 @@
 import { exactCount } from '../count-format'
-import styles from './CityTooltip.module.css'
+import tooltip from './CityTooltip.module.css'
 import { Glass } from './Glass'
-import own from './PortCard.module.css'
+import styles from './PortCard.module.css'
 import { shortenFolder, splitPath } from './shorten-folder'
 import type { Point, Rect } from './tooltip-placement'
 import { useTooltipPlacement } from './use-tooltip-placement'
 
 const TEXT = {
   label: (path: string) => `Links at the port of ${path}`,
-  links: (count: number) =>
-    `${exactCount(count)} ${count === 1 ? 'link' : 'links'} not drawn, waiting at this port`,
+  summary: (count: number) =>
+    count === 1
+      ? 'This link isn’t drawn on the map: it waits at this port.'
+      : `These ${exactCount(count)} links aren’t drawn on the map: they wait at this port. Largest first, in imports.`,
   imports: (count: number) => `${exactCount(count)} ${count === 1 ? 'import' : 'imports'}`,
-  outgoing: (name: string) => `${name} imports it`,
+  outgoing: (name: string) => `imported by ${name}`,
   incoming: (name: string) => `imports ${name}`,
+  both: 'both ways',
   more: (count: number) => `and ${exactCount(count)} more`,
 }
 
-// Characters of the path line, as on a folder's card.
-const PATH_CHARS = 45
+// Characters of the folder beside the title, and of a row's path.
+const FOLDER_CHARS = 32
+const PATH_CHARS = 30
 
 export interface PortCardLink {
   // The island across.
@@ -42,65 +46,77 @@ interface PortCardProps {
   onFocusLink?(index: number | null): void
 }
 
-// An open port's card: the links it gathers, each the way it goes, the largest first.
+// An open port's card: the links it gathers, the largest first, each the way it goes.
 export function PortCard({ path, links, more, pointer, obstacles, onFocusLink }: PortCardProps) {
   const { ref, style } = useTooltipPlacement<HTMLDivElement>(pointer, obstacles)
   const { folder, name } = splitPath(path)
-  const shortFolder = shortenFolder(folder, PATH_CHARS - name.length)
-  const total = links.length + more
 
   return (
     <Glass
       ref={ref}
       role="group"
       aria-label={TEXT.label(path)}
-      radius="md"
-      className={`${styles.tooltip} ${styles.area} ${own.card}`}
+      radius="lg"
+      className={`${tooltip.tooltip} ${styles.card}`}
       style={style}
     >
-      <p className={`${styles.path} ${styles.areaPath}`}>
-        <span className="visually-hidden">{path}</span>
-        <span className={styles.folder} aria-hidden="true">
-          {shortFolder}
-        </span>
-        <span className={styles.name} aria-hidden="true">
-          {name}
-        </span>
-      </p>
-      <p className={styles.summary}>{TEXT.links(total)}</p>
-      <p className={`${styles.relations} ${styles.secondary}`}>
-        <span className={styles.relation}>
-          <span className={`${styles.trait} ${styles.outgoing}`} aria-hidden="true" />
-          {TEXT.outgoing(name)}
-        </span>
-        <span className={styles.relation}>
-          <span className={`${styles.trait} ${styles.incoming}`} aria-hidden="true" />
-          {TEXT.incoming(name)}
-        </span>
-      </p>
-      <ul className={own.list} onMouseLeave={() => onFocusLink?.(null)}>
-        {links.map((link, index) => (
-          <li key={link.path} className={own.row} onMouseEnter={() => onFocusLink?.(index)}>
-            <span className={own.ways}>
-              {link.outgoing && (
-                <span
-                  className={`${styles.trait} ${styles.outgoing}`}
-                  title={TEXT.outgoing(name)}
-                />
-              )}
-              {link.incoming && (
-                <span
-                  className={`${styles.trait} ${styles.incoming}`}
-                  title={TEXT.incoming(name)}
-                />
-              )}
+      <div className={styles.header}>
+        <p className={styles.title}>
+          <span className={styles.name}>{name}</span>
+          {folder && (
+            <span className={styles.folder} title={path}>
+              {shortenFolder(folder, FOLDER_CHARS)}
             </span>
-            <span className={own.island}>{link.path}</span>
-            <span className={own.imports}>{TEXT.imports(link.imports)}</span>
+          )}
+        </p>
+        <p className={styles.summary}>{TEXT.summary(links.length + more)}</p>
+      </div>
+      <ul className={styles.list} onMouseLeave={() => onFocusLink?.(null)}>
+        {links.map((link, index) => (
+          <li key={link.path} className={styles.row} onMouseEnter={() => onFocusLink?.(index)}>
+            <span className={styles.count} aria-hidden="true">
+              {exactCount(link.imports)}
+            </span>
+            <span className="visually-hidden">{TEXT.imports(link.imports)}</span>
+            <IslandName path={link.path} />
+            <Way link={link} name={name} />
           </li>
         ))}
       </ul>
-      {more > 0 && <p className={`${styles.summary} ${styles.action}`}>{TEXT.more(more)}</p>}
+      {more > 0 && <p className={styles.more}>{TEXT.more(more)}</p>}
     </Glass>
+  )
+}
+
+// The island across: its name, its folder under it.
+function IslandName({ path }: { path: string }) {
+  const { folder, name } = splitPath(path)
+  return (
+    <span className={styles.names} title={path}>
+      <span className={styles.island}>{name}</span>
+      {folder && <span className={styles.path}>{shortenFolder(folder, PATH_CHARS)}</span>}
+    </span>
+  )
+}
+
+// Which way a link goes, from the port's island, `name`.
+function Way({ link, name }: { link: PortCardLink; name: string }) {
+  if (link.outgoing && link.incoming) {
+    return (
+      <span className={`${styles.way} ${styles.both}`}>
+        <span className={styles.dots} aria-hidden="true">
+          <span className={`${styles.dot} ${styles.outgoing}`} />
+          <span className={`${styles.dot} ${styles.incoming}`} />
+        </span>
+        {TEXT.both}
+      </span>
+    )
+  }
+  const way = link.outgoing ? 'outgoing' : 'incoming'
+  return (
+    <span className={`${styles.way} ${styles[way]}`}>
+      <span className={styles.dot} aria-hidden="true" />
+      {link.outgoing ? TEXT.outgoing(name) : TEXT.incoming(name)}
+    </span>
   )
 }

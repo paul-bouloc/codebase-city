@@ -1,55 +1,164 @@
-/* An open port's card: its links, listed. Unlike the hover cards, it takes the pointer. */
+/*
+ * An open port's card. Unlike the hover cards, it takes the pointer. It borrows the About panel's
+ * popover (glass, 16 margin, 14 gap, large radius) and the cycles list's rows (a count badge, then
+ * the folder: its name, its path under it).
+ */
 
 .card {
+  gap: var(--space-3-5);
+  width: 360px;
+  padding: var(--space-4);
   pointer-events: auto;
-  min-width: 300px;
 }
 
-.list {
+.header {
   display: flex;
   flex-direction: column;
+  gap: var(--space-1);
   align-self: stretch;
-  margin: var(--space-1) 0 0;
-  padding: 0;
-  list-style: none;
 }
 
-.row {
+.title {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: var(--space-2);
-  min-height: 28px;
-  padding: 0 var(--space-1-5);
-  border-radius: var(--radius-sm);
-  font: var(--body-s);
-  letter-spacing: var(--body-s-tracking);
-  font-variant-numeric: tabular-nums;
+  min-width: 0;
+  margin: 0;
 }
 
-.row:hover {
-  background: var(--color-bg-sunken);
-}
-
-/* One stroke per way the link goes, as in the city. */
-.ways {
-  display: inline-flex;
+.name {
   flex: none;
-  flex-direction: column;
-  gap: 2px;
-  width: 14px;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font: 600 16px / 22px var(--font-family-sans);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.island {
-  flex: 1;
+.folder {
   min-width: 0;
   overflow: hidden;
+  color: var(--color-text-secondary);
   font: var(--code-s);
   letter-spacing: var(--code-s-tracking);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.imports {
-  flex: none;
+.summary {
+  margin: 0;
   color: var(--color-text-secondary);
+  font: var(--body-s);
+  letter-spacing: var(--body-s-tracking);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  margin: 0;
+  padding: var(--space-2) 0 0;
+  border-top: 1px solid var(--color-border-subtle);
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 40px;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+}
+
+.row:hover {
+  background: var(--state-hover);
+}
+
+.count {
+  min-width: 34px;
+  height: 24px;
+  padding: 0 var(--space-1-5);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-sunken);
+  color: var(--color-text-primary);
+  font: 700 12px / 24px var(--font-family-sans);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.names {
+  display: grid;
+  min-width: 0;
+}
+
+.island {
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font: var(--label);
+  letter-spacing: var(--label-tracking);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.path {
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  font: var(--code-s);
+  letter-spacing: var(--code-s-tracking);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Which way the link goes, in the flows' colours: a dot, then in words. */
+.way {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  font: var(--caption);
+  letter-spacing: var(--caption-tracking);
+  white-space: nowrap;
+}
+
+.dots {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+}
+
+.outgoing {
+  color: var(--meaning-outgoing);
+}
+
+.outgoing .dot,
+.dot.outgoing {
+  background: var(--meaning-outgoing);
+}
+
+.incoming {
+  color: var(--meaning-incoming-text);
+}
+
+.incoming .dot,
+.dot.incoming {
+  background: var(--meaning-incoming);
+}
+
+.both {
+  color: var(--color-text-secondary);
+}
+
+.more {
+  margin: 0;
+  padding: 0 var(--space-2);
+  color: var(--color-text-secondary);
+  font: var(--caption);
+  letter-spacing: var(--caption-tracking);
 }
