@@ -41,6 +41,7 @@ pub(super) fn tour(result: &AnalysisResult) -> Result<(), InvalidResult> {
             in_bounds(column, rows, len)
         };
         let optional = |column, index: Option<u32>, len| in_bounds(column, index.as_slice(), len);
+        let required = |column, index: u32, len| in_bounds(column, &[index], len);
         match step {
             TourStep::Overview {
                 lines,
@@ -82,8 +83,8 @@ pub(super) fn tour(result: &AnalysisResult) -> Result<(), InvalidResult> {
                 optional("tour.worstLink", *worst_link, result.links.from.len())?;
             }
             TourStep::Cycles { cycle, dir } => {
-                optional("tour.cycle", Some(*cycle), result.cycles.members.len())?;
-                optional("tour.dir", Some(*dir), dir_count)?;
+                required("tour.cycle", *cycle, result.cycles.members.len())?;
+                required("tour.dir", *dir, dir_count)?;
             }
             TourStep::ComplexAreas { files, .. } => {
                 list("tour.files", files, file_count)?;
