@@ -23,6 +23,35 @@ describe('cityFromResult', () => {
     expect(city.links?.[3]).toEqual({ from: 3, to: 2, imports: 3, upward: 0 })
   })
 
+  it('keeps the imports between files, by their lots', () => {
+    expect(city.imports).toHaveLength(result.edges.from.length)
+    // `main.ts` imports `app.ts`, both on the `src` island
+    expect(city.imports?.[0]).toEqual({
+      from: { island: 1, lot: 0 },
+      to: { island: 1, lot: 1 },
+      upward: false,
+    })
+  })
+
+  it('tells an import up the layers, and an import of a folder', () => {
+    const json = structuredClone(sample) as unknown as AnalysisResult
+    const edges = json.edges
+    // `utils.ts` (core, layer 1) imports `button.ts` (ui, layer 2), then re-exports `client.ts`
+    // (api, layer 2), then imports the `ui` folder as a package
+    edges.from.push(8, 8, 8)
+    edges.to.push(10, 14, null)
+    edges.toDir.push(null, null, 3)
+    edges.kind.push('import', 'reexport', 'import')
+    edges.confidence.push('exact', 'exact', 'exact')
+    const imports = cityFromResult(json).imports?.slice(-3)
+    expect(imports).toEqual([
+      { from: { island: 2, lot: 4 }, to: { island: 3, lot: 1 }, upward: true },
+      // A barrel offers what it re-exports: it does not depend on it
+      { from: { island: 2, lot: 4 }, to: { island: 4, lot: 0 }, upward: false },
+      { from: { island: 2, lot: 4 }, to: { island: 3, grid: 0 }, upward: true },
+    ])
+  })
+
   it('puts every file on its lot, with its metrics', () => {
     const lots = city.islands.flatMap((island) => island.lots)
     expect(lots).toHaveLength(result.files.dir.length)

@@ -3,8 +3,11 @@ import type {
   BuildingLanguage,
   CityLayout,
   ConcreteFamily,
+  FileImport,
+  GridRef,
   IslandLayout,
   Lot,
+  LotRef,
   Rect,
 } from './layout'
 import { slabTop } from './units'
@@ -150,6 +153,7 @@ export function cityFromResult(result: AnalysisResult): CityLayout {
   }
   const groundLevel = (dir: number) => (level[dir] ?? 0) + (slabbed.has(dir) ? 1 : 0)
   const gridOf = new Map<number, Rect>()
+  const gridRefOf = new Map<number, GridRef>()
   grids.dir.forEach((dir, row) => {
     const island = islands[dirs.island[dir] ?? 0]
     const cells = rect(
@@ -163,6 +167,7 @@ export function cityFromResult(result: AnalysisResult): CityLayout {
     if (!island) {
       return
     }
+    gridRefOf.set(dir, { island: dirs.island[dir] ?? 0, grid: island.grids?.length ?? 0 })
     island.grids?.push({
       rect: cells,
       nature: natureOf.get(dir) ?? 'normal',
@@ -188,6 +193,7 @@ export function cityFromResult(result: AnalysisResult): CityLayout {
     return folder === '/' ? name : `${folder}/${name}`
   }
 
+  const lotOf: (LotRef | undefined)[] = []
   files.dir.forEach((dir, file) => {
     const scope = files.scope[file]
     const language = result.languages[files.language[file] ?? 0] ?? ''
@@ -208,7 +214,12 @@ export function cityFromResult(result: AnalysisResult): CityLayout {
         generated: files.generated[file] ?? false,
       },
     }
-    islands[dirs.island[dir] ?? 0]?.lots.push(lot)
+    const island = dirs.island[dir] ?? 0
+    const lots = islands[island]?.lots
+    if (lots) {
+      lotOf[file] = { island, lot: lots.length }
+      lots.push(lot)
+    }
   })
 
   const links = result.links.from.map((from, row) => ({
@@ -217,5 +228,50 @@ export function cityFromResult(result: AnalysisResult): CityLayout {
     imports: result.links.imports[row] ?? 0,
     upward: result.links.upward[row] ?? 0,
   }))
-  return { islands, bounds: rect(0, 0, layout.width, layout.height), links }
+  return {
+    islands,
+    bounds: rect(0, 0, layout.width, layout.height),
+    links,
+    imports: fileImports(result, lotOf, gridRefOf),
+  }
+}
+
+/**
+ * Imports between files, by their lots, or to a folder's grid. One goes up the layers when its
+ * file's island is lower than the island it imports, as the analyzer counts them between islands:
+ * a barrel's re-exports never do, and an island with no layer (tests only) is on none.
+ */
+function fileImports(
+  result: AnalysisResult,
+  lotOf: readonly (LotRef | undefined)[],
+  gridOf: ReadonlyMap<number, GridRef>,
+): FileImport[] {
+  const { edges, dirs, files } = result
+  const layer = result.islands.layer
+  const imports: FileImport[] = []
+  edges.from.forEach((file, row) => {
+    const from = lotOf[file]
+    const toFile = edges.to[row]
+    const toDir = edges.toDir[row]
+    const to =
+      toFile !== null && toFile !== undefined
+        ? lotOf[toFile]
+        : toDir !== null && toDir !== undefined
+          ? gridOf.get(toDir)
+          : undefined
+    if (!from || !to) {
+      return
+    }
+    const fromLayer = layer[dirs.island[files.dir[file] ?? 0] ?? 0]
+    const toLayer = layer[to.island]
+    const upward =
+      edges.kind[row] !== 'reexport' &&
+      fromLayer !== null &&
+      fromLayer !== undefined &&
+      toLayer !== null &&
+      toLayer !== undefined &&
+      toLayer > fromLayer
+    imports.push({ from, to, upward })
+  })
+  return imports
 }

@@ -99,12 +99,34 @@ export interface IslandLink {
   upward: number
 }
 
+/** A file's lot on its island. */
+export interface LotRef {
+  island: number
+  lot: number
+}
+
+/** A folder's grid on its island, by its index in `IslandLayout.grids`. */
+export interface GridRef {
+  island: number
+  grid: number
+}
+
+/** One file importing another file, or a folder whose language imports packages (Go). */
+export interface FileImport {
+  from: LotRef
+  to: LotRef | GridRef
+  /** From an island to one of a higher layer: the import goes up the layers. */
+  upward: boolean
+}
+
 export interface CityLayout {
   islands: IslandLayout[]
   /** The union of the plateaux. */
   bounds: Rect
   /** Imports between islands; none if absent. */
   links?: IslandLink[]
+  /** Imports between files; none if absent. */
+  imports?: FileImport[]
 }
 
 export function boundsOf(rects: readonly Rect[]): Rect {
