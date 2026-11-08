@@ -230,6 +230,8 @@ function BareCity({
   useEffect(() => {
     onEngine(engine)
     engine?.setListeners({ select: setSelection, port: setPort })
+    // Gone, the page must not drive its disposed engine.
+    return () => onEngine(null)
   }, [engine, onEngine])
 
   // Esc closes the port open, if any, or clears the selection.
