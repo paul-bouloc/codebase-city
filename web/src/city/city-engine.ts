@@ -655,6 +655,11 @@ export class CityEngine {
     return this.stats
   }
 
+  /** How the city on show draws the imports between islands, as soon as it is loaded. */
+  getLinkStats(): LinkStats {
+    return this.links
+  }
+
   dispose(): void {
     this.renderer.setAnimationLoop(null)
     this.removeListeners()
