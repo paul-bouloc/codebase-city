@@ -20,14 +20,14 @@ use crate::files::Language;
 pub struct Parsed {
     /// Cyclomatic complexity of the whole file.
     pub complexity: u32,
-    /// The leading comment or docstring, verbatim; see [`header`].
+    /// The leading comment or docstring, verbatim; see `header`.
     pub header: Option<String>,
     /// Exported symbols, in the order of the source.
     pub symbols: Vec<Symbol>,
     /// Imports with a literal module, in the order of the source.
     pub imports: Vec<Import>,
     /// A file made of re-exports, such as an `index.ts` or an `__init__.py`
-    /// that gathers its package: see [`is_barrel`].
+    /// that gathers its package: see `is_barrel`.
     pub barrel: bool,
     /// The module's `export default`, if it has one.
     pub default_export: Option<DefaultExport>,

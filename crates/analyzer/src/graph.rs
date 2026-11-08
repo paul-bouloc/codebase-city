@@ -104,7 +104,7 @@ pub struct BarrelReport {
     /// Imports of a barrel as a whole (`import * as ns`, `require`), which
     /// stay on the barrel.
     pub whole_imports: u32,
-    /// Steps of lookup through re-exports, at most [`barrels::MAX_STEPS`].
+    /// Steps of lookup through re-exports, at most `barrels::MAX_STEPS`.
     pub steps: u32,
 }
 
