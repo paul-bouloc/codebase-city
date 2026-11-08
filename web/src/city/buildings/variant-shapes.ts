@@ -1,5 +1,4 @@
 import { mixSrgb, srgb } from '../world/units'
-import { HALL_MIN_SIDE, MAX_SIDE, MIN_SIDE, PAVILION_MAX_SIDE } from './archetypes'
 import {
   CONCRETE_ROOF,
   CONCRETE_WALL,
@@ -32,30 +31,12 @@ import {
   WOOD,
   ZERO,
 } from './parts'
+import { onSide, SIDES, size } from './shapes/sizing'
 import { HOUSE_EAVE, KIT, type VariantArchetype } from './variants-kit'
 
 // The low buildings, assembled from the pieces their file drew, as the design's generator does.
 // Board coordinates: x along the front, y in depth with the front towards y+, z up. Every
 // combination is centred on its footprint, extras included.
-
-/** A size of the kit as a length; `depth` is that of the volume the piece sits on. */
-function size(archetype: VariantArchetype, piece: string, name: string, depth = ZERO): Length {
-  const value = KIT[archetype].pieces.find(({ id }) => id === piece)?.sizes[name]
-  if (!value) {
-    throw new Error(`The kit has no ${name} for ${archetype} ${piece}`)
-  }
-  return plus(length(value[0], value[1], value[2]), times(depth, value[3]))
-}
-
-/** The sides each archetype takes, so lengths the design defines by ratios fit them best. */
-const SIDES: Record<VariantArchetype, readonly [number, number]> = {
-  house: [MIN_SIDE, HALL_MIN_SIDE],
-  pavilion: [MIN_SIDE, PAVILION_MAX_SIDE],
-  concreteBlock: [MIN_SIDE, MAX_SIDE],
-}
-
-/** The value of a length on the side `s`, without height: footprints never follow it. */
-const onSide = (value: Length, side: number) => value[0] + value[1] * side
 
 const light: Paint = { colour: WHITE, amount: 0.75 }
 const brick = toward(ROOF, '#5A4A40', 0.45)
