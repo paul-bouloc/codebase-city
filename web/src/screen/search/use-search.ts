@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { isSearchKey } from '../screen-keys'
+import { isSearchKey } from '../keys/screen-keys'
 import { type SearchHit, type SearchResults, searchOptions } from './search-data'
 import { normalizeQuery, type SearchIndex } from './search-index'
 import { searchKeyAction } from './search-keys'

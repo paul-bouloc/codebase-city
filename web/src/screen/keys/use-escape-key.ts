@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import type { CityEngine } from '../city/engine/city-engine'
+import type { CityEngine } from '../../city/engine/city-engine'
 import { escapeTarget } from './city-escape'
 
 export interface EscapeState {

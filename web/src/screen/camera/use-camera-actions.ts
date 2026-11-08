@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from 'react'
 import type { CityEngine } from '../../city/engine/city-engine'
-import { isTyping } from '../screen-keys'
+import { isTyping } from '../keys/screen-keys'
 import type { CameraAction } from './CameraControls'
 import { cameraKey } from './camera-keys'
 
