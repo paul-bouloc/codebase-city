@@ -103,11 +103,17 @@ pub enum InvalidResult {
     PackageNested { row: usize },
     #[error("packages.name[{row}] is empty")]
     PackageName { row: usize },
-    #[error("packages[{row}] must count no more API routes than routes, and routes only in a folder")]
+    #[error(
+        "packages[{row}] must count no more API routes than routes, and routes only in a folder"
+    )]
     PackageRoutes { row: usize },
-    #[error("packageGroups[{row}] must have a prefix, after the previous one, and two packages or more")]
+    #[error(
+        "packageGroups[{row}] must have a prefix, after the previous one, and two packages or more"
+    )]
     PackageGroup { row: usize },
-    #[error("externals[{row}] must have a name and files, after the previous row by package then name")]
+    #[error(
+        "externals[{row}] must have a name and files, after the previous row by package then name"
+    )]
     External { row: usize },
     #[error("tour.steps must start with the overview")]
     TourStart,

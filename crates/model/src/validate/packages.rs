@@ -22,7 +22,11 @@ pub(super) fn packages(result: &AnalysisResult) -> Result<(), InvalidResult> {
     same_length("packages.entry", count, packages.entry.len())?;
     same_length("packages.routes", count, packages.routes.len())?;
     same_length("packages.routeCount", count, packages.route_count.len())?;
-    same_length("packages.apiRouteCount", count, packages.api_route_count.len())?;
+    same_length(
+        "packages.apiRouteCount",
+        count,
+        packages.api_route_count.len(),
+    )?;
     in_bounds("packages.dir", &packages.dir, dir_count)?;
     in_bounds_or_null("packages.manifest", &packages.manifest, file_count)?;
     in_bounds_or_null("packages.entry", &packages.entry, file_count)?;
@@ -60,7 +64,11 @@ pub(super) fn packages(result: &AnalysisResult) -> Result<(), InvalidResult> {
         }
     }
 
-    same_length("packageGroups.linked", groups.prefix.len(), groups.linked.len())?;
+    same_length(
+        "packageGroups.linked",
+        groups.prefix.len(),
+        groups.linked.len(),
+    )?;
     let mut members = vec![0usize; groups.prefix.len()];
     for group in packages.group.iter().flatten() {
         members[*group as usize] += 1;
