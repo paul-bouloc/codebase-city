@@ -184,8 +184,8 @@ const BINARY_EXTENSIONS: &[&str] = &[
     "sqlite", "npy", "npz", "pkl", "swf", "xcf", "jks", "keystore", "der", "p12", "mo",
 ];
 
-/// Configuration files whose content import resolution needs, although
-/// their language is not analyzed.
+/// Configuration files whose content import resolution or the packages
+/// need, although their language is not analyzed.
 const MANIFESTS: &[&str] = &[
     "package.json",
     "jsconfig.json",
@@ -193,6 +193,11 @@ const MANIFESTS: &[&str] = &[
     "go.work",
     "pyproject.toml",
     "setup.cfg",
+    "pnpm-workspace.yaml",
+    "lerna.json",
+    "nest-cli.json",
+    "app.json",
+    "manifest.json",
 ];
 
 /// How many bytes from the start of a file [`classify_content`] needs.
@@ -259,6 +264,7 @@ pub fn keeps_content(path: &str) -> bool {
     Language::of(path).is_analyzed()
         || MANIFESTS.contains(&name)
         || (name.starts_with("tsconfig") && name.ends_with(".json"))
+        || (name.starts_with("requirements") && name.ends_with(".txt"))
 }
 
 /// The Go convention (`// Code generated … DO NOT EDIT.` before the package
@@ -476,6 +482,10 @@ mod tests {
         assert!(keeps_content("package.json"));
         assert!(keeps_content("apps/web/tsconfig.app.json"));
         assert!(keeps_content("go.mod"));
+        assert!(keeps_content("pnpm-workspace.yaml"));
+        assert!(keeps_content("apps/api/nest-cli.json"));
+        assert!(keeps_content("apps/agents/requirements-dev.txt"));
+        assert!(!keeps_content("docs/requirements.md"));
         assert!(!keeps_content("README.md"));
         assert!(!keeps_content("data/fixture.json"));
     }
