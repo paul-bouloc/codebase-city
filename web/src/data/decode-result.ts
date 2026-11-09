@@ -2,16 +2,17 @@ import { fail, object, string, stringColumn, u32 } from './decode/checks'
 import { decodeDirs, decodeFiles, decodeStats, decodeSymbols } from './decode/files'
 import { decodeCycles, decodeEdges, decodeIslands, decodeLinks, decodeRoles } from './decode/graph'
 import { decodeLayout } from './decode/layout'
+import { decodePackages } from './decode/packages'
 import { decodeTour } from './decode/tour'
 import type { AnalysisResult } from './generated/AnalysisResult'
 
 // FORMAT_VERSION in crates/model; the generated sample result keeps the two in step.
-export const FORMAT_VERSION = 10
+export const FORMAT_VERSION = 11
 
 /**
  * Turns a parsed JSON analysis result into a typed one, or throws an
  * InvalidResultError. Runs the same consistency checks as the Rust model
- * (crates/model/src/validate.rs and validate/layout.rs), so the rest of the app can trust
+ * (crates/model/src/validate.rs and the modules of validate/), so the rest of the app can trust
  * the indexes.
  */
 export function decodeResult(json: unknown): AnalysisResult {
@@ -45,6 +46,7 @@ export function decodeResult(json: unknown): AnalysisResult {
     islands,
     links,
     cycles,
+    ...decodePackages(fields, dirs.parent, files.dir.length),
     layout: decodeLayout(fields.layout, dirs, islands, files),
     tour: decodeTour(fields.tour, { dirs, files, languages, roles, islands, links, cycles }),
     stats: decodeStats(fields.stats),

@@ -56,7 +56,7 @@ describe('decodeResult', () => {
       decodeChanged((json) => {
         json.formatVersion = 8
       }),
-    ).toThrow('unsupported format version 8, expected 10')
+    ).toThrow(`unsupported format version 8, expected ${FORMAT_VERSION}`)
   })
 
   it('rejects a grid without a nature, or of an unknown one', () => {
