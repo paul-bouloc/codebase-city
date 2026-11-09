@@ -3,9 +3,11 @@
 //! plus `--out result.json` to write the result, and `--expect file` to
 //! compare the roles with what a person expects (`entries: [a, b]`,
 //! `foundations: […]`, `conductors: […]`, one list per line; a Go package
-//! ends with `/`, and the one at the root is `/`), and the layers of the
+//! ends with `/`, and the one at the root is `/`), the layers of the
 //! islands (`layers: [a, [b, c], d]`, from the bottom up, islands of one
-//! layer in brackets). `--store` saves the result in the database of
+//! layer in brackets), and the packages (`workspace: [npm]`,
+//! `packages: […]` and `apps: […]` by folder, `frameworks: [dir=nextjs]`,
+//! `group prefix: […]`, `built_on: [starlette]`). `--store` saves the result in the database of
 //! `DATABASE_URL`, retention included, without applying migrations.
 //!
 //! Given a result written by `--out` instead of a repository, lays it out
@@ -22,6 +24,7 @@
 mod analysis;
 mod expected;
 mod layout;
+mod packages;
 mod paths;
 mod roles;
 mod structure;
@@ -42,6 +45,7 @@ use server::store::results;
 use analysis::{print_analysis, print_graph, print_imports};
 use expected::Expected;
 use layout::print_layout;
+use packages::print_packages;
 use roles::print_roles;
 use structure::print_structure;
 use tour::print_tour;
@@ -182,6 +186,7 @@ async fn main() -> anyhow::Result<()> {
     print_graph(&result, &report);
     print_roles(&result, &report.roles, expected.as_ref());
     print_structure(&result, expected.as_ref());
+    print_packages(&result, expected.as_ref());
     print_layout(&result);
     print_tour(&result);
 

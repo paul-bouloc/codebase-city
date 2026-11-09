@@ -8,10 +8,23 @@ pub(crate) struct Expected {
     pub(crate) conductors: Vec<String>,
     /// Islands by path, layer by layer from the bottom.
     pub(crate) layers: Vec<Vec<String>>,
+    /// The kind of workspace (`[npm]`), `[]` for none; `None` when not
+    /// written.
+    pub(crate) workspace: Option<Vec<String>>,
+    /// Package folders, and those that are apps; `None` when not written.
+    pub(crate) packages: Option<Vec<String>>,
+    pub(crate) apps: Option<Vec<String>>,
+    /// `folder=framework` pairs, for the packages listed only.
+    pub(crate) frameworks: Vec<(String, String)>,
+    /// `group prefix: [folders]` lines.
+    pub(crate) groups: Vec<(String, Vec<String>)>,
+    /// Dependencies expected among the most imported ones.
+    pub(crate) built_on: Vec<String>,
 }
 
 impl Expected {
-    /// Reads `key: [a, b]` lines; anything else is ignored, comments too.
+    /// Reads `key: [a, b]` lines (`group prefix: [a, b]` for a group);
+    /// anything else is ignored, comments too.
     pub(crate) fn parse(text: &str) -> Self {
         let mut expected = Self::default();
         for line in text.lines() {
@@ -42,7 +55,24 @@ impl Expected {
                 "entries" => expected.entries = paths,
                 "foundations" => expected.foundations = paths,
                 "conductors" => expected.conductors = paths,
-                _ => {}
+                "workspace" => expected.workspace = Some(paths),
+                "packages" => expected.packages = Some(paths),
+                "apps" => expected.apps = Some(paths),
+                "frameworks" => {
+                    expected.frameworks = paths
+                        .iter()
+                        .filter_map(|pair| {
+                            let (dir, framework) = pair.split_once('=')?;
+                            Some((dir.trim().to_owned(), framework.trim().to_owned()))
+                        })
+                        .collect();
+                }
+                "built_on" => expected.built_on = paths,
+                key => {
+                    if let Some(prefix) = key.strip_prefix("group ") {
+                        expected.groups.push((prefix.trim().to_owned(), paths));
+                    }
+                }
             }
         }
         expected
