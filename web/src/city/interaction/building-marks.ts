@@ -78,18 +78,16 @@ export const OUTGOING_MARK: MarkStyle = {
   colour: srgb(OUTGOING_LINK),
 }
 export const INCOMING_MARK: MarkStyle = { ...OUTGOING_MARK, colour: srgb(INCOMING_LINK) }
-/** A file the guide's tour puts forward: two Jade rings on a Jade-tinted disc. */
+/** A file the guide's tour puts forward: two Jade rings on a Jade-tinted disc, a Jade pin. */
 export const GUIDE_MARK: MarkStyle = {
   outline: 2,
   ring: 2,
   ringMinimum: 12,
-  pin: false,
+  pin: true,
   colour: srgb(GUIDE),
   outerRing: { ring: 1.2, ringMinimum: 16, outset: 0.6 },
   disc: { colour: srgb(GUIDE_GROUND), outset: 0.9 },
 }
-/** The one it labels carries a Jade pin. */
-export const GUIDE_PIN_MARK: MarkStyle = { ...GUIDE_MARK, pin: true }
 
 /** Drawn after the city, over whatever stands in front. */
 const OUTLINE_ORDER = 8

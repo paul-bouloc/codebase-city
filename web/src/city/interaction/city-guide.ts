@@ -7,7 +7,7 @@ import type { IslandShape } from '../terrain/island-shape'
 import type { CityLayout } from '../world/layout'
 import type { Vec3 } from '../world/units'
 import { type Area, AreaMark, areaOf, GUIDE_AREA } from './area-marks'
-import { BuildingMark, GUIDE_MARK, GUIDE_PIN_MARK, roofHeight } from './building-marks'
+import { BuildingMark, GUIDE_MARK, roofHeight } from './building-marks'
 import { type KeptAreas, keptInAreas } from './kept-areas'
 import { CYCLE_RINGS, RingSet } from './rings'
 import type { CityTargets } from './targets'
@@ -21,7 +21,7 @@ export type GuideFade = 'none' | 'all' | 'others'
 export interface CityGuideView {
   /** Buildings in the Guide state. */
   buildings: readonly number[]
-  /** Of those, the ones whose label stands over their roof: they carry a pin. */
+  /** Of those, the ones whose label stands over their pin. */
   labelled: readonly number[]
   areas: readonly Area[]
   fade: GuideFade
@@ -169,16 +169,12 @@ export class CityGuide {
       this.group.remove(mark.group)
       mark.dispose()
     }
-    const labelled = new Set(this.view?.labelled ?? [])
     this.marks = (this.view?.buildings ?? []).flatMap((index) => {
       const placed = this.buildings.placed[index]
       if (!placed || index === this.selected) {
         return []
       }
-      const mark = new BuildingMark(
-        labelled.has(index) ? GUIDE_PIN_MARK : GUIDE_MARK,
-        this.pixelRatio,
-      )
+      const mark = new BuildingMark(GUIDE_MARK, this.pixelRatio)
       mark.show(placed)
       this.group.add(mark.group)
       return [mark]
