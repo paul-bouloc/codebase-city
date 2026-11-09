@@ -2,15 +2,19 @@
 import type { Cycles } from "./Cycles";
 import type { Dirs } from "./Dirs";
 import type { Edges } from "./Edges";
+import type { Externals } from "./Externals";
 import type { Files } from "./Files";
 import type { Islands } from "./Islands";
 import type { Layout } from "./Layout";
 import type { Links } from "./Links";
+import type { PackageGroups } from "./PackageGroups";
+import type { Packages } from "./Packages";
 import type { Repo } from "./Repo";
 import type { Roles } from "./Roles";
 import type { Stats } from "./Stats";
 import type { Symbols } from "./Symbols";
 import type { Tour } from "./Tour";
+import type { Workspace } from "./Workspace";
 
 /**
  * One analysis of one repository at one commit.
@@ -32,4 +36,8 @@ sha: string, dirs: Dirs,
 /**
  * Language names, referred to by [`Files::language`].
  */
-languages: Array<string>, files: Files, symbols: Symbols, edges: Edges, roles: Roles, islands: Islands, links: Links, cycles: Cycles, layout: Layout, tour: Tour, stats: Stats, };
+languages: Array<string>, files: Files, symbols: Symbols, edges: Edges, roles: Roles, islands: Islands, links: Links, cycles: Cycles, 
+/**
+ * How the repository declares its packages; `null` when it does not.
+ */
+workspace: Workspace | null, packages: Packages, packageGroups: PackageGroups, externals: Externals, layout: Layout, tour: Tour, stats: Stats, };

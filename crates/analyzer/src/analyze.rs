@@ -3,8 +3,8 @@
 use std::collections::HashMap;
 
 use model::{
-    AnalysisResult, Dirs, Edges, FORMAT_VERSION, Files, Ignored, Islands, Repo, Roles, Scope,
-    Stats, Symbols, Tour,
+    AnalysisResult, Dirs, Edges, Externals, FORMAT_VERSION, Files, Ignored, Islands,
+    PackageGroups, Packages, Repo, Roles, Scope, Stats, Symbols, Tour,
 };
 use rayon::prelude::*;
 
@@ -273,6 +273,10 @@ pub fn analyze_with_report(
         },
         links,
         cycles: cycles::cycles(&graph),
+        workspace: None,
+        packages: Packages::default(),
+        package_groups: PackageGroups::default(),
+        externals: Externals::default(),
         layout,
         tour: Tour::default(),
         stats: Stats {

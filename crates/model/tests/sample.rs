@@ -9,9 +9,9 @@
 use std::path::PathBuf;
 
 use model::{
-    AnalysisResult, Confidence, Cycles, Dirs, EdgeKind, Edges, Entries, EntryReason,
-    FORMAT_VERSION, Files, Ignored, Islands, Layout, Links, Lots, ParcelNature, Parcels, Ranked,
-    Repo, Roles, Scope, Stats, SymbolKind, Symbols, Tour, TourStep,
+    AnalysisResult, Confidence, Cycles, Dirs, EdgeKind, Edges, Entries, EntryReason, Externals,
+    FORMAT_VERSION, Files, Ignored, Islands, Layout, Links, Lots, PackageGroups, Packages,
+    ParcelNature, Parcels, Ranked, Repo, Roles, Scope, Stats, SymbolKind, Symbols, Tour, TourStep,
 };
 
 const DIRS: &[(Option<u32>, &str)] = &[
@@ -406,6 +406,15 @@ fn sample() -> AnalysisResult {
             members: vec![vec![5, 6], vec![9, 12]],
             shortest: vec![vec![5, 6], vec![9, 12]],
         },
+        workspace: None,
+        packages: Packages::default(),
+        package_groups: PackageGroups::default(),
+        // Declared in `package.json`, imported by `view.ts`, `panel.ts` and `client.ts`
+        externals: Externals {
+            package: vec![None, None],
+            name: strings(["axios", "react"]),
+            files: vec![1, 2],
+        },
         layout: layout(),
         tour: tour(),
         stats: Stats {
@@ -457,6 +466,10 @@ fn json_uses_the_names_of_the_generated_types() {
     assert_eq!(json["tour"]["steps"][0]["biggestIsland"], 2);
     assert_eq!(json["tour"]["steps"][1]["kind"], "entryPoints");
     assert!(json["tour"]["steps"][4]["worstLink"].is_null());
+    assert!(json["workspace"].is_null());
+    assert_eq!(json["packages"]["codeFiles"], serde_json::json!([]));
+    assert_eq!(json["packageGroups"]["prefix"], serde_json::json!([]));
+    assert_eq!(json["externals"]["name"][1], "react");
 }
 
 #[test]

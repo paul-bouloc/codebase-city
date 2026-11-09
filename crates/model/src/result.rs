@@ -10,7 +10,7 @@ use ts_rs::TS;
 
 /// Version of the shape of the data. Bumped on any change the web app has to
 /// know about; a result with another version is rejected, not guessed at.
-pub const FORMAT_VERSION: u32 = 10;
+pub const FORMAT_VERSION: u32 = 11;
 
 /// One analysis of one repository at one commit.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -35,6 +35,11 @@ pub struct AnalysisResult {
     pub islands: Islands,
     pub links: Links,
     pub cycles: Cycles,
+    /// How the repository declares its packages; `null` when it does not.
+    pub workspace: Option<Workspace>,
+    pub packages: Packages,
+    pub package_groups: PackageGroups,
+    pub externals: Externals,
     pub layout: Layout,
     pub tour: Tour,
     pub stats: Stats,
@@ -322,6 +327,124 @@ pub struct Cycles {
     /// One of the shortest loops through them, in import order: each file
     /// imports the next, and the last one the first.
     pub shortest: Vec<Vec<u32>>,
+}
+
+/// The manifest that declares the packages of a monorepo.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct Workspace {
+    pub kind: WorkspaceKind,
+    /// The file that declares the packages.
+    pub manifest: u32,
+}
+
+/// Which tool's manifest declares the packages.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum WorkspaceKind {
+    /// `workspaces` of the root `package.json`.
+    Npm,
+    /// `pnpm-workspace.yaml`.
+    Pnpm,
+    /// `packages` of `lerna.json`.
+    Lerna,
+    /// `go.work`.
+    GoWork,
+    /// `[tool.uv.workspace]` of the root `pyproject.toml`.
+    Uv,
+}
+
+/// The packages a [`Workspace`] declares, one row per package, sorted by
+/// folder. A package is a folder that matches the declaration and holds an
+/// analyzed file; no package lies inside another. Empty without a
+/// workspace.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct Packages {
+    pub dir: Vec<u32>,
+    /// The name its manifest gives, or its folder's.
+    pub name: Vec<String>,
+    pub kind: Vec<PackageKind>,
+    pub framework: Vec<Option<Framework>>,
+    /// Its `package.json`, `pyproject.toml` or `go.mod`, when it has one.
+    pub manifest: Vec<Option<u32>>,
+    /// Its row in [`PackageGroups`].
+    pub group: Vec<Option<u32>>,
+    /// Production files in an analyzed language.
+    pub code_files: Vec<u32>,
+    /// The file it starts from: by its framework's convention, or the
+    /// `main` of its manifest.
+    pub entry: Vec<Option<u32>>,
+    /// The folder of its routes, for a framework that routes by files.
+    pub routes: Vec<Option<u32>>,
+    /// Files under [`Packages::routes`], API routes included.
+    pub route_count: Vec<u32>,
+    /// Of them, the routes that answer HTTP requests with data.
+    pub api_route_count: Vec<u32>,
+}
+
+/// What a package is for, by what it runs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum PackageKind {
+    /// Something that runs: a `start` script, a platform manifest, or a
+    /// framework's entry.
+    App,
+    /// Code for other packages.
+    Library,
+}
+
+/// The framework a package is built with, read from the dependencies it
+/// declares (never its peer dependencies).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum Framework {
+    Nextjs,
+    Nestjs,
+    ReactNative,
+    Storybook,
+    Fastify,
+    Express,
+    Fastapi,
+    Django,
+    Flask,
+    /// A `manifest.json` with a `manifest_version`.
+    BrowserExtension,
+}
+
+/// Packages that share a prefix in their names (`acme-api`, `acme-web`),
+/// one row per prefix, sorted. A prefix groups three packages or more, or
+/// two that import one another; the package named after the prefix joins
+/// its group.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct PackageGroups {
+    pub prefix: Vec<String>,
+    /// Whether a production import joins two packages of the group: if
+    /// not, only the names do.
+    pub linked: Vec<bool>,
+}
+
+/// Dependencies the production code imports, one row per package and
+/// dependency, sorted by package (`null`, outside any package, first), then
+/// by name. Only dependencies a manifest declares count, so the standard
+/// library does not.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct Externals {
+    pub package: Vec<Option<u32>>,
+    /// As the manifest declares it: `@nestjs/core`, `pydantic`,
+    /// `github.com/gin-gonic/gin`.
+    pub name: Vec<String>,
+    /// Production files that import it.
+    pub files: Vec<u32>,
 }
 
 /// Where everything stands in the city: the plateau of each island, the

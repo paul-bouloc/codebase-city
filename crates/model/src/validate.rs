@@ -4,10 +4,12 @@
 //! (`web/src/data/decode-result.ts`); the two lists must stay in step.
 
 mod layout;
+mod packages;
 mod tour;
 
 use crate::result::{AnalysisResult, Cycles, FORMAT_VERSION, Links};
 use layout::layout;
+use packages::packages;
 use tour::tour;
 
 /// Why a result is inconsistent. Columns are named as in the JSON.
@@ -93,6 +95,20 @@ pub enum InvalidResult {
         "stats.importsResolved and stats.importsExternal add up to more than stats.importsTotal"
     )]
     ImportCounts,
+    #[error("packages need a workspace that declares them")]
+    PackagesWithoutWorkspace,
+    #[error("packages[{row}] must come after the previous package, by folder")]
+    PackageOrder { row: usize },
+    #[error("packages.dir[{row}] lies inside another package")]
+    PackageNested { row: usize },
+    #[error("packages.name[{row}] is empty")]
+    PackageName { row: usize },
+    #[error("packages[{row}] must count no more API routes than routes, and routes only in a folder")]
+    PackageRoutes { row: usize },
+    #[error("packageGroups[{row}] must have a prefix, after the previous one, and two packages or more")]
+    PackageGroup { row: usize },
+    #[error("externals[{row}] must have a name and files, after the previous row by package then name")]
+    External { row: usize },
     #[error("tour.steps must start with the overview")]
     TourStart,
     #[error("tour.steps[{row}] must come after the previous step, each kind once, in order")]
@@ -246,6 +262,7 @@ impl AnalysisResult {
         islands(self, dir_count)?;
         links(&self.links, &self.islands.layer)?;
         cycles(&self.cycles, file_count)?;
+        packages(self)?;
         layout(self)?;
         tour(self)?;
 
@@ -440,6 +457,7 @@ mod tests {
         Lots, ParcelNature, Parcels, Ranked, Rects, Repo, Roles, Scope, Stats, SymbolKind, Symbols,
         Tour, TourStep,
     };
+    use crate::result::{Externals, PackageGroups, Packages};
 
     /// Two folders, two files, an import between them and two of folders,
     /// an entry point, a foundation and a conductor, an island per folder,
@@ -542,6 +560,14 @@ mod tests {
                     x: vec![219, 239],
                     y: vec![19, 19],
                 },
+            },
+            workspace: None,
+            packages: Packages::default(),
+            package_groups: PackageGroups::default(),
+            externals: Externals {
+                package: vec![None],
+                name: vec!["react".to_owned()],
+                files: vec![1],
             },
             tour: Tour {
                 steps: vec![

@@ -1,5 +1,5 @@
 {
-  "formatVersion": 10,
+  "formatVersion": 11,
   "analyzerVersion": "0.1.0",
   "repo": {
     "owner": "acme",
@@ -632,6 +632,38 @@
         9,
         12
       ]
+    ]
+  },
+  "workspace": null,
+  "packages": {
+    "dir": [],
+    "name": [],
+    "kind": [],
+    "framework": [],
+    "manifest": [],
+    "group": [],
+    "codeFiles": [],
+    "entry": [],
+    "routes": [],
+    "routeCount": [],
+    "apiRouteCount": []
+  },
+  "packageGroups": {
+    "prefix": [],
+    "linked": []
+  },
+  "externals": {
+    "package": [
+      null,
+      null
+    ],
+    "name": [
+      "axios",
+      "react"
+    ],
+    "files": [
+      1,
+      2
     ]
   },
   "layout": {

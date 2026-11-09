@@ -9,8 +9,9 @@ mod result;
 mod validate;
 
 pub use result::{
-    AnalysisResult, Confidence, Cycles, Dirs, EdgeKind, Edges, Entries, EntryReason,
-    FORMAT_VERSION, Files, Grids, Ignored, Islands, Layout, Links, Lots, ParcelNature, Parcels,
-    Ranked, Rects, Repo, Roles, Scope, Stats, SymbolKind, Symbols, Tour, TourStep,
+    AnalysisResult, Confidence, Cycles, Dirs, EdgeKind, Edges, Entries, EntryReason, Externals,
+    FORMAT_VERSION, Files, Framework, Grids, Ignored, Islands, Layout, Links, Lots, PackageGroups,
+    PackageKind, Packages, ParcelNature, Parcels, Ranked, Rects, Repo, Roles, Scope, Stats,
+    SymbolKind, Symbols, Tour, TourStep, Workspace, WorkspaceKind,
 };
 pub use validate::InvalidResult;
