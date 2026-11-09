@@ -3,8 +3,8 @@
 use std::collections::HashMap;
 
 use model::{
-    AnalysisResult, Dirs, Edges, Externals, FORMAT_VERSION, Files, Ignored, Islands,
-    PackageGroups, Packages, Repo, Roles, Scope, Stats, Symbols, Tour,
+    AnalysisResult, Dirs, Edges, FORMAT_VERSION, Files, Ignored, Islands, Repo, Roles, Scope,
+    Stats, Symbols, Tour,
 };
 use rayon::prelude::*;
 
@@ -18,12 +18,13 @@ use crate::graph::{self, BarrelReport, Graph, Node};
 use crate::islands;
 use crate::lang::{self, Parsed};
 use crate::layout;
+use crate::packages;
 use crate::resolve;
 use crate::saturating_u32 as index;
 
 /// Version of the algorithms. Bumped whenever a change would give another
 /// result for the same commit, so stored results are recomputed.
-pub const ANALYZER_VERSION: &str = "0.9.1";
+pub const ANALYZER_VERSION: &str = "0.10.0";
 
 /// What an analysis found beyond its result.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -222,6 +223,29 @@ pub fn analyze_with_report(
     let production: Vec<bool> = (0..files.len())
         .map(|file| graph.is_production(index(file)))
         .collect();
+    let file_languages: Vec<Language> = files.iter().map(|file| file.language).collect();
+    let import_dirs: Vec<(u32, u32)> = table_edges
+        .from
+        .iter()
+        .zip(table_edges.to.iter().zip(&table_edges.to_dir))
+        .filter_map(|(&from, (to, to_dir))| {
+            let dir = to.map(|to| table.dir[to as usize]).or(*to_dir)?;
+            Some((from, dir))
+        })
+        .collect();
+    let found = packages::find(&packages::Input {
+        paths: &paths,
+        dir_paths: &dir_paths,
+        parents: &dirs.dirs.parent,
+        file_dirs: &table.dir,
+        languages: &file_languages,
+        manifests: &manifests,
+        production: &production,
+        mains: &mains,
+        imports: &imports,
+        outcomes: &outcomes,
+        links: &import_dirs,
+    });
     let islands = islands::islands(&dirs.dirs.parent, &table.dir, &production);
     dirs.dirs.island.clone_from(&islands.of_dir);
     let layers = islands::layers(&graph, &islands, &table.dir);
@@ -230,14 +254,7 @@ pub fn analyze_with_report(
         &layers,
         &table.dir,
         &table.barrel,
-        table_edges
-            .from
-            .iter()
-            .zip(table_edges.to.iter().zip(&table_edges.to_dir))
-            .filter_map(|(&from, (to, to_dir))| {
-                let dir = to.map(|to| table.dir[to as usize]).or(*to_dir)?;
-                Some((from, dir))
-            }),
+        import_dirs.iter().copied(),
     );
     let analyzed: Vec<bool> = files
         .iter()
@@ -273,10 +290,10 @@ pub fn analyze_with_report(
         },
         links,
         cycles: cycles::cycles(&graph),
-        workspace: None,
-        packages: Packages::default(),
-        package_groups: PackageGroups::default(),
-        externals: Externals::default(),
+        workspace: found.workspace,
+        packages: found.packages,
+        package_groups: found.groups,
+        externals: found.externals,
         layout,
         tour: Tour::default(),
         stats: Stats {
