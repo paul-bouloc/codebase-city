@@ -64,7 +64,7 @@ export function cityGuideView(
   }
 }
 
-/** Arcs and labels land this far above a roof, in u. */
+/** A cycle's arcs land this far above a roof, in u. */
 const ROOF_LIFT = 0.1
 
 export class CityGuide {
@@ -150,9 +150,12 @@ export class CityGuide {
     return { kept: (index) => shown.has(index), trees: [1, 1, 0, 0] }
   }
 
-  /** Where the labels stand: just over the labelled roofs. */
+  /** The roofs of the labelled buildings, where their pins stand. */
   labels(): { building: number; roof: Vec3 }[] {
-    return (this.view?.labelled ?? []).map((building) => ({ building, roof: this.roof(building) }))
+    return (this.view?.labelled ?? []).map((building) => ({
+      building,
+      roof: this.roof(building, 0),
+    }))
   }
 
   dispose(): void {
@@ -182,9 +185,10 @@ export class CityGuide {
     })
   }
 
-  private roof(index: number): Vec3 {
+  /** Over the building's highest point, `lift` u higher. */
+  private roof(index: number, lift = ROOF_LIFT): Vec3 {
     const placed = this.buildings.placed[index]
     const [x, y, z] = placed?.position ?? [0, 0, 0]
-    return [x, y + (placed ? roofHeight(placed.building) : 0) + ROOF_LIFT, z]
+    return [x, y + (placed ? roofHeight(placed.building) : 0) + lift, z]
   }
 }

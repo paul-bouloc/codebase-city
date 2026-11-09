@@ -1,10 +1,10 @@
 import { type PerspectiveCamera, Vector3 } from 'three'
 import type { GuideLabel } from '../interaction/city-items'
-import { PIN_TOP, PIN_TOP_MINIMUM } from '../interaction/pin'
+import { PIN_FOOT, PIN_HEAD_RADIUS, pinStemLength } from '../interaction/pin'
 import type { Vec3 } from '../world/units'
 
-// Where the guide's labels stand on the page: over the head of their roof's pin, at most six,
-// those out of view left out.
+// Where the guide's labels stand on the page: just over the head of their roof's pin, at most
+// six, those whose pin is out of view left out.
 
 /** No more labels than this at once: the first ones win. */
 const MAX_LABELS = 6
@@ -29,23 +29,31 @@ export class GuideLabels {
       if (labels.length === MAX_LABELS || !box) {
         break
       }
-      const foot = this.onCanvas(roof)
-      if (!foot) {
+      const head = this.headOnCanvas(roof)
+      if (!head || head.x < 0 || head.x > width || head.y < 0 || head.y > height) {
         continue
       }
-      // Over the pin's head: its stem has a least length on screen.
-      const head = this.onCanvas([roof[0], roof[1] + PIN_TOP, roof[2]])
-      const y = Math.min(head?.y ?? foot.y, foot.y - PIN_TOP_MINIMUM)
-      if (foot.x < 0 || foot.x > width || y < 0 || y > height) {
-        continue
-      }
-      labels.push({ path, x: Math.round(box.left + foot.x), y: Math.round(box.top + y) })
+      const y = head.y - PIN_HEAD_RADIUS
+      labels.push({ path, x: Math.round(box.left + head.x), y: Math.round(box.top + y) })
     }
     if (sameLabels(labels, this.last)) {
       return null
     }
     this.last = labels
     return labels
+  }
+
+  /** The middle of the pin's head over this roof, on the canvas; null behind the camera. */
+  private headOnCanvas(roof: Vec3): { x: number; y: number } | null {
+    const { camera, canvas } = this
+    const foot: Vec3 = [roof[0], roof[1] + PIN_FOOT, roof[2]]
+    // A unit's span on screen at the pin's foot, as the stem's shader measures it.
+    const depth = -this.projected.set(...foot).applyMatrix4(camera.matrixWorldInverse).z
+    if (depth <= 0) {
+      return null
+    }
+    const pixelsPerUnit = (canvas.clientHeight * camera.projectionMatrix.elements[5]) / 2 / depth
+    return this.onCanvas([foot[0], foot[1] + pinStemLength(pixelsPerUnit), foot[2]])
   }
 
   private onCanvas(point: Vec3): { x: number; y: number } | null {

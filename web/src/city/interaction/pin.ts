@@ -29,9 +29,19 @@ const STEM_WIDTH = 2
 const HEAD = 12
 const HEAD_RIM = 2.5
 
-/** How high the pin's head stands over the roof, in u, and at least in CSS pixels. */
-export const PIN_TOP = STEM_FROM + STEM_LENGTH
-export const PIN_TOP_MINIMUM = STEM_MINIMUM + HEAD / 2 + HEAD_RIM
+/** How high the pin's foot stands over the roof, in u. */
+export const PIN_FOOT = STEM_FROM
+
+/**
+ * How high the middle of the pin's head stands over its foot, in u, where a unit spans
+ * `pixelsPerUnit` CSS pixels at the foot: as the stem's shader grows it.
+ */
+export function pinStemLength(pixelsPerUnit: number): number {
+  return Math.max(STEM_LENGTH, STEM_MINIMUM / Math.max(pixelsPerUnit, 1e-3))
+}
+
+/** From the middle of the pin's head to its top, rim included, in CSS pixels. */
+export const PIN_HEAD_RADIUS = HEAD / 2 + HEAD_RIM
 
 // Where the pin's top is: up from its foot (`position`), by its length in u or more when far.
 const pinTop = /* glsl */ `
