@@ -20,6 +20,7 @@ describe('guideView', () => {
     for (const kind of ['overview', 'layers'] as const) {
       expect(guideView(result, step(kind))).toEqual({
         files: [],
+        pinned: [],
         labelled: [],
         folders: [],
         dim: 'none',
@@ -32,6 +33,7 @@ describe('guideView', () => {
     // `src/main.ts`
     expect(guideView(result, step('entryPoints'))).toEqual({
       files: [2],
+      pinned: [2],
       labelled: [2],
       folders: [],
       dim: 'all',
@@ -50,6 +52,7 @@ describe('guideView', () => {
   it('rings the island of the foundations and fades the others', () => {
     expect(guideView(result, step('foundations'))).toEqual({
       files: [8, 7, 6],
+      pinned: [8, 7, 6],
       labelled: [8],
       // `src/core`
       folders: [2],
@@ -77,7 +80,8 @@ describe('guideView', () => {
     const withPackage = decodeResult(json)
     expect(guideView(withPackage, { kind: 'conductors', conductors: [0] })).toMatchObject({
       files: [9, 10, 11, 12, 13],
-      // `legacy.ts`, 410 lines
+      // `legacy.ts`, 410 lines, stands for the package
+      pinned: [13],
       labelled: [13],
     })
   })

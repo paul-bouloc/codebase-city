@@ -56,6 +56,7 @@ describe('cityGuideView', () => {
     const view = cityGuideView(
       {
         files: ['a/main.ts', 'b/util.ts', 'gone.ts'],
+        pinned: ['a/main.ts', 'b/util.ts'],
         labelled: ['a/main.ts'],
         folders: ['a/ui', 'b', 'gone'],
         fade: 'others',
@@ -67,6 +68,7 @@ describe('cityGuideView', () => {
     )
     expect(view).toEqual({
       buildings: [0, 2],
+      pinned: [0, 2],
       labelled: [0],
       areas: [{ island: 0, rect: { x: 0, y: 5, width: 10, height: 5 }, level: 1 }, { island: 1 }],
       fade: 'others',
@@ -84,6 +86,7 @@ describe('CityGuide', () => {
     const { guide, marks } = setup()
     guide.show({
       buildings: [0, 2],
+      pinned: [0],
       labelled: [0],
       areas: [{ island: 1 }],
       fade: 'all',
@@ -107,13 +110,14 @@ describe('CityGuide', () => {
     vi.stubGlobal('document', { createElement: () => ({ getContext: () => null }) })
     const { guide } = setup()
     expect(guide.kept()).toBeNull()
-    guide.show({ buildings: [2], labelled: [], areas: [], fade: 'all', cycle: CYCLE })
+    guide.show({ buildings: [2], pinned: [], labelled: [], areas: [], fade: 'all', cycle: CYCLE })
     const all = guide.kept()
     expect([0, 1, 2].map((index) => all?.kept(index))).toEqual([true, true, true])
-    guide.show({ buildings: [], labelled: [], areas: [], fade: 'all', cycle: null })
+    guide.show({ buildings: [], pinned: [], labelled: [], areas: [], fade: 'all', cycle: null })
     expect([0, 1, 2].map((index) => guide.kept()?.kept(index))).toEqual([false, false, false])
     guide.show({
       buildings: [],
+      pinned: [],
       labelled: [],
       areas: [{ island: 0, rect: { x: 0, y: 5, width: 10, height: 5 }, level: 1 }],
       fade: 'others',
@@ -123,7 +127,7 @@ describe('CityGuide', () => {
     expect([0, 1, 2].map((index) => others?.kept(index))).toEqual([false, true, false])
     // The trees of the parcel, board y along three.js −z.
     expect(others?.trees).toEqual([0, -10, 10, -5])
-    guide.show({ buildings: [2], labelled: [], areas: [], fade: 'none', cycle: null })
+    guide.show({ buildings: [2], pinned: [], labelled: [], areas: [], fade: 'none', cycle: null })
     expect(guide.kept()).toBeNull()
     guide.dispose()
   })

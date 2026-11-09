@@ -203,7 +203,14 @@ describe('CityInteraction', () => {
 
   it('fades all but what the guide puts forward, or all but the islands it rings', () => {
     const { interaction, keptNow, fading } = setup()
-    interaction.showGuide({ buildings: [2], labelled: [2], areas: [], fade: 'all', cycle: null })
+    interaction.showGuide({
+      buildings: [2],
+      pinned: [],
+      labelled: [2],
+      areas: [],
+      fade: 'all',
+      cycle: null,
+    })
     expect(keptNow()).toEqual([false, false, true])
     interaction.update(1000)
     interaction.update(1300)
@@ -212,6 +219,7 @@ describe('CityInteraction', () => {
 
     interaction.showGuide({
       buildings: [1],
+      pinned: [],
       labelled: [],
       areas: [{ island: 0 }],
       fade: 'others',
@@ -223,7 +231,14 @@ describe('CityInteraction', () => {
     expect(minX).toBeLessThanOrEqual(0)
     expect(maxX).toBeGreaterThanOrEqual(10)
 
-    interaction.showGuide({ buildings: [], labelled: [], areas: [], fade: 'none', cycle: null })
+    interaction.showGuide({
+      buildings: [],
+      pinned: [],
+      labelled: [],
+      areas: [],
+      fade: 'none',
+      cycle: null,
+    })
     interaction.update(1400)
     interaction.update(1700)
     expect(fading.dim.value).toBe(0)
@@ -231,12 +246,26 @@ describe('CityInteraction', () => {
 
   it('lets a selection fade over the guide, and gives the fading back once it goes', () => {
     const { interaction, keptNow, highlights } = setup()
-    interaction.showGuide({ buildings: [2], labelled: [], areas: [], fade: 'all', cycle: null })
+    interaction.showGuide({
+      buildings: [2],
+      pinned: [],
+      labelled: [],
+      areas: [],
+      fade: 'all',
+      cycle: null,
+    })
     interaction.select({ kind: 'building', index: 0 })
     expect(keptNow()).toEqual([true, false, false])
     expect(highlights).toEqual([Highlight.selected, Highlight.none, Highlight.none])
     // A new step while something is selected leaves the selection's fading alone.
-    interaction.showGuide({ buildings: [1], labelled: [], areas: [], fade: 'all', cycle: null })
+    interaction.showGuide({
+      buildings: [1],
+      pinned: [],
+      labelled: [],
+      areas: [],
+      fade: 'all',
+      cycle: null,
+    })
     expect(keptNow()).toEqual([true, false, false])
     interaction.select(null)
     expect(keptNow()).toEqual([false, true, false])

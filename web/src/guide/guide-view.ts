@@ -12,7 +12,9 @@ export type GuideDim = 'none' | 'all' | 'others'
 export interface GuideView {
   /** Files in the Guide state. */
   files: number[]
-  /** Of those, the ones that carry a label over their roof. */
+  /** Of those, the ones with a pin: one for each file or package the step names. */
+  pinned: number[]
+  /** Of those, the ones that carry a label over their pin. */
   labelled: number[]
   /** Folders ringed in Jade: islands or parcels. */
   folders: number[]
@@ -21,7 +23,14 @@ export interface GuideView {
   cycle: number | null
 }
 
-const NOTHING: GuideView = { files: [], labelled: [], folders: [], dim: 'none', cycle: null }
+const NOTHING: GuideView = {
+  files: [],
+  pinned: [],
+  labelled: [],
+  folders: [],
+  dim: 'none',
+  cycle: null,
+}
 
 export function guideView(result: AnalysisResult, step: TourStep): GuideView {
   switch (step.kind) {
@@ -55,11 +64,12 @@ function target(ranked: Ranked): (row: number) => Target {
 }
 
 /**
- * The files of these rows in the Guide state, the rest faded, the first one labelled. A Go
- * package puts forward its production files, and its largest carries the label.
+ * The files of these rows in the Guide state, the rest faded, each pinned, the first one
+ * labelled. A Go package puts forward its production files, and its largest stands for it.
  */
 function forward(result: AnalysisResult, rows: number[], at: (row: number) => Target): GuideView {
   const files: number[] = []
+  const pinned: number[] = []
   const labelled: number[] = []
   rows.forEach((row, place) => {
     const [file, dir] = at(row)
@@ -72,11 +82,14 @@ function forward(result: AnalysisResult, rows: number[], at: (row: number) => Ta
           : best,
       null,
     )
-    if (place === 0 && largest !== null) {
-      labelled.push(largest)
+    if (largest !== null) {
+      pinned.push(largest)
+      if (place === 0) {
+        labelled.push(largest)
+      }
     }
   })
-  return { ...NOTHING, files: [...new Set(files)], labelled, dim: 'all' }
+  return { ...NOTHING, files: [...new Set(files)], pinned, labelled, dim: 'all' }
 }
 
 /** The production files right in a package's folder. */

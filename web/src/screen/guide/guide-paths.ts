@@ -8,6 +8,7 @@ export function guidePaths(view: GuideView, index: ResultIndex): GuidePaths {
   const member = view.cycle === null ? undefined : index.result.cycles.members[view.cycle]?.[0]
   return {
     files: files(view.files),
+    pinned: files(view.pinned),
     labelled: files(view.labelled),
     folders: view.folders.flatMap((dir) => index.folderPaths[dir] ?? []),
     fade: view.dim,

@@ -13,6 +13,7 @@ describe('guidePaths', () => {
     const step = steps.find((each) => each.kind === 'foundations')
     expect(step && guidePaths(guideView(index.result, step), index)).toEqual({
       files: ['src/core/utils.ts', 'src/core/types.ts', 'src/core/events.ts'],
+      pinned: ['src/core/utils.ts', 'src/core/types.ts', 'src/core/events.ts'],
       labelled: ['src/core/utils.ts'],
       folders: ['src/core'],
       fade: 'others',
