@@ -23,7 +23,10 @@ const FILES: &[(&str, &str)] = &[
         r#"{ "name": "acme", "scripts": { "start": "next start" },
              "dependencies": { "next": "15", "@acme/ui": "*", "zod": "3" } }"#,
     ),
-    ("apps/acme/pages/_app.tsx", "export default function App() {}\n"),
+    (
+        "apps/acme/pages/_app.tsx",
+        "export default function App() {}\n",
+    ),
     (
         "apps/acme/pages/index.tsx",
         "import { Button } from '@acme/ui'\nimport React from 'react'\nimport z from 'zod'\nimport fs from 'node:fs'\nexport default function Home() {}\n",
@@ -36,7 +39,10 @@ const FILES: &[(&str, &str)] = &[
         "apps/acme-admin/package.json",
         r#"{ "name": "acme-admin", "dependencies": { "@nestjs/core": "11", "@acme/ui": "*" } }"#,
     ),
-    ("apps/acme-admin/nest-cli.json", r#"{ "sourceRoot": "src" }"#),
+    (
+        "apps/acme-admin/nest-cli.json",
+        r#"{ "sourceRoot": "src" }"#,
+    ),
     (
         "apps/acme-admin/src/main.ts",
         "import { NestFactory } from '@nestjs/core'\nimport { Button } from '@acme/ui'\nexport async function bootstrap() {}\n",
@@ -144,7 +150,10 @@ fn the_workspace_declares_the_packages_that_hold_code() {
             "libs/acme-ui"
         ]
     );
-    assert_eq!(result.packages.name[row(&result, "libs/acme-ui")], "@acme/ui");
+    assert_eq!(
+        result.packages.name[row(&result, "libs/acme-ui")],
+        "@acme/ui"
+    );
 }
 
 #[test]
