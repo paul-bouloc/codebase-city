@@ -8,6 +8,7 @@ pub mod graph;
 mod islands;
 pub mod lang;
 pub mod layout;
+mod packages;
 mod resolve;
 pub mod tour;
 

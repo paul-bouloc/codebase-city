@@ -10,6 +10,8 @@ mod go;
 mod javascript;
 mod python;
 
+pub(crate) use javascript::package_name;
+
 use std::collections::{HashMap, HashSet};
 
 use model::Confidence;

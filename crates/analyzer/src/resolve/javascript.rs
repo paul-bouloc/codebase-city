@@ -291,7 +291,7 @@ fn is_tsconfig_error(error: &ResolveError) -> bool {
 }
 
 /// `react` for `react/jsx-runtime`, `@acme/ui` for `@acme/ui/button`.
-fn package_name(specifier: &str) -> &str {
+pub(crate) fn package_name(specifier: &str) -> &str {
     let mut ends = specifier.match_indices('/').map(|(at, _)| at);
     let end = if specifier.starts_with('@') {
         ends.nth(1)

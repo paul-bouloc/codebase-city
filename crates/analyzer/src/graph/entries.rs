@@ -30,6 +30,30 @@ const CONVENTIONAL: &[&str] = &["main", "index", "server", "app", "cli"];
 /// Points of the graph signal, by rank among the files no one imports.
 const NO_IMPORTER: &[u32] = &[3, 2, 2, 1, 1];
 
+/// The file a `package.json` in `dir` starts from: its `main` (or
+/// `module`, `exports`), else its first `bin`, else what its `start`,
+/// `dev` or `serve` script runs.
+pub(crate) fn package_start(
+    dir: &str,
+    content: &[u8],
+    by_path: &HashMap<&str, u32>,
+    production: &dyn Fn(u32) -> bool,
+) -> Option<u32> {
+    let found = package_json(dir, content, by_path, production);
+    [
+        EntryReason::PackageMain,
+        EntryReason::PackageBin,
+        EntryReason::PackageScript,
+    ]
+    .iter()
+    .find_map(|&reason| {
+        found
+            .iter()
+            .find(|entry| entry.1 == reason)
+            .map(|entry| entry.0)
+    })
+}
+
 /// What the entry points are found from, by row in the result.
 pub(crate) struct Input<'a> {
     /// Paths of the files, sorted, and of the folders (`""` for the root).
