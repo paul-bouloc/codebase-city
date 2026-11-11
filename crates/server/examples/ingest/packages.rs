@@ -11,10 +11,13 @@ const SHOWN_EXTERNALS: usize = 5;
 
 pub(crate) fn print_packages(result: &AnalysisResult, expected: Option<&Expected>) {
     let packages = &result.packages;
+    // The root package is written `.`, as declarations write it
     let folder = |row: usize| {
-        dir_path(result, packages.dir[row])
-            .trim_end_matches('/')
-            .to_owned()
+        let path = dir_path(result, packages.dir[row]);
+        match path.trim_end_matches('/') {
+            "" => ".".to_owned(),
+            path => path.to_owned(),
+        }
     };
     let declared: Vec<String> = result
         .workspaces
