@@ -668,8 +668,7 @@ pub enum TourStep {
         package: Option<u32>,
         /// Loops inside that package, this one included.
         in_package: u32,
-        /// In a monorepo, loops whose files lie in more than one package
-        /// or outside the packages.
+        /// In a monorepo, loops whose files lie in two packages or more.
         crossing: u32,
     },
     /// The most complex production files that other files import, each in

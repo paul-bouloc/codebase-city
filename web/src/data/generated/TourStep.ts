@@ -137,8 +137,7 @@ package: number | null,
  */
 inPackage: number, 
 /**
- * In a monorepo, loops whose files lie in more than one package
- * or outside the packages.
+ * In a monorepo, loops whose files lie in two packages or more.
  */
 crossing: number, } | { "kind": "complexAreas", files: Array<number>, 
 /**

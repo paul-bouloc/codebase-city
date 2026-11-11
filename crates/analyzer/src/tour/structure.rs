@@ -81,11 +81,19 @@ pub(super) fn cycles(result: &AnalysisResult, repo: Option<&Monorepo<'_>>) -> Op
     };
     let package = package_of(members);
     let (mut in_package, mut crossing) = (0u64, 0u64);
-    if repo.is_some() {
+    if let Some(repo) = repo {
         for members in &result.cycles.members {
             match package_of(members) {
-                None => crossing += 1,
                 Some(holder) => in_package += u64::from(Some(holder) == package),
+                // Two packages or more: a loop outside the packages, such
+                // as in `scripts/`, crosses none
+                None => {
+                    let mut packages = members
+                        .iter()
+                        .filter_map(|&file| repo.package_of_file(file as usize));
+                    let first = packages.next();
+                    crossing += u64::from(packages.any(|other| Some(other) != first));
+                }
             }
         }
     }
@@ -223,5 +231,18 @@ mod tests {
                 crossing: 1,
             })
         );
+        // A loop outside the packages crosses none
+        let scripts = [
+            repo.file("scripts/a.ts", Scope::Source),
+            repo.file("scripts/b.ts", Scope::Source),
+        ]
+        .map(crate::saturating_u32);
+        repo.result.cycles.members.push(scripts.to_vec());
+        let monorepo = Monorepo::of(&repo.result);
+        let Some(TourStep::Cycles { crossing, .. }) = cycles(&repo.result, monorepo.as_ref())
+        else {
+            unreachable!()
+        };
+        assert_eq!(crossing, 1);
     }
 }
