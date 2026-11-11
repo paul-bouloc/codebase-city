@@ -7,6 +7,7 @@ use std::collections::{BTreeMap, HashMap};
 use model::{AnalysisResult, AppUnit, EdgeKind, PackageKind};
 
 use super::is_production;
+use crate::files::Language;
 use crate::saturating_u32 as index;
 
 /// A unit of apps is a main one when it holds this share of the apps' code,
@@ -46,7 +47,16 @@ impl<'a> Monorepo<'a> {
     /// The monorepo of a result, `None` for another repository: the same
     /// rule as its islands (`packages::monorepo_dirs`).
     pub fn of(result: &'a AnalysisResult) -> Option<Self> {
-        if crate::packages::monorepo_dirs(&result.packages).is_empty() {
+        let files = &result.files;
+        // Production files in an analyzed language, as packages count them
+        let code = (0..files.dir.len())
+            .filter(|&file| {
+                is_production(result, file)
+                    && Language::analyzed_named(&result.languages[files.language[file] as usize])
+                        .is_some()
+            })
+            .count() as u64;
+        if crate::packages::monorepo_dirs(&result.packages, &result.dirs.parent, code).is_empty() {
             return None;
         }
         let package_of_dir =

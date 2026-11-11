@@ -247,11 +247,15 @@ pub fn analyze_with_report(
         outcomes: &outcomes,
         links: &import_dirs,
     });
+    // Production files in an analyzed language, as packages count them
+    let code_files = (0..files.len())
+        .filter(|&file| production[file] && file_languages[file].is_analyzed())
+        .count() as u64;
     let islands = islands::islands(
         &dirs.dirs.parent,
         &table.dir,
         &production,
-        packages::monorepo_dirs(&found.packages),
+        &packages::monorepo_dirs(&found.packages, &dirs.dirs.parent, code_files),
     );
     dirs.dirs.island.clone_from(&islands.of_dir);
     let layers = islands::layers(&graph, &islands, &table.dir);

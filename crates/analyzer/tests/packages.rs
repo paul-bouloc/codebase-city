@@ -457,3 +457,126 @@ fn the_name_of_the_repository_groups_nothing() {
     assert_eq!(result.packages.dir.len(), 5);
     assert!(result.package_groups.prefix.is_empty());
 }
+
+/// An operator whose root module is the app, with an SDK module and a
+/// config module inside the SDK, and an end-to-end module of tests.
+const OPERATOR: &[(&str, &str)] = &[
+    (
+        "go.work",
+        "go 1.22\n\nuse (\n\t.\n\t./pkg/sdk\n\t./pkg/sdk/config\n\t./e2e\n)\n",
+    ),
+    ("go.mod", "module example.com/operator\n\ngo 1.22\n"),
+    (
+        "main.go",
+        "package main\n\nimport \"example.com/operator/controllers\"\n\nfunc main() { controllers.Run() }\n",
+    ),
+    ("cmd/docs.go", "package main\n\nfunc main() {}\n"),
+    (
+        "controllers/run.go",
+        "package controllers\n\nimport \"example.com/operator/pkg/sdk\"\n\nfunc Run() { sdk.Use() }\n",
+    ),
+    (
+        "pkg/sdk/go.mod",
+        "module example.com/operator/pkg/sdk\n\ngo 1.22\n",
+    ),
+    ("pkg/sdk/sdk.go", "package sdk\n\nfunc Use() {}\n"),
+    (
+        "pkg/sdk/config/go.mod",
+        "module example.com/operator/pkg/sdk/config\n\ngo 1.22\n",
+    ),
+    (
+        "pkg/sdk/config/config.go",
+        "package config\n\nfunc Load() {}\n",
+    ),
+    ("e2e/go.mod", "module example.com/operator/e2e\n\ngo 1.22\n"),
+    (
+        "e2e/run_test.go",
+        "package e2e\n\nimport \"testing\"\n\nfunc TestRun(t *testing.T) {}\n",
+    ),
+];
+
+#[test]
+fn a_dot_makes_the_root_a_package_and_modules_nest() {
+    let result = analyzed(OPERATOR);
+    // e2e holds tests only, but it is not inside another package
+    assert_eq!(
+        package_paths(&result),
+        ["", "e2e", "pkg/sdk", "pkg/sdk/config"]
+    );
+    let root = row(&result, "");
+    assert_eq!(result.packages.kind[root], PackageKind::App);
+    // The shallowest program is its entry, not a tool in a folder
+    let entry = result.packages.entry[root].unwrap();
+    assert_eq!(file_path(&result, entry), "/main.go");
+    // Each file counts in the deepest package
+    assert_eq!(result.packages.code_files[root], 3);
+    assert_eq!(result.packages.code_files[row(&result, "pkg/sdk")], 1);
+    assert_eq!(
+        result.packages.code_files[row(&result, "pkg/sdk/config")],
+        1
+    );
+    // The root package has no island of its own; the nested module stays on
+    // the island of the SDK
+    let islands = island_paths(&result);
+    assert!(islands.contains(&"pkg/sdk".to_owned()));
+    assert!(!islands.contains(&"pkg/sdk/config".to_owned()));
+}
+
+#[test]
+fn a_package_inside_another_needs_production_code() {
+    let mut files = OPERATOR.to_vec();
+    files.retain(|(path, _)| *path != "pkg/sdk/config/config.go");
+    files.push((
+        "pkg/sdk/config/config_test.go",
+        "package config\n\nimport \"testing\"\n\nfunc TestLoad(t *testing.T) {}\n",
+    ));
+    let result = analyzed(&files);
+    assert!(!package_paths(&result).contains(&"pkg/sdk/config".to_owned()));
+}
+
+#[test]
+fn the_root_of_a_javascript_workspace_is_no_package() {
+    let result = analyzed(FILES);
+    assert!(!package_paths(&result).contains(&String::new()));
+}
+
+#[test]
+fn packages_that_hold_less_than_half_the_code_make_no_monorepo() {
+    // Two extensions are packages, but the editor lies in no package
+    let mut files: Vec<(String, String)> = vec![
+        (
+            "pnpm-workspace.yaml".to_owned(),
+            "packages:\n  - 'extensions/*'\n".to_owned(),
+        ),
+        (
+            "extensions/git/package.json".to_owned(),
+            r#"{ "name": "git" }"#.to_owned(),
+        ),
+        (
+            "extensions/git/main.ts".to_owned(),
+            "export const git = 1\n".to_owned(),
+        ),
+        (
+            "extensions/npm/package.json".to_owned(),
+            r#"{ "name": "npm" }"#.to_owned(),
+        ),
+        (
+            "extensions/npm/main.ts".to_owned(),
+            "export const npm = 1\n".to_owned(),
+        ),
+    ];
+    for name in ["a", "b", "c", "d", "e"] {
+        files.push((
+            format!("src/editor/{name}.ts"),
+            format!("export const {name} = 1\n"),
+        ));
+    }
+    let files: Vec<(&str, &str)> = files
+        .iter()
+        .map(|(p, c)| (p.as_str(), c.as_str()))
+        .collect();
+    let result = analyzed(&files);
+    assert_eq!(package_paths(&result), ["extensions/git", "extensions/npm"]);
+    // The islands of a simple repository: `extensions` is not split
+    assert!(island_paths(&result).contains(&"extensions".to_owned()));
+}

@@ -112,22 +112,56 @@ pub(crate) fn package_of_dirs(parents: &[Option<u32>], package_dirs: &[u32]) -> 
 /// monorepo: a single one is a repository whose code sits in a subfolder.
 const MONOREPO_PACKAGES: usize = 2;
 
-/// The folders of the packages when the repository is a monorepo, that is
-/// when its workspace declares at least two packages with production code;
-/// none otherwise. vscode's workspace declares only tooling and tests: it
-/// is not a monorepo.
-pub(crate) fn monorepo_dirs(packages: &Packages) -> &[u32] {
+/// The folders of the packages that make islands when the repository is a
+/// monorepo, that is when its workspace declares at least two packages
+/// with production code; none otherwise. vscode's workspace declares only
+/// tooling and tests: it is not a monorepo. The root package has no island
+/// of its own, and a package inside another one stays on that one's
+/// island.
+///
+/// The packages must also hold half of the repository's code, `code` its
+/// production files in an analyzed language: vscode's workspace declares
+/// its extensions, a quarter of its code, while the editor itself lies in
+/// no package.
+pub(crate) fn monorepo_dirs(packages: &Packages, parents: &[Option<u32>], code: u64) -> Vec<u32> {
     let with_code = packages.code_files.iter().filter(|&&files| files > 0);
-    if with_code.count() >= MONOREPO_PACKAGES {
-        &packages.dir
-    } else {
-        &[]
+    let held: u64 = packages
+        .code_files
+        .iter()
+        .map(|&files| u64::from(files))
+        .sum();
+    if with_code.count() < MONOREPO_PACKAGES || held * 2 < code {
+        return Vec::new();
     }
+    let package: HashSet<u32> = packages
+        .dir
+        .iter()
+        .copied()
+        .filter(|&dir| dir != 0)
+        .collect();
+    packages
+        .dir
+        .iter()
+        .copied()
+        .filter(|&dir| {
+            let mut current = parents[dir as usize];
+            while let Some(parent) = current {
+                if package.contains(&parent) {
+                    return false;
+                }
+                current = parents[parent as usize];
+            }
+            dir != 0
+        })
+        .collect()
 }
 
 /// The folders a declaration matches that hold an analyzed file and a
-/// manifest of that declaration, the outermost of nested ones, in folder
-/// order. A folder two declarations match is one package.
+/// manifest of that declaration, in folder order; the root first when a
+/// declaration lists it. A folder inside another package is a package of
+/// its own only with production code: tests and fixtures declared inside
+/// a package (an app per test of sveltejs/kit) are not. A folder two
+/// declarations match is one package.
 fn package_dirs(
     input: &Input<'_>,
     declarations: &[workspace::Declaration],
@@ -135,36 +169,79 @@ fn package_dirs(
 ) -> Vec<u32> {
     let count = input.dir_paths.len();
     let mut has_code = vec![false; count];
-    for (&dir, language) in input.file_dirs.iter().zip(input.languages) {
+    let mut has_production = vec![false; count];
+    for (file, (&dir, language)) in input.file_dirs.iter().zip(input.languages).enumerate() {
         has_code[dir as usize] |= language.is_analyzed();
+        has_production[dir as usize] |= language.is_analyzed() && input.production[file];
     }
     // Children come after their parent: going backwards adds each subtree
     for dir in (1..count).rev() {
         if let Some(parent) = input.parents[dir] {
             has_code[parent as usize] |= has_code[dir];
+            has_production[parent as usize] |= has_production[dir];
         }
     }
-    let mut inside = vec![false; count];
+    let declared = |dir: usize, path: bool| {
+        let own = manifests.own.get(&index(dir));
+        declarations.iter().any(|declaration| {
+            let listed = if path {
+                declaration.matches(input.dir_paths[dir])
+            } else {
+                declaration.root
+            };
+            listed
+                && declaration
+                    .members()
+                    .iter()
+                    .any(|name| own.is_some_and(|own| own.contains_key(name)))
+        })
+    };
     let mut dirs = Vec::new();
+    if count > 0 && has_code[0] && declared(0, false) {
+        dirs.push(0);
+    }
+    // Inside a package other than the root
+    let mut inside = vec![false; count];
     for dir in 1..count {
         let parent = input.parents[dir].is_some_and(|parent| inside[parent as usize]);
-        let own = manifests.own.get(&index(dir));
-        let declared = || {
-            declarations.iter().any(|declaration| {
-                declaration.matches(input.dir_paths[dir])
-                    && declaration
-                        .members()
-                        .iter()
-                        .any(|name| own.is_some_and(|own| own.contains_key(name)))
-            })
+        let code = if parent {
+            has_production[dir]
+        } else {
+            has_code[dir]
         };
-        let package = !parent && has_code[dir] && declared();
+        let package = code && declared(dir, true);
         inside[dir] = parent || package;
         if package {
             dirs.push(index(dir));
         }
     }
     dirs
+}
+
+/// How a Go program ranks as its package's entry, the lowest first, as Go
+/// lays out commands: `main.go` in the package's folder, then
+/// `cmd/<module>/main.go` (grafana's `pkg/cmd/grafana/main.go`), then any
+/// `main.go`, then any other program (a generator such as `kinds/gen.go`
+/// comes last); the shallowest, then the first by path, on a tie.
+fn go_program_rank<'p>(package: &str, file: &'p str, module: &str) -> (u8, usize, &'p str) {
+    let inside = if package.is_empty() {
+        file
+    } else {
+        file.strip_prefix(package)
+            .map_or(file, |rest| rest.trim_start_matches('/'))
+    };
+    let named = inside.rsplit('/').next() == Some("main.go");
+    let command = format!("cmd/{module}/main.go");
+    let rank = if inside == "main.go" {
+        0
+    } else if named && (inside == command || inside.ends_with(&format!("/{command}"))) {
+        1
+    } else if named {
+        2
+    } else {
+        3
+    };
+    (rank, inside.matches('/').count(), file)
 }
 
 fn packages(
@@ -202,10 +279,20 @@ fn packages(
             .get(&dir)
             .and_then(|own| own.get("package.json"))
             .and_then(|content| package_start(path, content, by_path, &production));
-        let go_main = code[row].iter().find_map(|&(_, file)| {
-            (input.languages[file as usize] == Language::Go && input.mains[file as usize])
-                .then_some(file)
-        });
+        let module = manifests
+            .named
+            .get(&dir)
+            .and_then(|(name, _)| name.as_deref())
+            .map_or(split_path(path).1, |name| {
+                name.rsplit('/').next().unwrap_or(name)
+            });
+        let go_main = code[row]
+            .iter()
+            .filter(|&&(_, file)| {
+                input.languages[file as usize] == Language::Go && input.mains[file as usize]
+            })
+            .min_by_key(|&&(file_path, _)| go_program_rank(path, file_path, module))
+            .map(|&(_, file)| file);
         let read = framework::read(&framework::Package {
             dir: path,
             npm: npm.map(|(_, npm)| npm),
@@ -399,5 +486,45 @@ impl<'a> Manifests<'a> {
             }
         }
         read
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::go_program_rank;
+
+    fn entry<'a>(package: &str, module: &str, files: &[&'a str]) -> &'a str {
+        files
+            .iter()
+            .copied()
+            .min_by_key(|file| go_program_rank(package, file, module))
+            .unwrap_or_default()
+    }
+
+    #[test]
+    fn a_go_package_starts_where_go_lays_out_its_command() {
+        // grafana: a generator at the top, a tool deep down, the server
+        let grafana = [
+            "kinds/gen.go",
+            "devenv/docker/listener/main.go",
+            "pkg/cmd/grafana/main.go",
+        ];
+        assert_eq!(entry("", "grafana", &grafana), "pkg/cmd/grafana/main.go");
+        // An operator: main.go at the root before a docs generator
+        assert_eq!(
+            entry("", "operator", &["cmd/docs.go", "main.go"]),
+            "main.go"
+        );
+        // A package in a folder, its own main.go
+        assert_eq!(
+            entry(
+                "tools/cli",
+                "cli",
+                &["tools/cli/internal/gen/main.go", "tools/cli/main.go"]
+            ),
+            "tools/cli/main.go"
+        );
+        // No main.go: the shallowest program
+        assert_eq!(entry("", "x", &["a/b/run.go", "a/run.go"]), "a/run.go");
     }
 }
