@@ -29,6 +29,8 @@ export function decodeResult(json: unknown): AnalysisResult {
   const roles = decodeRoles(fields.roles, files.dir.length, dirs.parent.length)
   const links = decodeLinks(fields.links, islands.layer)
   const cycles = decodeCycles(fields.cycles, files.dir.length)
+  const packageSections = decodePackages(fields, dirs.parent, files.dir.length)
+  const { packages, packageGroups } = packageSections
   return {
     formatVersion,
     analyzerVersion: string(fields.analyzerVersion, 'analyzerVersion'),
@@ -46,9 +48,19 @@ export function decodeResult(json: unknown): AnalysisResult {
     islands,
     links,
     cycles,
-    ...decodePackages(fields, dirs.parent, files.dir.length),
+    ...packageSections,
     layout: decodeLayout(fields.layout, dirs, islands, files),
-    tour: decodeTour(fields.tour, { dirs, files, languages, roles, islands, links, cycles }),
+    tour: decodeTour(fields.tour, {
+      dirs,
+      files,
+      languages,
+      roles,
+      islands,
+      links,
+      cycles,
+      packages,
+      packageGroups,
+    }),
     stats: decodeStats(fields.stats),
   }
 }

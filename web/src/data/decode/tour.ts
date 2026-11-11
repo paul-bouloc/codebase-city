@@ -1,9 +1,11 @@
-// Decoder of the tour: the steps the guide shows, in order, and what they point at.
+// Decoder of the tour: the steps the guide shows, in order, and what they point at. Checked as in
+// crates/model/src/validate/tour.rs.
 
-import type { AnalysisResult } from '../generated/AnalysisResult'
 import type { Tour } from '../generated/Tour'
 import type { TourStep } from '../generated/TourStep'
-import { fail, inBounds, isU32List, object, u32 } from './checks'
+import { fail, object } from './checks'
+import { stepFields, type Tables } from './tour-fields'
+import { decodePackageStep } from './tour-packages'
 
 type Kind = TourStep['kind']
 
@@ -13,19 +15,33 @@ const RANKS = {
   entryPoints: 1,
   conductors: 2,
   foundations: 3,
-  layers: 4,
-  cycles: 5,
-  complexAreas: 6,
-  rest: 7,
+  applications: 4,
+  otherApps: 5,
+  libraries: 6,
+  appLinks: 7,
+  layers: 8,
+  consumers: 9,
+  insideApp: 10,
+  cycles: 11,
+  complexAreas: 12,
+  rest: 13,
 } satisfies Record<Kind, number>
 
-const MAX_ROWS = 3
+// The kinds only one of the two tours has: a monorepo's presents its packages, another
+// repository's its files.
+const TOURS: Partial<Record<Kind, 'files' | 'packages'>> = {
+  entryPoints: 'files',
+  conductors: 'files',
+  foundations: 'files',
+  applications: 'packages',
+  otherApps: 'packages',
+  libraries: 'packages',
+  appLinks: 'packages',
+  consumers: 'packages',
+  insideApp: 'packages',
+}
 
-/** The tables a tour points into, already decoded. */
-type Tables = Pick<
-  AnalysisResult,
-  'dirs' | 'files' | 'languages' | 'roles' | 'islands' | 'links' | 'cycles'
->
+export type { Tables }
 
 export function decodeTour(value: unknown, tables: Tables): Tour {
   const fields = object(value, 'tour')
@@ -41,31 +57,23 @@ export function decodeTour(value: unknown, tables: Tables): Tour {
       fail(`tour.steps[${row}] must come after the previous step, each kind once, in order`)
     }
   }
+  let first: 'files' | 'packages' | undefined
+  steps.forEach((step, row) => {
+    const tour = TOURS[step.kind]
+    first ??= tour
+    if (tour !== undefined && tour !== first) {
+      fail(
+        `tour.steps[${row}] presents packages in a tour of files, or files in a tour of packages`,
+      )
+    }
+  })
   return { steps }
 }
 
 function decodeStep(value: unknown, row: number, tables: Tables): TourStep {
   const path = `tour.steps[${row}]`
   const fields = object(value, path)
-  const count = (name: string) => u32(fields[name], `${path}.${name}`)
-  const index = (name: string, length: number) => {
-    const at = count(name)
-    inBounds(`tour.${name}`, [at], length)
-    return at
-  }
-  const optional = (name: string, length: number) =>
-    fields[name] === null ? null : index(name, length)
-  const list = (name: string, length: number, min = 1) => {
-    const rows = fields[name]
-    if (!isU32List(rows)) {
-      fail(`${path}.${name} is not a list of indexes`)
-    }
-    if (rows.length < min || rows.length > MAX_ROWS || new Set(rows).size !== rows.length) {
-      fail(`a list of ${path} must hold up to three rows, each once, and only parks none`)
-    }
-    inBounds(`tour.${name}`, rows, length)
-    return rows
-  }
+  const { count, index, optional, list, holds } = stepFields(fields, path, row)
   const islandCount = tables.islands.dir.length
   const kind = fields.kind
   switch (kind) {
@@ -80,15 +88,21 @@ function decodeStep(value: unknown, row: number, tables: Tables): TourStep {
         biggestIsland: optional('biggestIsland', islandCount),
         outsideIsland: optional('outsideIsland', islandCount),
       }
-      if (step.languageLines > step.lines || (step.language === null && step.languageLines > 0)) {
-        fail(`the counts of ${path} do not add up`)
-      }
+      holds(
+        step.languageLines <= step.lines && (step.language !== null || step.languageLines === 0),
+      )
       return step
     }
     case 'entryPoints':
-      return { kind, entries: list('entries', tables.roles.entries.file.length) }
+      return {
+        kind,
+        entries: list('entries', tables.roles.entries.file.length),
+      }
     case 'conductors':
-      return { kind, conductors: list('conductors', tables.roles.conductors.file.length) }
+      return {
+        kind,
+        conductors: list('conductors', tables.roles.conductors.file.length),
+      }
     case 'foundations':
       return {
         kind,
@@ -103,12 +117,23 @@ function decodeStep(value: unknown, row: number, tables: Tables): TourStep {
         up: count('up'),
         worstLink: optional('worstLink', tables.links.from.length),
       }
-    case 'cycles':
-      return {
+    case 'cycles': {
+      const step: TourStep = {
         kind,
         cycle: index('cycle', tables.cycles.members.length),
         dir: index('dir', tables.dirs.parent.length),
+        package: optional('package', tables.packages.dir.length),
+        inPackage: count('inPackage'),
+        crossing: count('crossing'),
       }
+      const cycles = tables.cycles.members.length
+      const inside =
+        step.package === null
+          ? step.inPackage === 0
+          : step.inPackage >= 1 && step.inPackage <= cycles
+      holds(inside && step.inPackage + step.crossing <= cycles)
+      return step
+    }
     case 'complexAreas':
       return {
         kind,
@@ -127,11 +152,16 @@ function decodeStep(value: unknown, row: number, tables: Tables): TourStep {
         parkTests: count('parkTests'),
         parks: list('parks', tables.dirs.parent.length, 0),
       }
-      if (step.parks.length > step.parkCount || step.parkTests > step.tests) {
-        fail(`the counts of ${path} do not add up`)
-      }
+      holds(step.parks.length <= step.parkCount && step.parkTests <= step.tests)
       return step
     }
+    case 'applications':
+    case 'otherApps':
+    case 'libraries':
+    case 'appLinks':
+    case 'consumers':
+    case 'insideApp':
+      return decodePackageStep(kind, fields, path, row, tables)
     default:
       return fail(`${path}.kind is not a kind of step`)
   }

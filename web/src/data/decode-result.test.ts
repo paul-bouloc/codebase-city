@@ -577,7 +577,7 @@ describe('decodeResult', () => {
       decodeChanged((json) => {
         ;(json.tour.steps[2] as { conductors: number[] }).conductors = []
       }),
-    ).toThrow('a list of tour.steps[2] must hold up to three rows, each once, and only parks none')
+    ).toThrow('a list of tour.steps[2] must hold as many rows as its step allows, each once')
     expect(
       decodeChanged((json) => {
         ;(json.tour.steps[5] as { dir: number }).dir = 8
@@ -598,5 +598,99 @@ describe('decodeResult', () => {
         ;(json.tour.steps[6] as { parkTests: number }).parkTests = 3
       }),
     ).toThrow('the counts of tour.steps[6] do not add up')
+  })
+
+  /** The sample as a monorepo of two apps, `src/core` and `src/ui`, and a library, `src/api`. */
+  function asMonorepo(json: Json) {
+    json.workspace = { kind: 'npm', manifest: 0 }
+    json.packages = {
+      dir: [2, 3, 4],
+      name: ['core', 'ui', 'api'],
+      kind: ['app', 'app', 'library'],
+      framework: [null, null, null],
+      manifest: [null, null, null],
+      group: [null, null, null],
+      codeFiles: [5, 3, 2],
+      entry: [null, null, null],
+      routes: [null, null, null],
+      routeCount: [0, 0, 0],
+      apiRouteCount: [0, 0, 0],
+    }
+    const steps = json.tour.steps as { kind: string }[]
+    json.tour.steps = [
+      steps[0],
+      { kind: 'applications', units: [{ group: null, apps: [0], files: 5 }], appFiles: 8 },
+      {
+        kind: 'libraries',
+        mostImported: [2],
+        importers: [2],
+        largest: 2,
+        singleApp: [],
+        unused: [],
+      },
+      {
+        kind: 'appLinks',
+        appImports: 0,
+        shared: [{ library: 2, apps: [0, 1], files: 4, typeOnly: 1 }],
+      },
+      { kind: 'insideApp', app: 0, dirs: [2], files: [5] },
+      ...steps.slice(5),
+    ]
+  }
+
+  it('accepts the tour of a monorepo, its packages of the kind each step says', () => {
+    const json = structuredClone(sample) as unknown as Json
+    asMonorepo(json)
+    expect(decodeResult(json).tour.steps.map((step) => step.kind)).toEqual([
+      'overview',
+      'applications',
+      'libraries',
+      'appLinks',
+      'insideApp',
+      'cycles',
+      'rest',
+    ])
+    expect(
+      decodeChanged((json) => {
+        asMonorepo(json)
+        ;(json.tour.steps[2] as { largest: number }).largest = 0
+      }),
+    ).toThrow('tour.steps[2] names a library as an app, or an app as a library')
+    expect(
+      decodeChanged((json) => {
+        asMonorepo(json)
+        ;(json.tour.steps[3] as { shared: unknown[] }).shared = [
+          { library: 2, apps: [0], files: 4, typeOnly: 1 },
+        ]
+      }),
+    ).toThrow('a list of tour.steps[3] must hold as many rows as its step allows, each once')
+    expect(
+      decodeChanged((json) => {
+        asMonorepo(json)
+        ;(json.tour.steps[1] as { appFiles: number }).appFiles = 4
+      }),
+    ).toThrow('the counts of tour.steps[1] do not add up')
+    expect(
+      decodeChanged((json) => {
+        asMonorepo(json)
+        ;(json.tour.steps[4] as { files: number[] }).files = []
+      }),
+    ).toThrow('the counts of tour.steps[4] do not add up')
+    expect(
+      decodeChanged((json) => {
+        asMonorepo(json)
+        ;(json.tour.steps[5] as { package: number | null }).package = 0
+      }),
+    ).toThrow('the counts of tour.steps[5] do not add up')
+  })
+
+  it('requires a tour that never mixes packages and files', () => {
+    expect(
+      decodeChanged((json) => {
+        asMonorepo(json)
+        const sampleSteps = (sample as unknown as Json).tour.steps
+        json.tour.steps.splice(1, 0, sampleSteps[1])
+      }),
+    ).toThrow('tour.steps[2] presents packages in a tour of files, or files in a tour of packages')
   })
 })
