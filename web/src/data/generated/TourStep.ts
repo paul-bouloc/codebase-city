@@ -70,13 +70,14 @@ importers: Array<number>,
  */
 largest: number, 
 /**
- * Libraries that one app imports and no other package.
+ * Libraries that one app imports and no other package, when apps
+ * lead the monorepo.
  */
 singleApp: Array<number>, 
 /**
- * Libraries no package imports, when the monorepo has apps:
- * without apps, the libraries at the top are imported by no
- * package by design.
+ * Libraries no package imports, when apps lead the monorepo: in a
+ * monorepo of libraries, the libraries at the top are imported by
+ * no package by design.
  */
 unused: Array<number>, } | { "kind": "appLinks", 
 /**

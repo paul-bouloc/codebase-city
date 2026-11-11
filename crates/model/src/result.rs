@@ -610,14 +610,17 @@ pub enum TourStep {
         /// or more.
         island: Option<u32>,
     },
-    /// The main apps of a monorepo: its groups of apps by name and its apps
-    /// outside a group, the largest first, from one to five.
+    /// The main apps of a monorepo its apps lead: its groups of apps by
+    /// name and its apps outside a group, the largest first, from one to
+    /// five.
     Applications {
         units: Vec<AppUnit>,
         /// Code files of all the apps, to give each unit its share.
         app_files: u32,
     },
     /// The other apps, two or more: rows of [`Packages`], the largest first.
+    /// In a monorepo of libraries, without [`TourStep::Applications`], all
+    /// its apps.
     OtherApps { apps: Vec<u32> },
     /// The libraries of a monorepo and the packages that import them.
     Libraries {
@@ -628,11 +631,12 @@ pub enum TourStep {
         importers: Vec<u32>,
         /// The library with the most code files.
         largest: u32,
-        /// Libraries that one app imports and no other package.
+        /// Libraries that one app imports and no other package, when apps
+        /// lead the monorepo.
         single_app: Vec<u32>,
-        /// Libraries no package imports, when the monorepo has apps:
-        /// without apps, the libraries at the top are imported by no
-        /// package by design.
+        /// Libraries no package imports, when apps lead the monorepo: in a
+        /// monorepo of libraries, the libraries at the top are imported by
+        /// no package by design.
         unused: Vec<u32>,
     },
     /// What the apps share, beyond the most imported libraries.
@@ -656,7 +660,7 @@ pub enum TourStep {
         /// when none does.
         worst_link: Option<u32>,
     },
-    /// In a monorepo without apps, the folders outside the packages whose
+    /// In a monorepo of libraries, the folders outside the packages whose
     /// examples and tests import them.
     Consumers {
         /// One to three folders at the top of the repository, the one with
@@ -691,7 +695,7 @@ pub enum TourStep {
     },
     /// The most complex production files that other files import, each in
     /// its own folder; in a monorepo, each in its own main unit of apps, or
-    /// its own package when there is no app.
+    /// its own package when apps do not lead the monorepo.
     ComplexAreas {
         files: Vec<u32>,
         /// Complexity of all the production code, to give their share.
