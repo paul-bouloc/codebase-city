@@ -47,7 +47,8 @@ impl<'a> Monorepo<'a> {
         if crate::packages::monorepo_dirs(&result.packages).is_empty() {
             return None;
         }
-        let package_of_dir = package_of_dir(result);
+        let package_of_dir =
+            crate::packages::package_of_dirs(&result.dirs.parent, &result.packages.dir);
         let mut repo = Self {
             result,
             package_of_dir,
@@ -149,21 +150,6 @@ impl<'a> Monorepo<'a> {
 /// packages of tooling and tests, which the tour leaves out.
 pub(super) fn has_code(result: &AnalysisResult, package: usize) -> bool {
     result.packages.code_files[package] > 0
-}
-
-/// Each folder inherits the package of its parent; parents come first.
-fn package_of_dir(result: &AnalysisResult) -> Vec<Option<u32>> {
-    let parents = &result.dirs.parent;
-    let mut package_of_dir = vec![None; parents.len()];
-    for (row, &dir) in result.packages.dir.iter().enumerate() {
-        package_of_dir[dir as usize] = Some(index(row));
-    }
-    for dir in 1..parents.len() {
-        if package_of_dir[dir].is_none() {
-            package_of_dir[dir] = parents[dir].and_then(|parent| package_of_dir[parent as usize]);
-        }
-    }
-    package_of_dir
 }
 
 /// The apps of a group by name make one unit, each other app its own; the

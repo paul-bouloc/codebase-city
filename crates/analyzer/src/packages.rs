@@ -61,7 +61,6 @@ pub(crate) fn find(input: &Input<'_>) -> Found {
     let mut found = Found::default();
     let declaration = workspace::declaration(input.manifests);
     let mut dirs = Vec::new();
-    let mut package_of_dir = vec![None; input.dir_paths.len()];
     if let Some(declaration) = &declaration {
         found.workspace = by_path
             .get(declaration.manifest.as_str())
@@ -70,17 +69,8 @@ pub(crate) fn find(input: &Input<'_>) -> Found {
                 manifest,
             });
         dirs = package_dirs(input, declaration);
-        for (row, &dir) in dirs.iter().enumerate() {
-            package_of_dir[dir as usize] = Some(index(row));
-        }
-        // Parents come first: a folder inherits its parent's package
-        for dir in 1..input.dir_paths.len() {
-            if package_of_dir[dir].is_none() {
-                package_of_dir[dir] =
-                    input.parents[dir].and_then(|parent| package_of_dir[parent as usize]);
-            }
-        }
     }
+    let package_of_dir = package_of_dirs(input.parents, &dirs);
     let package_of_file: Vec<Option<u32>> = input
         .file_dirs
         .iter()
@@ -95,6 +85,21 @@ pub(crate) fn find(input: &Input<'_>) -> Found {
     );
     found.externals = externals(input, &manifests, &package_of_file);
     found
+}
+
+/// The package of each folder: a folder inherits its parent's. Parents come
+/// before their children.
+pub(crate) fn package_of_dirs(parents: &[Option<u32>], package_dirs: &[u32]) -> Vec<Option<u32>> {
+    let mut package_of_dir = vec![None; parents.len()];
+    for (row, &dir) in package_dirs.iter().enumerate() {
+        package_of_dir[dir as usize] = Some(index(row));
+    }
+    for dir in 1..parents.len() {
+        if package_of_dir[dir].is_none() {
+            package_of_dir[dir] = parents[dir].and_then(|parent| package_of_dir[parent as usize]);
+        }
+    }
+    package_of_dir
 }
 
 /// The packages with production code a workspace declares to make a
