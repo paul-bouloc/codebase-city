@@ -8,7 +8,7 @@ import { MAX_ROWS, stepFields, type Tables } from './tour-fields'
 const MAX_UNITS = 5
 const MAX_MOST_IMPORTED = 4
 
-type PackageKindOfStep = Extract<
+type PackageStepKind = Extract<
   TourStep['kind'],
   'applications' | 'otherApps' | 'libraries' | 'appLinks' | 'consumers' | 'insideApp'
 >
@@ -18,7 +18,7 @@ function array(value: unknown, path: string): unknown[] {
 }
 
 export function decodePackageStep(
-  kind: PackageKindOfStep,
+  kind: PackageStepKind,
   fields: Record<string, unknown>,
   path: string,
   row: number,
