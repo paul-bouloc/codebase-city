@@ -368,7 +368,8 @@ pub enum WorkspaceKind {
 /// In a language no [`Workspace`] declares (JavaScript, Go, Python), a
 /// folder with its manifest and production code is an implicit package,
 /// the root included, when the repository has at least two packages in
-/// all. A package can lie inside another (a Go module in a module, the
+/// all; under a root project, one of the same language is its satellite
+/// (a library's site), except a Go module. A package can lie inside another (a Go module in a module, the
 /// members of a root package): each file belongs to the deepest package
 /// that holds it. Empty for a repository of a single project.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
