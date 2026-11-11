@@ -252,3 +252,59 @@ fn a_repository_without_workspaces_has_no_packages_but_externals() {
     assert_eq!(result.externals.files, [2, 1]);
     assert_eq!(result.externals.package, [None, None]);
 }
+
+fn island_paths(result: &AnalysisResult) -> Vec<String> {
+    result
+        .islands
+        .dir
+        .iter()
+        .map(|&dir| dir_path(result, dir))
+        .collect()
+}
+
+#[test]
+fn each_package_of_a_monorepo_is_an_island() {
+    let result = analyzed(FILES);
+    // No `apps` or `libs` island: they are split into their packages; the
+    // root keeps its manifest
+    assert_eq!(
+        island_paths(&result),
+        [
+            "",
+            "apps/acme-admin",
+            "apps/acme",
+            "apps/site-blog",
+            "apps/site",
+            "libs/acme-ui",
+            "libs/empty",
+            "sample",
+        ]
+    );
+    // The island of a package is the one named after its folder
+    for &dir in &result.packages.dir {
+        assert!(result.islands.dir.contains(&dir));
+    }
+}
+
+#[test]
+fn a_workspace_with_a_single_package_of_code_keeps_its_islands() {
+    // `tools/lint` holds no production code: not a monorepo, and `apps`,
+    // with less than half of the code, stays whole
+    let result = analyzed(&[
+        (
+            "package.json",
+            r#"{ "name": "root", "workspaces": ["apps/*", "tools/*"] }"#,
+        ),
+        (
+            "apps/web/package.json",
+            r#"{ "name": "web", "scripts": { "start": "node main.js" } }"#,
+        ),
+        ("apps/web/main.js", "console.log('web')\n"),
+        ("tools/lint/package.json", r#"{ "name": "lint" }"#),
+        ("tools/lint/index.test.js", "console.log('lint')\n"),
+        ("src/a.js", "console.log('a')\n"),
+        ("src/b.js", "console.log('b')\n"),
+    ]);
+    assert_eq!(result.packages.dir.len(), 2);
+    assert_eq!(island_paths(&result), ["", "apps", "src", "tools"]);
+}
