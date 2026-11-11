@@ -1,4 +1,4 @@
-//! Who uses the packages of a monorepo without apps: the examples and
+//! Who uses the packages of a monorepo of libraries: the examples and
 //! tests around them.
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -12,10 +12,10 @@ use super::{MAX_ROWS, count, first_max};
 const MIN_FOLDERS: usize = 3;
 
 /// The folders at the top of the repository, outside the packages and
-/// holding none, whose examples and tests import a package. Skipped when the repository has
-/// apps: they are what uses the libraries.
+/// holding none, whose examples and tests import a package. Skipped when
+/// apps lead the repository: they are what uses the libraries.
 pub(super) fn consumers(repo: &Monorepo<'_>) -> Option<TourStep> {
-    if repo.has_apps() {
+    if repo.apps_lead() {
         return None;
     }
     let result = repo.result;

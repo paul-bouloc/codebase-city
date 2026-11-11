@@ -16,6 +16,12 @@ const MAX_MOST_IMPORTED: usize = 4;
 const MIN_LIBRARIES: usize = 2;
 /// Fewer apps share nothing.
 const MIN_APPS: usize = 2;
+/// The main library of a monorepo of libraries is imported by this many
+/// packages at least: fewer, it is one library among others.
+const MIN_MAIN_IMPORTERS: usize = 3;
+/// The main library holds this share of the libraries' code, in percent,
+/// at least.
+const MIN_MAIN_SHARE: u64 = 5;
 
 /// The libraries with production code.
 fn libraries_of(repo: &Monorepo<'_>) -> Vec<u32> {
@@ -38,6 +44,35 @@ fn most_imported(repo: &Monorepo<'_>) -> Vec<(u32, u32)> {
     ranked
 }
 
+/// The library a monorepo of libraries is about: the one with the most
+/// code files times the packages that import it. The largest alone is
+/// often generated code (`@babel/helpers`), the most imported alone a
+/// one-file helper (`@babel/helper-plugin-utils`); their product finds
+/// `@babel/core`, `@vue/runtime-core` and `@sveltejs/kit`. `None` for a
+/// collection of libraries that none leads (the contributions of
+/// OpenTelemetry).
+pub(super) fn main_library(repo: &Monorepo<'_>) -> Option<u32> {
+    let files = &repo.result.packages.code_files;
+    let libraries = libraries_of(repo);
+    let library_files: u64 = libraries
+        .iter()
+        .map(|&library| u64::from(files[library as usize]))
+        .sum();
+    libraries
+        .into_iter()
+        .map(|library| {
+            let importers = repo.importers(library).len();
+            (library, u64::from(files[library as usize]), importers)
+        })
+        .filter(|&(_, files, importers)| {
+            importers >= MIN_MAIN_IMPORTERS && files * 100 >= library_files * MIN_MAIN_SHARE
+        })
+        .max_by_key(|&(library, files, importers)| {
+            (files * importers as u64, std::cmp::Reverse(library))
+        })
+        .map(|(library, _, _)| library)
+}
+
 pub(super) fn libraries(repo: &Monorepo<'_>) -> Option<TourStep> {
     let libraries = libraries_of(repo);
     let most = most_imported(repo);
@@ -50,10 +85,10 @@ pub(super) fn libraries(repo: &Monorepo<'_>) -> Option<TourStep> {
         .max_by_key(|&&library| (files[library as usize], std::cmp::Reverse(library)))?;
     let mut single_app = Vec::new();
     let mut unused = Vec::new();
-    // Without apps, the libraries at the top are imported by no package by
-    // design (nest's platforms): only libraries that serve apps can be
+    // Unless apps lead, the libraries at the top are imported by no package
+    // by design (nest's platforms): only libraries that serve apps can be
     // left unused
-    let serve_apps = if repo.has_apps() {
+    let serve_apps = if repo.apps_lead() {
         libraries.as_slice()
     } else {
         &[]
@@ -84,6 +119,9 @@ pub(super) fn libraries(repo: &Monorepo<'_>) -> Option<TourStep> {
 /// (`logs` would link them all). A library is ranked by the second unit
 /// that imports it the most: shared by two, not used by one.
 pub(super) fn app_links(repo: &Monorepo<'_>) -> Option<TourStep> {
+    if !repo.apps_lead() {
+        return None;
+    }
     let apps: usize = repo.units.iter().map(|unit| unit.apps.len()).sum();
     if apps < MIN_APPS {
         return None;
@@ -199,6 +237,34 @@ mod tests {
             unreachable!()
         };
         assert!(single_app.is_empty() && unused.is_empty());
+        // Nor with apps that do not lead, and they share nothing
+        let mut fixture = Fixture::monorepo();
+        fixture.result.packages.code_files[12] = 2_000;
+        let Some(TourStep::Libraries {
+            single_app, unused, ..
+        }) = libraries(&repo(&fixture))
+        else {
+            unreachable!()
+        };
+        assert!(single_app.is_empty() && unused.is_empty());
+        assert_eq!(app_links(&repo(&fixture)), None);
+    }
+
+    #[test]
+    fn the_main_library_has_the_most_files_times_importers() {
+        // log 5 importers, types 4, core 3, contracts 2
+        let mut fixture = Fixture::monorepo();
+        let files = &mut fixture.result.packages.code_files;
+        files[6] = 10;
+        files[7] = 20;
+        files[8] = 30;
+        assert_eq!(main_library(&repo(&fixture)), Some(8));
+        // Two importers are not enough, however large
+        fixture.result.packages.code_files[10] = 100;
+        assert_eq!(main_library(&repo(&fixture)), Some(8));
+        // Below 5% of the libraries' code, no library leads
+        fixture.result.packages.code_files[12] = 1_000;
+        assert_eq!(main_library(&repo(&fixture)), None);
     }
 
     #[test]

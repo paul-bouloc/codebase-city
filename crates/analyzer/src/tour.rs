@@ -47,12 +47,13 @@ pub fn of_result(result: &AnalysisResult) -> Tour {
         steps.extend(apps::other_apps(repo));
         steps.extend(libraries::libraries(repo));
         steps.extend(libraries::app_links(repo));
-        // The apps sit above the libraries: their layers say nothing more
-        if !repo.has_apps() {
+        // Apps that lead sit above the libraries: their layers say nothing
+        // more
+        if !repo.apps_lead() {
             steps.extend(structure::layers(result));
         }
         steps.extend(consumers::consumers(repo));
-        steps.extend(apps::inside_app(repo));
+        steps.extend(apps::inside(repo));
     } else {
         let entries = roles::entry_points(result);
         let conductors = roles::conductors(result, entries.as_ref());

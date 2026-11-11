@@ -1,5 +1,5 @@
-//! The steps of a monorepo's apps: the main ones, the others, and inside
-//! the largest.
+//! The steps of a monorepo's apps: the main ones, the others; and inside
+//! the package that stands for the monorepo.
 
 use model::TourStep;
 
@@ -14,15 +14,17 @@ const INSIDE_SHARE: u64 = 40;
 const MIN_OTHER_APPS: usize = 2;
 
 pub(super) fn applications(repo: &Monorepo<'_>) -> Option<TourStep> {
-    repo.has_apps().then(|| TourStep::Applications {
+    repo.apps_lead().then(|| TourStep::Applications {
         units: repo.main().to_vec(),
         app_files: repo.app_files,
     })
 }
 
-/// The apps outside the main units, the largest first.
+/// The apps outside the main units, the largest first; all of them when
+/// they do not lead the monorepo, as no unit is presented.
 pub(super) fn other_apps(repo: &Monorepo<'_>) -> Option<TourStep> {
-    let mut apps: Vec<u32> = repo.units[repo.main_units..]
+    let presented = if repo.apps_lead() { repo.main_units } else { 0 };
+    let mut apps: Vec<u32> = repo.units[presented..]
         .iter()
         .flat_map(|unit| unit.apps.iter().copied())
         .collect();
@@ -31,27 +33,40 @@ pub(super) fn other_apps(repo: &Monorepo<'_>) -> Option<TourStep> {
     (apps.len() >= MIN_OTHER_APPS).then_some(TourStep::OtherApps { apps })
 }
 
-/// The largest folders of the app that holds a good share of the apps'
-/// code, by their code files, below the folder that holds all of it.
-pub(super) fn inside_app(repo: &Monorepo<'_>) -> Option<TourStep> {
-    let result = repo.result;
-    let packages = &result.packages;
+/// The largest folders of the package that stands for the monorepo, by
+/// their code files, below the folder that holds all of it: the app that
+/// holds a good share of the apps' code when apps lead, the main library
+/// otherwise.
+pub(super) fn inside(repo: &Monorepo<'_>) -> Option<TourStep> {
+    let package = if repo.apps_lead() {
+        main_app(repo)?
+    } else {
+        super::libraries::main_library(repo)?
+    };
+    inside_package(repo, package)
+}
+
+/// The largest app, when it holds a good share of the apps' code.
+fn main_app(repo: &Monorepo<'_>) -> Option<u32> {
+    let files = &repo.result.packages.code_files;
     let app = repo
         .units
         .iter()
         .flat_map(|unit| unit.apps.iter().copied())
-        .max_by_key(|&app| (packages.code_files[app as usize], std::cmp::Reverse(app)))?;
-    if u64::from(packages.code_files[app as usize]) * 100 < u64::from(repo.app_files) * INSIDE_SHARE
-    {
-        return None;
-    }
-    let root = packages.dir[app as usize];
+        .max_by_key(|&app| (files[app as usize], std::cmp::Reverse(app)))?;
+    (u64::from(files[app as usize]) * 100 >= u64::from(repo.app_files) * INSIDE_SHARE)
+        .then_some(app)
+}
+
+fn inside_package(repo: &Monorepo<'_>, package: u32) -> Option<TourStep> {
+    let result = repo.result;
+    let root = result.packages.dir[package as usize];
     let parents = &result.dirs.parent;
     let mut code = vec![0u64; parents.len()];
     for file in 0..result.files.dir.len() {
-        // A package inside the app keeps its own code (`pkg/sdk` of an
+        // A package inside the package keeps its own code (`pkg/sdk` of an
         // operator whose root is the app)
-        let own = repo.package_of_file(file) == Some(app);
+        let own = repo.package_of_file(file) == Some(package);
         if own && is_production(result, file) && result.files.complexity[file].is_some() {
             code[result.files.dir[file] as usize] += 1;
         }
@@ -68,8 +83,8 @@ pub(super) fn inside_app(repo: &Monorepo<'_>) -> Option<TourStep> {
             .map(|dir| (code[dir], index(dir)))
             .collect()
     };
-    // An app often keeps all its code in one folder, such as `src/`: its
-    // folders are the ones below
+    // A package often keeps all its code in one folder, such as `src/`:
+    // its folders are the ones below
     let mut root = root;
     let mut children = children_of(root);
     while let [(files, only)] = children[..] {
@@ -82,7 +97,7 @@ pub(super) fn inside_app(repo: &Monorepo<'_>) -> Option<TourStep> {
     children.sort_by_key(|&(files, dir)| (std::cmp::Reverse(files), dir));
     children.truncate(MAX_ROWS);
     (!children.is_empty()).then(|| TourStep::InsidePackage {
-        package: app,
+        package,
         dirs: children.iter().map(|&(_, dir)| dir).collect(),
         files: children.iter().map(|&(files, _)| count(files)).collect(),
     })
@@ -153,7 +168,42 @@ mod tests {
         fixture.result.packages.kind[..6].fill(PackageKind::Library);
         assert_eq!(applications(&repo(&fixture)), None);
         assert_eq!(other_apps(&repo(&fixture)), None);
-        assert_eq!(inside_app(&repo(&fixture)), None);
+        assert_eq!(inside(&repo(&fixture)), None);
+    }
+
+    #[test]
+    fn apps_that_do_not_lead_are_all_other_apps() {
+        let mut fixture = Fixture::monorepo();
+        fixture.result.packages.code_files[12] = 2_000;
+        assert_eq!(applications(&repo(&fixture)), None);
+        assert_eq!(
+            other_apps(&repo(&fixture)),
+            Some(TourStep::OtherApps {
+                apps: vec![0, 1, 2, 3, 4, 5]
+            })
+        );
+    }
+
+    #[test]
+    fn inside_the_main_library_when_apps_do_not_lead() {
+        let mut fixture = Fixture::monorepo();
+        fixture.file("libs/core/parser/a.ts", model::Scope::Source);
+        fixture.file("libs/core/parser/b.ts", model::Scope::Source);
+        let parser = fixture.dir("libs/core/parser");
+        let files = &mut fixture.result.packages.code_files;
+        files[8] = 3_000;
+        assert_eq!(
+            inside(&repo(&fixture)),
+            Some(TourStep::InsidePackage {
+                package: 8,
+                dirs: vec![parser],
+                files: vec![2],
+            })
+        );
+        // No library leads: nothing to look inside, even with apps
+        fixture.result.packages.code_files[8] = 1;
+        fixture.result.packages.code_files[12] = 3_000;
+        assert_eq!(inside(&repo(&fixture)), None);
     }
 
     #[test]
@@ -178,7 +228,7 @@ mod tests {
         let components = fixture.dir("apps/web/components");
         let pages = fixture.dir("apps/web/pages");
         assert_eq!(
-            inside_app(&repo(&fixture)),
+            inside(&repo(&fixture)),
             Some(TourStep::InsidePackage {
                 package: 0,
                 dirs: vec![components, pages],
@@ -187,7 +237,7 @@ mod tests {
         );
         // 100 files of 251: below 40%
         fixture.result.packages.code_files[1] = 122;
-        assert_eq!(inside_app(&repo(&fixture)), None);
+        assert_eq!(inside(&repo(&fixture)), None);
     }
 
     #[test]
@@ -208,7 +258,7 @@ mod tests {
         fixture.result.files.dir[components] = src_components;
         fixture.file("apps/web/README.md", model::Scope::Docs);
         assert_eq!(
-            inside_app(&repo(&fixture)),
+            inside(&repo(&fixture)),
             Some(TourStep::InsidePackage {
                 package: 0,
                 dirs: vec![src_components, src_pages],
@@ -217,13 +267,13 @@ mod tests {
         );
         // Code of its own in `src/` leaves its folders as they are
         fixture.file("apps/web/src/main.ts", model::Scope::Source);
-        let Some(TourStep::InsidePackage { dirs, .. }) = inside_app(&repo(&fixture)) else {
+        let Some(TourStep::InsidePackage { dirs, .. }) = inside(&repo(&fixture)) else {
             unreachable!()
         };
         assert_eq!(dirs, [src_components, src_pages]);
         // Code at the top of the app: `src/` is one of its folders
         fixture.file("apps/web/next.config.ts", model::Scope::Source);
-        let Some(TourStep::InsidePackage { dirs, .. }) = inside_app(&repo(&fixture)) else {
+        let Some(TourStep::InsidePackage { dirs, .. }) = inside(&repo(&fixture)) else {
             unreachable!()
         };
         assert_eq!(dirs, [src]);
@@ -250,7 +300,7 @@ mod tests {
         packages.route_count.push(0);
         packages.api_route_count.push(0);
         assert_eq!(
-            inside_app(&repo(&fixture)),
+            inside(&repo(&fixture)),
             Some(TourStep::InsidePackage {
                 package: 0,
                 dirs: vec![pages, lib],

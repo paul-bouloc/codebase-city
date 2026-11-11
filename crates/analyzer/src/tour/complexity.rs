@@ -76,11 +76,11 @@ pub(super) fn complex_areas(
     })
 }
 
-/// The main unit of apps of a file, or its package when the monorepo has no
-/// apps; `None` elsewhere.
+/// The main unit of apps of a file, or its package when apps do not lead
+/// the monorepo; `None` elsewhere.
 fn area_of(repo: &Monorepo<'_>, file: usize) -> Option<u32> {
     let package = repo.package_of_file(file)?;
-    if !repo.has_apps() {
+    if !repo.apps_lead() {
         return Some(package);
     }
     let unit = repo

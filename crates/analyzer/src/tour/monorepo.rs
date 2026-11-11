@@ -16,6 +16,12 @@ use crate::saturating_u32 as index;
 const MAIN_SHARE: u64 = 3;
 /// The most main units: more would read as a list, not an architecture.
 const MAX_MAIN_UNITS: usize = 5;
+/// The apps lead a monorepo when they hold this share of the packages'
+/// code, in percent, at least. Below, a few small apps (the CLI of a
+/// compiler, a playground) sit beside the libraries the repository is
+/// about: babel's apps hold 1.9% of its packages' code, kit's 3.9%,
+/// grafana's 76.6%.
+const APPS_LEAD_SHARE: u64 = 10;
 
 /// Production imports from one package to another.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -41,6 +47,8 @@ pub(super) struct Monorepo<'a> {
     pub main_units: usize,
     /// Code files of all the apps.
     pub app_files: u32,
+    /// Code files of all the packages.
+    package_files: u64,
 }
 
 impl<'a> Monorepo<'a> {
@@ -69,6 +77,13 @@ impl<'a> Monorepo<'a> {
             units: Vec::new(),
             main_units: 0,
             app_files: 0,
+            package_files: result
+                .packages
+                .code_files
+                .iter()
+                .copied()
+                .map(u64::from)
+                .sum(),
         };
         repo.links = repo.package_links();
         for (&(from, to), &link) in &repo.links {
@@ -109,8 +124,11 @@ impl<'a> Monorepo<'a> {
         self.result.packages.kind[package as usize] == PackageKind::App
     }
 
-    pub fn has_apps(&self) -> bool {
+    /// Whether the apps lead the monorepo: its tour presents them first,
+    /// and the libraries as what serves them.
+    pub fn apps_lead(&self) -> bool {
         !self.units.is_empty()
+            && u64::from(self.app_files) * 100 >= self.package_files * APPS_LEAD_SHARE
     }
 
     /// The units presented as the main apps.
@@ -196,4 +214,28 @@ fn units(result: &AnalysisResult) -> Vec<AppUnit> {
         .collect();
     units.sort_by_key(|unit| (std::cmp::Reverse(unit.files), unit.apps[0]));
     units
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tour::fixture::Fixture;
+
+    #[test]
+    fn apps_lead_with_ten_percent_of_the_packages_code() {
+        // Apps 129 code files, libraries 7
+        let mut fixture = Fixture::monorepo();
+        let lead =
+            |fixture: &Fixture| Monorepo::of(&fixture.result).is_some_and(|repo| repo.apps_lead());
+        assert!(lead(&fixture));
+        // 129 of 1,290: just enough
+        fixture.result.packages.code_files[12] = 1_155;
+        assert!(lead(&fixture));
+        fixture.result.packages.code_files[12] = 1_156;
+        assert!(!lead(&fixture));
+        // Without apps, nothing leads
+        let mut fixture = Fixture::monorepo();
+        fixture.result.packages.kind[..6].fill(PackageKind::Library);
+        assert!(!lead(&fixture));
+    }
 }
