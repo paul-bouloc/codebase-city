@@ -5,6 +5,9 @@ use model::{AnalysisResult, TourStep};
 use crate::paths::{dir_path, path, target};
 use crate::tour_packages::print_package_step;
 
+/// The islands of a layer printed by name; the others are counted.
+const MAX_LAYER_NAMES: usize = 3;
+
 /// A share as a percentage with one decimal.
 fn share(part: u32, whole: u32) -> String {
     if whole == 0 {
@@ -113,7 +116,13 @@ pub(crate) fn print_tour(result: &AnalysisResult) {
                             .filter(|(of, _)| *of == layer)
                             .map(|(_, name)| name.as_str())
                             .collect();
-                        names.join(" ")
+                        // Sixty islands in a layer would hide the order
+                        match names.len().checked_sub(MAX_LAYER_NAMES) {
+                            Some(more) if more > 0 => {
+                                format!("{} (+{more} more)", names[..MAX_LAYER_NAMES].join(" "))
+                            }
+                            _ => names.join(" "),
+                        }
                     })
                     .collect();
                 let total = down + level + up;
