@@ -73,9 +73,10 @@ export function decodePackageStep(
       return step
     }
     case 'otherApps':
+      // Two or more after the main apps: decodeTour checks it
       return {
         kind,
-        apps: packages(fields.apps, 'apps', 'app', 2, Number.MAX_SAFE_INTEGER),
+        apps: packages(fields.apps, 'apps', 'app', 1, Number.MAX_SAFE_INTEGER),
       }
     case 'libraries': {
       const all = Number.MAX_SAFE_INTEGER

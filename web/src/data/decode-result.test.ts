@@ -696,6 +696,27 @@ describe('decodeResult', () => {
     ).toThrow('the counts of tour.steps[5] do not add up')
   })
 
+  it('names the only app of a monorepo of libraries, but lists two after the main apps', () => {
+    const json = structuredClone(sample) as unknown as Json
+    asMonorepo(json)
+    json.tour.steps.splice(1, 1, { kind: 'otherApps', apps: [1] })
+    json.tour.steps.splice(3, 1)
+    expect(decodeResult(json).tour.steps.map((step) => step.kind)).toEqual([
+      'overview',
+      'otherApps',
+      'libraries',
+      'insidePackage',
+      'cycles',
+      'rest',
+    ])
+    expect(
+      decodeChanged((json) => {
+        asMonorepo(json)
+        json.tour.steps.splice(2, 0, { kind: 'otherApps', apps: [1] })
+      }),
+    ).toThrow('a list of tour.steps[2] must hold as many rows as its step allows, each once')
+  })
+
   it('requires a tour that never mixes packages and files', () => {
     expect(
       decodeChanged((json) => {

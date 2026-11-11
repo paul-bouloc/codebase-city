@@ -621,7 +621,7 @@ pub enum TourStep {
     },
     /// The other apps, two or more: rows of [`Packages`], the largest first.
     /// In a monorepo of libraries, without [`TourStep::Applications`], all
-    /// its apps.
+    /// its apps, one or more.
     OtherApps { apps: Vec<u32> },
     /// The libraries of a monorepo and the packages that import them.
     Libraries {

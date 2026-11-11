@@ -175,7 +175,15 @@ fn check_step(result: &AnalysisResult, row: usize, step: &TourStep) -> Result<()
             count(files <= u64::from(*app_files) && largest_first)?;
         }
         TourStep::OtherApps { apps } => {
-            packages("tour.apps", apps, PackageKind::App, 2, usize::MAX)?;
+            // After the main apps, one more makes no list; in a monorepo of
+            // libraries, its only app is worth naming
+            let after_main = result
+                .tour
+                .steps
+                .iter()
+                .any(|step| matches!(step, TourStep::Applications { .. }));
+            let min = if after_main { 2 } else { 1 };
+            packages("tour.apps", apps, PackageKind::App, min, usize::MAX)?;
         }
         TourStep::Libraries {
             most_imported,
@@ -576,6 +584,22 @@ mod tests {
                 len: 2,
             }
         );
+    }
+
+    #[test]
+    fn one_other_app_is_named_only_without_main_apps() {
+        assert_eq!(
+            invalid_monorepo(|r| {
+                r.tour
+                    .steps
+                    .insert(2, TourStep::OtherApps { apps: vec![0] });
+            }),
+            InvalidResult::TourList { row: 2 }
+        );
+        let mut r = result();
+        monorepo(&mut r);
+        r.tour.steps[1] = TourStep::OtherApps { apps: vec![0] };
+        assert_eq!(r.validate(), Ok(()));
     }
 
     #[test]

@@ -57,6 +57,14 @@ export function decodeTour(value: unknown, tables: Tables): Tour {
       fail(`tour.steps[${row}] must come after the previous step, each kind once, in order`)
     }
   }
+  // After the main apps, one more makes no list; in a monorepo of libraries, its only app is
+  // worth naming
+  const afterApplications = steps.some((step) => step.kind === 'applications')
+  steps.forEach((step, row) => {
+    if (step.kind === 'otherApps' && afterApplications && step.apps.length < 2) {
+      fail(`a list of tour.steps[${row}] must hold as many rows as its step allows, each once`)
+    }
+  })
   let first: 'files' | 'packages' | undefined
   steps.forEach((step, row) => {
     const tour = TOURS[step.kind]
