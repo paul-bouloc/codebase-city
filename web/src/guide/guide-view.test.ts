@@ -85,4 +85,54 @@ describe('guideView', () => {
       labelled: [13],
     })
   })
+
+  it('rings the islands of the packages a step of a monorepo names, the rest faded', () => {
+    // Packages at `src/core`, `src/ui` and `src/api`
+    const monorepo: AnalysisResult = {
+      ...result,
+      packages: { ...result.packages, dir: [2, 3, 4] },
+    }
+    const ringed = (folders: number[]) => ({
+      files: [],
+      pinned: [],
+      labelled: [],
+      folders,
+      dim: 'others',
+      cycle: null,
+    })
+    expect(
+      guideView(monorepo, {
+        kind: 'applications',
+        units: [{ group: null, apps: [0, 1], files: 8 }],
+        appFiles: 8,
+      }),
+    ).toEqual(ringed([2, 3]))
+    expect(
+      guideView(monorepo, {
+        kind: 'libraries',
+        mostImported: [2],
+        importers: [2],
+        largest: 2,
+        singleApp: [],
+        unused: [],
+      }),
+    ).toEqual(ringed([4]))
+    expect(
+      guideView(monorepo, {
+        kind: 'appLinks',
+        appImports: 0,
+        shared: [{ library: 2, apps: [0, 1], files: 4, typeOnly: 0 }],
+      }),
+    ).toEqual(ringed([4, 2, 3]))
+    expect(guideView(monorepo, { kind: 'insideApp', app: 0, dirs: [5], files: [3] })).toEqual(
+      ringed([5]),
+    )
+    expect(
+      guideView(monorepo, {
+        kind: 'consumers',
+        folders: [{ dir: 6, folders: 3, imports: 9 }],
+        package: 2,
+      }),
+    ).toEqual(ringed([6]))
+  })
 })

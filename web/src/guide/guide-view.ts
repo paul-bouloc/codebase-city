@@ -48,6 +48,24 @@ export function guideView(result: AnalysisResult, step: TourStep): GuideView {
       const island = step.island === null ? undefined : result.islands.dir[step.island]
       return island === undefined ? view : { ...view, folders: [island], dim: 'others' }
     }
+    case 'applications':
+      return packages(
+        result,
+        step.units.flatMap((unit) => unit.apps),
+      )
+    case 'otherApps':
+      return packages(result, step.apps)
+    case 'libraries':
+      return packages(result, [...step.mostImported, step.largest])
+    case 'appLinks':
+      return packages(
+        result,
+        step.shared.flatMap((shared) => [shared.library, ...shared.apps]),
+      )
+    case 'consumers':
+      return ringed(step.folders.map((folder) => folder.dir))
+    case 'insideApp':
+      return ringed(step.dirs)
     case 'cycles':
       return { ...NOTHING, dim: 'all', cycle: step.cycle }
     case 'complexAreas':
@@ -55,6 +73,16 @@ export function guideView(result: AnalysisResult, step: TourStep): GuideView {
     case 'rest':
       return { ...NOTHING, folders: step.parks }
   }
+}
+
+/** These folders ringed, the rest faded. */
+function ringed(folders: number[]): GuideView {
+  return { ...NOTHING, folders: [...new Set(folders)], dim: 'others' }
+}
+
+/** The islands of these packages ringed, the rest faded: in a monorepo, a package is an island. */
+function packages(result: AnalysisResult, rows: number[]): GuideView {
+  return ringed(rows.flatMap((row) => result.packages.dir[row] ?? []))
 }
 
 type Target = [file: number | null, dir: number | null]
@@ -89,7 +117,13 @@ function forward(result: AnalysisResult, rows: number[], at: (row: number) => Ta
       }
     }
   })
-  return { ...NOTHING, files: [...new Set(files)], pinned, labelled, dim: 'all' }
+  return {
+    ...NOTHING,
+    files: [...new Set(files)],
+    pinned,
+    labelled,
+    dim: 'all',
+  }
 }
 
 /** The production files right in a package's folder. */
