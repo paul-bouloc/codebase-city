@@ -590,6 +590,18 @@ describe('decodeResult', () => {
     ).toThrow('the counts of tour.steps[0] do not add up')
     expect(
       decodeChanged((json) => {
+        ;(json.tour.steps[0] as { languageRead: unknown }).languageRead = 'yes'
+      }),
+    ).toThrow('tour.steps[0].languageRead is not a boolean')
+    expect(
+      decodeChanged((json) => {
+        const overview = json.tour.steps[0] as { language: unknown; languageLines: number }
+        overview.language = null
+        overview.languageLines = 0
+      }),
+    ).toThrow('the counts of tour.steps[0] do not add up')
+    expect(
+      decodeChanged((json) => {
         ;(json.tour.steps[6] as { parkCount: number }).parkCount = 0
       }),
     ).toThrow('the counts of tour.steps[6] do not add up')
@@ -602,7 +614,7 @@ describe('decodeResult', () => {
 
   /** The sample as a monorepo of two apps, `src/core` and `src/ui`, and a library, `src/api`. */
   function asMonorepo(json: Json) {
-    json.workspace = { kind: 'npm', manifest: 0 }
+    json.workspaces = [{ kind: 'npm', manifest: 0 }]
     json.packages = {
       dir: [2, 3, 4],
       name: ['core', 'ui', 'api'],

@@ -4,7 +4,7 @@ import type { AnalysisResult } from '../generated/AnalysisResult'
 import sample from '../generated/sample-result.json'
 
 type Json = Record<keyof AnalysisResult, unknown> & {
-  workspace: unknown
+  workspaces: unknown
   packages: Record<string, unknown[]>
   packageGroups: Record<string, unknown[]>
   externals: Record<string, unknown[]>
@@ -13,7 +13,7 @@ type Json = Record<keyof AnalysisResult, unknown> & {
 /** The sample with `tests` and `scripts` as two packages of an npm workspace, grouped. */
 function withPackages(): Json {
   const json = structuredClone(sample) as unknown as Json
-  json.workspace = { kind: 'npm', manifest: 0 }
+  json.workspaces = [{ kind: 'npm', manifest: 0 }]
   json.packages = {
     dir: [6, 7],
     name: ['acme-tests', 'acme-scripts'],
@@ -40,29 +40,47 @@ function decodeChanged(change: (json: Json) => void) {
 describe('decodePackages', () => {
   it('accepts the sample, without a workspace, and its externals', () => {
     const result = decodeResult(sample)
-    expect(result.workspace).toBeNull()
+    expect(result.workspaces).toEqual([])
     expect(result.packages.dir).toEqual([])
     expect(result.externals.name).toEqual(['axios', 'react'])
   })
 
   it('accepts packages of a workspace, grouped', () => {
     const result = decodeResult(withPackages())
-    expect(result.workspace?.kind).toBe('npm')
+    expect(result.workspaces.map((workspace) => workspace.kind)).toEqual(['npm'])
     expect(result.packages.framework[1]).toBe('nextjs')
     expect(result.packageGroups.prefix).toEqual(['acme'])
   })
 
   it('rejects unknown kinds and frameworks', () => {
-    expect(decodeChanged((json) => (json.workspace = { kind: 'yarn', manifest: 0 }))).toThrow(
-      'workspace.kind is not a workspace kind',
+    expect(decodeChanged((json) => (json.workspaces = [{ kind: 'yarn', manifest: 0 }]))).toThrow(
+      'workspaces[0].kind is not a workspace kind',
     )
+    expect(
+      decodeChanged(
+        (json) =>
+          (json.workspaces = [
+            { kind: 'npm', manifest: 0 },
+            { kind: 'npm', manifest: 1 },
+          ]),
+      ),
+    ).toThrow('workspaces[1] repeats a kind of declaration')
+    expect(
+      decodeChanged(
+        (json) =>
+          (json.workspaces = [
+            { kind: 'pnpm', manifest: 0 },
+            { kind: 'goWork', manifest: 999 },
+          ]),
+      ),
+    ).toThrow('workspaces.manifest[1] points to row 999')
     expect(decodeChanged((json) => (json.packages.framework = [null, 'rails']))).toThrow(
       'packages.framework[1] is not a framework or null',
     )
   })
 
   it('requires a workspace, packages in folder order and none inside another', () => {
-    expect(decodeChanged((json) => (json.workspace = null))).toThrow(
+    expect(decodeChanged((json) => (json.workspaces = []))).toThrow(
       'packages need a workspace that declares them',
     )
     expect(decodeChanged((json) => (json.packages.dir = [7, 6]))).toThrow(

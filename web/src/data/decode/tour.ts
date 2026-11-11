@@ -74,6 +74,10 @@ function decodeStep(value: unknown, row: number, tables: Tables): TourStep {
   const path = `tour.steps[${row}]`
   const fields = object(value, path)
   const { count, index, optional, list, holds } = stepFields(fields, path, row)
+  const boolean = (name: string) =>
+    typeof fields[name] === 'boolean'
+      ? (fields[name] as boolean)
+      : fail(`${path}.${name} is not a boolean`)
   const islandCount = tables.islands.dir.length
   const kind = fields.kind
   switch (kind) {
@@ -85,12 +89,12 @@ function decodeStep(value: unknown, row: number, tables: Tables): TourStep {
         lines: count('lines'),
         language: optional('language', tables.languages.length),
         languageLines: count('languageLines'),
+        languageRead: boolean('languageRead'),
         biggestIsland: optional('biggestIsland', islandCount),
         outsideIsland: optional('outsideIsland', islandCount),
       }
-      holds(
-        step.languageLines <= step.lines && (step.language !== null || step.languageLines === 0),
-      )
+      const without = step.language === null && (step.languageLines > 0 || step.languageRead)
+      holds(step.languageLines <= step.lines && !without)
       return step
     }
     case 'entryPoints':

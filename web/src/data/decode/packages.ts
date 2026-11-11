@@ -26,6 +26,8 @@ const WORKSPACE_KINDS = {
   lerna: true,
   goWork: true,
   uv: true,
+  nx: true,
+  deno: true,
 } satisfies Record<WorkspaceKind, true>
 const PACKAGE_KINDS = { app: true, library: true } satisfies Record<PackageKind, true>
 const FRAMEWORKS = {
@@ -47,20 +49,20 @@ const isFrameworkOrNull = (item: unknown): item is Framework | null =>
   item === null || (typeof item === 'string' && Object.hasOwn(FRAMEWORKS, item))
 
 export interface PackageSections {
-  workspace: Workspace | null
+  workspaces: Workspace[]
   packages: Packages
   packageGroups: PackageGroups
   externals: Externals
 }
 
-/** The workspace, packages, groups and externals, checked as in crates/model/src/validate/packages.rs. */
+/** The workspaces, packages, groups and externals, checked as in crates/model/src/validate/packages.rs. */
 export function decodePackages(
   fields: Record<string, unknown>,
   dirParents: (number | null)[],
   fileCount: number,
 ): PackageSections {
   const dirCount = dirParents.length
-  const workspace = decodeWorkspace(fields.workspace, fileCount)
+  const workspaces = decodeWorkspaces(fields.workspaces, fileCount)
 
   const value = object(fields.packages, 'packages')
   const dir = u32Column(value.dir, 'packages.dir')
@@ -107,32 +109,46 @@ export function decodePackages(
     linked: column(groupFields.linked, 'packageGroups.linked', isBoolean, 'a boolean'),
   }
   inBoundsOrNull('packages.group', packages.group, packageGroups.prefix.length)
-  if (dir.length > 0 && workspace === null) {
+  if (dir.length > 0 && workspaces.length === 0) {
     fail('packages need a workspace that declares them')
   }
   checkPackages(packages, dirParents)
   checkGroups(packageGroups, packages.group)
 
   return {
-    workspace,
+    workspaces,
     packages,
     packageGroups,
     externals: decodeExternals(fields.externals, dir.length),
   }
 }
 
-function decodeWorkspace(value: unknown, fileCount: number): Workspace | null {
-  if (value === null) {
-    return null
+/** One row per declaration, each kind once. */
+function decodeWorkspaces(value: unknown, fileCount: number): Workspace[] {
+  if (!Array.isArray(value)) {
+    fail('workspaces is not an array')
   }
-  const fields = object(value, 'workspace')
-  const kind = fields.kind
-  if (typeof kind !== 'string' || !Object.hasOwn(WORKSPACE_KINDS, kind)) {
-    fail('workspace.kind is not a workspace kind')
+  const workspaces = value.map((item, row) => {
+    const fields = object(item, `workspaces[${row}]`)
+    const kind = fields.kind
+    if (typeof kind !== 'string' || !Object.hasOwn(WORKSPACE_KINDS, kind)) {
+      fail(`workspaces[${row}].kind is not a workspace kind`)
+    }
+    const manifest = u32(fields.manifest, `workspaces[${row}].manifest`)
+    return { kind: kind as WorkspaceKind, manifest }
+  })
+  inBounds(
+    'workspaces.manifest',
+    workspaces.map((workspace) => workspace.manifest),
+    fileCount,
+  )
+  const row = workspaces.findIndex((workspace, at) =>
+    workspaces.slice(0, at).some((other) => other.kind === workspace.kind),
+  )
+  if (row !== -1) {
+    fail(`workspaces[${row}] repeats a kind of declaration`)
   }
-  const manifest = u32(fields.manifest, 'workspace.manifest')
-  inBounds('workspace.manifest', [manifest], fileCount)
-  return { kind: kind as WorkspaceKind, manifest }
+  return workspaces
 }
 
 function checkPackages(packages: Packages, dirParents: (number | null)[]): void {
