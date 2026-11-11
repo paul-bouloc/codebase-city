@@ -22,6 +22,11 @@ const MIN_MAIN_IMPORTERS: usize = 3;
 /// The main library holds this share of the libraries' code, in percent,
 /// at least.
 const MIN_MAIN_SHARE: u64 = 5;
+/// The main library is reached, directly or not, by at least this share of
+/// the packages that reach the most reached library, in percent: a library
+/// one family of packages uses is not the one the monorepo builds on
+/// (`react-devtools-shared`, reached by 8 packages against 39).
+const MIN_MAIN_REACH: usize = 50;
 
 /// The libraries with production code.
 fn libraries_of(repo: &Monorepo<'_>) -> Vec<u32> {
@@ -58,19 +63,46 @@ pub(super) fn main_library(repo: &Monorepo<'_>) -> Option<u32> {
         .iter()
         .map(|&library| u64::from(files[library as usize]))
         .sum();
+    let reach: Vec<usize> = libraries
+        .iter()
+        .map(|&library| reach(repo, library))
+        .collect();
+    let most_reach = reach.iter().copied().max().unwrap_or(0);
     libraries
         .into_iter()
-        .map(|library| {
+        .zip(reach)
+        .map(|(library, reach)| {
             let importers = repo.importers(library).len();
-            (library, u64::from(files[library as usize]), importers)
+            (
+                library,
+                u64::from(files[library as usize]),
+                importers,
+                reach,
+            )
         })
-        .filter(|&(_, files, importers)| {
-            importers >= MIN_MAIN_IMPORTERS && files * 100 >= library_files * MIN_MAIN_SHARE
+        .filter(|&(_, files, importers, reach)| {
+            importers >= MIN_MAIN_IMPORTERS
+                && files * 100 >= library_files * MIN_MAIN_SHARE
+                && reach * 100 >= most_reach * MIN_MAIN_REACH
         })
-        .max_by_key(|&(library, files, importers)| {
+        .max_by_key(|&(library, files, importers, _)| {
             (files * importers as u64, std::cmp::Reverse(library))
         })
-        .map(|(library, _, _)| library)
+        .map(|(library, _, _, _)| library)
+}
+
+/// How many packages import a package, directly or through others.
+fn reach(repo: &Monorepo<'_>, package: u32) -> usize {
+    let mut seen = BTreeSet::new();
+    let mut stack = vec![package];
+    while let Some(current) = stack.pop() {
+        for &(importer, _) in repo.importers(current) {
+            if importer != package && seen.insert(importer) {
+                stack.push(importer);
+            }
+        }
+    }
+    seen.len()
 }
 
 pub(super) fn libraries(repo: &Monorepo<'_>) -> Option<TourStep> {
@@ -265,6 +297,26 @@ mod tests {
         // Below 5% of the libraries' code, no library leads
         fixture.result.packages.code_files[12] = 1_000;
         assert_eq!(main_library(&repo(&fixture)), None);
+    }
+
+    #[test]
+    fn the_main_library_is_one_most_packages_build_on() {
+        // core (30 files, 3 importers) leads, reached by 3 packages; log
+        // by 6 (types and util import it, and their importers through
+        // them)
+        let mut fixture = Fixture::monorepo();
+        let files = &mut fixture.result.packages.code_files;
+        files[6] = 10;
+        files[7] = 20;
+        files[8] = 30;
+        assert_eq!(main_library(&repo(&fixture)), Some(8));
+        // lonely imports log: 7 packages reach it, core's 3 are fewer than
+        // half; types, reached by 5, leads
+        let lonely = fixture.file_at("libs/lonely/index.ts");
+        let log = fixture.file_at("libs/log/index.ts");
+        fixture.import(lonely, log, EdgeKind::Import);
+        fixture.sort_edges();
+        assert_eq!(main_library(&repo(&fixture)), Some(7));
     }
 
     #[test]
