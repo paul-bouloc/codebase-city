@@ -274,6 +274,7 @@ fn tour() -> Tour {
                 lines: 2352,
                 language: Some(0),
                 language_lines: 2212,
+                language_read: true,
                 // `core` and `ui` tie at five files: the first island wins
                 biggest_island: Some(2),
                 outside_island: Some(6),
@@ -412,7 +413,7 @@ fn sample() -> AnalysisResult {
             members: vec![vec![5, 6], vec![9, 12]],
             shortest: vec![vec![5, 6], vec![9, 12]],
         },
-        workspace: None,
+        workspaces: Vec::new(),
         packages: Packages::default(),
         package_groups: PackageGroups::default(),
         // Declared in `package.json`, imported by `view.ts`, `panel.ts` and `client.ts`

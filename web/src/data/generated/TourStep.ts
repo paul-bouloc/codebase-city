@@ -24,13 +24,19 @@ generated: number,
 lines: number, 
 /**
  * The language most of those lines are in, into
- * [`AnalysisResult::languages`]; `null` without production code.
+ * [`AnalysisResult::languages`], an unknown extension (`Other`)
+ * never; `null` without production code in a known language.
  */
 language: number | null, 
 /**
  * Lines of production code in that language.
  */
 languageLines: number, 
+/**
+ * Whether the analyzer reads that language: Rust, for one, is
+ * shown but not parsed.
+ */
+languageRead: boolean, 
 /**
  * The island with the most production files; without production
  * code, the island with the most files.

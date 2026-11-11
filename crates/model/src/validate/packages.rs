@@ -7,8 +7,19 @@ use crate::result::AnalysisResult;
 pub(super) fn packages(result: &AnalysisResult) -> Result<(), InvalidResult> {
     let file_count = result.files.dir.len();
     let dir_count = result.dirs.parent.len();
-    if let Some(workspace) = &result.workspace {
-        in_bounds("workspace.manifest", &[workspace.manifest], file_count)?;
+    let manifests: Vec<u32> = result
+        .workspaces
+        .iter()
+        .map(|workspace| workspace.manifest)
+        .collect();
+    in_bounds("workspaces.manifest", &manifests, file_count)?;
+    // One row per kind of declaration
+    if let Some(row) = (1..result.workspaces.len()).find(|&row| {
+        result.workspaces[..row]
+            .iter()
+            .any(|other| other.kind == result.workspaces[row].kind)
+    }) {
+        return Err(InvalidResult::WorkspaceRepeated { row });
     }
 
     let packages = &result.packages;
@@ -33,7 +44,7 @@ pub(super) fn packages(result: &AnalysisResult) -> Result<(), InvalidResult> {
     in_bounds_or_null("packages.routes", &packages.routes, dir_count)?;
     let groups = &result.package_groups;
     in_bounds_or_null("packages.group", &packages.group, groups.prefix.len())?;
-    if count > 0 && result.workspace.is_none() {
+    if count > 0 && result.workspaces.is_empty() {
         return Err(InvalidResult::PackagesWithoutWorkspace);
     }
     if let Some(row) = packages.dir.windows(2).position(|pair| pair[0] >= pair[1]) {
@@ -112,10 +123,10 @@ mod tests {
     /// The fixture's `src` as one package of an npm workspace, alone in its
     /// group (made valid by [`with_two_packages`]).
     fn with_package(result: &mut AnalysisResult) {
-        result.workspace = Some(Workspace {
+        result.workspaces = vec![Workspace {
             kind: WorkspaceKind::Npm,
             manifest: 0,
-        });
+        }];
         result.packages = Packages {
             dir: vec![1],
             name: vec!["@acme/app".to_owned()],
@@ -169,7 +180,7 @@ mod tests {
         assert_eq!(
             invalid(|result| {
                 with_package(result);
-                result.workspace = None;
+                result.workspaces.clear();
             }),
             InvalidResult::PackagesWithoutWorkspace
         );
@@ -201,18 +212,28 @@ mod tests {
         ));
         let error = invalid(|result| {
             with_package(result);
-            result.workspace = Some(Workspace {
-                kind: WorkspaceKind::Pnpm,
+            result.workspaces.push(Workspace {
+                kind: WorkspaceKind::GoWork,
                 manifest: 9,
             });
         });
         assert!(matches!(
             error,
             InvalidResult::IndexOutOfBounds {
-                column: "workspace.manifest",
+                column: "workspaces.manifest",
                 ..
             }
         ));
+        assert_eq!(
+            invalid(|result| {
+                with_package(result);
+                result.workspaces.push(Workspace {
+                    kind: WorkspaceKind::Npm,
+                    manifest: 1,
+                });
+            }),
+            InvalidResult::WorkspaceRepeated { row: 1 }
+        );
     }
 
     #[test]

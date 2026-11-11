@@ -3,4 +3,4 @@
 /**
  * Which tool's manifest declares the packages.
  */
-export type WorkspaceKind = "npm" | "pnpm" | "lerna" | "goWork" | "uv";
+export type WorkspaceKind = "npm" | "pnpm" | "lerna" | "goWork" | "uv" | "nx" | "deno";

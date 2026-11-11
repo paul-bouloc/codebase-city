@@ -125,6 +125,7 @@ fn check_step(result: &AnalysisResult, row: usize, step: &TourStep) -> Result<()
             lines,
             language,
             language_lines,
+            language_read,
             biggest_island,
             outside_island,
             ..
@@ -132,7 +133,8 @@ fn check_step(result: &AnalysisResult, row: usize, step: &TourStep) -> Result<()
             optional("tour.language", *language, result.languages.len())?;
             optional("tour.biggestIsland", *biggest_island, island_count)?;
             optional("tour.outsideIsland", *outside_island, island_count)?;
-            count(language_lines <= lines && (language.is_some() || *language_lines == 0))?;
+            let without = language.is_none() && (*language_lines > 0 || *language_read);
+            count(language_lines <= lines && !without)?;
         }
         TourStep::EntryPoints { entries } => {
             list("tour.entries", entries, result.roles.entries.file.len())?;
@@ -288,10 +290,10 @@ mod tests {
     /// The sample as a monorepo of one app, `src/`, with a tour of
     /// packages: its applications, then inside the app.
     fn monorepo(r: &mut AnalysisResult) {
-        r.workspace = Some(Workspace {
+        r.workspaces = vec![Workspace {
             kind: WorkspaceKind::Npm,
             manifest: 0,
-        });
+        }];
         r.packages = Packages {
             dir: vec![1],
             name: vec!["app".to_owned()],

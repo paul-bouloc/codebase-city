@@ -35,8 +35,10 @@ pub struct AnalysisResult {
     pub islands: Islands,
     pub links: Links,
     pub cycles: Cycles,
-    /// How the repository declares its packages; `null` when it does not.
-    pub workspace: Option<Workspace>,
+    /// How the repository declares its packages, one row per declaration:
+    /// a repository can declare JavaScript, Go and Python packages side by
+    /// side. Empty when it declares none.
+    pub workspaces: Vec<Workspace>,
     pub packages: Packages,
     pub package_groups: PackageGroups,
     pub externals: Externals,
@@ -354,6 +356,10 @@ pub enum WorkspaceKind {
     GoWork,
     /// `[tool.uv.workspace]` of the root `pyproject.toml`.
     Uv,
+    /// The `project.json` files of an Nx workspace (`nx.json` at the root).
+    Nx,
+    /// `workspace` of the root `deno.json` or `deno.jsonc`.
+    Deno,
 }
 
 /// The packages a [`Workspace`] declares, one row per package, sorted by
@@ -571,10 +577,14 @@ pub enum TourStep {
         /// Lines of production code.
         lines: u32,
         /// The language most of those lines are in, into
-        /// [`AnalysisResult::languages`]; `null` without production code.
+        /// [`AnalysisResult::languages`], an unknown extension (`Other`)
+        /// never; `null` without production code in a known language.
         language: Option<u32>,
         /// Lines of production code in that language.
         language_lines: u32,
+        /// Whether the analyzer reads that language: Rust, for one, is
+        /// shown but not parsed.
+        language_read: bool,
         /// The island with the most production files; without production
         /// code, the island with the most files.
         biggest_island: Option<u32>,

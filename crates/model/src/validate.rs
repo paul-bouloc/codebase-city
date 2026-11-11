@@ -97,6 +97,8 @@ pub enum InvalidResult {
     ImportCounts,
     #[error("packages need a workspace that declares them")]
     PackagesWithoutWorkspace,
+    #[error("workspaces[{row}] repeats a kind of declaration")]
+    WorkspaceRepeated { row: usize },
     #[error("packages[{row}] must come after the previous package, by folder")]
     PackageOrder { row: usize },
     #[error("packages.dir[{row}] lies inside another package")]
@@ -571,7 +573,7 @@ mod tests {
                     y: vec![19, 19],
                 },
             },
-            workspace: None,
+            workspaces: Vec::new(),
             packages: Packages::default(),
             package_groups: PackageGroups::default(),
             externals: Externals {
@@ -587,6 +589,7 @@ mod tests {
                         lines: 52,
                         language: Some(0),
                         language_lines: 52,
+                        language_read: true,
                         biggest_island: Some(1),
                         outside_island: None,
                     },

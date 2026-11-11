@@ -38,6 +38,8 @@ sha: string, dirs: Dirs,
  */
 languages: Array<string>, files: Files, symbols: Symbols, edges: Edges, roles: Roles, islands: Islands, links: Links, cycles: Cycles, 
 /**
- * How the repository declares its packages; `null` when it does not.
+ * How the repository declares its packages, one row per declaration:
+ * a repository can declare JavaScript, Go and Python packages side by
+ * side. Empty when it declares none.
  */
-workspace: Workspace | null, packages: Packages, packageGroups: PackageGroups, externals: Externals, layout: Layout, tour: Tour, stats: Stats, };
+workspaces: Array<Workspace>, packages: Packages, packageGroups: PackageGroups, externals: Externals, layout: Layout, tour: Tour, stats: Stats, };

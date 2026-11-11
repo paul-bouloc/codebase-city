@@ -634,7 +634,7 @@
       ]
     ]
   },
-  "workspace": null,
+  "workspaces": [],
   "packages": {
     "dir": [],
     "name": [],
@@ -837,6 +837,7 @@
         "lines": 2352,
         "language": 0,
         "languageLines": 2212,
+        "languageRead": true,
         "biggestIsland": 2,
         "outsideIsland": 6
       },
