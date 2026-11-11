@@ -49,7 +49,10 @@ pub(super) fn inside_app(repo: &Monorepo<'_>) -> Option<TourStep> {
     let parents = &result.dirs.parent;
     let mut code = vec![0u64; parents.len()];
     for file in 0..result.files.dir.len() {
-        if is_production(result, file) && result.files.complexity[file].is_some() {
+        // A package inside the app keeps its own code (`pkg/sdk` of an
+        // operator whose root is the app)
+        let own = repo.package_of_file(file) == Some(app);
+        if own && is_production(result, file) && result.files.complexity[file].is_some() {
             code[result.files.dir[file] as usize] += 1;
         }
     }
@@ -224,5 +227,35 @@ mod tests {
             unreachable!()
         };
         assert_eq!(dirs, [src]);
+    }
+
+    #[test]
+    fn inside_the_app_a_package_of_its_own_is_left_out() {
+        let mut fixture = Fixture::monorepo();
+        let pages = fixture.dir("apps/web/pages");
+        fixture.file("apps/web/lib/store.ts", model::Scope::Source);
+        let lib = fixture.dir("apps/web/lib");
+        // `components` becomes a library inside the app
+        let components = fixture.dir("apps/web/components");
+        let packages = &mut fixture.result.packages;
+        packages.dir.push(components);
+        packages.name.push("components".to_owned());
+        packages.kind.push(PackageKind::Library);
+        packages.framework.push(None);
+        packages.manifest.push(None);
+        packages.group.push(None);
+        packages.code_files.push(2);
+        packages.entry.push(None);
+        packages.routes.push(None);
+        packages.route_count.push(0);
+        packages.api_route_count.push(0);
+        assert_eq!(
+            inside_app(&repo(&fixture)),
+            Some(TourStep::InsideApp {
+                app: 0,
+                dirs: vec![pages, lib],
+                files: vec![1, 1],
+            })
+        );
     }
 }
