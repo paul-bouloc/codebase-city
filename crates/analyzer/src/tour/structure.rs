@@ -1,16 +1,17 @@
 //! The steps read from the structure of the islands: layers and cycles.
 
+use std::collections::BTreeMap;
+
 use model::{AnalysisResult, TourStep};
 
 use super::monorepo::Monorepo;
-use super::{count, first_max};
+use super::{count, first_max, is_production};
 
 /// Fewer islands in layers say little about the architecture.
 const MIN_LAYERED_ISLANDS: usize = 3;
-/// In a monorepo, layers are shown when at most this share of the imports
-/// between them go up, in percent: beyond, the packages do not stack (the
-/// imports between babel's islands went up 15.5% of the time before only
-/// its packages were layered).
+/// In a monorepo, layers are shown when at most this share of the
+/// production imports between them go up, in percent: beyond, the packages
+/// do not stack. Babel's go up 4.5% of the time, excalidraw's 7%.
 const MAX_UP_SHARE: u64 = 10;
 
 /// How the imports between islands follow their layers, when there are
@@ -50,17 +51,70 @@ pub(super) fn layers(result: &AnalysisResult) -> Option<TourStep> {
     })
 }
 
-/// The layers of a monorepo's packages, when their imports follow them.
+/// The layers of a monorepo's packages, from their production imports,
+/// when those follow them. The links between islands count every import:
+/// the tests of `@vue/runtime-core` import `@vue/runtime-test`, a package
+/// above it, which makes 15% of the imports between vuejs/core's packages
+/// go up against 1% of the production ones.
 pub(super) fn package_layers(result: &AnalysisResult) -> Option<TourStep> {
-    layers(result).filter(|step| {
-        let TourStep::Layers {
-            down, level, up, ..
-        } = *step
-        else {
-            return false;
+    // Two layers and enough islands in them, as anywhere
+    layers(result)?;
+    let layers = &result.islands.layer;
+    let (files, edges) = (&result.files, &result.edges);
+    let layer_of = |dir: u32| {
+        let island = result.dirs.island[dir as usize]?;
+        Some((island, layers[island as usize]?))
+    };
+    let (mut down, mut level, mut up) = (0u64, 0u64, 0u64);
+    let mut upward: BTreeMap<(u32, u32), u64> = BTreeMap::new();
+    for edge in 0..edges.from.len() {
+        let file = edges.from[edge] as usize;
+        let to_dir = match edges.to[edge] {
+            Some(to) if is_production(result, to as usize) => files.dir[to as usize],
+            Some(_) => continue,
+            None => match edges.to_dir[edge] {
+                Some(dir) => dir,
+                None => continue,
+            },
         };
-        let all = u64::from(down) + u64::from(level) + u64::from(up);
-        u64::from(up) * 100 <= all * MAX_UP_SHARE
+        if !is_production(result, file) {
+            continue;
+        }
+        let (Some((from, from_layer)), Some((to, to_layer))) =
+            (layer_of(files.dir[file]), layer_of(to_dir))
+        else {
+            continue;
+        };
+        if from == to {
+            continue;
+        }
+        if to_layer < from_layer {
+            down += 1;
+        } else if to_layer == from_layer {
+            level += 1;
+        } else if !files.barrel[file] {
+            // A barrel's re-exports going up are no dependency
+            up += 1;
+            *upward.entry((from, to)).or_default() += 1;
+        }
+    }
+    if up * 100 > (down + level + up) * MAX_UP_SHARE {
+        return None;
+    }
+    // The links are sorted by their islands
+    let links = &result.links;
+    let worst_link = upward
+        .iter()
+        .max_by_key(|&(&pair, &imports)| (imports, std::cmp::Reverse(pair)))
+        .and_then(|(&(from, to), _)| {
+            (0..links.from.len()).find(|&row| links.from[row] == from && links.to[row] == to)
+        })
+        .map(crate::saturating_u32);
+    Some(TourStep::Layers {
+        down: count(down),
+        level: count(level),
+        up: count(up),
+        worst_link,
     })
 }
 
@@ -130,7 +184,7 @@ pub(super) fn cycles(result: &AnalysisResult, repo: Option<&Monorepo<'_>>) -> Op
 mod tests {
     use super::*;
     use crate::tour::fixture::Fixture;
-    use model::Scope;
+    use model::{EdgeKind, Scope};
 
     #[test]
     fn imports_between_layers_go_down_level_or_up() {
@@ -165,15 +219,44 @@ mod tests {
     }
 
     #[test]
-    fn a_monorepo_shows_layers_its_imports_follow() {
-        // 4 imports down, then 1 of 10 up, then 2 of 11
+    fn a_monorepo_counts_the_production_imports_between_its_layers() {
+        // Files: core a, b, c (0-2), ui view, panel (3, 4), app main (5)
         let mut repo = Fixture::layered();
-        assert!(package_layers(&repo.result).is_some());
+        for (from, to) in [
+            (3, 0),
+            (3, 1),
+            (4, 0),
+            (4, 1),
+            (4, 2),
+            (5, 0),
+            (5, 1),
+            (5, 2),
+            (5, 3),
+        ] {
+            repo.import(from, to, EdgeKind::Import);
+        }
         let [core, ui] = ["core", "ui"].map(|name| repo.island(name));
-        repo.link(ui, core, 5, 0);
+        // Links are sorted: core → ui comes first
+        repo.result.links = model::Links::default();
         repo.link(core, ui, 1, 1);
+        // One of ten goes up: the layers hold
+        repo.import(0, 3, EdgeKind::Import);
+        assert_eq!(
+            package_layers(&repo.result),
+            Some(TourStep::Layers {
+                down: 9,
+                level: 0,
+                up: 1,
+                worst_link: Some(0),
+            })
+        );
+        // Tests that import up are no production import
+        let test = repo.test("core/a.test.ts");
+        repo.import(test, 4, EdgeKind::Import);
+        repo.import(test, 5, EdgeKind::Import);
         assert!(package_layers(&repo.result).is_some());
-        repo.link(core, ui, 1, 1);
+        // Two of eleven: they do not
+        repo.import(1, 4, EdgeKind::Import);
         assert_eq!(package_layers(&repo.result), None);
     }
 
