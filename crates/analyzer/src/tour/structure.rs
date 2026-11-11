@@ -2,6 +2,7 @@
 
 use model::{AnalysisResult, TourStep};
 
+use super::monorepo::Monorepo;
 use super::{count, first_max};
 
 /// Fewer islands in layers say little about the architecture.
@@ -44,8 +45,9 @@ pub(super) fn layers(result: &AnalysisResult) -> Option<TourStep> {
     })
 }
 
-/// The largest loop, and the deepest folder that holds it.
-pub(super) fn cycles(result: &AnalysisResult) -> Option<TourStep> {
+/// The largest loop, and the deepest folder that holds it; in a monorepo,
+/// the package that holds it and the loops that cross packages.
+pub(super) fn cycles(result: &AnalysisResult, repo: Option<&Monorepo<'_>>) -> Option<TourStep> {
     let members = result.cycles.members.first()?;
     let parents = &result.dirs.parent;
     let ancestors = |dir: u32| {
@@ -68,10 +70,32 @@ pub(super) fn cycles(result: &AnalysisResult) -> Option<TourStep> {
             .count();
         common.truncate(shared);
     }
+    // The package that holds all the files of a loop, if one does
+    let package_of = |members: &[u32]| {
+        let repo = repo?;
+        let package = repo.package_of_file(members[0] as usize)?;
+        members[1..]
+            .iter()
+            .all(|&file| repo.package_of_file(file as usize) == Some(package))
+            .then_some(package)
+    };
+    let package = package_of(members);
+    let (mut in_package, mut crossing) = (0u64, 0u64);
+    if repo.is_some() {
+        for members in &result.cycles.members {
+            match package_of(members) {
+                None => crossing += 1,
+                Some(holder) => in_package += u64::from(Some(holder) == package),
+            }
+        }
+    }
     Some(TourStep::Cycles {
         cycle: 0,
         // The root is everyone's ancestor
         dir: common.last().copied().unwrap_or(0),
+        package,
+        in_package: count(in_package),
+        crossing: count(crossing),
     })
 }
 
@@ -129,7 +153,7 @@ mod tests {
     #[test]
     fn a_cycle_is_shown_in_the_deepest_folder_that_holds_it() {
         let mut repo = Fixture::layered();
-        assert_eq!(cycles(&repo.result), None);
+        assert_eq!(cycles(&repo.result, None), None);
         let loop_files = [
             "core/io/read.ts",
             "core/io/net/socket.ts",
@@ -139,14 +163,65 @@ mod tests {
         let io = repo.dir("core/io");
         repo.result.cycles.members = vec![loop_files.to_vec(), vec![0, 1]];
         assert_eq!(
-            cycles(&repo.result),
-            Some(TourStep::Cycles { cycle: 0, dir: io })
+            cycles(&repo.result, None),
+            Some(TourStep::Cycles {
+                cycle: 0,
+                dir: io,
+                package: None,
+                in_package: 0,
+                crossing: 0,
+            })
         );
         // With `app/main.ts`, only the root holds the loop
         repo.result.cycles.members[0].push(5);
         assert_eq!(
-            cycles(&repo.result),
-            Some(TourStep::Cycles { cycle: 0, dir: 0 })
+            cycles(&repo.result, None),
+            Some(TourStep::Cycles {
+                cycle: 0,
+                dir: 0,
+                package: None,
+                in_package: 0,
+                crossing: 0,
+            })
+        );
+    }
+
+    #[test]
+    fn in_a_monorepo_a_cycle_is_shown_in_its_package() {
+        let mut repo = Fixture::monorepo();
+        let [page, a, b, admin, log] = [
+            "apps/web/pages/index.ts",
+            "apps/web/components/a.ts",
+            "apps/web/components/b.ts",
+            "apps/admin/index.ts",
+            "libs/log/index.ts",
+        ]
+        .map(|path| crate::saturating_u32(repo.file_at(path)));
+        repo.result.cycles.members = vec![vec![page, a, b], vec![a, b], vec![admin, log]];
+        let web = repo.dir("apps/web");
+        let monorepo = Monorepo::of(&repo.result);
+        assert_eq!(
+            cycles(&repo.result, monorepo.as_ref()),
+            Some(TourStep::Cycles {
+                cycle: 0,
+                dir: web,
+                package: Some(0),
+                in_package: 2,
+                crossing: 1,
+            })
+        );
+        // The largest loop crosses two packages
+        repo.result.cycles.members.swap(0, 2);
+        let monorepo = Monorepo::of(&repo.result);
+        assert_eq!(
+            cycles(&repo.result, monorepo.as_ref()),
+            Some(TourStep::Cycles {
+                cycle: 0,
+                dir: 0,
+                package: None,
+                in_package: 0,
+                crossing: 1,
+            })
         );
     }
 }
