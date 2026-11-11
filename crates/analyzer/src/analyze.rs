@@ -246,7 +246,12 @@ pub fn analyze_with_report(
         outcomes: &outcomes,
         links: &import_dirs,
     });
-    let islands = islands::islands(&dirs.dirs.parent, &table.dir, &production);
+    let islands = islands::islands(
+        &dirs.dirs.parent,
+        &table.dir,
+        &production,
+        packages::monorepo_dirs(&found.packages),
+    );
     dirs.dirs.island.clone_from(&islands.of_dir);
     let layers = islands::layers(&graph, &islands, &table.dir);
     let links = islands::links(

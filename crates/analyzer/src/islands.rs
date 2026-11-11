@@ -5,7 +5,10 @@
 //! the production code: then it is split, its subfolders become islands, and
 //! the files directly in it make an island of their own. vscode keeps all
 //! its code under `src/vs`, so its islands are `base`, `platform`, `editor`,
-//! `workbench`…, not one `src`; a monorepo gets one island per package.
+//! `workbench`…, not one `src`.
+//!
+//! A monorepo gets one island per package, however little code it holds:
+//! the folders above a package are split, and a package never is.
 
 mod layers;
 
@@ -27,8 +30,14 @@ pub(crate) struct Islands {
 
 /// Splits the tree into islands. `parents` is the parent of each folder,
 /// each folder after its parent; `file_dirs` the folder of each file, and
-/// `production` whether it is production code.
-pub(crate) fn islands(parents: &[Option<u32>], file_dirs: &[u32], production: &[bool]) -> Islands {
+/// `production` whether it is production code; `packages` the folders of
+/// a monorepo's packages, none in another (`packages::monorepo_dirs`).
+pub(crate) fn islands(
+    parents: &[Option<u32>],
+    file_dirs: &[u32],
+    production: &[bool],
+    packages: &[u32],
+) -> Islands {
     let count = parents.len();
     let mut own = vec![false; count];
     let mut code = vec![0u64; count];
@@ -36,13 +45,19 @@ pub(crate) fn islands(parents: &[Option<u32>], file_dirs: &[u32], production: &[
         own[dir as usize] = true;
         code[dir as usize] += u64::from(production);
     }
+    let mut package = vec![false; count];
+    for &dir in packages {
+        package[dir as usize] = true;
+    }
     // Parents come first: going backwards adds each folder to its parent
     // once it holds its whole subtree
     let mut has_code_below = vec![false; count];
+    let mut has_package_below = vec![false; count];
     for dir in (1..count).rev() {
         if let Some(parent) = parents[dir] {
             code[parent as usize] += code[dir];
             has_code_below[parent as usize] |= code[dir] > 0;
+            has_package_below[parent as usize] |= package[dir] || has_package_below[dir];
         }
     }
     let total = code.first().copied().unwrap_or(0);
@@ -56,8 +71,9 @@ pub(crate) fn islands(parents: &[Option<u32>], file_dirs: &[u32], production: &[
         let parent = parents[dir].map(|parent| parent as usize);
         // Only a folder that would be an island is split
         let candidate = parent.is_none_or(|parent| split[parent]);
-        split[dir] =
-            parent.is_none() || (candidate && has_code_below[dir] && code[dir] * 2 > total);
+        let most_code = has_code_below[dir] && code[dir] * 2 > total;
+        split[dir] = parent.is_none()
+            || (candidate && !package[dir] && (most_code || has_package_below[dir]));
         let island = if split[dir] && !own[dir] {
             None
         } else if candidate {
@@ -163,7 +179,7 @@ mod tests {
     fn top_level_folders_are_islands_and_root_files_the_root_island() {
         // `lib` holds 2 of 3 production files, but nothing below it
         let parents = tree(&["", "lib", "test"]);
-        let islands = islands(&parents, &[0, 1, 1, 2], &[true, true, true, false]);
+        let islands = islands(&parents, &[0, 1, 1, 2], &[true, true, true, false], &[]);
         assert_eq!(islands.dirs, [0, 1, 2]);
         assert_eq!(islands.of_dir, [Some(0), Some(1), Some(2)]);
     }
@@ -181,7 +197,7 @@ mod tests {
         ]);
         let file_dirs = [2, 3, 3, 4, 5];
         let production = [true, true, true, true, false];
-        let islands = islands(&parents, &file_dirs, &production);
+        let islands = islands(&parents, &file_dirs, &production, &[]);
         // No root file: no root island; `src` holds no file of its own
         assert_eq!(islands.dirs, [2, 3, 4, 5]);
         assert_eq!(
@@ -193,7 +209,7 @@ mod tests {
     #[test]
     fn half_of_the_code_is_not_enough_to_split() {
         let parents = tree(&["", "a", "a/x", "a/y", "b"]);
-        let islands = islands(&parents, &[2, 3, 4, 4], &[true, true, true, true]);
+        let islands = islands(&parents, &[2, 3, 4, 4], &[true, true, true, true], &[]);
         assert_eq!(islands.dirs, [1, 4]);
         assert_eq!(islands.of_dir, [None, Some(0), Some(0), Some(0), Some(1)]);
     }
@@ -201,9 +217,64 @@ mod tests {
     #[test]
     fn without_production_code_top_level_folders_stay_whole() {
         let parents = tree(&["", "docs", "docs/guide"]);
-        let islands = islands(&parents, &[0, 2], &[false, false]);
+        let islands = islands(&parents, &[0, 2], &[false, false], &[]);
         assert_eq!(islands.dirs, [0, 1]);
         assert_eq!(islands.of_dir, [Some(0), Some(1), Some(1)]);
+    }
+
+    #[test]
+    fn a_package_is_one_island_even_with_most_of_the_code() {
+        let parents = tree(&[
+            "",
+            "apps",
+            "apps/web",
+            "apps/web/src",
+            "libs",
+            "libs/a",
+            "libs/b",
+            "docs",
+        ]);
+        // `web` holds 5 of 7 production files, each library one
+        let file_dirs = [2, 3, 3, 3, 3, 5, 6, 7];
+        let production = [true, true, true, true, true, true, true, false];
+        let islands = islands(&parents, &file_dirs, &production, &[2, 5, 6]);
+        assert_eq!(islands.dirs, [2, 5, 6, 7]);
+        assert_eq!(
+            islands.of_dir,
+            [
+                None,
+                None,
+                Some(0),
+                Some(0),
+                None,
+                Some(1),
+                Some(2),
+                Some(3)
+            ]
+        );
+    }
+
+    #[test]
+    fn folders_above_packages_are_split_whatever_code_they_hold() {
+        // `code/libs` holds half of the code, not more: only its packages
+        // split it, two levels down; its own file and `c`, which is not a
+        // package, make islands of their own
+        let parents = tree(&[
+            "",
+            "code",
+            "code/libs",
+            "code/libs/a",
+            "code/libs/b",
+            "code/libs/c",
+            "code/tool",
+        ]);
+        let file_dirs = [2, 3, 4, 5, 6, 6, 6, 6];
+        let islands = islands(&parents, &file_dirs, &[true; 8], &[3, 4]);
+        assert_eq!(islands.dirs, [2, 3, 4, 5, 6]);
+        assert_eq!(
+            islands.of_dir,
+            [None, None, Some(0), Some(1), Some(2), Some(3), Some(4)]
+        );
     }
 
     #[test]
@@ -211,7 +282,7 @@ mod tests {
         // Files: root, a, b, and a barrel in a; `b` is above `a`
         let parents = tree(&["", "a", "b"]);
         let file_dirs = [0, 1, 2, 1];
-        let islands = islands(&parents, &file_dirs, &[false, true, true, true]);
+        let islands = islands(&parents, &file_dirs, &[false, true, true, true], &[]);
         let layers = [None, Some(1), Some(2)];
         let barrels = [false, false, false, true];
         // a → b twice and from the barrel, b → a, a → a, root → b
