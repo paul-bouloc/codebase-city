@@ -14,6 +14,8 @@ pub(super) struct Npm {
     pub runtime: BTreeSet<String>,
     /// `devDependencies`.
     pub dev: BTreeSet<String>,
+    /// `peerDependencies`: what a library expects its user to install.
+    pub peer: BTreeSet<String>,
     /// Every dependency it declares, peer ones included.
     pub declared: BTreeSet<String>,
     pub scripts: BTreeMap<String, String>,
@@ -37,12 +39,8 @@ pub(super) fn npm(content: &[u8]) -> Option<Npm> {
         .chain(keys("optionalDependencies"))
         .collect();
     let dev = keys("devDependencies");
-    let declared = runtime
-        .iter()
-        .chain(&dev)
-        .cloned()
-        .chain(keys("peerDependencies"))
-        .collect();
+    let peer = keys("peerDependencies");
+    let declared = runtime.iter().chain(&dev).chain(&peer).cloned().collect();
     let text = |field: &str| {
         manifest
             .get(field)
@@ -54,6 +52,7 @@ pub(super) fn npm(content: &[u8]) -> Option<Npm> {
         name: text("name"),
         runtime,
         dev,
+        peer,
         declared,
         scripts: manifest
             .get("scripts")

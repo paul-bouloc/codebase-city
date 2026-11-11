@@ -677,9 +677,17 @@
       null,
       null
     ],
+    "manifest": [
+      0,
+      0
+    ],
     "name": [
       "axios",
       "react"
+    ],
+    "dev": [
+      false,
+      false
     ],
     "files": [
       1,

@@ -117,7 +117,7 @@ describe('decodePackages', () => {
     )
   })
 
-  it('requires externals named, counted and sorted by package then name', () => {
+  it('requires externals named, counted and sorted by package, manifest then name', () => {
     expect(decodeChanged((json) => (json.externals.name = ['react', 'axios']))).toThrow(
       'externals[1] must have a name and files',
     )
@@ -127,5 +127,16 @@ describe('decodePackages', () => {
     expect(decodeChanged((json) => (json.externals.package = [null, 2]))).toThrow(
       'externals.package[1] points to row 2',
     )
+    // By manifest before name: `axios` declared by a later manifest comes after `react`
+    expect(decodeChanged((json) => (json.externals.manifest = [1, 0]))).toThrow(
+      'externals[1] must have a name and files, after the previous row by package, manifest then name',
+    )
+    expect(
+      decodeResult({ ...sample, externals: { ...sample.externals, manifest: [0, 1] } }),
+    ).toBeTruthy()
+    expect(decodeChanged((json) => (json.externals.manifest = [0, 99]))).toThrow(
+      'externals.manifest[1] points to row 99',
+    )
+    expect(decodeChanged((json) => (json.externals.dev = [false, 'yes']))).toThrow('externals.dev')
   })
 })

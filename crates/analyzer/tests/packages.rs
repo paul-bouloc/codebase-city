@@ -221,14 +221,14 @@ fn declared_dependencies_are_counted_by_package() {
             .map(|at| (externals.name[at].clone(), externals.files[at]))
             .collect()
     };
-    // `react` is declared at the root; `node:fs` is built in; `@acme/ui`
-    // resolves to the library, so it is not external
+    // `react` is declared at the root, after the app's own manifest; `node:fs`
+    // is built in; `@acme/ui` resolves to the library, so it is not external
     assert_eq!(
         of("apps/acme"),
         [
             ("next".to_owned(), 1),
-            ("react".to_owned(), 1),
-            ("zod".to_owned(), 2)
+            ("zod".to_owned(), 2),
+            ("react".to_owned(), 1)
         ]
     );
     assert_eq!(of("apps/acme-admin"), [("@nestjs/core".to_owned(), 1)]);
@@ -815,4 +815,56 @@ fn a_test_that_imports_up_is_no_production_import() {
         (links.production[down], links.production_upward[down]),
         (1, 0)
     );
+}
+
+#[test]
+fn a_dependency_declared_only_for_development_is_said_so() {
+    let result = analyzed(&[
+        (
+            "package.json",
+            r#"{ "name": "lib", "dependencies": { "run": "1" },
+                 "devDependencies": { "tool": "1", "react": "19" },
+                 "peerDependencies": { "react": "19" } }"#,
+        ),
+        (
+            "src/index.ts",
+            "import run from 'run'\nimport tool from 'tool'\nimport React from 'react'\nexport { run, tool, React }\n",
+        ),
+        (
+            "pyproject.toml",
+            "[project]\nname = \"py\"\ndependencies = [\"httpx\"]\n",
+        ),
+        ("requirements-dev.txt", "pytest\nhttpx\n"),
+        ("py/main.py", "import httpx\nimport pytest\n"),
+    ]);
+    let externals = &result.externals;
+    let rows: Vec<(String, bool)> = (0..externals.name.len())
+        .map(|row| (externals.name[row].clone(), externals.dev[row]))
+        .collect();
+    // `react` is a peer dependency: what the library builds on; `httpx` is
+    // declared for running too
+    for expected in [
+        ("run", false),
+        ("tool", true),
+        ("react", false),
+        ("httpx", false),
+        ("pytest", true),
+    ] {
+        assert!(
+            rows.contains(&(expected.0.to_owned(), expected.1)),
+            "{expected:?} in {rows:?}"
+        );
+    }
+    // Each row names the manifest that declares it
+    for row in 0..externals.name.len() {
+        let manifest = file_path(&result, externals.manifest[row]);
+        let expected = if externals.name[row] == "pytest" {
+            "/requirements-dev.txt"
+        } else if ["httpx"].contains(&externals.name[row].as_str()) {
+            "/pyproject.toml"
+        } else {
+            "/package.json"
+        };
+        assert_eq!(manifest, expected, "{}", externals.name[row]);
+    }
 }

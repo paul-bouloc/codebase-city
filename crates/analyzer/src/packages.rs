@@ -19,7 +19,7 @@ use crate::graph::entries::package_start;
 use crate::lang::Import;
 use crate::resolve::Outcome;
 use crate::saturating_u32 as index;
-use externals::Declared;
+use externals::{Declared, Source};
 use workspace::Ecosystem;
 
 /// What the packages are found from, by row in the result.
@@ -519,7 +519,7 @@ fn externals(
     package_of_file: &[Option<u32>],
 ) -> Externals {
     let mut externals = Externals::default();
-    for (package, name, files) in externals::count(&externals::Input {
+    for counted in externals::count(&externals::Input {
         parents: input.parents,
         file_dirs: input.file_dirs,
         languages: input.languages,
@@ -529,9 +529,11 @@ fn externals(
         outcomes: input.outcomes,
         declared: &manifests.declared,
     }) {
-        externals.package.push(package);
-        externals.name.push(name);
-        externals.files.push(files);
+        externals.package.push(counted.package);
+        externals.manifest.push(counted.manifest);
+        externals.name.push(counted.name);
+        externals.dev.push(counted.dev);
+        externals.files.push(counted.files);
     }
     externals
 }
@@ -573,7 +575,16 @@ impl<'a> Manifests<'a> {
                 "package.json" => {
                     if let Some(npm) = manifest::npm(content) {
                         let declared = read.declared.entry(dir).or_default();
-                        declared.npm.extend(npm.declared.iter().cloned());
+                        for name in &npm.declared {
+                            // A library's `react` in `peerDependencies` and
+                            // `devDependencies` is what it builds on
+                            let dev = !npm.runtime.contains(name) && !npm.peer.contains(name);
+                            let source = Source {
+                                manifest: file,
+                                dev,
+                            };
+                            declared.npm.insert(name.clone(), source);
+                        }
                         read.npm.insert(dir, (file, npm));
                     }
                     Vec::new()
@@ -588,7 +599,15 @@ impl<'a> Manifests<'a> {
                 }
                 "go.mod" => {
                     let declared = read.declared.entry(dir).or_default();
-                    declared.go.extend(manifest::go_requires(content));
+                    let source = Source {
+                        manifest: file,
+                        dev: false,
+                    };
+                    declared.go.extend(
+                        manifest::go_requires(content)
+                            .into_iter()
+                            .map(|module| (module, source)),
+                    );
                     read.named.insert(dir, (manifest::go_module(content), file));
                     Vec::new()
                 }
@@ -597,11 +616,17 @@ impl<'a> Manifests<'a> {
                 }
                 _ => Vec::new(),
             };
+            // `requirements-dev.txt`, `requirements-test.txt`: for development
+            let source = Source {
+                manifest: file,
+                dev: name.starts_with("requirements")
+                    && (name.contains("dev") || name.contains("test")),
+            };
             for project in python {
                 let key = manifest::python_key(&project);
                 read.python.entry(dir).or_default().insert(key.clone());
                 let declared = read.declared.entry(dir).or_default();
-                declared.python.entry(key).or_insert(project);
+                declared.add_python(key, project, source);
             }
         }
         read

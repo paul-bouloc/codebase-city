@@ -77,18 +77,30 @@ pub(super) fn packages(result: &AnalysisResult) -> Result<(), InvalidResult> {
 
     let externals = &result.externals;
     let rows = externals.package.len();
+    same_length("externals.manifest", rows, externals.manifest.len())?;
     same_length("externals.name", rows, externals.name.len())?;
+    same_length("externals.dev", rows, externals.dev.len())?;
     same_length("externals.files", rows, externals.files.len())?;
     in_bounds_or_null("externals.package", &externals.package, count)?;
+    in_bounds(
+        "externals.manifest",
+        &externals.manifest,
+        result.files.dir.len(),
+    )?;
     for row in 0..rows {
         if externals.name[row].is_empty() || externals.files[row] == 0 {
             return Err(InvalidResult::External { row });
         }
-        // `None` sorts first; strictly increasing, so a name comes once per package
-        if row > 0
-            && (externals.package[row - 1], &externals.name[row - 1])
-                >= (externals.package[row], &externals.name[row])
-        {
+        // `None` sorts first; strictly increasing, so a name comes once per
+        // package and manifest
+        let key = |row: usize| {
+            (
+                externals.package[row],
+                externals.manifest[row],
+                &externals.name[row],
+            )
+        };
+        if row > 0 && key(row - 1) >= key(row) {
             return Err(InvalidResult::External { row });
         }
     }
@@ -290,11 +302,41 @@ mod tests {
         assert_eq!(
             invalid(|result| {
                 result.externals.package.push(None);
+                result.externals.manifest.push(0);
                 result.externals.name.push("react".to_owned());
+                result.externals.dev.push(false);
                 result.externals.files.push(1);
             }),
             InvalidResult::External { row: 1 }
         );
+        // The same name declared by another manifest is another row, after
+        // the rows of the manifests before it
+        let mut valid = result();
+        valid.externals.package.push(None);
+        valid.externals.manifest.push(1);
+        valid.externals.name.push("react".to_owned());
+        valid.externals.dev.push(true);
+        valid.externals.files.push(1);
+        assert_eq!(valid.validate(), Ok(()));
+        assert_eq!(
+            invalid(|result| {
+                result.externals.package.push(None);
+                result.externals.manifest.push(0);
+                result.externals.name.push("react".to_owned());
+                result.externals.dev.push(false);
+                result.externals.files.push(1);
+                result.externals.manifest[0] = 1;
+            }),
+            InvalidResult::External { row: 1 }
+        );
+        let error = invalid(|result| result.externals.manifest[0] = 9);
+        assert!(matches!(
+            error,
+            InvalidResult::IndexOutOfBounds {
+                column: "externals.manifest",
+                ..
+            }
+        ));
         let error = invalid(|result| result.externals.package[0] = Some(0));
         assert!(matches!(
             error,

@@ -114,7 +114,7 @@ pub enum InvalidResult {
     )]
     PackageGroup { row: usize },
     #[error(
-        "externals[{row}] must have a name and files, after the previous row by package then name"
+        "externals[{row}] must have a name and files, after the previous row by package, manifest then name"
     )]
     External { row: usize },
     #[error("tour.steps must start with the overview")]
@@ -597,7 +597,9 @@ mod tests {
             package_groups: PackageGroups::default(),
             externals: Externals {
                 package: vec![None],
+                manifest: vec![0],
                 name: vec!["react".to_owned()],
+                dev: vec![false],
                 files: vec![1],
             },
             tour: Tour {

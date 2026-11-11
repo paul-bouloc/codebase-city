@@ -421,7 +421,9 @@ fn sample() -> AnalysisResult {
         // Declared in `package.json`, imported by `view.ts`, `panel.ts` and `client.ts`
         externals: Externals {
             package: vec![None, None],
+            manifest: vec![0, 0],
             name: strings(["axios", "react"]),
+            dev: vec![false, false],
             files: vec![1, 2],
         },
         layout: layout(),

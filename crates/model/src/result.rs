@@ -458,18 +458,25 @@ pub struct PackageGroups {
     pub linked: Vec<bool>,
 }
 
-/// Dependencies the production code imports, one row per package and
-/// dependency, sorted by package (`null`, outside any package, first), then
-/// by name. Only dependencies a manifest declares count, so the standard
-/// library does not.
+/// Dependencies the production code imports, one row per package, manifest
+/// and dependency, sorted by package (`null`, outside any package, first),
+/// then by manifest, then by name. Only dependencies a manifest declares
+/// count, so the standard library does not.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
 pub struct Externals {
     pub package: Vec<Option<u32>>,
+    /// The manifest that declares it, a row of [`Files`]: the nearest one
+    /// above the importing files that does. A library's site declares its
+    /// own dependencies.
+    pub manifest: Vec<u32>,
     /// As the manifest declares it: `@nestjs/core`, `pydantic`,
     /// `github.com/gin-gonic/gin`.
     pub name: Vec<String>,
+    /// Declared only for development (`devDependencies`, a
+    /// `requirements-dev.txt`): not what the code runs with.
+    pub dev: Vec<bool>,
     /// Production files that import it.
     pub files: Vec<u32>,
 }

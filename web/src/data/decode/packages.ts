@@ -116,7 +116,7 @@ export function decodePackages(
     workspaces,
     packages,
     packageGroups,
-    externals: decodeExternals(fields.externals, dir.length),
+    externals: decodeExternals(fields.externals, dir.length, fileCount),
   }
 }
 
@@ -190,45 +190,57 @@ function checkGroups(groups: PackageGroups, packageGroups: (number | null)[]): v
   })
 }
 
-function decodeExternals(value: unknown, packageCount: number): Externals {
+function decodeExternals(value: unknown, packageCount: number, fileCount: number): Externals {
   const fields = object(value, 'externals')
   const externals: Externals = {
     package: column(fields.package, 'externals.package', isU32OrNull, 'an index or null'),
+    manifest: u32Column(fields.manifest, 'externals.manifest'),
     name: stringColumn(fields.name, 'externals.name'),
+    dev: column(fields.dev, 'externals.dev', isBoolean, 'a boolean'),
     files: u32Column(fields.files, 'externals.files'),
   }
   const rows = externals.package.length
+  sameLength('externals.manifest', rows, externals.manifest)
   sameLength('externals.name', rows, externals.name)
+  sameLength('externals.dev', rows, externals.dev)
   sameLength('externals.files', rows, externals.files)
   inBoundsOrNull('externals.package', externals.package, packageCount)
+  inBounds('externals.manifest', externals.manifest, fileCount)
   for (let row = 0; row < rows; row++) {
     const name = externals.name[row] as string
     const sorted =
       row === 0 ||
       compareRows(
         externals.package[row - 1] ?? null,
+        externals.manifest[row - 1] as number,
         externals.name[row - 1] as string,
         externals.package[row] ?? null,
+        externals.manifest[row] as number,
         name,
       ) < 0
     if (name === '' || externals.files[row] === 0 || !sorted) {
       fail(
-        `externals[${row}] must have a name and files, after the previous row by package then name`,
+        `externals[${row}] must have a name and files, after the previous row by package, manifest then name`,
       )
     }
   }
   return externals
 }
 
-/** By package, `null` first, then by name, as Rust orders `(Option<u32>, String)`. */
+/** By package, `null` first, then by manifest, then by name, as Rust orders `(Option<u32>, u32, String)`. */
 function compareRows(
   aPackage: number | null,
+  aManifest: number,
   aName: string,
   bPackage: number | null,
+  bManifest: number,
   bName: string,
 ): number {
   if (aPackage !== bPackage) {
     return aPackage === null ? -1 : bPackage === null ? 1 : aPackage - bPackage
+  }
+  if (aManifest !== bManifest) {
+    return aManifest - bManifest
   }
   return compareCodePoints(aName, bName)
 }
