@@ -22,6 +22,8 @@ use externals::Declared;
 
 /// What the packages are found from, by row in the result.
 pub(crate) struct Input<'a> {
+    /// The name of the repository (`twenty` for `twentyhq/twenty`).
+    pub repo: &'a str,
     /// Paths of the files, sorted, and of the folders (`""` for the root).
     pub paths: &'a [&'a str],
     pub dir_paths: &'a [&'a str],
@@ -44,7 +46,7 @@ pub(crate) struct Input<'a> {
 /// The sections of the result the packages fill.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub(crate) struct Found {
-    pub workspace: Option<Workspace>,
+    pub workspaces: Vec<Workspace>,
     pub packages: Packages,
     pub groups: PackageGroups,
     pub externals: Externals,
@@ -59,30 +61,34 @@ pub(crate) fn find(input: &Input<'_>) -> Found {
         .collect();
     let manifests = Manifests::read(input, &by_path);
     let mut found = Found::default();
-    let declaration = workspace::declaration(input.manifests);
-    let mut dirs = Vec::new();
-    if let Some(declaration) = &declaration {
-        found.workspace = by_path
-            .get(declaration.manifest.as_str())
-            .map(|&manifest| Workspace {
+    let declarations = workspace::declarations(input.manifests);
+    found.workspaces = declarations
+        .iter()
+        .filter_map(|declaration| {
+            Some(Workspace {
                 kind: declaration.kind,
-                manifest,
-            });
-        dirs = package_dirs(input, declaration);
-    }
+                manifest: *by_path.get(declaration.manifest.as_str())?,
+            })
+        })
+        .collect();
+    let dirs = package_dirs(input, &declarations, &manifests);
     let package_of_dir = package_of_dirs(input.parents, &dirs);
     let package_of_file: Vec<Option<u32>> = input
         .file_dirs
         .iter()
         .map(|&dir| package_of_dir[dir as usize])
         .collect();
-    found.packages = packages(input, &manifests, &dirs, &package_of_file, &by_path);
-    found.groups = group(
+    let imports = package_imports(input, &package_of_dir, &package_of_file);
+    let imported: HashSet<usize> = imports.iter().map(|&(_, to)| to).collect();
+    found.packages = packages(
         input,
-        &mut found.packages,
-        &package_of_dir,
+        &manifests,
+        &dirs,
         &package_of_file,
+        &imported,
+        &by_path,
     );
+    found.groups = group(input, &manifests, &mut found.packages, &imports);
     found.externals = externals(input, &manifests, &package_of_file);
     found
 }
@@ -119,9 +125,14 @@ pub(crate) fn monorepo_dirs(packages: &Packages) -> &[u32] {
     }
 }
 
-/// The folders the declaration matches that hold an analyzed file, the
-/// outermost of nested ones, in folder order.
-fn package_dirs(input: &Input<'_>, declaration: &workspace::Declaration) -> Vec<u32> {
+/// The folders a declaration matches that hold an analyzed file and a
+/// manifest of that declaration, the outermost of nested ones, in folder
+/// order. A folder two declarations match is one package.
+fn package_dirs(
+    input: &Input<'_>,
+    declarations: &[workspace::Declaration],
+    manifests: &Manifests<'_>,
+) -> Vec<u32> {
     let count = input.dir_paths.len();
     let mut has_code = vec![false; count];
     for (&dir, language) in input.file_dirs.iter().zip(input.languages) {
@@ -137,7 +148,17 @@ fn package_dirs(input: &Input<'_>, declaration: &workspace::Declaration) -> Vec<
     let mut dirs = Vec::new();
     for dir in 1..count {
         let parent = input.parents[dir].is_some_and(|parent| inside[parent as usize]);
-        let package = !parent && has_code[dir] && declaration.matches(input.dir_paths[dir]);
+        let own = manifests.own.get(&index(dir));
+        let declared = || {
+            declarations.iter().any(|declaration| {
+                declaration.matches(input.dir_paths[dir])
+                    && declaration
+                        .members()
+                        .iter()
+                        .any(|name| own.is_some_and(|own| own.contains_key(name)))
+            })
+        };
+        let package = !parent && has_code[dir] && declared();
         inside[dir] = parent || package;
         if package {
             dirs.push(index(dir));
@@ -151,6 +172,7 @@ fn packages(
     manifests: &Manifests<'_>,
     dirs: &[u32],
     package_of_file: &[Option<u32>],
+    imported: &HashSet<usize>,
     by_path: &HashMap<&str, u32>,
 ) -> Packages {
     let mut code: Vec<Vec<(&str, u32)>> = vec![Vec::new(); dirs.len()];
@@ -192,6 +214,8 @@ fn packages(
             code: &code[row],
             start,
             go_main,
+            program: npm.is_some_and(|(_, npm)| npm.bin) || manifests.commands.contains(&dir),
+            imported: imported.contains(&row),
         });
         let folder = split_path(path).1;
         let named = manifests.named.get(&dir);
@@ -226,20 +250,13 @@ fn packages(
     packages
 }
 
-/// Groups by the prefix of the packages' folder names; sets
-/// [`Packages::group`].
-fn group(
+/// Pairs of packages (importing, imported) that a production import joins.
+fn package_imports(
     input: &Input<'_>,
-    packages: &mut Packages,
     package_of_dir: &[Option<u32>],
     package_of_file: &[Option<u32>],
-) -> PackageGroups {
-    let names: Vec<&str> = packages
-        .dir
-        .iter()
-        .map(|&dir| split_path(input.dir_paths[dir as usize]).1)
-        .collect();
-    let imports: HashSet<(usize, usize)> = input
+) -> HashSet<(usize, usize)> {
+    input
         .links
         .iter()
         .filter(|(from, _)| input.production[*from as usize])
@@ -248,9 +265,39 @@ fn group(
             let to = package_of_dir[dir as usize]?;
             (from != to).then_some((from as usize, to as usize))
         })
+        .collect()
+}
+
+/// Groups by the prefix of the packages' folder names; sets
+/// [`Packages::group`]. The name of the repository, or of its root
+/// manifest, names everything: it groups nothing.
+fn group(
+    input: &Input<'_>,
+    manifests: &Manifests<'_>,
+    packages: &mut Packages,
+    imports: &HashSet<(usize, usize)>,
+) -> PackageGroups {
+    let names: Vec<&str> = packages
+        .dir
+        .iter()
+        .map(|&dir| split_path(input.dir_paths[dir as usize]).1)
         .collect();
+    let root = manifests
+        .npm
+        .get(&0)
+        .and_then(|(_, npm)| npm.name.as_deref())
+        .or_else(|| {
+            manifests
+                .named
+                .get(&0)
+                .and_then(|(name, _)| name.as_deref())
+        });
+    let namespaces: Vec<&str> = [Some(input.repo), root].into_iter().flatten().collect();
     let mut groups = PackageGroups::default();
-    for (row, group) in groups::groups(&names, &imports).into_iter().enumerate() {
+    for (row, group) in groups::groups(&names, imports, &namespaces)
+        .into_iter()
+        .enumerate()
+    {
         for member in group.members {
             packages.group[member] = Some(index(row));
         }
@@ -295,6 +342,8 @@ struct Manifests<'a> {
     /// file.
     named: HashMap<u32, (Option<String>, u32)>,
     declared: HashMap<u32, Declared>,
+    /// Folders whose `pyproject.toml` declares a command.
+    commands: HashSet<u32>,
     /// Every manifest of a folder, by file name.
     own: HashMap<u32, HashMap<&'a str, &'a [u8]>>,
 }
@@ -324,9 +373,12 @@ impl<'a> Manifests<'a> {
                     Vec::new()
                 }
                 "pyproject.toml" => {
-                    let (project, dependencies) = manifest::pyproject(content);
-                    read.named.entry(dir).or_insert((project, file));
-                    dependencies
+                    let project = manifest::pyproject(content);
+                    read.named.entry(dir).or_insert((project.name, file));
+                    if project.scripts {
+                        read.commands.insert(dir);
+                    }
+                    project.dependencies
                 }
                 "go.mod" => {
                     let declared = read.declared.entry(dir).or_default();

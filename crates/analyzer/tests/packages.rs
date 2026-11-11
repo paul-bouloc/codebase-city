@@ -130,7 +130,9 @@ fn row(result: &AnalysisResult, dir: &str) -> usize {
 #[test]
 fn the_workspace_declares_the_packages_that_hold_code() {
     let result = analyzed(FILES);
-    let workspace = result.workspace.as_ref().unwrap();
+    let [workspace] = result.workspaces.as_slice() else {
+        panic!("one declaration expected")
+    };
     assert_eq!(workspace.kind, WorkspaceKind::Npm);
     assert_eq!(file_path(&result, workspace.manifest), "/package.json");
     let dirs: Vec<String> = result
@@ -246,7 +248,7 @@ fn a_repository_without_workspaces_has_no_packages_but_externals() {
         ),
         ("harbor/models.py", "from pydantic import BaseModel\n"),
     ]);
-    assert!(result.workspace.is_none());
+    assert!(result.workspaces.is_empty());
     assert!(result.packages.dir.is_empty());
     assert_eq!(result.externals.name, ["pydantic", "starlette"]);
     assert_eq!(result.externals.files, [2, 1]);
@@ -329,4 +331,129 @@ fn two_packages_of_code_make_a_monorepo_even_when_one_holds_most_of_it() {
         ("libs/log/index.js", "console.log('log')\n"),
     ]);
     assert_eq!(island_paths(&result), ["", "apps/web", "libs/log"]);
+}
+
+fn package_paths(result: &AnalysisResult) -> Vec<String> {
+    result
+        .packages
+        .dir
+        .iter()
+        .map(|&dir| dir_path(result, dir))
+        .collect()
+}
+
+#[test]
+fn a_member_without_a_manifest_is_no_package() {
+    // pnpm declares every plugin folder, but only one has a package.json
+    let result = analyzed(&[
+        ("pnpm-workspace.yaml", "packages:\n  - 'plugins/*'\n"),
+        ("plugins/graph/package.json", r#"{ "name": "graph" }"#),
+        ("plugins/graph/index.ts", "export const graph = 1\n"),
+        ("plugins/text/index.ts", "export const text = 1\n"),
+    ]);
+    assert_eq!(package_paths(&result), ["plugins/graph"]);
+}
+
+#[test]
+fn javascript_and_python_declarations_are_read_together() {
+    let result = analyzed(&[
+        ("package.json", r#"{ "workspaces": ["frontend"] }"#),
+        (
+            "pyproject.toml",
+            "[tool.uv.workspace]\nmembers = [\"backend\"]\n",
+        ),
+        (
+            "frontend/package.json",
+            r#"{ "name": "frontend", "scripts": { "dev": "vite", "build": "vite build" } }"#,
+        ),
+        ("frontend/src/main.ts", "export const app = 1\n"),
+        (
+            "backend/pyproject.toml",
+            "[project]\nname = \"app\"\ndependencies = [\"fastapi>=0.110\"]\n",
+        ),
+        (
+            "backend/app/main.py",
+            "from fastapi import FastAPI\napp = FastAPI()\n",
+        ),
+    ]);
+    let kinds: Vec<WorkspaceKind> = result
+        .workspaces
+        .iter()
+        .map(|workspace| workspace.kind)
+        .collect();
+    assert_eq!(kinds, [WorkspaceKind::Npm, WorkspaceKind::Uv]);
+    assert_eq!(package_paths(&result), ["backend", "frontend"]);
+    let backend = row(&result, "backend");
+    assert_eq!(result.packages.framework[backend], Some(Framework::Fastapi));
+    // A Vite app and a FastAPI service no package imports
+    assert!(
+        result
+            .packages
+            .kind
+            .iter()
+            .all(|&kind| kind == PackageKind::App)
+    );
+}
+
+#[test]
+fn nx_projects_say_whether_they_are_applications() {
+    let result = analyzed(&[
+        (
+            "package.json",
+            r#"{ "name": "acme", "workspaces": ["packages/*"] }"#,
+        ),
+        ("nx.json", "{}"),
+        ("packages/front/package.json", r#"{ "name": "front" }"#),
+        (
+            "packages/front/project.json",
+            r#"{ "projectType": "application" }"#,
+        ),
+        (
+            "packages/front/src/main.ts",
+            "import { ui } from 'ui'\nexport const front = ui\n",
+        ),
+        (
+            "packages/ui/package.json",
+            r#"{ "name": "ui", "main": "src/index.ts" }"#,
+        ),
+        (
+            "packages/ui/project.json",
+            r#"{ "projectType": "library" }"#,
+        ),
+        ("packages/ui/src/index.ts", "export const ui = 1\n"),
+    ]);
+    let kinds: Vec<WorkspaceKind> = result
+        .workspaces
+        .iter()
+        .map(|workspace| workspace.kind)
+        .collect();
+    assert_eq!(kinds, [WorkspaceKind::Npm, WorkspaceKind::Nx]);
+    assert_eq!(
+        result.packages.kind[row(&result, "packages/front")],
+        PackageKind::App
+    );
+    assert_eq!(
+        result.packages.kind[row(&result, "packages/ui")],
+        PackageKind::Library
+    );
+}
+
+#[test]
+fn the_name_of_the_repository_groups_nothing() {
+    let result = analyzed(&[
+        ("package.json", r#"{ "workspaces": ["packages/*"] }"#),
+        ("packages/monorepo-a/package.json", r#"{ "name": "a" }"#),
+        ("packages/monorepo-a/index.ts", "export const a = 1\n"),
+        ("packages/monorepo-b/package.json", r#"{ "name": "b" }"#),
+        ("packages/monorepo-b/index.ts", "export const b = 1\n"),
+        ("packages/monorepo-c/package.json", r#"{ "name": "c" }"#),
+        ("packages/monorepo-c/index.ts", "export const c = 1\n"),
+        ("packages/tools/package.json", r#"{ "name": "tools" }"#),
+        ("packages/tools/index.ts", "export const t = 1\n"),
+        ("packages/docs/package.json", r#"{ "name": "docs" }"#),
+        ("packages/docs/index.ts", "export const d = 1\n"),
+    ]);
+    // Three of five carry the repository's name, `monorepo`
+    assert_eq!(result.packages.dir.len(), 5);
+    assert!(result.package_groups.prefix.is_empty());
 }

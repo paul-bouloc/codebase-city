@@ -32,7 +32,7 @@ impl Fixture {
             islands: model::Islands::default(),
             links: model::Links::default(),
             cycles: model::Cycles::default(),
-            workspace: None,
+            workspaces: Vec::new(),
             packages: model::Packages::default(),
             package_groups: model::PackageGroups::default(),
             externals: model::Externals::default(),
@@ -91,10 +91,10 @@ impl Fixture {
     pub fn monorepo() -> Self {
         let mut repo = Self::new();
         let manifest = repo.file("package.json", Scope::Config);
-        repo.result.workspace = Some(Workspace {
+        repo.result.workspaces = vec![Workspace {
             kind: WorkspaceKind::Npm,
             manifest: index(manifest),
-        });
+        }];
         let app = PackageKind::App;
         for (dir, files) in [
             ("apps/web", 100),

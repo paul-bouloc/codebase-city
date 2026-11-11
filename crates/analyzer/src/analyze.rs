@@ -234,6 +234,7 @@ pub fn analyze_with_report(
         })
         .collect();
     let found = packages::find(&packages::Input {
+        repo: &repo.name,
         paths: &paths,
         dir_paths: &dir_paths,
         parents: &dirs.dirs.parent,
@@ -295,7 +296,7 @@ pub fn analyze_with_report(
         },
         links,
         cycles: cycles::cycles(&graph),
-        workspace: found.workspace,
+        workspaces: found.workspaces,
         packages: found.packages,
         package_groups: found.groups,
         externals: found.externals,
