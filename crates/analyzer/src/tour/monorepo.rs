@@ -16,12 +16,6 @@ use crate::saturating_u32 as index;
 const MAIN_SHARE: u64 = 3;
 /// The most main units: more would read as a list, not an architecture.
 const MAX_MAIN_UNITS: usize = 5;
-/// The apps lead a monorepo when they hold this share of the packages'
-/// code, in percent, at least. Below, a few small apps (the CLI of a
-/// compiler, a playground) sit beside the libraries the repository is
-/// about: babel's apps hold 1.9% of its packages' code, kit's 3.9%,
-/// grafana's 76.6%.
-const APPS_LEAD_SHARE: u64 = 10;
 
 /// Production imports from one package to another.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -47,8 +41,6 @@ pub(super) struct Monorepo<'a> {
     pub main_units: usize,
     /// Code files of all the apps.
     pub app_files: u32,
-    /// Code files of all the packages.
-    package_files: u64,
 }
 
 impl<'a> Monorepo<'a> {
@@ -77,13 +69,6 @@ impl<'a> Monorepo<'a> {
             units: Vec::new(),
             main_units: 0,
             app_files: 0,
-            package_files: result
-                .packages
-                .code_files
-                .iter()
-                .copied()
-                .map(u64::from)
-                .sum(),
         };
         repo.links = repo.package_links();
         for (&(from, to), &link) in &repo.links {
@@ -127,8 +112,7 @@ impl<'a> Monorepo<'a> {
     /// Whether the apps lead the monorepo: its tour presents them first,
     /// and the libraries as what serves them.
     pub fn apps_lead(&self) -> bool {
-        !self.units.is_empty()
-            && u64::from(self.app_files) * 100 >= self.package_files * APPS_LEAD_SHARE
+        self.result.packages.apps_lead()
     }
 
     /// The units presented as the main apps.
