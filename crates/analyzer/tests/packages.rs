@@ -308,3 +308,25 @@ fn a_workspace_with_a_single_package_of_code_keeps_its_islands() {
     assert_eq!(result.packages.dir.len(), 2);
     assert_eq!(island_paths(&result), ["", "apps", "src", "tools"]);
 }
+
+#[test]
+fn two_packages_of_code_make_a_monorepo_even_when_one_holds_most_of_it() {
+    // `apps/web` holds 3 of 4 production files: alone, the old rule would
+    // split it into `src` and `lib`
+    let result = analyzed(&[
+        (
+            "package.json",
+            r#"{ "name": "root", "workspaces": ["apps/*", "libs/*"] }"#,
+        ),
+        (
+            "apps/web/package.json",
+            r#"{ "name": "web", "scripts": { "start": "node src/main.js" } }"#,
+        ),
+        ("apps/web/src/main.js", "console.log('web')\n"),
+        ("apps/web/src/page.js", "console.log('page')\n"),
+        ("apps/web/lib/util.js", "console.log('util')\n"),
+        ("libs/log/package.json", r#"{ "name": "log" }"#),
+        ("libs/log/index.js", "console.log('log')\n"),
+    ]);
+    assert_eq!(island_paths(&result), ["", "apps/web", "libs/log"]);
+}
