@@ -10,7 +10,7 @@ use crate::saturating_u32 as index;
 /// The largest app is looked inside when it holds this share of the apps'
 /// code, in percent, at least: below, no app stands for the repository.
 const INSIDE_SHARE: u64 = 40;
-/// Fewer other apps make no list.
+/// Fewer other apps make no list after the main ones.
 const MIN_OTHER_APPS: usize = 2;
 
 pub(super) fn applications(repo: &Monorepo<'_>) -> Option<TourStep> {
@@ -30,7 +30,9 @@ pub(super) fn other_apps(repo: &Monorepo<'_>) -> Option<TourStep> {
         .collect();
     let files = &repo.result.packages.code_files;
     apps.sort_by_key(|&app| (std::cmp::Reverse(files[app as usize]), app));
-    (apps.len() >= MIN_OTHER_APPS).then_some(TourStep::OtherApps { apps })
+    // A monorepo of libraries names its only app (the site built on them)
+    let min = if repo.apps_lead() { MIN_OTHER_APPS } else { 1 };
+    (apps.len() >= min).then_some(TourStep::OtherApps { apps })
 }
 
 /// The largest folders of the package that stands for the monorepo, by
@@ -181,6 +183,12 @@ mod tests {
             Some(TourStep::OtherApps {
                 apps: vec![0, 1, 2, 3, 4, 5]
             })
+        );
+        // Its only app is named too
+        fixture.result.packages.kind[1..6].fill(PackageKind::Library);
+        assert_eq!(
+            other_apps(&repo(&fixture)),
+            Some(TourStep::OtherApps { apps: vec![0] })
         );
     }
 
