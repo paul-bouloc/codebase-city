@@ -15,6 +15,8 @@ pub(super) fn step(result: &AnalysisResult) -> TourStep {
     let mut by_language = vec![0u64; result.languages.len()];
     let mut by_island = vec![0u64; result.islands.dir.len()];
     let mut code_by_island = vec![0u64; result.islands.dir.len()];
+    // Code as layers count it: a barrel alone makes no code
+    let mut layered_code = vec![false; result.islands.dir.len()];
     for file in 0..files.dir.len() {
         if files.generated[file] {
             continue;
@@ -29,6 +31,7 @@ pub(super) fn step(result: &AnalysisResult) -> TourStep {
             by_language[files.language[file] as usize] += u64::from(files.lines[file]);
             if let Some(island) = island {
                 code_by_island[island] += 1;
+                layered_code[island] |= !files.barrel[file];
             }
         }
     }
@@ -41,10 +44,12 @@ pub(super) fn step(result: &AnalysisResult) -> TourStep {
             lines
         }
     }));
-    // Outside the code, not its entrance: the root island is left out
+    // Outside the code, not its entrance: the root island is left out. An
+    // island of code outside a monorepo's packages has no layer, but it is
+    // code
     let outside = by_island.iter().enumerate().map(|(island, &files)| {
         let root = result.islands.dir[island] == 0;
-        if root || result.islands.layer[island].is_some() {
+        if root || layered_code[island] {
             0
         } else {
             files
@@ -127,6 +132,18 @@ mod tests {
         };
         assert_eq!(biggest_island, Some(repo.island("core")));
         assert_eq!(outside_island, Some(repo.island("docs")));
+    }
+
+    #[test]
+    fn an_island_of_code_without_a_layer_is_not_outside_the_code() {
+        // `ui` (two files) outside a monorepo's packages: no layer
+        let mut repo = Fixture::layered();
+        let ui = repo.island("ui");
+        repo.result.islands.layer[ui as usize] = None;
+        let TourStep::Overview { outside_island, .. } = step(&repo.result) else {
+            unreachable!()
+        };
+        assert_eq!(outside_island, Some(repo.island("test")));
     }
 
     #[test]
