@@ -1,11 +1,9 @@
 //! The steps read from the structure of the islands: layers and cycles.
 
-use std::collections::BTreeMap;
-
 use model::{AnalysisResult, TourStep};
 
 use super::monorepo::Monorepo;
-use super::{count, first_max, is_production};
+use super::{count, first_max};
 
 /// Fewer islands in layers say little about the architecture.
 const MIN_LAYERED_ISLANDS: usize = 3;
@@ -14,41 +12,22 @@ const MIN_LAYERED_ISLANDS: usize = 3;
 /// do not stack. Babel's go up 4.5% of the time, excalidraw's 7%.
 const MAX_UP_SHARE: u64 = 10;
 
-/// How the imports between islands follow their layers, when there are
-/// two layers or more and enough islands in them.
-pub(super) fn layers(result: &AnalysisResult) -> Option<TourStep> {
+/// Whether the islands have layers worth a step: two layers or more, and
+/// enough islands in them.
+fn has_layers(result: &AnalysisResult) -> bool {
     let layers = &result.islands.layer;
     let mut distinct: Vec<u32> = layers.iter().flatten().copied().collect();
     let layered = distinct.len();
     distinct.sort_unstable();
     distinct.dedup();
-    if layered < MIN_LAYERED_ISLANDS || distinct.len() < 2 {
-        return None;
-    }
+    layered >= MIN_LAYERED_ISLANDS && distinct.len() >= 2
+}
+
+/// How the imports between islands follow their layers, all of them as
+/// [`model::Links`] counts them.
+pub(super) fn layers(result: &AnalysisResult) -> Option<TourStep> {
     let links = &result.links;
-    let (mut down, mut level, mut up) = (0u64, 0u64, 0u64);
-    for row in 0..links.from.len() {
-        let from = layers[links.from[row] as usize];
-        let to = layers[links.to[row] as usize];
-        let (Some(from), Some(to)) = (from, to) else {
-            continue;
-        };
-        let imports = u64::from(links.imports[row]);
-        if to < from {
-            down += imports;
-        } else if to == from {
-            level += imports;
-        }
-        // Going up, the imports that are not counted upward are a barrel's
-        // re-exports: not a dependency
-        up += u64::from(links.upward[row]);
-    }
-    Some(TourStep::Layers {
-        down: count(down),
-        level: count(level),
-        up: count(up),
-        worst_link: first_max(links.upward.iter().map(|&upward| u64::from(upward))),
-    })
+    layers_step(result, &links.imports, &links.upward)
 }
 
 /// The layers of a monorepo's packages, from their production imports,
@@ -57,64 +36,46 @@ pub(super) fn layers(result: &AnalysisResult) -> Option<TourStep> {
 /// above it, which makes 15% of the imports between vuejs/core's packages
 /// go up against 1% of the production ones.
 pub(super) fn package_layers(result: &AnalysisResult) -> Option<TourStep> {
-    // Two layers and enough islands in them, as anywhere
-    layers(result)?;
-    let layers = &result.islands.layer;
-    let (files, edges) = (&result.files, &result.edges);
-    let layer_of = |dir: u32| {
-        let island = result.dirs.island[dir as usize]?;
-        Some((island, layers[island as usize]?))
+    let links = &result.links;
+    let step = layers_step(result, &links.production, &links.production_upward)?;
+    let TourStep::Layers {
+        down, level, up, ..
+    } = step
+    else {
+        return None;
     };
-    let (mut down, mut level, mut up) = (0u64, 0u64, 0u64);
-    let mut upward: BTreeMap<(u32, u32), u64> = BTreeMap::new();
-    for edge in 0..edges.from.len() {
-        let file = edges.from[edge] as usize;
-        let to_dir = match edges.to[edge] {
-            Some(to) if is_production(result, to as usize) => files.dir[to as usize],
-            Some(_) => continue,
-            None => match edges.to_dir[edge] {
-                Some(dir) => dir,
-                None => continue,
-            },
-        };
-        if !is_production(result, file) {
-            continue;
-        }
-        let (Some((from, from_layer)), Some((to, to_layer))) =
-            (layer_of(files.dir[file]), layer_of(to_dir))
-        else {
-            continue;
-        };
-        if from == to {
-            continue;
-        }
-        if to_layer < from_layer {
-            down += 1;
-        } else if to_layer == from_layer {
-            level += 1;
-        } else if !files.barrel[file] {
-            // A barrel's re-exports going up are no dependency
-            up += 1;
-            *upward.entry((from, to)).or_default() += 1;
-        }
-    }
-    if up * 100 > (down + level + up) * MAX_UP_SHARE {
+    let all = u64::from(down) + u64::from(level) + u64::from(up);
+    (u64::from(up) * 100 <= all * MAX_UP_SHARE).then_some(step)
+}
+
+/// The step from the imports and the upward imports of each link.
+fn layers_step(result: &AnalysisResult, imports: &[u32], upward: &[u32]) -> Option<TourStep> {
+    if !has_layers(result) {
         return None;
     }
-    // The links are sorted by their islands
+    let layers = &result.islands.layer;
     let links = &result.links;
-    let worst_link = upward
-        .iter()
-        .max_by_key(|&(&pair, &imports)| (imports, std::cmp::Reverse(pair)))
-        .and_then(|(&(from, to), _)| {
-            (0..links.from.len()).find(|&row| links.from[row] == from && links.to[row] == to)
-        })
-        .map(crate::saturating_u32);
+    let (mut down, mut level, mut up) = (0u64, 0u64, 0u64);
+    for row in 0..links.from.len() {
+        let from = layers[links.from[row] as usize];
+        let to = layers[links.to[row] as usize];
+        let (Some(from), Some(to)) = (from, to) else {
+            continue;
+        };
+        if to < from {
+            down += u64::from(imports[row]);
+        } else if to == from {
+            level += u64::from(imports[row]);
+        }
+        // Going up, the imports that are not counted upward are a barrel's
+        // re-exports: not a dependency
+        up += u64::from(upward[row]);
+    }
     Some(TourStep::Layers {
         down: count(down),
         level: count(level),
         up: count(up),
-        worst_link,
+        worst_link: first_max(upward.iter().map(|&upward| u64::from(upward))),
     })
 }
 
@@ -184,7 +145,7 @@ pub(super) fn cycles(result: &AnalysisResult, repo: Option<&Monorepo<'_>>) -> Op
 mod tests {
     use super::*;
     use crate::tour::fixture::Fixture;
-    use model::{EdgeKind, Scope};
+    use model::Scope;
 
     #[test]
     fn imports_between_layers_go_down_level_or_up() {
@@ -220,43 +181,37 @@ mod tests {
 
     #[test]
     fn a_monorepo_counts_the_production_imports_between_its_layers() {
-        // Files: core a, b, c (0-2), ui view, panel (3, 4), app main (5)
+        // Links: ui → core, app → core, app → ui, all down
         let mut repo = Fixture::layered();
-        for (from, to) in [
-            (3, 0),
-            (3, 1),
-            (4, 0),
-            (4, 1),
-            (4, 2),
-            (5, 0),
-            (5, 1),
-            (5, 2),
-            (5, 3),
-        ] {
-            repo.import(from, to, EdgeKind::Import);
-        }
+        repo.result.links.production = vec![5, 2, 2];
+        // core → ui: five imports up, from tests but one
         let [core, ui] = ["core", "ui"].map(|name| repo.island(name));
-        // Links are sorted: core → ui comes first
-        repo.result.links = model::Links::default();
-        repo.link(core, ui, 1, 1);
-        // One of ten goes up: the layers hold
-        repo.import(0, 3, EdgeKind::Import);
+        repo.link(core, ui, 5, 5);
+        repo.result.links.production[3] = 1;
+        repo.result.links.production_upward[3] = 1;
+        // One of ten goes up in production: the layers hold
         assert_eq!(
             package_layers(&repo.result),
             Some(TourStep::Layers {
                 down: 9,
                 level: 0,
                 up: 1,
-                worst_link: Some(0),
+                worst_link: Some(3),
             })
         );
-        // Tests that import up are no production import
-        let test = repo.test("core/a.test.ts");
-        repo.import(test, 4, EdgeKind::Import);
-        repo.import(test, 5, EdgeKind::Import);
-        assert!(package_layers(&repo.result).is_some());
+        // The same links, every import counted: 5 of 9 go up
+        assert_eq!(
+            layers(&repo.result),
+            Some(TourStep::Layers {
+                down: 4,
+                level: 0,
+                up: 5,
+                worst_link: Some(3),
+            })
+        );
         // Two of eleven: they do not
-        repo.import(1, 4, EdgeKind::Import);
+        repo.result.links.production[3] = 2;
+        repo.result.links.production_upward[3] = 2;
         assert_eq!(package_layers(&repo.result), None);
     }
 

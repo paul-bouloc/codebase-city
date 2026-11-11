@@ -193,8 +193,8 @@ mod tests {
             ]
         );
         // Without apps: layers when the islands have them and their
-        // production imports follow them, and no step of apps. The 16
-        // imports from `apps` to `libs` go down, 2 stay inside `libs`
+        // production imports follow them (1 of 10 goes up), and no step of
+        // apps
         repo.result.packages.kind[..6].fill(model::PackageKind::Library);
         let [apps, libs] = ["apps", "libs"].map(|name| repo.island(name));
         let islands = repo.result.islands.dir.len();
@@ -202,15 +202,20 @@ mod tests {
         repo.result.islands.layer[apps as usize] = Some(2);
         repo.result.islands.layer[libs as usize] = Some(1);
         repo.result.islands.layer[0] = Some(1);
+        repo.link(0, apps, 1, 1);
+        repo.link(apps, libs, 9, 0);
         let tour = repo.validated(of_result(&repo.result));
         assert_eq!(kinds(&tour), ["overview", "libraries", "layers", "rest"]);
-        // 3 of 21 go up: too many
-        let core = repo.file_at("libs/core/index.ts");
-        for app in ["admin", "tools", "kiosk"] {
-            let to = repo.file_at(&format!("apps/{app}/index.ts"));
-            repo.import(core, to, model::EdgeKind::Import);
+        // 2 of 11 go up: too many
+        let links = &mut repo.result.links;
+        for column in [
+            &mut links.imports,
+            &mut links.upward,
+            &mut links.production,
+            &mut links.production_upward,
+        ] {
+            column[0] = 2;
         }
-        repo.sort_edges();
         let tour = repo.validated(of_result(&repo.result));
         assert_eq!(kinds(&tour), ["overview", "libraries", "rest"]);
     }
