@@ -64,6 +64,11 @@ export function decodeTour(value: unknown, tables: Tables): Tour {
     if (step.kind === 'otherApps' && afterApplications && step.apps.length < 2) {
       fail(`a list of tour.steps[${row}] must hold as many rows as its step allows, each once`)
     }
+    // Inside the main app when apps lead, inside the main library otherwise
+    const insideKind = afterApplications ? 'app' : 'library'
+    if (step.kind === 'insidePackage' && tables.packages.kind[step.package] !== insideKind) {
+      fail(`tour.steps[${row}] names a library as an app, or an app as a library`)
+    }
   })
   let first: 'files' | 'packages' | undefined
   steps.forEach((step, row) => {

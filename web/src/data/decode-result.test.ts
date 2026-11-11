@@ -719,6 +719,8 @@ describe('decodeResult', () => {
     asMonorepo(json)
     json.tour.steps.splice(1, 1, { kind: 'otherApps', apps: [1] })
     json.tour.steps.splice(3, 1)
+    // Inside the main library, `api`
+    ;(json.tour.steps[3] as { package: number }).package = 2
     expect(decodeResult(json).tour.steps.map((step) => step.kind)).toEqual([
       'overview',
       'otherApps',
@@ -733,6 +735,18 @@ describe('decodeResult', () => {
         json.tour.steps.splice(2, 0, { kind: 'otherApps', apps: [1] })
       }),
     ).toThrow('a list of tour.steps[2] must hold as many rows as its step allows, each once')
+    expect(
+      decodeChanged((json) => {
+        asMonorepo(json)
+        json.tour.steps.splice(1, 1, { kind: 'otherApps', apps: [1] })
+      }),
+    ).toThrow('tour.steps[4] names a library as an app, or an app as a library')
+    expect(
+      decodeChanged((json) => {
+        asMonorepo(json)
+        ;(json.tour.steps[4] as { package: number }).package = 2
+      }),
+    ).toThrow('tour.steps[4] names a library as an app, or an app as a library')
   })
 
   it('requires a tour that never mixes packages and files', () => {

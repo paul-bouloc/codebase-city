@@ -113,6 +113,12 @@ fn check_step(result: &AnalysisResult, row: usize, step: &TourStep) -> Result<()
             Err(InvalidResult::TourPackageKind { row })
         }
     };
+    // Apps lead a monorepo whose tour presents its main apps
+    let apps_lead = result
+        .tour
+        .steps
+        .iter()
+        .any(|step| matches!(step, TourStep::Applications { .. }));
     let count = |holds: bool| {
         if holds {
             Ok(())
@@ -177,12 +183,7 @@ fn check_step(result: &AnalysisResult, row: usize, step: &TourStep) -> Result<()
         TourStep::OtherApps { apps } => {
             // After the main apps, one more makes no list; in a monorepo of
             // libraries, its only app is worth naming
-            let after_main = result
-                .tour
-                .steps
-                .iter()
-                .any(|step| matches!(step, TourStep::Applications { .. }));
-            let min = if after_main { 2 } else { 1 };
+            let min = if apps_lead { 2 } else { 1 };
             packages("tour.apps", apps, PackageKind::App, min, usize::MAX)?;
         }
         TourStep::Libraries {
@@ -239,7 +240,13 @@ fn check_step(result: &AnalysisResult, row: usize, step: &TourStep) -> Result<()
             dirs,
             files,
         } => {
-            required("tour.package", *package, package_count)?;
+            // The main app when apps lead, the main library otherwise
+            let kind = if apps_lead {
+                PackageKind::App
+            } else {
+                PackageKind::Library
+            };
+            packages("tour.package", &[*package], kind, 1, 1)?;
             list("tour.dirs", dirs, dir_count)?;
             count(files.len() == dirs.len())?;
         }
@@ -596,9 +603,12 @@ mod tests {
             }),
             InvalidResult::TourList { row: 2 }
         );
+        // Without main apps, the inside step would look inside a library
         let mut r = result();
         monorepo(&mut r);
         r.tour.steps[1] = TourStep::OtherApps { apps: vec![0] };
+        assert_eq!(r.validate(), Err(InvalidResult::TourPackageKind { row: 3 }));
+        r.tour.steps.remove(3);
         assert_eq!(r.validate(), Ok(()));
     }
 
