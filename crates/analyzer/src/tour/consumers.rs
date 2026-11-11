@@ -11,8 +11,8 @@ use super::{MAX_ROWS, count, first_max};
 /// Fewer folders that import the packages make no step.
 const MIN_FOLDERS: usize = 3;
 
-/// The folders at the top of the repository, outside the packages, whose
-/// examples and tests import a package. Skipped when the repository has
+/// The folders at the top of the repository, outside the packages and
+/// holding none, whose examples and tests import a package. Skipped when the repository has
 /// apps: they are what uses the libraries.
 pub(super) fn consumers(repo: &Monorepo<'_>) -> Option<TourStep> {
     if repo.has_apps() {
@@ -33,6 +33,14 @@ pub(super) fn consumers(repo: &Monorepo<'_>) -> Option<TourStep> {
             None => {}
         }
     }
+    // A top folder that holds packages, such as `packages/`, is split into
+    // their islands: it has no ground of its own to show
+    let mut holds_package = vec![false; parents.len()];
+    for &dir in &result.packages.dir {
+        if let Some(top) = top[dir as usize] {
+            holds_package[top] = true;
+        }
+    }
     let files = &result.files;
     let edges = &result.edges;
     let mut imports: BTreeMap<usize, u64> = BTreeMap::new();
@@ -51,7 +59,7 @@ pub(super) fn consumers(repo: &Monorepo<'_>) -> Option<TourStep> {
             continue;
         };
         let dir = files.dir[file] as usize;
-        let Some(top) = top[dir] else {
+        let Some(top) = top[dir].filter(|&top| !holds_package[top]) else {
             continue;
         };
         *imports.entry(top).or_default() += 1;
@@ -149,5 +157,21 @@ mod tests {
         let dogs = fixture.file_at("sample/02-dogs/main.ts");
         fixture.result.files.scope[dogs] = Scope::Source;
         assert_eq!(consumers(&Monorepo::of(&fixture.result).unwrap()), None);
+    }
+
+    #[test]
+    fn a_folder_that_holds_packages_is_no_consumer() {
+        let mut fixture = libraries_and_consumers();
+        let types = fixture.file_at("libs/types/index.ts");
+        for name in ["a", "b", "c", "d"] {
+            let test = fixture.file(&format!("libs/__tests__/{name}/t.test.ts"), Scope::Test);
+            fixture.import(test, types, EdgeKind::Import);
+        }
+        fixture.sort_edges();
+        let repo = Monorepo::of(&fixture.result).unwrap();
+        let Some(TourStep::Consumers { folders, .. }) = consumers(&repo) else {
+            unreachable!()
+        };
+        assert_eq!(folders.len(), 2);
     }
 }
