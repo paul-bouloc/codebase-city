@@ -32,6 +32,8 @@ pub(super) struct Monorepo<'a> {
     package_of_dir: Vec<Option<u32>>,
     /// By importing package, then imported package.
     pub links: BTreeMap<(u32, u32), PackageLink>,
+    /// The packages that import each package, with their link, in order.
+    importers: Vec<Vec<(u32, PackageLink)>>,
     /// Every app, in units, the largest unit first.
     pub units: Vec<AppUnit>,
     /// How many of [`Monorepo::units`] are main ones.
@@ -53,11 +55,15 @@ impl<'a> Monorepo<'a> {
             result,
             package_of_dir,
             links: BTreeMap::new(),
+            importers: vec![Vec::new(); result.packages.dir.len()],
             units: Vec::new(),
             main_units: 0,
             app_files: 0,
         };
         repo.links = repo.package_links();
+        for (&(from, to), &link) in &repo.links {
+            repo.importers[to as usize].push((from, link));
+        }
         repo.units = units(result);
         let app_files: u64 = repo.units.iter().map(|unit| u64::from(unit.files)).sum();
         repo.app_files = super::count(app_files);
@@ -75,7 +81,7 @@ impl<'a> Monorepo<'a> {
         self.package_of_dir[self.result.files.dir[file] as usize]
     }
 
-    pub fn package_of_dir(&self, dir: u32) -> Option<u32> {
+    fn package_of_dir(&self, dir: u32) -> Option<u32> {
         self.package_of_dir[dir as usize]
     }
 
@@ -138,11 +144,8 @@ impl<'a> Monorepo<'a> {
     }
 
     /// The packages that import a package, with their link.
-    pub fn importers(&self, package: u32) -> impl Iterator<Item = (u32, PackageLink)> + '_ {
-        self.links
-            .iter()
-            .filter(move |((_, to), _)| *to == package)
-            .map(|(&(from, _), &link)| (from, link))
+    pub fn importers(&self, package: u32) -> &[(u32, PackageLink)] {
+        &self.importers[package as usize]
     }
 }
 

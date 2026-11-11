@@ -17,15 +17,6 @@ const MIN_LIBRARIES: usize = 2;
 /// Fewer apps share nothing.
 const MIN_APPS: usize = 2;
 
-/// How many packages import each library, by library.
-fn importer_counts(repo: &Monorepo<'_>) -> BTreeMap<u32, u32> {
-    let mut counts = BTreeMap::new();
-    for &(_, to) in repo.links.keys() {
-        *counts.entry(to).or_insert(0) += 1;
-    }
-    counts
-}
-
 /// The libraries with production code.
 fn libraries_of(repo: &Monorepo<'_>) -> Vec<u32> {
     let kinds = &repo.result.packages.kind;
@@ -37,10 +28,10 @@ fn libraries_of(repo: &Monorepo<'_>) -> Vec<u32> {
 
 /// The libraries the most packages import, the first first.
 fn most_imported(repo: &Monorepo<'_>) -> Vec<(u32, u32)> {
-    let counts = importer_counts(repo);
     let mut ranked: Vec<(u32, u32)> = libraries_of(repo)
         .into_iter()
-        .filter_map(|library| Some((library, *counts.get(&library)?)))
+        .map(|library| (library, index(repo.importers(library).len())))
+        .filter(|&(_, importers)| importers > 0)
         .collect();
     ranked.sort_by_key(|&(library, importers)| (std::cmp::Reverse(importers), library));
     ranked.truncate(MAX_MOST_IMPORTED);
@@ -68,7 +59,11 @@ pub(super) fn libraries(repo: &Monorepo<'_>) -> Option<TourStep> {
         &[]
     };
     for &library in serve_apps {
-        let importers: Vec<u32> = repo.importers(library).map(|(from, _)| from).collect();
+        let importers: Vec<u32> = repo
+            .importers(library)
+            .iter()
+            .map(|&(from, _)| from)
+            .collect();
         match importers.as_slice() {
             [] => unused.push(library),
             [only] if repo.is_app(*only) => single_app.push(library),
@@ -116,8 +111,9 @@ pub(super) fn app_links(repo: &Monorepo<'_>) -> Option<TourStep> {
         }
         let mut importing: Vec<(u32, u32, u32)> = repo
             .importers(library)
+            .iter()
             .filter(|(from, _)| repo.is_app(*from))
-            .map(|(from, link)| (from, link.files, link.type_only))
+            .map(|&(from, link)| (from, link.files, link.type_only))
             .collect();
         importing.sort_by_key(|&(app, files, _)| (std::cmp::Reverse(files), app));
         // The most files of each unit, the largest first
