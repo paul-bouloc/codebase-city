@@ -24,6 +24,7 @@ pub(crate) fn print_tour(result: &AnalysisResult) {
                 lines,
                 language,
                 language_lines,
+                language_read,
                 biggest_island,
                 outside_island,
             } => {
@@ -35,6 +36,9 @@ pub(crate) fn print_tour(result: &AnalysisResult) {
                     result.islands.dir.len(),
                     share(*language_lines, *lines)
                 );
+                if !language_read && language != "-" {
+                    println!("              {language} is not analyzed");
+                }
                 if let Some(biggest) = biggest_island {
                     println!("              biggest island {}", island(*biggest));
                 }

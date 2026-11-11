@@ -16,19 +16,30 @@ pub(crate) fn print_packages(result: &AnalysisResult, expected: Option<&Expected
             .trim_end_matches('/')
             .to_owned()
     };
-    match &result.workspace {
-        Some(workspace) => println!(
-            "workspace     {:?} in {}, {} packages ({} apps)",
-            workspace.kind,
-            path(result, workspace.manifest as usize),
+    let declared: Vec<String> = result
+        .workspaces
+        .iter()
+        .map(|workspace| {
+            format!(
+                "{:?} in {}",
+                workspace.kind,
+                path(result, workspace.manifest as usize)
+            )
+        })
+        .collect();
+    if declared.is_empty() {
+        println!("workspace     none");
+    } else {
+        println!(
+            "workspace     {}, {} packages ({} apps)",
+            declared.join(", "),
             packages.dir.len(),
             packages
                 .kind
                 .iter()
                 .filter(|&&kind| kind == PackageKind::App)
                 .count()
-        ),
-        None => println!("workspace     none"),
+        );
     }
     for row in 0..packages.dir.len() {
         let framework = packages.framework[row]
@@ -107,11 +118,16 @@ fn compare(result: &AnalysisResult, expected: &Expected, folder: &dyn Fn(usize) 
         .map(folder)
         .collect();
     if let Some(workspace) = &expected.workspace {
-        let kind = result
-            .workspace
-            .as_ref()
-            .map(|workspace| format!("{:?}", workspace.kind).to_lowercase());
-        let ok = workspace.first().map(|kind| kind.to_lowercase()) == kind;
+        let mut kinds: Vec<String> = result
+            .workspaces
+            .iter()
+            .map(|workspace| format!("{:?}", workspace.kind).to_lowercase())
+            .collect();
+        kinds.sort();
+        let mut expected_kinds: Vec<String> =
+            workspace.iter().map(|kind| kind.to_lowercase()).collect();
+        expected_kinds.sort();
+        let ok = kinds == expected_kinds;
         println!(
             "  expected workspace {workspace:?}: {}",
             if ok { "ok" } else { "differs" }
