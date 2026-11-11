@@ -26,7 +26,8 @@ export interface FolderCard {
   path: string
   /** Every file under it. */
   files: number
-  /** Its island's layer; absent for an island without production code. */
+  /** Its island's layer; absent for an island without one (no production code, or outside a
+   * monorepo's packages). */
   layer?: number
   /** The island it stands on, by name; absent for an island's own folder. */
   island?: string

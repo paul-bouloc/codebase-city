@@ -77,7 +77,8 @@ export interface IslandLink {
 
 export interface FolderSheetData {
   path: string
-  // "Island · layer 3 of 5", "Island" (no production code, so no layer), "Folder" (one that
+  // "Island · layer 3 of 5", "Island" (no layer: no production code, or outside a monorepo's
+  // packages), "Folder" (one that
   // holds islands without being one), "Tests · park".
   kind:
     | { island: { layer: number; of: number } }

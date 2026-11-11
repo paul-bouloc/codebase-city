@@ -15,7 +15,8 @@ export type Islands = {
 dir: Array<number>, 
 /**
  * Layer of the island's production code, from 1 at the bottom: an
- * island mostly imports islands of lower layers. `null` for an island
- * without production code.
+ * island mostly imports islands of lower layers. In a monorepo, only
+ * the islands of its packages have layers. `null` for an island
+ * without production code, or outside a monorepo's packages.
  */
 layer: Array<number | null>, };

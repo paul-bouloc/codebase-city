@@ -295,8 +295,9 @@ pub struct Islands {
     /// The folder the island is named after.
     pub dir: Vec<u32>,
     /// Layer of the island's production code, from 1 at the bottom: an
-    /// island mostly imports islands of lower layers. `null` for an island
-    /// without production code.
+    /// island mostly imports islands of lower layers. In a monorepo, only
+    /// the islands of its packages have layers. `null` for an island
+    /// without production code, or outside a monorepo's packages.
     pub layer: Vec<Option<u32>>,
 }
 
