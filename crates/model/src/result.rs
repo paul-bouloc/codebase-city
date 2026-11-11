@@ -556,7 +556,7 @@ pub struct Tour {
     /// Always starts with [`TourStep::Overview`]; the other kinds come at
     /// most once each, in the order of [`TourStep`]. A monorepo's tour
     /// presents its packages, from [`TourStep::Applications`] to
-    /// [`TourStep::InsideApp`]; another repository's presents its files,
+    /// [`TourStep::InsidePackage`]; another repository's presents its files,
     /// from [`TourStep::EntryPoints`] to [`TourStep::Foundations`]. A tour
     /// never mixes the two.
     pub steps: Vec<TourStep>,
@@ -665,10 +665,12 @@ pub enum TourStep {
         /// The package they import the most.
         package: u32,
     },
-    /// Inside the app that holds most of the apps' code.
-    InsideApp {
+    /// Inside the package that stands for the monorepo: the app that holds
+    /// most of the apps' code, or the main library of a monorepo of
+    /// libraries.
+    InsidePackage {
         /// A row of [`Packages`].
-        app: u32,
+        package: u32,
         /// Its largest folders, one to three, the first first.
         dirs: Vec<u32>,
         /// Code files of each.

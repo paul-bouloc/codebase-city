@@ -119,7 +119,7 @@ mod tests {
                 TourStep::AppLinks { .. } => "appLinks",
                 TourStep::Layers { .. } => "layers",
                 TourStep::Consumers { .. } => "consumers",
-                TourStep::InsideApp { .. } => "insideApp",
+                TourStep::InsidePackage { .. } => "insidePackage",
                 TourStep::Cycles { .. } => "cycles",
                 TourStep::ComplexAreas { .. } => "complexAreas",
                 TourStep::Rest { .. } => "rest",
@@ -187,7 +187,7 @@ mod tests {
                 "otherApps",
                 "libraries",
                 "appLinks",
-                "insideApp",
+                "insidePackage",
                 "rest"
             ]
         );

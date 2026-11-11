@@ -109,12 +109,16 @@ pub(crate) fn print_package_step(result: &AnalysisResult, step: &TourStep) {
                 );
             }
         }
-        TourStep::InsideApp { app, dirs, files } => {
-            let entry = packages.entry[*app as usize]
+        TourStep::InsidePackage {
+            package,
+            dirs,
+            files,
+        } => {
+            let entry = packages.entry[*package as usize]
                 .map_or_else(|| "-".to_owned(), |file| path(result, file as usize));
             println!(
                 "  inside      {} (entry {entry})",
-                packages.name[*app as usize]
+                packages.name[*package as usize]
             );
             for (dir, files) in dirs.iter().zip(files) {
                 println!(

@@ -124,9 +124,9 @@ describe('guideView', () => {
         shared: [{ library: 2, apps: [0, 1], files: 4, typeOnly: 0 }],
       }),
     ).toEqual(ringed([4, 2, 3]))
-    expect(guideView(monorepo, { kind: 'insideApp', app: 0, dirs: [5], files: [3] })).toEqual(
-      ringed([5]),
-    )
+    expect(
+      guideView(monorepo, { kind: 'insidePackage', package: 0, dirs: [5], files: [3] }),
+    ).toEqual(ringed([5]))
     expect(
       guideView(monorepo, {
         kind: 'consumers',

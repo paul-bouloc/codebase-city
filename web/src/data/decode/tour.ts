@@ -21,7 +21,7 @@ const RANKS = {
   appLinks: 7,
   layers: 8,
   consumers: 9,
-  insideApp: 10,
+  insidePackage: 10,
   cycles: 11,
   complexAreas: 12,
   rest: 13,
@@ -38,7 +38,7 @@ const TOURS: Partial<Record<Kind, 'files' | 'packages'>> = {
   libraries: 'packages',
   appLinks: 'packages',
   consumers: 'packages',
-  insideApp: 'packages',
+  insidePackage: 'packages',
 }
 
 export type { Tables }
@@ -164,7 +164,7 @@ function decodeStep(value: unknown, row: number, tables: Tables): TourStep {
     case 'libraries':
     case 'appLinks':
     case 'consumers':
-    case 'insideApp':
+    case 'insidePackage':
       return decodePackageStep(kind, fields, path, row, tables)
     default:
       return fail(`${path}.kind is not a kind of step`)

@@ -64,7 +64,7 @@ export function guideView(result: AnalysisResult, step: TourStep): GuideView {
       )
     case 'consumers':
       return ringed(step.folders.map((folder) => folder.dir))
-    case 'insideApp':
+    case 'insidePackage':
       return ringed(step.dirs)
     case 'cycles':
       return { ...NOTHING, dim: 'all', cycle: step.cycle }

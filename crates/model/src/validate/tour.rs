@@ -24,7 +24,7 @@ fn rank(step: &TourStep) -> u8 {
         TourStep::AppLinks { .. } => 7,
         TourStep::Layers { .. } => 8,
         TourStep::Consumers { .. } => 9,
-        TourStep::InsideApp { .. } => 10,
+        TourStep::InsidePackage { .. } => 10,
         TourStep::Cycles { .. } => 11,
         TourStep::ComplexAreas { .. } => 12,
         TourStep::Rest { .. } => 13,
@@ -48,7 +48,7 @@ fn tour_of(step: &TourStep) -> Option<Tour> {
         | TourStep::Libraries { .. }
         | TourStep::AppLinks { .. }
         | TourStep::Consumers { .. }
-        | TourStep::InsideApp { .. } => Some(Tour::Packages),
+        | TourStep::InsidePackage { .. } => Some(Tour::Packages),
         TourStep::Overview { .. }
         | TourStep::Layers { .. }
         | TourStep::Cycles { .. }
@@ -226,8 +226,12 @@ fn check_step(result: &AnalysisResult, row: usize, step: &TourStep) -> Result<()
             list("tour.dir", &dirs, dir_count)?;
             required("tour.package", *package, package_count)?;
         }
-        TourStep::InsideApp { app, dirs, files } => {
-            packages("tour.app", &[*app], PackageKind::App, 1, 1)?;
+        TourStep::InsidePackage {
+            package,
+            dirs,
+            files,
+        } => {
+            required("tour.package", *package, package_count)?;
             list("tour.dirs", dirs, dir_count)?;
             count(files.len() == dirs.len())?;
         }
@@ -320,8 +324,8 @@ mod tests {
         );
         r.tour.steps.insert(
             3,
-            TourStep::InsideApp {
-                app: 0,
+            TourStep::InsidePackage {
+                package: 0,
                 dirs: vec![1],
                 files: vec![2],
             },
@@ -561,7 +565,7 @@ mod tests {
         );
         assert_eq!(
             invalid_monorepo(|r| {
-                if let TourStep::InsideApp { dirs, .. } = &mut r.tour.steps[3] {
+                if let TourStep::InsidePackage { dirs, .. } = &mut r.tour.steps[3] {
                     dirs[0] = 2;
                 }
             }),
@@ -571,6 +575,27 @@ mod tests {
                 index: 2,
                 len: 2,
             }
+        );
+    }
+
+    #[test]
+    fn inside_a_library_of_a_monorepo_of_libraries() {
+        let mut r = result();
+        monorepo(&mut r);
+        r.packages.kind[0] = PackageKind::Library;
+        r.tour.steps.remove(1);
+        assert_eq!(r.validate(), Ok(()));
+        if let TourStep::InsidePackage { package, .. } = &mut r.tour.steps[2] {
+            *package = 1;
+        }
+        assert_eq!(
+            r.validate(),
+            Err(InvalidResult::IndexOutOfBounds {
+                column: "tour.package",
+                row: 0,
+                index: 1,
+                len: 1,
+            })
         );
     }
 
@@ -586,7 +611,7 @@ mod tests {
         );
         assert_eq!(
             invalid_monorepo(|r| {
-                if let TourStep::InsideApp { files, .. } = &mut r.tour.steps[3] {
+                if let TourStep::InsidePackage { files, .. } = &mut r.tour.steps[3] {
                     files.push(1);
                 }
             }),

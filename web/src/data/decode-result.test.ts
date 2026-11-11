@@ -645,7 +645,7 @@ describe('decodeResult', () => {
         appImports: 0,
         shared: [{ library: 2, apps: [0, 1], files: 4, typeOnly: 1 }],
       },
-      { kind: 'insideApp', app: 0, dirs: [2], files: [5] },
+      { kind: 'insidePackage', package: 0, dirs: [2], files: [5] },
       ...steps.slice(5),
     ]
   }
@@ -658,7 +658,7 @@ describe('decodeResult', () => {
       'applications',
       'libraries',
       'appLinks',
-      'insideApp',
+      'insidePackage',
       'cycles',
       'rest',
     ])

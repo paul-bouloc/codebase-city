@@ -81,8 +81,8 @@ pub(super) fn inside_app(repo: &Monorepo<'_>) -> Option<TourStep> {
     }
     children.sort_by_key(|&(files, dir)| (std::cmp::Reverse(files), dir));
     children.truncate(MAX_ROWS);
-    (!children.is_empty()).then(|| TourStep::InsideApp {
-        app,
+    (!children.is_empty()).then(|| TourStep::InsidePackage {
+        package: app,
         dirs: children.iter().map(|&(_, dir)| dir).collect(),
         files: children.iter().map(|&(files, _)| count(files)).collect(),
     })
@@ -179,8 +179,8 @@ mod tests {
         let pages = fixture.dir("apps/web/pages");
         assert_eq!(
             inside_app(&repo(&fixture)),
-            Some(TourStep::InsideApp {
-                app: 0,
+            Some(TourStep::InsidePackage {
+                package: 0,
                 dirs: vec![components, pages],
                 files: vec![2, 1],
             })
@@ -209,21 +209,21 @@ mod tests {
         fixture.file("apps/web/README.md", model::Scope::Docs);
         assert_eq!(
             inside_app(&repo(&fixture)),
-            Some(TourStep::InsideApp {
-                app: 0,
+            Some(TourStep::InsidePackage {
+                package: 0,
                 dirs: vec![src_components, src_pages],
                 files: vec![2, 1],
             })
         );
         // Code of its own in `src/` leaves its folders as they are
         fixture.file("apps/web/src/main.ts", model::Scope::Source);
-        let Some(TourStep::InsideApp { dirs, .. }) = inside_app(&repo(&fixture)) else {
+        let Some(TourStep::InsidePackage { dirs, .. }) = inside_app(&repo(&fixture)) else {
             unreachable!()
         };
         assert_eq!(dirs, [src_components, src_pages]);
         // Code at the top of the app: `src/` is one of its folders
         fixture.file("apps/web/next.config.ts", model::Scope::Source);
-        let Some(TourStep::InsideApp { dirs, .. }) = inside_app(&repo(&fixture)) else {
+        let Some(TourStep::InsidePackage { dirs, .. }) = inside_app(&repo(&fixture)) else {
             unreachable!()
         };
         assert_eq!(dirs, [src]);
@@ -251,8 +251,8 @@ mod tests {
         packages.api_route_count.push(0);
         assert_eq!(
             inside_app(&repo(&fixture)),
-            Some(TourStep::InsideApp {
-                app: 0,
+            Some(TourStep::InsidePackage {
+                package: 0,
                 dirs: vec![pages, lib],
                 files: vec![1, 1],
             })

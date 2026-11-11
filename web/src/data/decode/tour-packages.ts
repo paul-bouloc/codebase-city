@@ -10,7 +10,7 @@ const MAX_MOST_IMPORTED = 4
 
 type PackageStepKind = Extract<
   TourStep['kind'],
-  'applications' | 'otherApps' | 'libraries' | 'appLinks' | 'consumers' | 'insideApp'
+  'applications' | 'otherApps' | 'libraries' | 'appLinks' | 'consumers' | 'insidePackage'
 >
 
 function array(value: unknown, path: string): unknown[] {
@@ -150,10 +150,10 @@ export function decodePackageStep(
       )
       return { kind, folders, package: index('package', packageCount) }
     }
-    case 'insideApp': {
+    case 'insidePackage': {
       const step: TourStep = {
         kind,
-        app: packages([fields.app], 'app', 'app', 1, 1)[0] ?? 0,
+        package: index('package', packageCount),
         dirs: indexes(fields.dirs, 'dirs', tables.dirs.parent.length, 1, MAX_ROWS),
         files: counts('files'),
       }

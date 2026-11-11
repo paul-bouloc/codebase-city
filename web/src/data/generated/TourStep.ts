@@ -113,11 +113,11 @@ folders: Array<Consumer>,
 /**
  * The package they import the most.
  */
-package: number, } | { "kind": "insideApp", 
+package: number, } | { "kind": "insidePackage", 
 /**
  * A row of [`Packages`].
  */
-app: number, 
+package: number, 
 /**
  * Its largest folders, one to three, the first first.
  */

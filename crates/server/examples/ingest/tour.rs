@@ -140,7 +140,7 @@ pub(crate) fn print_tour(result: &AnalysisResult) {
             | TourStep::Libraries { .. }
             | TourStep::AppLinks { .. }
             | TourStep::Consumers { .. }
-            | TourStep::InsideApp { .. } => print_package_step(result, step),
+            | TourStep::InsidePackage { .. } => print_package_step(result, step),
             TourStep::Cycles {
                 cycle,
                 dir,
