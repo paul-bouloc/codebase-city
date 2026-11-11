@@ -50,7 +50,7 @@ pub fn of_result(result: &AnalysisResult) -> Tour {
         // Apps that lead sit above the libraries: their layers say nothing
         // more
         if !repo.apps_lead() {
-            steps.extend(structure::package_layers(result));
+            steps.extend(structure::layers(result));
         }
         steps.extend(consumers::consumers(repo));
         steps.extend(apps::inside(repo));

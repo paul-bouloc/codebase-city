@@ -669,9 +669,8 @@ pub enum TourStep {
         shared: Vec<SharedLibrary>,
     },
     /// The layers of the islands, read from [`Islands::layer`], and how the
-    /// imports between islands in layers follow them: [`Links::imports`]
-    /// and [`Links::upward`]. In a monorepo, [`Links::production`] and
-    /// [`Links::production_upward`] instead, and the step is shown when at
+    /// production imports between islands in layers follow them:
+    /// [`Links::production`] and [`Links::production_upward`]. Shown when at
     /// most 10% of them go up.
     Layers {
         /// Imports to an island of a lower layer.

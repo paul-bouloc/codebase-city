@@ -7,9 +7,10 @@ use super::{count, first_max};
 
 /// Fewer islands in layers say little about the architecture.
 const MIN_LAYERED_ISLANDS: usize = 3;
-/// In a monorepo, layers are shown when at most this share of the
-/// production imports between them go up, in percent: beyond, the packages
-/// do not stack. Babel's go up 4.5% of the time, excalidraw's 7%.
+/// Layers are shown when at most this share of the production imports
+/// between them go up, in percent: beyond, the islands do not stack.
+/// Babel's packages go up 4.5% of the time, three.js's folders 2.7%,
+/// fastapi's 25%.
 const MAX_UP_SHARE: u64 = 10;
 
 /// Whether the islands have layers worth a step: two layers or more, and
@@ -23,35 +24,14 @@ fn has_layers(result: &AnalysisResult) -> bool {
     layered >= MIN_LAYERED_ISLANDS && distinct.len() >= 2
 }
 
-/// How the imports between islands follow their layers, all of them as
-/// [`model::Links`] counts them.
+/// How the production imports between islands follow their layers, when
+/// they do: [`model::Links::production`] and
+/// [`model::Links::production_upward`]. Every import would hide the
+/// production ones behind the tests: those of `@vue/runtime-core` import
+/// `@vue/runtime-test`, a package above it, which makes 15% of the imports
+/// between vuejs/core's packages go up against 1% of the production ones,
+/// and fastapi's tests dilute its 25% to 1%.
 pub(super) fn layers(result: &AnalysisResult) -> Option<TourStep> {
-    let links = &result.links;
-    layers_step(result, &links.imports, &links.upward)
-}
-
-/// The layers of a monorepo's packages, from their production imports,
-/// when those follow them. The links between islands count every import:
-/// the tests of `@vue/runtime-core` import `@vue/runtime-test`, a package
-/// above it, which makes 15% of the imports between vuejs/core's packages
-/// go up against 1% of the production ones.
-pub(super) fn package_layers(result: &AnalysisResult) -> Option<TourStep> {
-    let links = &result.links;
-    let step = layers_step(result, &links.production, &links.production_upward)?;
-    let TourStep::Layers {
-        down, level, up, ..
-    } = step
-    else {
-        return None;
-    };
-    let all = u64::from(down) + u64::from(level) + u64::from(up);
-    // The layers come from the graph, which sees through barrels: their
-    // links may hold no production import at all
-    (all > 0 && u64::from(up) * 100 <= all * MAX_UP_SHARE).then_some(step)
-}
-
-/// The step from the imports and the upward imports of each link.
-fn layers_step(result: &AnalysisResult, imports: &[u32], upward: &[u32]) -> Option<TourStep> {
     if !has_layers(result) {
         return None;
     }
@@ -65,19 +45,30 @@ fn layers_step(result: &AnalysisResult, imports: &[u32], upward: &[u32]) -> Opti
             continue;
         };
         if to < from {
-            down += u64::from(imports[row]);
+            down += u64::from(links.production[row]);
         } else if to == from {
-            level += u64::from(imports[row]);
+            level += u64::from(links.production[row]);
         }
         // Going up, the imports that are not counted upward are a barrel's
         // re-exports: not a dependency
-        up += u64::from(upward[row]);
+        up += u64::from(links.production_upward[row]);
+    }
+    let all = down + level + up;
+    // The layers come from the graph, which sees through barrels: their
+    // links may hold no production import at all
+    if all == 0 || up * 100 > all * MAX_UP_SHARE {
+        return None;
     }
     Some(TourStep::Layers {
         down: count(down),
         level: count(level),
         up: count(up),
-        worst_link: first_max(upward.iter().map(|&upward| u64::from(upward))),
+        worst_link: first_max(
+            links
+                .production_upward
+                .iter()
+                .map(|&upward| u64::from(upward)),
+        ),
     })
 }
 
@@ -165,15 +156,17 @@ mod tests {
         repo.file("lib/x.ts", Scope::Source);
         repo.result.islands.layer[lib as usize] = Some(2);
         let [core, ui] = ["core", "ui"].map(|name| repo.island(name));
-        // From `core` (1) up to `ui` (2) and `lib` (2), and between the two
+        // From `core` (1) up to `ui` (2) and `lib` (2), between the two, and
+        // down from `ui`
         repo.result.links = model::Links::default();
         repo.link(core, ui, 3, 3);
         repo.link(core, lib, 4, 1);
+        repo.link(ui, core, 40, 0);
         repo.link(ui, lib, 2, 0);
         assert_eq!(
             layers(&repo.result),
             Some(TourStep::Layers {
-                down: 0,
+                down: 40,
                 level: 2,
                 up: 4,
                 worst_link: Some(0),
@@ -182,7 +175,7 @@ mod tests {
     }
 
     #[test]
-    fn a_monorepo_counts_the_production_imports_between_its_layers() {
+    fn layers_count_production_imports_and_hold_when_they_follow() {
         // Links: ui → core, app → core, app → ui, all down
         let mut repo = Fixture::layered();
         repo.result.links.production = vec![5, 2, 2];
@@ -191,9 +184,10 @@ mod tests {
         repo.link(core, ui, 5, 5);
         repo.result.links.production[3] = 1;
         repo.result.links.production_upward[3] = 1;
-        // One of ten goes up in production: the layers hold
+        // One of ten goes up in production: the layers hold, though five of
+        // nine imports go up
         assert_eq!(
-            package_layers(&repo.result),
+            layers(&repo.result),
             Some(TourStep::Layers {
                 down: 9,
                 level: 0,
@@ -201,24 +195,14 @@ mod tests {
                 worst_link: Some(3),
             })
         );
-        // The same links, every import counted: 5 of 9 go up
-        assert_eq!(
-            layers(&repo.result),
-            Some(TourStep::Layers {
-                down: 4,
-                level: 0,
-                up: 5,
-                worst_link: Some(3),
-            })
-        );
         // Two of eleven: they do not
         repo.result.links.production[3] = 2;
         repo.result.links.production_upward[3] = 2;
-        assert_eq!(package_layers(&repo.result), None);
+        assert_eq!(layers(&repo.result), None);
         // Nor without any production import
         repo.result.links.production.fill(0);
         repo.result.links.production_upward.fill(0);
-        assert_eq!(package_layers(&repo.result), None);
+        assert_eq!(layers(&repo.result), None);
     }
 
     #[test]
