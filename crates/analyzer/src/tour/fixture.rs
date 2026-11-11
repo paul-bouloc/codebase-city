@@ -1,6 +1,9 @@
 //! Small results written by hand, to test the steps of the tour.
 
-use model::{AnalysisResult, EntryReason, FORMAT_VERSION, Repo, Scope, Tour};
+use model::{
+    AnalysisResult, Confidence, EdgeKind, EntryReason, FORMAT_VERSION, PackageKind, Repo, Scope,
+    Tour, Workspace, WorkspaceKind,
+};
 
 use crate::saturating_u32 as index;
 
@@ -76,6 +79,157 @@ impl Fixture {
             repo.link(from, to, imports, 0);
         }
         repo
+    }
+
+    /// A monorepo of six apps and seven libraries, each with one production
+    /// file, `index.ts`, but `apps/web`: `pages/index.ts`,
+    /// `components/a.ts` and `components/b.ts`. The code files the packages
+    /// count are set apart: web 100, the group `shop` 25 (`shop-a` 20,
+    /// `shop-b` 5), admin 2, tools 1, kiosk 1. Libraries, by the packages
+    /// that import them: log 5, types 4, core 3, util 3, contracts 2 (web
+    /// for its types, admin), pay 1 (web), lonely none.
+    pub fn monorepo() -> Self {
+        let mut repo = Self::new();
+        let manifest = repo.file("package.json", Scope::Config);
+        repo.result.workspace = Some(Workspace {
+            kind: WorkspaceKind::Npm,
+            manifest: index(manifest),
+        });
+        let app = PackageKind::App;
+        for (dir, files) in [
+            ("apps/web", 100),
+            ("apps/shop-a", 20),
+            ("apps/shop-b", 5),
+            ("apps/admin", 2),
+            ("apps/tools", 1),
+            ("apps/kiosk", 1),
+        ] {
+            repo.package(dir, app, files);
+        }
+        for name in ["log", "types", "core", "util", "contracts", "pay", "lonely"] {
+            repo.package(&format!("libs/{name}"), PackageKind::Library, 1);
+        }
+        repo.group("shop", &[1, 2]);
+        let web = repo.file("apps/web/pages/index.ts", Scope::Source);
+        repo.file("apps/web/components/a.ts", Scope::Source);
+        repo.file("apps/web/components/b.ts", Scope::Source);
+        let at = |repo: &Self, dir: &str| repo.file_at(&format!("{dir}/index.ts"));
+        let imports: [(&str, &[&str]); 6] = [
+            (
+                "libs/log",
+                &["apps/shop-a", "apps/admin", "apps/tools", "libs/types"],
+            ),
+            ("libs/types", &["apps/shop-a", "apps/admin", "libs/util"]),
+            ("libs/core", &["apps/shop-b", "apps/admin"]),
+            ("libs/util", &["apps/shop-a", "apps/tools"]),
+            ("libs/contracts", &["apps/admin"]),
+            ("libs/pay", &[]),
+        ];
+        for (library, importers) in imports {
+            let target = at(&repo, library);
+            repo.import(web, target, EdgeKind::Import);
+            for importer in importers {
+                let from = at(&repo, importer);
+                repo.import(from, target, EdgeKind::Import);
+            }
+        }
+        // web imports only the types of contracts
+        let contracts = Some(index(at(&repo, "libs/contracts")));
+        let edges = &mut repo.result.edges;
+        let edge = (0..edges.from.len())
+            .find(|&edge| edges.from[edge] == index(web) && edges.to[edge] == contracts)
+            .unwrap_or_default();
+        edges.kind[edge] = EdgeKind::Type;
+        repo.sort_edges();
+        repo
+    }
+
+    /// Sorts the edges by file then target, as a result holds them.
+    pub fn sort_edges(&mut self) {
+        let edges = &mut self.result.edges;
+        let mut rows: Vec<_> = (0..edges.from.len())
+            .map(|row| {
+                (
+                    edges.from[row],
+                    edges.to[row],
+                    edges.to_dir[row],
+                    edges.kind[row],
+                    edges.confidence[row],
+                )
+            })
+            .collect();
+        // File targets sort before folder targets
+        rows.sort_by_key(|&(from, to, to_dir, _, _)| (from, to.is_none(), to.or(to_dir)));
+        *edges = model::Edges::default();
+        for (from, to, to_dir, kind, confidence) in rows {
+            edges.from.push(from);
+            edges.to.push(to);
+            edges.to_dir.push(to_dir);
+            edges.kind.push(kind);
+            edges.confidence.push(confidence);
+        }
+    }
+
+    /// A package at `dir`, with one production file, `index.ts`, but for
+    /// `apps/web`; its code files are counted apart.
+    pub fn package(&mut self, dir: &str, kind: PackageKind, code_files: u32) -> u32 {
+        let folder = self.dir(dir);
+        if dir != "apps/web" {
+            self.file(&format!("{dir}/index.ts"), Scope::Source);
+        }
+        let packages = &mut self.result.packages;
+        packages.dir.push(folder);
+        packages
+            .name
+            .push(dir.rsplit('/').next().unwrap_or(dir).to_owned());
+        packages.kind.push(kind);
+        packages.framework.push(None);
+        packages.manifest.push(None);
+        packages.group.push(None);
+        packages.code_files.push(code_files);
+        packages.entry.push(None);
+        packages.routes.push(None);
+        packages.route_count.push(0);
+        packages.api_route_count.push(0);
+        index(packages.dir.len() - 1)
+    }
+
+    /// A group by name; groups must be added in order of their prefix.
+    pub fn group(&mut self, prefix: &str, packages: &[u32]) {
+        let groups = &mut self.result.package_groups;
+        let group = index(groups.prefix.len());
+        groups.prefix.push(prefix.to_owned());
+        groups.linked.push(false);
+        for &package in packages {
+            self.result.packages.group[package as usize] = Some(group);
+        }
+    }
+
+    /// The file at `path`.
+    pub fn file_at(&self, path: &str) -> usize {
+        let files = &self.result.files;
+        (0..files.dir.len())
+            .find(|&file| {
+                let mut parts = vec![files.name[file].as_str()];
+                let mut dir = files.dir[file] as usize;
+                while let Some(parent) = self.result.dirs.parent[dir] {
+                    parts.push(&self.result.dirs.name[dir]);
+                    dir = parent as usize;
+                }
+                parts.reverse();
+                parts.join("/") == path
+            })
+            .unwrap_or_else(|| panic!("no file {path}"))
+    }
+
+    /// An import from a file to another.
+    pub fn import(&mut self, from: usize, to: usize, kind: EdgeKind) {
+        let edges = &mut self.result.edges;
+        edges.from.push(index(from));
+        edges.to.push(Some(index(to)));
+        edges.to_dir.push(None);
+        edges.kind.push(kind);
+        edges.confidence.push(Confidence::Exact);
     }
 
     /// The folder at `path`, added with its missing parents.
