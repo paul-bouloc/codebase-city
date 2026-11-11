@@ -50,7 +50,7 @@ pub fn of_result(result: &AnalysisResult) -> Tour {
         // Apps that lead sit above the libraries: their layers say nothing
         // more
         if !repo.apps_lead() {
-            steps.extend(structure::layers(result));
+            steps.extend(structure::package_layers(result));
         }
         steps.extend(consumers::consumers(repo));
         steps.extend(apps::inside(repo));
@@ -192,8 +192,8 @@ mod tests {
                 "rest"
             ]
         );
-        // Without apps: layers when the islands have them, and no step of
-        // apps
+        // Without apps: layers when the islands have them and their imports
+        // follow them (1 of 10 goes up), and no step of apps
         repo.result.packages.kind[..6].fill(model::PackageKind::Library);
         let [apps, libs] = ["apps", "libs"].map(|name| repo.island(name));
         let islands = repo.result.islands.dir.len();
@@ -202,9 +202,14 @@ mod tests {
         repo.result.islands.layer[libs as usize] = Some(1);
         repo.result.islands.layer[0] = Some(1);
         repo.link(0, apps, 1, 1);
-        repo.link(apps, libs, 3, 0);
+        repo.link(apps, libs, 9, 0);
         let tour = repo.validated(of_result(&repo.result));
         assert_eq!(kinds(&tour), ["overview", "libraries", "layers", "rest"]);
+        // 2 of 11 go up: too many
+        repo.result.links.imports[0] = 2;
+        repo.result.links.upward[0] = 2;
+        let tour = repo.validated(of_result(&repo.result));
+        assert_eq!(kinds(&tour), ["overview", "libraries", "rest"]);
     }
 
     #[test]

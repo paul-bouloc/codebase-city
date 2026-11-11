@@ -7,6 +7,11 @@ use super::{count, first_max};
 
 /// Fewer islands in layers say little about the architecture.
 const MIN_LAYERED_ISLANDS: usize = 3;
+/// In a monorepo, layers are shown when at most this share of the imports
+/// between them go up, in percent: beyond, the packages do not stack (the
+/// imports between babel's islands went up 15.5% of the time before only
+/// its packages were layered).
+const MAX_UP_SHARE: u64 = 10;
 
 /// How the imports between islands follow their layers, when there are
 /// two layers or more and enough islands in them.
@@ -42,6 +47,20 @@ pub(super) fn layers(result: &AnalysisResult) -> Option<TourStep> {
         level: count(level),
         up: count(up),
         worst_link: first_max(links.upward.iter().map(|&upward| u64::from(upward))),
+    })
+}
+
+/// The layers of a monorepo's packages, when their imports follow them.
+pub(super) fn package_layers(result: &AnalysisResult) -> Option<TourStep> {
+    layers(result).filter(|step| {
+        let TourStep::Layers {
+            down, level, up, ..
+        } = *step
+        else {
+            return false;
+        };
+        let all = u64::from(down) + u64::from(level) + u64::from(up);
+        u64::from(up) * 100 <= all * MAX_UP_SHARE
     })
 }
 
@@ -143,6 +162,19 @@ mod tests {
                 worst_link: Some(0),
             })
         );
+    }
+
+    #[test]
+    fn a_monorepo_shows_layers_its_imports_follow() {
+        // 4 imports down, then 1 of 10 up, then 2 of 11
+        let mut repo = Fixture::layered();
+        assert!(package_layers(&repo.result).is_some());
+        let [core, ui] = ["core", "ui"].map(|name| repo.island(name));
+        repo.link(ui, core, 5, 0);
+        repo.link(core, ui, 1, 1);
+        assert!(package_layers(&repo.result).is_some());
+        repo.link(core, ui, 1, 1);
+        assert_eq!(package_layers(&repo.result), None);
     }
 
     #[test]
