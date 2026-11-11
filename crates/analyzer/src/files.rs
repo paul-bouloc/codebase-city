@@ -198,6 +198,10 @@ const MANIFESTS: &[&str] = &[
     "nest-cli.json",
     "app.json",
     "manifest.json",
+    "nx.json",
+    "project.json",
+    "deno.json",
+    "deno.jsonc",
 ];
 
 /// How many bytes from the start of a file [`classify_content`] needs.

@@ -1,5 +1,5 @@
-//! The declaration of a workspace: which manifest at the root lists the
-//! packages, and the patterns of their folders.
+//! The declarations of a workspace: which manifests at the root list the
+//! packages, the patterns of their folders, and the manifest a member has.
 
 use globset::{GlobBuilder, GlobSet, GlobSetBuilder};
 use model::WorkspaceKind;
@@ -7,7 +7,7 @@ use serde_json::Value;
 
 use super::manifest::{toml_array, toml_sections};
 
-/// The patterns a workspace declares its packages with.
+/// The patterns a declaration lists its packages with.
 pub(super) struct Declaration {
     pub kind: WorkspaceKind,
     /// Path of the manifest that declares them.
@@ -21,30 +21,39 @@ impl Declaration {
     pub fn matches(&self, path: &str) -> bool {
         self.include.is_match(path) && !self.exclude.is_match(path)
     }
+
+    /// The manifests one of which makes a matching folder a package: the
+    /// tool installs no member without it. A browser extension or an Expo
+    /// app declares itself by its platform manifest.
+    pub fn members(&self) -> &'static [&'static str] {
+        match self.kind {
+            WorkspaceKind::Npm | WorkspaceKind::Pnpm | WorkspaceKind::Lerna => {
+                &["package.json", "manifest.json", "app.json"]
+            }
+            WorkspaceKind::Nx => &["project.json"],
+            WorkspaceKind::GoWork => &["go.mod"],
+            WorkspaceKind::Uv => &["pyproject.toml"],
+            WorkspaceKind::Deno => &["deno.json", "deno.jsonc", "package.json"],
+        }
+    }
 }
 
 /// Reads the patterns of one kind of manifest.
 type Reader = fn(&str) -> Vec<String>;
 
-/// The first declaration found at the root, in the order the tools are
-/// usually layered: pnpm and npm before lerna, which may sit on top of
-/// them.
-pub(super) fn declaration(manifests: &[(&str, &[u8])]) -> Option<Declaration> {
+/// Every declaration at the root. pnpm installs the folders of its own
+/// file and ignores the `workspaces` of `package.json`; lerna and Nx name
+/// projects on top of the installed packages; Go, uv and Deno declare
+/// packages of their own languages beside them.
+pub(super) fn declarations(manifests: &[(&str, &[u8])]) -> Vec<Declaration> {
     let root = |name: &str| {
         manifests
             .iter()
             .find(|(path, _)| *path == name)
             .map(|(_, content)| String::from_utf8_lossy(content))
     };
-    let readers: [(WorkspaceKind, &str, Reader); 5] = [
-        (WorkspaceKind::Pnpm, "pnpm-workspace.yaml", pnpm),
-        (WorkspaceKind::Npm, "package.json", npm),
-        (WorkspaceKind::Lerna, "lerna.json", lerna),
-        (WorkspaceKind::GoWork, "go.work", go_work),
-        (WorkspaceKind::Uv, "pyproject.toml", uv),
-    ];
-    readers.into_iter().find_map(|(kind, manifest, read)| {
-        let patterns = read(&root(manifest)?);
+    let read = |kind: WorkspaceKind, manifest: &str, reader: Reader| {
+        let patterns = reader(&root(manifest)?);
         let (include, exclude) = globs(&patterns)?;
         Some(Declaration {
             kind,
@@ -52,7 +61,36 @@ pub(super) fn declaration(manifests: &[(&str, &[u8])]) -> Option<Declaration> {
             include,
             exclude,
         })
-    })
+    };
+    let installed = read(WorkspaceKind::Pnpm, "pnpm-workspace.yaml", pnpm)
+        .or_else(|| read(WorkspaceKind::Npm, "package.json", npm));
+    let deno = read(WorkspaceKind::Deno, "deno.json", deno)
+        .or_else(|| read(WorkspaceKind::Deno, "deno.jsonc", deno));
+    let nx = root("nx.json").and_then(|_| {
+        let projects: Vec<String> = manifests
+            .iter()
+            .filter_map(|(path, _)| path.strip_suffix("/project.json"))
+            .map(globset::escape)
+            .collect();
+        let (include, exclude) = globs(&projects)?;
+        Some(Declaration {
+            kind: WorkspaceKind::Nx,
+            manifest: "nx.json".to_owned(),
+            include,
+            exclude,
+        })
+    });
+    [
+        installed,
+        read(WorkspaceKind::Lerna, "lerna.json", lerna),
+        nx,
+        read(WorkspaceKind::GoWork, "go.work", go_work),
+        read(WorkspaceKind::Uv, "pyproject.toml", uv),
+        deno,
+    ]
+    .into_iter()
+    .flatten()
+    .collect()
 }
 
 /// Patterns as folder globs: `*` stays within a folder, `**` crosses them,
@@ -110,6 +148,86 @@ fn lerna(content: &str) -> Vec<String> {
     serde_json::from_str::<Value>(content)
         .map(|manifest| strings(manifest.get("packages")))
         .unwrap_or_default()
+}
+
+/// `workspace` of a `deno.json` or `deno.jsonc`, comments left out.
+fn deno(content: &str) -> Vec<String> {
+    serde_json::from_str::<Value>(&without_comments(content))
+        .map(|manifest| strings(manifest.get("workspace")))
+        .unwrap_or_default()
+}
+
+/// JSON with comments, as `deno.jsonc` allows, made plain: `//` and
+/// `/* */` comments outside strings are dropped, and so are the commas
+/// that close a list or an object.
+fn without_comments(text: &str) -> String {
+    let mut plain = String::with_capacity(text.len());
+    let mut chars = text.chars().peekable();
+    let mut string = false;
+    while let Some(c) = chars.next() {
+        if string {
+            plain.push(c);
+            match c {
+                '\\' => plain.extend(chars.next()),
+                '"' => string = false,
+                _ => {}
+            }
+            continue;
+        }
+        match (c, chars.peek()) {
+            ('"', _) => {
+                string = true;
+                plain.push(c);
+            }
+            ('/', Some('/')) => while chars.next_if(|&next| next != '\n').is_some() {},
+            ('/', Some('*')) => {
+                chars.next();
+                let mut previous = ' ';
+                for next in chars.by_ref() {
+                    if previous == '*' && next == '/' {
+                        break;
+                    }
+                    previous = next;
+                }
+            }
+            _ => plain.push(c),
+        }
+    }
+    // A trailing comma before `]` or `}`
+    let mut cleaned = String::with_capacity(plain.len());
+    let mut pending: Option<char> = None;
+    let mut string = false;
+    let mut escaped = false;
+    for c in plain.chars() {
+        if string {
+            cleaned.push(c);
+            if escaped {
+                escaped = false;
+            } else if c == '\\' {
+                escaped = true;
+            } else if c == '"' {
+                string = false;
+            }
+            continue;
+        }
+        if c == ',' {
+            pending = Some(c);
+            continue;
+        }
+        if let Some(comma) = pending
+            && !c.is_whitespace()
+        {
+            if c != ']' && c != '}' {
+                cleaned.push(comma);
+            }
+            pending = None;
+        }
+        if c == '"' {
+            string = true;
+        }
+        cleaned.push(c);
+    }
+    cleaned
 }
 
 fn strings(list: Option<&Value>) -> Vec<String> {
@@ -207,7 +325,18 @@ mod tests {
             .iter()
             .map(|(path, content)| (*path, content.as_bytes()))
             .collect();
-        declaration(&manifests)
+        declarations(&manifests).into_iter().next()
+    }
+
+    fn kinds(manifests: &[(&str, &str)]) -> Vec<WorkspaceKind> {
+        let manifests: Vec<(&str, &[u8])> = manifests
+            .iter()
+            .map(|(path, content)| (*path, content.as_bytes()))
+            .collect();
+        declarations(&manifests)
+            .into_iter()
+            .map(|declaration| declaration.kind)
+            .collect()
     }
 
     #[test]
@@ -277,5 +406,59 @@ mod tests {
     #[test]
     fn patterns_cannot_leave_the_repository() {
         assert!(declared(&[("package.json", r#"{"workspaces": ["../x/*", "/abs"]}"#)]).is_none());
+    }
+
+    #[test]
+    fn every_declaration_is_read_pnpm_instead_of_npm() {
+        let manifests = [
+            ("package.json", r#"{"workspaces": ["frontend"]}"#),
+            ("pnpm-workspace.yaml", "packages:\n  - apps/*\n"),
+            ("lerna.json", r#"{"packages": ["apps/*"]}"#),
+            ("go.work", "use ./server\n"),
+            (
+                "pyproject.toml",
+                "[tool.uv.workspace]\nmembers = [\"backend\"]\n",
+            ),
+        ];
+        assert_eq!(
+            kinds(&manifests),
+            [
+                WorkspaceKind::Pnpm,
+                WorkspaceKind::Lerna,
+                WorkspaceKind::GoWork,
+                WorkspaceKind::Uv
+            ]
+        );
+        // Without pnpm, the workspaces of package.json
+        assert_eq!(kinds(&manifests[..1]), [WorkspaceKind::Npm],);
+    }
+
+    #[test]
+    fn nx_declares_the_folders_of_its_project_files() {
+        let manifests = [
+            ("nx.json", "{}"),
+            ("project.json", "{}"),
+            ("apps/web/project.json", "{}"),
+            ("libs/[ui]/project.json", "{}"),
+        ];
+        let nx = declared(&manifests).unwrap();
+        assert_eq!(nx.kind, WorkspaceKind::Nx);
+        assert!(nx.matches("apps/web") && nx.matches("libs/[ui]"));
+        assert!(!nx.matches("apps/api") && !nx.matches("libs/u"));
+        assert_eq!(nx.members(), ["project.json"]);
+        // Project files without nx.json declare nothing
+        assert!(declared(&manifests[1..]).is_none());
+    }
+
+    #[test]
+    fn deno_declares_its_workspace_with_comments() {
+        let deno = declared(&[(
+            "deno.jsonc",
+            "{\n  // the modules\n  \"workspace\": [\"./assert\", \"./http\", /* last */],\n  \"url\": \"https://a.b//c\"\n}",
+        )])
+        .unwrap();
+        assert_eq!(deno.kind, WorkspaceKind::Deno);
+        assert!(deno.matches("assert") && deno.matches("http"));
+        assert!(!deno.matches("fs"));
     }
 }
