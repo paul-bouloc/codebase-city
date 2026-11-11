@@ -25,6 +25,11 @@ pub(super) struct Package<'a> {
     pub start: Option<u32>,
     /// Its first Go file that starts a program.
     pub go_main: Option<u32>,
+    /// Whether it declares a program to install: `bin` of its
+    /// `package.json`, `[project.scripts]` of its `pyproject.toml`.
+    pub program: bool,
+    /// Whether a production file of another package imports it.
+    pub imported: bool,
 }
 
 /// What its framework says of a package.
@@ -64,14 +69,110 @@ pub(super) fn read(package: &Package<'_>) -> Found {
         _ => {}
     }
     found.entry = found.entry.or(package.start).or(package.go_main);
-    let starts = package
-        .npm
-        .is_some_and(|npm| npm.scripts.contains_key("start"));
+    found.app = match nx_project_type(package) {
+        Some(declared) => declared,
+        None => runs_on_its_own(package, framework, &found),
+    };
+    found
+}
+
+/// What the repository says a package is, other than Nx: a script that
+/// starts it or serves it, a platform manifest, a framework's entry, a Go
+/// `main`, or a program or a Python web app no other package imports. A
+/// library can ship a program too (`@babel/parser`): the packages that
+/// import it make it a library.
+fn runs_on_its_own(package: &Package<'_>, framework: Option<Framework>, found: &Found) -> bool {
+    let scripts = package.npm.map(|npm| &npm.scripts);
+    let starts = scripts.is_some_and(|scripts| scripts.contains_key("start"));
+    let serves = scripts.is_some_and(|scripts| {
+        ["dev", "serve"]
+            .iter()
+            .filter_map(|name| scripts.get(*name))
+            .any(|script| serves_an_app(script))
+    });
     let platform = framework == Some(Framework::BrowserExtension) || is_expo_app(package);
     let convention = framework == Some(Framework::Nestjs) && found.entry.is_some()
         || found.routes.as_ref().is_some_and(|routes| routes.1 > 0);
-    found.app = starts || platform || convention || package.go_main.is_some();
-    found
+    let python_app = matches!(
+        framework,
+        Some(Framework::Fastapi | Framework::Django | Framework::Flask)
+    );
+    let alone = (package.program || python_app) && !package.imported;
+    starts || serves || platform || convention || package.go_main.is_some() || alone
+}
+
+/// `projectType` of its Nx `project.json`: `application` or `library`.
+fn nx_project_type(package: &Package<'_>) -> Option<bool> {
+    let project = package.own.get("project.json")?;
+    let project: Value = serde_json::from_slice(project).ok()?;
+    match project.get("projectType")?.as_str()? {
+        "application" => Some(true),
+        "library" => Some(false),
+        _ => None,
+    }
+}
+
+/// Commands that start a development server or an app window, with the
+/// subcommands that do (`""` none, `"*"` any: `electron .` opens a
+/// folder): a script that runs one makes its package an app. A bundler
+/// that only builds (`vite build`) or watches (`tsup --watch`) does not.
+const SERVERS: &[(&str, &[&str])] = &[
+    ("vite", &["", "dev", "serve"]),
+    ("next", &["dev"]),
+    ("nuxt", &["dev"]),
+    ("nuxi", &["dev"]),
+    ("astro", &["dev"]),
+    ("remix", &["dev", "vite:dev"]),
+    ("react-router", &["dev"]),
+    ("ng", &["serve"]),
+    ("wrangler", &["dev"]),
+    ("electron", &["*"]),
+    ("electron-vite", &["dev", "preview"]),
+    ("electron-forge", &["start"]),
+    ("expo", &["start"]),
+    ("webpack", &["serve"]),
+    ("webpack-dev-server", &[""]),
+    ("rspack", &["serve", "dev"]),
+    ("rsbuild", &["dev"]),
+    ("parcel", &["", "serve"]),
+];
+
+/// Whether a script runs one of [`SERVERS`], in any of its commands.
+fn serves_an_app(script: &str) -> bool {
+    script.split(['&', ';', '|']).any(|command| {
+        let mut words = command
+            .split_whitespace()
+            // Environment, runners and package managers before the command
+            .skip_while(|word| {
+                word.contains('=')
+                    || matches!(
+                        *word,
+                        "npx"
+                            | "pnpx"
+                            | "bunx"
+                            | "yarn"
+                            | "pnpm"
+                            | "npm"
+                            | "bun"
+                            | "exec"
+                            | "run"
+                            | "dlx"
+                            | "cross-env"
+                            | "dotenv"
+                            | "--"
+                    )
+            });
+        let Some(program) = words.next() else {
+            return false;
+        };
+        let subcommand = words
+            .next()
+            .filter(|word| !word.starts_with('-'))
+            .unwrap_or("");
+        SERVERS.iter().any(|(name, subcommands)| {
+            *name == program && (subcommands.contains(&subcommand) || subcommands.contains(&"*"))
+        })
+    })
 }
 
 /// The first framework of the table its dependencies name. Peer
@@ -261,6 +362,7 @@ mod tests {
         code: Vec<&'static str>,
         start: Option<u32>,
         go_main: Option<u32>,
+        imported: bool,
     }
 
     impl Fixture {
@@ -272,6 +374,7 @@ mod tests {
                 code: Vec::new(),
                 start: None,
                 go_main: None,
+                imported: false,
             }
         }
 
@@ -296,6 +399,11 @@ mod tests {
                 code: &code,
                 start: self.start,
                 go_main: self.go_main,
+                program: self.npm.as_ref().is_some_and(|npm| npm.bin)
+                    || self.own.iter().any(|(name, content)| {
+                        *name == "pyproject.toml" && content.contains("[project.scripts]")
+                    }),
+                imported: self.imported,
             })
         }
     }
@@ -417,5 +525,75 @@ mod tests {
         let mut go = Fixture::npm("{}");
         go.go_main = Some(3);
         assert!(go.read().app);
+    }
+
+    #[test]
+    fn nx_says_whether_a_project_is_an_application() {
+        let mut fixture = Fixture::npm(r#"{"name": "front"}"#);
+        assert!(!fixture.read().app);
+        fixture
+            .own
+            .push(("project.json", r#"{"projectType": "application"}"#));
+        assert!(fixture.read().app);
+        // Nx outranks a start script
+        let mut fixture = Fixture::npm(r#"{"scripts": {"start": "node ."}}"#);
+        fixture
+            .own
+            .push(("project.json", r#"{"projectType": "library"}"#));
+        assert!(!fixture.read().app);
+    }
+
+    #[test]
+    fn a_script_that_serves_an_app_makes_an_app() {
+        for script in [
+            "vite",
+            "vite --port 3000",
+            "cross-env NODE_ENV=dev vite dev",
+            "next dev --turbo",
+            "pnpm exec wrangler dev",
+            "yarn native:setup && electron .",
+            "npx nuxi dev",
+            "ng serve",
+        ] {
+            let json = format!(r#"{{"scripts": {{"dev": "{script}"}}}}"#);
+            assert!(Fixture::npm(&json).read().app, "{script}");
+        }
+        for script in [
+            "vite build",
+            "tsup --watch",
+            "tsc -w",
+            "vitest",
+            "next build",
+        ] {
+            let json = format!(r#"{{"scripts": {{"dev": "{script}"}}}}"#);
+            assert!(!Fixture::npm(&json).read().app, "{script}");
+        }
+    }
+
+    #[test]
+    fn a_program_no_package_imports_is_an_app() {
+        let mut cli = Fixture::npm(r#"{"bin": {"babel": "./bin/babel.js"}}"#);
+        assert!(cli.read().app);
+        // @babel/parser has a program too, but others import it
+        cli.imported = true;
+        assert!(!cli.read().app);
+        let mut python = Fixture::npm("{}");
+        python.npm = None;
+        python
+            .own
+            .push(("pyproject.toml", "[project.scripts]\nclai = \"clai:cli\"\n"));
+        assert!(python.read().app);
+    }
+
+    #[test]
+    fn a_python_web_app_no_package_imports_is_an_app() {
+        let mut backend = Fixture::npm("{}");
+        backend.npm = None;
+        backend.python = BTreeSet::from(["fastapi".to_owned()]);
+        let found = backend.read();
+        assert_eq!(found.framework, Some(Framework::Fastapi));
+        assert!(found.app);
+        backend.imported = true;
+        assert!(!backend.read().app);
     }
 }

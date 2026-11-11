@@ -19,6 +19,8 @@ pub(super) struct Npm {
     pub scripts: BTreeMap<String, String>,
     /// The `main` field as written (`expo-router/entry`).
     pub main: Option<String>,
+    /// Whether it declares a program to install (`bin`).
+    pub bin: bool,
 }
 
 pub(super) fn npm(content: &[u8]) -> Option<Npm> {
@@ -61,12 +63,23 @@ pub(super) fn npm(content: &[u8]) -> Option<Npm> {
             .filter_map(|(name, script)| Some((name.clone(), script.as_str()?.to_owned())))
             .collect(),
         main: text("main"),
+        bin: match manifest.get("bin") {
+            Some(Value::String(path)) => !path.is_empty(),
+            Some(Value::Object(programs)) => !programs.is_empty(),
+            _ => false,
+        },
     })
 }
 
-/// The name and dependencies of a `pyproject.toml`: `[project]` and
-/// `[tool.poetry]`.
-pub(super) fn pyproject(content: &[u8]) -> (Option<String>, Vec<String>) {
+/// What a `pyproject.toml` declares: `[project]` and `[tool.poetry]`.
+pub(super) struct Pyproject {
+    pub name: Option<String>,
+    pub dependencies: Vec<String>,
+    /// Whether it declares a command to install (`[project.scripts]`).
+    pub scripts: bool,
+}
+
+pub(super) fn pyproject(content: &[u8]) -> Pyproject {
     let text = String::from_utf8_lossy(content);
     let sections = toml_sections(&text);
     let name = ["project", "tool.poetry"].iter().find_map(|section| {
@@ -82,7 +95,18 @@ pub(super) fn pyproject(content: &[u8]) -> (Option<String>, Vec<String>) {
     if let Some(poetry) = sections.get("tool.poetry.dependencies") {
         dependencies.extend(toml_keys(poetry).into_iter().filter(|key| key != "python"));
     }
-    (name, dependencies)
+    let scripts = ["project.scripts", "tool.poetry.scripts"]
+        .iter()
+        .any(|section| {
+            sections
+                .get(*section)
+                .is_some_and(|body| !toml_keys(body).is_empty())
+        });
+    Pyproject {
+        name,
+        dependencies,
+        scripts,
+    }
 }
 
 /// The packages a `requirements.txt` lists, options and includes left out.
@@ -275,6 +299,10 @@ mod tests {
         assert_eq!(npm.name.as_deref(), Some("@acme/web"));
         assert_eq!(npm.main.as_deref(), Some("expo-router/entry"));
         assert!(npm.scripts.contains_key("start"));
+        assert!(!npm.bin);
+        assert!(super::npm(br#"{"bin": {"tool": "cli.js"}}"#).unwrap().bin);
+        assert!(super::npm(br#"{"bin": "cli.js"}"#).unwrap().bin);
+        assert!(!super::npm(br#"{"bin": {}}"#).unwrap().bin);
         assert_eq!(Vec::from_iter(&npm.runtime), ["next", "sharp"]);
         assert_eq!(Vec::from_iter(&npm.dev), ["storybook"]);
         assert_eq!(npm.declared.len(), 4);
@@ -282,17 +310,22 @@ mod tests {
     }
 
     #[test]
-    fn a_pyproject_gives_its_name_and_dependencies() {
-        let (name, dependencies) = pyproject(
-            b"[build-system]\nrequires = [\"pdm-backend\"]\n\n[project]\nname = \"fastapi\"\ndependencies = [\n    \"starlette>=0.46.0\", # web\n    'pydantic>=2.9.0',\n    \"typing-extensions>=4.8.0\",\n]\n[project.optional-dependencies]\nall = [\"httpx\"]\n",
+    fn a_pyproject_gives_its_name_dependencies_and_commands() {
+        let fastapi = pyproject(
+            b"[build-system]\nrequires = [\"pdm-backend\"]\n\n[project]\nname = \"fastapi\"\ndependencies = [\n    \"starlette>=0.46.0\", # web\n    'pydantic>=2.9.0',\n    \"typing-extensions>=4.8.0\",\n]\n[project.optional-dependencies]\nall = [\"httpx\"]\n\n[project.scripts]\nfastapi = \"fastapi.cli:main\"\n",
         );
-        assert_eq!(name.as_deref(), Some("fastapi"));
-        assert_eq!(dependencies, ["starlette", "pydantic", "typing-extensions"]);
-        let (name, dependencies) = pyproject(
+        assert_eq!(fastapi.name.as_deref(), Some("fastapi"));
+        assert_eq!(
+            fastapi.dependencies,
+            ["starlette", "pydantic", "typing-extensions"]
+        );
+        assert!(fastapi.scripts);
+        let app = pyproject(
             b"[tool.poetry]\nname = \"app\"\n\n[tool.poetry.dependencies]\npython = \"^3.11\"\ndjango = \"^5\"\n",
         );
-        assert_eq!(name.as_deref(), Some("app"));
-        assert_eq!(dependencies, ["django"]);
+        assert_eq!(app.name.as_deref(), Some("app"));
+        assert_eq!(app.dependencies, ["django"]);
+        assert!(!app.scripts);
     }
 
     #[test]
