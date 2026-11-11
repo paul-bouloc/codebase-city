@@ -32,7 +32,7 @@ pub(super) fn other_apps(repo: &Monorepo<'_>) -> Option<TourStep> {
 }
 
 /// The largest folders of the app that holds a good share of the apps'
-/// code, by their code files.
+/// code, by their code files, below the folder that holds all of it.
 pub(super) fn inside_app(repo: &Monorepo<'_>) -> Option<TourStep> {
     let result = repo.result;
     let packages = &result.packages;
@@ -59,10 +59,23 @@ pub(super) fn inside_app(repo: &Monorepo<'_>) -> Option<TourStep> {
             code[parent as usize] += code[dir];
         }
     }
-    let mut children: Vec<(u64, u32)> = (0..parents.len())
-        .filter(|&dir| parents[dir] == Some(root) && code[dir] > 0)
-        .map(|dir| (code[dir], index(dir)))
-        .collect();
+    let children_of = |root: u32| -> Vec<(u64, u32)> {
+        (0..parents.len())
+            .filter(|&dir| parents[dir] == Some(root) && code[dir] > 0)
+            .map(|dir| (code[dir], index(dir)))
+            .collect()
+    };
+    // An app often keeps all its code in one folder, such as `src/`: its
+    // folders are the ones below
+    let mut root = root;
+    let mut children = children_of(root);
+    while let [(files, only)] = children[..] {
+        if files != code[root as usize] {
+            break;
+        }
+        root = only;
+        children = children_of(root);
+    }
     children.sort_by_key(|&(files, dir)| (std::cmp::Reverse(files), dir));
     children.truncate(MAX_ROWS);
     (!children.is_empty()).then(|| TourStep::InsideApp {
@@ -172,5 +185,44 @@ mod tests {
         // 100 files of 251: below 40%
         fixture.result.packages.code_files[1] = 122;
         assert_eq!(inside_app(&repo(&fixture)), None);
+    }
+
+    #[test]
+    fn inside_an_app_that_keeps_its_code_in_one_folder() {
+        let mut fixture = Fixture::monorepo();
+        let [web, pages, components] = [
+            "apps/web/pages/index.ts",
+            "apps/web/components/a.ts",
+            "apps/web/components/b.ts",
+        ]
+        .map(|path| fixture.file_at(path));
+        // Everything moves to `apps/web/src/`, a readme stays at the top
+        let src = fixture.dir("apps/web/src");
+        let [src_pages, src_components] =
+            ["apps/web/src/pages", "apps/web/src/components"].map(|path| fixture.dir(path));
+        fixture.result.files.dir[web] = src_pages;
+        fixture.result.files.dir[pages] = src_components;
+        fixture.result.files.dir[components] = src_components;
+        fixture.file("apps/web/README.md", model::Scope::Docs);
+        assert_eq!(
+            inside_app(&repo(&fixture)),
+            Some(TourStep::InsideApp {
+                app: 0,
+                dirs: vec![src_components, src_pages],
+                files: vec![2, 1],
+            })
+        );
+        // Code of its own in `src/` leaves its folders as they are
+        fixture.file("apps/web/src/main.ts", model::Scope::Source);
+        let Some(TourStep::InsideApp { dirs, .. }) = inside_app(&repo(&fixture)) else {
+            unreachable!()
+        };
+        assert_eq!(dirs, [src_components, src_pages]);
+        // Code at the top of the app: `src/` is one of its folders
+        fixture.file("apps/web/next.config.ts", model::Scope::Source);
+        let Some(TourStep::InsideApp { dirs, .. }) = inside_app(&repo(&fixture)) else {
+            unreachable!()
+        };
+        assert_eq!(dirs, [src]);
     }
 }
