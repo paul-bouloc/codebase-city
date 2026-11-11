@@ -23,7 +23,8 @@ mod structure;
 
 use model::{AnalysisResult, Scope, Tour, TourStep};
 
-/// The most rows a list of a step holds.
+/// The most rows a list of files, roles, folders or shared libraries
+/// holds.
 const MAX_ROWS: usize = 3;
 
 /// Below this many files, or without a file the analyzer reads, the tour
