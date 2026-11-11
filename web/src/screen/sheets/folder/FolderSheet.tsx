@@ -26,7 +26,7 @@ const TEXT = {
   github: 'Open on GitHub',
   copyLink: 'Copy link to this folder',
   island: (layer: number, of: number) => `Island · layer ${layer} of ${of}`,
-  // An island without production code stands on no layer.
+  // An island without production code, or outside a monorepo's packages, stands on no layer.
   plainIsland: 'Island',
   // A folder that holds islands, without being one.
   plainFolder: 'Folder',

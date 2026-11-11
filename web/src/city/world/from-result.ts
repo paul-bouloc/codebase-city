@@ -279,7 +279,8 @@ function fileCycles(result: AnalysisResult, lotOf: readonly (LotRef | undefined)
 /**
  * Imports between files, by their lots, or to a folder's grid. One goes up the layers when its
  * file's island is lower than the island it imports, as the analyzer counts them between islands:
- * a barrel's re-exports never do, and an island with no layer (tests only) is on none.
+ * a barrel's re-exports never do, and an island with no layer (no production code, or outside a
+ * monorepo's packages) is on none.
  */
 function fileImports(
   result: AnalysisResult,

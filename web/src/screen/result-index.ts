@@ -50,7 +50,7 @@ export interface ResultIndex {
   rankedFiles: number
   /** The folders right under each folder. */
   children: readonly (readonly number[])[]
-  /** The highest layer of the city; 0 when no island has production code. */
+  /** The highest layer of the city; 0 when no island has a layer. */
   layers: number
 }
 

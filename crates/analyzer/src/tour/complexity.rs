@@ -14,7 +14,7 @@ const MIN_COMPLEXITY: u32 = 20;
 
 /// The most complex production files that other files import, one per
 /// folder; in a monorepo, one per main unit of apps, or per package when
-/// there is no app, so that each says where in the architecture it is. A
+/// apps do not lead it, so that each says where in the architecture it is. A
 /// file nothing imports is often a copied library or a script: complex,
 /// but not where the code's complexity lives. When the repository was too
 /// large to count dependents, every production file is a candidate.
