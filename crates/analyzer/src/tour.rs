@@ -4,10 +4,18 @@
 //! so a stored result can be given a new tour without its repository. A
 //! step only comes when it has a fact worth a sentence; the sentences are
 //! the web app's.
+//!
+//! A monorepo's tour presents its packages: its apps, its libraries and
+//! what links them. Another repository's presents its files: where the
+//! code starts, what pulls it together, what it rests on.
 
+mod apps;
 mod complexity;
+mod consumers;
 #[cfg(test)]
 mod fixture;
+mod libraries;
+mod monorepo;
 mod overview;
 mod rest;
 mod roles;
@@ -32,14 +40,28 @@ pub fn of_result(result: &AnalysisResult) -> Tour {
     if small || !reads_code(result) {
         return Tour { steps };
     }
-    let entries = roles::entry_points(result);
-    let conductors = roles::conductors(result, entries.as_ref());
-    steps.extend(entries);
-    steps.extend(conductors);
-    steps.extend(roles::foundations(result));
-    steps.extend(structure::layers(result));
-    steps.extend(structure::cycles(result));
-    steps.extend(complexity::complex_areas(result));
+    let repo = monorepo::Monorepo::of(result);
+    if let Some(repo) = &repo {
+        steps.extend(apps::applications(repo));
+        steps.extend(apps::other_apps(repo));
+        steps.extend(libraries::libraries(repo));
+        steps.extend(libraries::app_links(repo));
+        // The apps sit above the libraries: their layers say nothing more
+        if !repo.has_apps() {
+            steps.extend(structure::layers(result));
+        }
+        steps.extend(consumers::consumers(repo));
+        steps.extend(apps::inside_app(repo));
+    } else {
+        let entries = roles::entry_points(result);
+        let conductors = roles::conductors(result, entries.as_ref());
+        steps.extend(entries);
+        steps.extend(conductors);
+        steps.extend(roles::foundations(result));
+        steps.extend(structure::layers(result));
+    }
+    steps.extend(structure::cycles(result, repo.as_ref()));
+    steps.extend(complexity::complex_areas(result, repo.as_ref()));
     steps.extend(rest::rest(result));
     Tour { steps }
 }
@@ -90,7 +112,13 @@ mod tests {
                 TourStep::EntryPoints { .. } => "entryPoints",
                 TourStep::Conductors { .. } => "conductors",
                 TourStep::Foundations { .. } => "foundations",
+                TourStep::Applications { .. } => "applications",
+                TourStep::OtherApps { .. } => "otherApps",
+                TourStep::Libraries { .. } => "libraries",
+                TourStep::AppLinks { .. } => "appLinks",
                 TourStep::Layers { .. } => "layers",
+                TourStep::Consumers { .. } => "consumers",
+                TourStep::InsideApp { .. } => "insideApp",
                 TourStep::Cycles { .. } => "cycles",
                 TourStep::ComplexAreas { .. } => "complexAreas",
                 TourStep::Rest { .. } => "rest",
@@ -144,6 +172,47 @@ mod tests {
                 "rest"
             ]
         );
+    }
+
+    #[test]
+    fn a_monorepo_gets_the_tour_of_its_packages() {
+        let mut repo = Fixture::monorepo();
+        let tour = repo.validated(of_result(&repo.result));
+        assert_eq!(
+            kinds(&tour),
+            [
+                "overview",
+                "applications",
+                "otherApps",
+                "libraries",
+                "appLinks",
+                "insideApp",
+                "rest"
+            ]
+        );
+        // Without apps: layers when the islands have them, and no step of
+        // apps
+        repo.result.packages.kind[..6].fill(model::PackageKind::Library);
+        let [apps, libs] = ["apps", "libs"].map(|name| repo.island(name));
+        let islands = repo.result.islands.dir.len();
+        repo.result.islands.layer = vec![None; islands];
+        repo.result.islands.layer[apps as usize] = Some(2);
+        repo.result.islands.layer[libs as usize] = Some(1);
+        repo.result.islands.layer[0] = Some(1);
+        repo.link(0, apps, 1, 1);
+        repo.link(apps, libs, 3, 0);
+        let tour = repo.validated(of_result(&repo.result));
+        assert_eq!(kinds(&tour), ["overview", "libraries", "layers", "rest"]);
+    }
+
+    #[test]
+    fn a_workspace_of_one_package_of_code_gets_the_tour_of_files() {
+        let mut repo = Fixture::monorepo();
+        repo.result.packages.code_files.fill(0);
+        repo.result.packages.code_files[0] = 100;
+        let tour = repo.validated(of_result(&repo.result));
+        assert!(!kinds(&tour).contains(&"applications"));
+        assert!(!kinds(&tour).contains(&"libraries"));
     }
 
     #[test]
