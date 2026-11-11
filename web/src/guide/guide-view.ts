@@ -80,9 +80,39 @@ function ringed(folders: number[]): GuideView {
   return { ...NOTHING, folders: [...new Set(folders)], dim: 'others' }
 }
 
-/** The islands of these packages ringed, the rest faded: in a monorepo, a package is an island. */
+/**
+ * The ground of these packages ringed, the rest faded. A package of a monorepo is an island; the
+ * root package owns the islands no other package holds; a package inside another is a parcel of
+ * that one's island.
+ */
 function packages(result: AnalysisResult, rows: number[]): GuideView {
-  return ringed(rows.flatMap((row) => result.packages.dir[row] ?? []))
+  const owner = packageOfDirs(result)
+  return ringed(
+    rows.flatMap((row) => {
+      const dir = result.packages.dir[row]
+      if (dir === undefined) {
+        return []
+      }
+      if (dir === 0) {
+        return result.islands.dir.filter((island) => owner[island] === row)
+      }
+      return [dir]
+    }),
+  )
+}
+
+/** The package of each folder: the deepest that holds it. Parents come before their children. */
+function packageOfDirs(result: AnalysisResult): (number | null)[] {
+  const owner: (number | null)[] = result.dirs.parent.map(() => null)
+  result.packages.dir.forEach((dir, row) => {
+    owner[dir] = row
+  })
+  result.dirs.parent.forEach((parent, dir) => {
+    if (owner[dir] === null && parent !== null) {
+      owner[dir] = owner[parent] ?? null
+    }
+  })
+  return owner
 }
 
 type Target = [file: number | null, dir: number | null]

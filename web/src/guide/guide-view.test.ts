@@ -135,4 +135,17 @@ describe('guideView', () => {
       }),
     ).toEqual(ringed([6]))
   })
+
+  it('rings the islands a root package owns, and a package inside another by its folder', () => {
+    // The root is a package (`.` of go.work); `src/core`, `src/ui` and `src/generated` are
+    // packages inside it
+    const monorepo: AnalysisResult = {
+      ...result,
+      packages: { ...result.packages, dir: [0, 2, 3, 5] },
+    }
+    const view = guideView(monorepo, { kind: 'otherApps', apps: [0, 3] })
+    // The root owns `/`, `src`, `src/api`, `tests` and `scripts`; `src/generated` is its own
+    expect(view.folders).toEqual([0, 1, 4, 6, 7, 5])
+    expect(view.dim).toBe('others')
+  })
 })

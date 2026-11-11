@@ -79,16 +79,17 @@ describe('decodePackages', () => {
     )
   })
 
-  it('requires a workspace, packages in folder order and none inside another', () => {
+  it('requires a workspace and packages in folder order, nested ones allowed', () => {
     expect(decodeChanged((json) => (json.workspaces = []))).toThrow(
       'packages need a workspace that declares them',
     )
     expect(decodeChanged((json) => (json.packages.dir = [7, 6]))).toThrow(
       'packages[1] must come after the previous package, by folder',
     )
-    expect(decodeChanged((json) => (json.packages.dir = [1, 2]))).toThrow(
-      'packages.dir[1] lies inside another package',
-    )
+    // A package inside another (the root holding the others) is valid
+    const nested = withPackages()
+    nested.packages.dir = [0, 6]
+    expect(decodeResult(nested).packages.dir).toEqual([0, 6])
   })
 
   it('requires names, routes that add up and indexes in bounds', () => {

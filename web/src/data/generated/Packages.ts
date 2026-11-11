@@ -3,10 +3,12 @@ import type { Framework } from "./Framework";
 import type { PackageKind } from "./PackageKind";
 
 /**
- * The packages a [`Workspace`] declares, one row per package, sorted by
- * folder. A package is a folder that matches the declaration and holds an
- * analyzed file; no package lies inside another. Empty without a
- * workspace.
+ * The packages the [`Workspace`]s declare, one row per package, sorted by
+ * folder. A package is a folder that matches a declaration, has its
+ * manifest and holds an analyzed file; the root (folder 0) when a
+ * declaration lists it. A package can lie inside another (a Go module in
+ * a module, the members of a root package): each file belongs to the
+ * deepest package that holds it. Empty without a workspace.
  */
 export type Packages = { dir: Array<number>, 
 /**

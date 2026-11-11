@@ -112,7 +112,7 @@ export function decodePackages(
   if (dir.length > 0 && workspaces.length === 0) {
     fail('packages need a workspace that declares them')
   }
-  checkPackages(packages, dirParents)
+  checkPackages(packages)
   checkGroups(packageGroups, packages.group)
 
   return {
@@ -151,26 +151,13 @@ function decodeWorkspaces(value: unknown, fileCount: number): Workspace[] {
   return workspaces
 }
 
-function checkPackages(packages: Packages, dirParents: (number | null)[]): void {
+function checkPackages(packages: Packages): void {
   const { dir } = packages
   for (let row = 1; row < dir.length; row++) {
     if ((dir[row - 1] as number) >= (dir[row] as number)) {
       fail(`packages[${row}] must come after the previous package, by folder`)
     }
   }
-  // A package inside another would split one manifest's code in two
-  const isPackage = new Set(dir)
-  dir.forEach((folder, row) => {
-    for (
-      let parent = dirParents[folder] ?? null;
-      parent !== null;
-      parent = dirParents[parent] ?? null
-    ) {
-      if (isPackage.has(parent)) {
-        fail(`packages.dir[${row}] lies inside another package`)
-      }
-    }
-  })
   const unnamed = packages.name.indexOf('')
   if (unnamed !== -1) {
     fail(`packages.name[${unnamed}] is empty`)
