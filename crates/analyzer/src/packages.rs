@@ -20,6 +20,7 @@ use crate::lang::Import;
 use crate::resolve::Outcome;
 use crate::saturating_u32 as index;
 use externals::Declared;
+use workspace::Ecosystem;
 
 /// What the packages are found from, by row in the result.
 pub(crate) struct Input<'a> {
@@ -225,8 +226,15 @@ fn package_dirs(
 /// language, the root included. memos keeps a Go server at its root and a
 /// Vite app in `web` without declaring them. A root `pyproject.toml` that
 /// only configures tools makes no package: its folder holds no Python of
-/// its own. Implicit packages count only when the repository has at least
-/// two packages in all: a repository of a single project has none.
+/// its own.
+///
+/// Under a root project, a project of the same language is its satellite,
+/// not a package: the documentation site or the test app of a JavaScript
+/// library (immer, redux, react-hook-form). Go is the exception: its
+/// toolchain always keeps a nested module out of the module around it
+/// (consul's `api` and `sdk`). Implicit packages count only when the
+/// repository has at least two packages in all: a repository of a single
+/// project has none.
 fn with_implicit(
     input: &Input<'_>,
     declarations: &[workspace::Declaration],
@@ -235,9 +243,9 @@ fn with_implicit(
     has_production: &[bool],
 ) -> Vec<u32> {
     let undeclared = workspace::undeclared(declarations);
-    let mut implicit: HashMap<u32, Vec<workspace::Ecosystem>> = HashMap::new();
+    let mut implicit: HashMap<u32, Vec<Ecosystem>> = HashMap::new();
     for (&dir, own) in &manifests.own {
-        let ecosystems: Vec<workspace::Ecosystem> = undeclared
+        let ecosystems: Vec<Ecosystem> = undeclared
             .iter()
             .copied()
             .filter(|ecosystem| {
@@ -251,6 +259,33 @@ fn with_implicit(
             implicit.insert(dir, ecosystems);
         }
     }
+    let mut all = settle(input, &declared, &implicit);
+    if all.first() == Some(&0) && !declared.contains(&0) {
+        let root = held(input, &all, &implicit).swap_remove(0);
+        implicit.retain(|&dir, ecosystems| {
+            if dir != 0 {
+                ecosystems
+                    .retain(|&ecosystem| ecosystem == Ecosystem::Go || !root.contains(&ecosystem));
+            }
+            !ecosystems.is_empty()
+        });
+        all = settle(input, &declared, &implicit);
+    }
+    if all.len() < MONOREPO_PACKAGES {
+        declared
+    } else {
+        all
+    }
+}
+
+/// The declared packages and the implicit ones that hold code of their
+/// ecosystems. Leaving out a folder hands its files to the package around
+/// it, which may then hold code of its own: repeat until nothing changes.
+fn settle(
+    input: &Input<'_>,
+    declared: &[u32],
+    implicit: &HashMap<u32, Vec<Ecosystem>>,
+) -> Vec<u32> {
     let mut all: Vec<u32> = declared
         .iter()
         .copied()
@@ -258,37 +293,48 @@ fn with_implicit(
         .collect();
     all.sort_unstable();
     all.dedup();
-    // Leaving out a folder hands its files to the package around it, which
-    // may then hold code of its own: repeat until nothing changes
     loop {
-        let package_of_dir = package_of_dirs(input.parents, &all);
-        let mut holds = vec![false; all.len()];
-        for (file, (&dir, &language)) in input.file_dirs.iter().zip(input.languages).enumerate() {
-            let Some(row) = package_of_dir[dir as usize] else {
-                continue;
-            };
-            let row = row as usize;
-            holds[row] |= input.production[file]
-                && implicit
-                    .get(&all[row])
-                    .is_some_and(|ecosystems| ecosystems.iter().any(|e| e.holds(language)));
-        }
+        let held = held(input, &all, implicit);
         let kept: Vec<u32> = all
             .iter()
-            .zip(&holds)
-            .filter(|&(dir, &holds)| holds || declared.contains(dir))
+            .zip(&held)
+            .filter(|&(dir, held)| declared.contains(dir) || !held.is_empty())
             .map(|(&dir, _)| dir)
             .collect();
         if kept.len() == all.len() {
-            break;
+            return all;
         }
         all = kept;
     }
-    if all.len() < MONOREPO_PACKAGES {
-        declared
-    } else {
-        all
+}
+
+/// For each of `packages`, the ecosystems of an implicit package in which
+/// it holds production code of its own; none for a declared one.
+fn held(
+    input: &Input<'_>,
+    packages: &[u32],
+    implicit: &HashMap<u32, Vec<Ecosystem>>,
+) -> Vec<Vec<Ecosystem>> {
+    let package_of_dir = package_of_dirs(input.parents, packages);
+    let mut held: Vec<Vec<Ecosystem>> = vec![Vec::new(); packages.len()];
+    for (file, (&dir, &language)) in input.file_dirs.iter().zip(input.languages).enumerate() {
+        let Some(row) = package_of_dir[dir as usize] else {
+            continue;
+        };
+        let row = row as usize;
+        let Some(ecosystems) = implicit.get(&packages[row]) else {
+            continue;
+        };
+        if !input.production[file] {
+            continue;
+        }
+        for &ecosystem in ecosystems {
+            if ecosystem.holds(language) && !held[row].contains(&ecosystem) {
+                held[row].push(ecosystem);
+            }
+        }
     }
+    held
 }
 
 /// How a Go program ranks as its package's entry, the lowest first, as Go

@@ -683,3 +683,39 @@ fn an_implicit_package_can_lie_inside_a_declared_one() {
     assert_eq!(package_paths(&result), ["cli", "cli/web-ui", "lib"]);
     assert_eq!(result.packages.code_files[row(&result, "cli")], 1);
 }
+
+#[test]
+fn a_project_of_the_root_language_is_its_satellite() {
+    // A JavaScript library and its documentation site: one project
+    let result = analyzed(&[
+        (
+            "package.json",
+            r#"{ "name": "lib", "main": "src/index.js", "scripts": { "start": "jest --watch" } }"#,
+        ),
+        ("src/index.js", "export const lib = 1\n"),
+        ("src/util.js", "export const util = 1\n"),
+        (
+            "website/package.json",
+            r#"{ "name": "lib-website", "scripts": { "start": "docusaurus start" } }"#,
+        ),
+        ("website/sidebars.js", "module.exports = {}\n"),
+    ]);
+    assert!(result.packages.dir.is_empty());
+}
+
+#[test]
+fn a_nested_go_module_is_a_package_of_its_own() {
+    // A Go server with its API client as a module of its own, and a UI
+    let result = analyzed(&[
+        ("go.mod", "module example.com/server\n\ngo 1.22\n"),
+        ("main.go", "package main\n\nfunc main() {}\n"),
+        ("api/go.mod", "module example.com/server/api\n\ngo 1.22\n"),
+        ("api/client.go", "package api\n\nfunc Get() {}\n"),
+        (
+            "ui/package.json",
+            r#"{ "name": "ui", "scripts": { "dev": "vite" } }"#,
+        ),
+        ("ui/src/main.ts", "export const ui = 1\n"),
+    ]);
+    assert_eq!(package_paths(&result), ["", "api", "ui"]);
+}
