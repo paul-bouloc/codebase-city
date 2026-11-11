@@ -126,9 +126,20 @@ pub(crate) fn links(
 
 /// The layer of each island, from the plain imports and re-exports between
 /// production files, barrels left out; `None` for an island without
-/// production code.
-pub(crate) fn layers(graph: &Graph, islands: &Islands, file_dirs: &[u32]) -> Vec<Option<u32>> {
-    let island_of = |file: u32| islands.of_dir[file_dirs[file as usize] as usize];
+/// production code. In a monorepo, `packages` holds the folders of its
+/// packages (`packages::monorepo_dirs`): an island outside them all, such
+/// as `scripts/`, has no layer, and its imports count for no other.
+pub(crate) fn layers(
+    graph: &Graph,
+    islands: &Islands,
+    parents: &[Option<u32>],
+    file_dirs: &[u32],
+    packages: &[u32],
+) -> Vec<Option<u32>> {
+    let layered = in_packages(islands, parents, packages);
+    let island_of = |file: u32| {
+        islands.of_dir[file_dirs[file as usize] as usize].filter(|&island| layered[island as usize])
+    };
     let counted = |file: u32| graph.is_production(file) && !graph.is_barrel(file);
     let mut production = vec![false; islands.dirs.len()];
     let mut imports: Vec<(u32, u32)> = Vec::new();
@@ -144,7 +155,9 @@ pub(crate) fn layers(graph: &Graph, islands: &Islands, file_dirs: &[u32]) -> Vec
             let to = match edge.to {
                 Node::File(to) if counted(to) => island_of(to),
                 Node::File(_) => None,
-                Node::Dir(dir) => islands.of_dir[dir as usize],
+                Node::Dir(dir) => {
+                    islands.of_dir[dir as usize].filter(|&island| layered[island as usize])
+                }
             };
             if let Some(to) = to {
                 imports.push((from, to));
@@ -155,6 +168,28 @@ pub(crate) fn layers(graph: &Graph, islands: &Islands, file_dirs: &[u32]) -> Vec
         .into_iter()
         .zip(production)
         .map(|(layer, production)| production.then_some(layer))
+        .collect()
+}
+
+/// Whether each island lies in a package; all of them without packages.
+fn in_packages(islands: &Islands, parents: &[Option<u32>], packages: &[u32]) -> Vec<bool> {
+    if packages.is_empty() {
+        return vec![true; islands.dirs.len()];
+    }
+    // Parents come first: a folder is in a package when its parent is
+    let mut inside = vec![false; parents.len()];
+    for &dir in packages {
+        inside[dir as usize] = true;
+    }
+    for dir in 0..parents.len() {
+        if let Some(parent) = parents[dir] {
+            inside[dir] |= inside[parent as usize];
+        }
+    }
+    islands
+        .dirs
+        .iter()
+        .map(|&dir| inside[dir as usize])
         .collect()
 }
 

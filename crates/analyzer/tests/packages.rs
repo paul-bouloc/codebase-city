@@ -719,3 +719,36 @@ fn a_nested_go_module_is_a_package_of_its_own() {
     ]);
     assert_eq!(package_paths(&result), ["", "api", "ui"]);
 }
+
+#[test]
+fn islands_outside_the_packages_have_no_layer() {
+    let result = analyzed(&[
+        (
+            "package.json",
+            r#"{ "name": "libs", "private": true, "workspaces": ["libs/*"] }"#,
+        ),
+        ("libs/a/package.json", r#"{ "name": "a" }"#),
+        ("libs/a/index.ts", "export const a = 1\n"),
+        ("libs/b/package.json", r#"{ "name": "b" }"#),
+        (
+            "libs/b/index.ts",
+            "import { a } from '../a/index'\nexport const b = a\n",
+        ),
+        // Production code that imports both, outside the packages
+        (
+            "cli/run.ts",
+            "import { a } from '../libs/a/index'\nimport { b } from '../libs/b/index'\nexport const all = [a, b]\n",
+        ),
+    ]);
+    let layer = |dir: &str| {
+        let island = result
+            .islands
+            .dir
+            .iter()
+            .position(|&island| dir_path(&result, island) == dir)
+            .unwrap();
+        result.islands.layer[island]
+    };
+    assert_eq!(layer("cli"), None);
+    assert!(layer("libs/b") > layer("libs/a"));
+}

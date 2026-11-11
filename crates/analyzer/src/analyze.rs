@@ -251,14 +251,16 @@ pub fn analyze_with_report(
     let code_files = (0..files.len())
         .filter(|&file| production[file] && file_languages[file].is_analyzed())
         .count() as u64;
-    let islands = islands::islands(
+    let monorepo_dirs = packages::monorepo_dirs(&found.packages, &dirs.dirs.parent, code_files);
+    let islands = islands::islands(&dirs.dirs.parent, &table.dir, &production, &monorepo_dirs);
+    dirs.dirs.island.clone_from(&islands.of_dir);
+    let layers = islands::layers(
+        &graph,
+        &islands,
         &dirs.dirs.parent,
         &table.dir,
-        &production,
-        &packages::monorepo_dirs(&found.packages, &dirs.dirs.parent, code_files),
+        &monorepo_dirs,
     );
-    dirs.dirs.island.clone_from(&islands.of_dir);
-    let layers = islands::layers(&graph, &islands, &table.dir);
     let links = islands::links(
         &islands,
         &layers,
