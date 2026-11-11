@@ -3,6 +3,7 @@
 use model::{AnalysisResult, TourStep};
 
 use crate::paths::{dir_path, path, target};
+use crate::tour_packages::print_package_step;
 
 /// A share as a percentage with one decimal.
 fn share(part: u32, whole: u32) -> String {
@@ -130,7 +131,19 @@ pub(crate) fn print_tour(result: &AnalysisResult) {
                     );
                 }
             }
-            TourStep::Cycles { cycle, dir } => {
+            TourStep::Applications { .. }
+            | TourStep::OtherApps { .. }
+            | TourStep::Libraries { .. }
+            | TourStep::AppLinks { .. }
+            | TourStep::Consumers { .. }
+            | TourStep::InsideApp { .. } => print_package_step(result, step),
+            TourStep::Cycles {
+                cycle,
+                dir,
+                package,
+                in_package,
+                crossing,
+            } => {
                 let members = &result.cycles.members[*cycle as usize];
                 let shortest: Vec<String> = result.cycles.shortest[*cycle as usize]
                     .iter()
@@ -143,6 +156,12 @@ pub(crate) fn print_tour(result: &AnalysisResult) {
                     dir_path(result, *dir)
                 );
                 println!("              shortest loop: {}", shortest.join(" → "));
+                if let Some(package) = package {
+                    println!(
+                        "              in package {}: {in_package} loops; {crossing} cross packages",
+                        result.packages.name[*package as usize]
+                    );
+                }
             }
             TourStep::ComplexAreas { files, complexity } => {
                 println!("  complex     total {complexity}");

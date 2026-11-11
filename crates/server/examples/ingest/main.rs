@@ -29,6 +29,7 @@ mod paths;
 mod roles;
 mod structure;
 mod tour;
+mod tour_packages;
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
