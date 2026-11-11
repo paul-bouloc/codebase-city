@@ -97,6 +97,23 @@ pub(crate) fn find(input: &Input<'_>) -> Found {
     found
 }
 
+/// The packages with production code a workspace declares to make a
+/// monorepo: a single one is a repository whose code sits in a subfolder.
+const MONOREPO_PACKAGES: usize = 2;
+
+/// The folders of the packages when the repository is a monorepo, that is
+/// when its workspace declares at least two packages with production code;
+/// none otherwise. vscode's workspace declares only tooling and tests: it
+/// is not a monorepo.
+pub(crate) fn monorepo_dirs(packages: &Packages) -> &[u32] {
+    let with_code = packages.code_files.iter().filter(|&&files| files > 0);
+    if with_code.count() >= MONOREPO_PACKAGES {
+        &packages.dir
+    } else {
+        &[]
+    }
+}
+
 /// The folders the declaration matches that hold an analyzed file, the
 /// outermost of nested ones, in folder order.
 fn package_dirs(input: &Input<'_>, declaration: &workspace::Declaration) -> Vec<u32> {
