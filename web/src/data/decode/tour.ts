@@ -7,6 +7,9 @@ import { fail, object } from './checks'
 import { stepFields, type Tables } from './tour-fields'
 import { decodePackageStep } from './tour-packages'
 
+/** As APPS_LEAD_SHARE in crates/model/src/result.rs: apps lead with this share of the packages' code. */
+const APPS_LEAD_SHARE = 10
+
 type Kind = TourStep['kind']
 
 // The place of each kind in the tour; checked by the compiler against the generated union.
@@ -57,19 +60,6 @@ export function decodeTour(value: unknown, tables: Tables): Tour {
       fail(`tour.steps[${row}] must come after the previous step, each kind once, in order`)
     }
   }
-  // After the main apps, one more makes no list; in a monorepo of libraries, its only app is
-  // worth naming
-  const afterApplications = steps.some((step) => step.kind === 'applications')
-  steps.forEach((step, row) => {
-    if (step.kind === 'otherApps' && afterApplications && step.apps.length < 2) {
-      fail(`a list of tour.steps[${row}] must hold as many rows as its step allows, each once`)
-    }
-    // Inside the main app when apps lead, inside the main library otherwise
-    const insideKind = afterApplications ? 'app' : 'library'
-    if (step.kind === 'insidePackage' && tables.packages.kind[step.package] !== insideKind) {
-      fail(`tour.steps[${row}] names a library as an app, or an app as a library`)
-    }
-  })
   let first: 'files' | 'packages' | undefined
   steps.forEach((step, row) => {
     const tour = TOURS[step.kind]
@@ -80,7 +70,41 @@ export function decodeTour(value: unknown, tables: Tables): Tour {
       )
     }
   })
+  // A tour of packages presents the main apps exactly when they lead
+  const appsLead = packagesLeadByApps(tables.packages)
+  const presentsApps = steps.some((step) => step.kind === 'applications')
+  if (first === 'packages' && presentsApps !== appsLead) {
+    fail(
+      "a tour of packages must present the main apps when apps hold 10% of the packages' code, and only then",
+    )
+  }
+  steps.forEach((step, row) => {
+    // After the main apps, one more makes no list; in a monorepo of libraries, its only app is
+    // worth naming
+    if (step.kind === 'otherApps' && appsLead && step.apps.length < 2) {
+      fail(`a list of tour.steps[${row}] must hold as many rows as its step allows, each once`)
+    }
+    // Inside the main app when apps lead, inside the main library otherwise
+    const insideKind = appsLead ? 'app' : 'library'
+    if (step.kind === 'insidePackage' && tables.packages.kind[step.package] !== insideKind) {
+      fail(`tour.steps[${row}] names a library as an app, or an app as a library`)
+    }
+  })
   return { steps }
+}
+
+/** Whether apps lead the monorepo the packages make, as in `Packages::apps_lead`. */
+function packagesLeadByApps(packages: Tables['packages']): boolean {
+  let apps = 0
+  let all = 0
+  packages.kind.forEach((kind, row) => {
+    const files = packages.codeFiles[row] ?? 0
+    all += files
+    if (kind === 'app') {
+      apps += files
+    }
+  })
+  return apps > 0 && apps * 100 >= all * APPS_LEAD_SHARE
 }
 
 function decodeStep(value: unknown, row: number, tables: Tables): TourStep {

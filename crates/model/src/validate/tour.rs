@@ -79,8 +79,16 @@ pub(super) fn tour(result: &AnalysisResult) -> Result<(), InvalidResult> {
             Some(_) => {}
         }
     }
+    // A tour of packages presents the main apps exactly when they lead
+    let apps_lead = result.packages.apps_lead();
+    let presents_apps = steps
+        .iter()
+        .any(|step| matches!(step, TourStep::Applications { .. }));
+    if first == Some(Tour::Packages) && presents_apps != apps_lead {
+        return Err(InvalidResult::TourAppsLead);
+    }
     for (row, step) in steps.iter().enumerate() {
-        check_step(result, row, step)?;
+        check_step(result, row, step, apps_lead)?;
     }
     Ok(())
 }
@@ -89,7 +97,12 @@ pub(super) fn tour(result: &AnalysisResult) -> Result<(), InvalidResult> {
     clippy::too_many_lines,
     reason = "one arm per kind of step, each short"
 )]
-fn check_step(result: &AnalysisResult, row: usize, step: &TourStep) -> Result<(), InvalidResult> {
+fn check_step(
+    result: &AnalysisResult,
+    row: usize,
+    step: &TourStep,
+    apps_lead: bool,
+) -> Result<(), InvalidResult> {
     let file_count = result.files.dir.len();
     let dir_count = result.dirs.parent.len();
     let island_count = result.islands.dir.len();
@@ -113,12 +126,6 @@ fn check_step(result: &AnalysisResult, row: usize, step: &TourStep) -> Result<()
             Err(InvalidResult::TourPackageKind { row })
         }
     };
-    // Apps lead a monorepo whose tour presents its main apps
-    let apps_lead = result
-        .tour
-        .steps
-        .iter()
-        .any(|step| matches!(step, TourStep::Applications { .. }));
     let count = |holds: bool| {
         if holds {
             Ok(())
@@ -544,12 +551,49 @@ mod tests {
             }),
             InvalidResult::TourPackageKind { row: 2 }
         );
+        // Without apps, nothing leads: no main apps to present
         assert_eq!(
             invalid_monorepo(|r| {
                 r.packages.kind[0] = PackageKind::Library;
             }),
-            InvalidResult::TourPackageKind { row: 1 }
+            InvalidResult::TourAppsLead
         );
+    }
+
+    /// Adds `lib` at the root, a library of `files` code files around the
+    /// app, which becomes package 1.
+    fn library(r: &mut AnalysisResult, files: u32) {
+        let packages = &mut r.packages;
+        packages.dir.insert(0, 0);
+        packages.name.insert(0, "lib".to_owned());
+        packages.kind.insert(0, PackageKind::Library);
+        packages.framework.insert(0, None);
+        packages.manifest.insert(0, None);
+        packages.group.insert(0, None);
+        packages.code_files.insert(0, files);
+        packages.entry.insert(0, None);
+        packages.routes.insert(0, None);
+        packages.route_count.insert(0, 0);
+        packages.api_route_count.insert(0, 0);
+        for step in &mut r.tour.steps {
+            match step {
+                TourStep::Applications { units, .. } => units[0].apps = vec![1],
+                TourStep::InsidePackage { package, .. } => *package = 1,
+                _ => {}
+            }
+        }
+    }
+
+    #[test]
+    fn main_apps_are_presented_when_apps_hold_ten_percent_of_the_code() {
+        // The app holds 2 code files of 20: it still leads
+        let mut r = result();
+        monorepo(&mut r);
+        library(&mut r, 18);
+        assert_eq!(r.validate(), Ok(()));
+        // 2 of 21: a monorepo of libraries, whose tour has no main apps
+        r.packages.code_files[0] = 19;
+        assert_eq!(r.validate(), Err(InvalidResult::TourAppsLead));
     }
 
     #[test]
@@ -603,12 +647,16 @@ mod tests {
             }),
             InvalidResult::TourList { row: 2 }
         );
-        // Without main apps, the inside step would look inside a library
+        // A monorepo of libraries: its only app is named, and the inside
+        // step looks inside a library
         let mut r = result();
         monorepo(&mut r);
-        r.tour.steps[1] = TourStep::OtherApps { apps: vec![0] };
+        library(&mut r, 100);
+        r.tour.steps[1] = TourStep::OtherApps { apps: vec![1] };
         assert_eq!(r.validate(), Err(InvalidResult::TourPackageKind { row: 3 }));
-        r.tour.steps.remove(3);
+        if let TourStep::InsidePackage { package, .. } = &mut r.tour.steps[3] {
+            *package = 0;
+        }
         assert_eq!(r.validate(), Ok(()));
     }
 

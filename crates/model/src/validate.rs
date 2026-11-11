@@ -131,6 +131,10 @@ pub enum InvalidResult {
     TourMixed { row: usize },
     #[error("tour.steps[{row}] names a library as an app, or an app as a library")]
     TourPackageKind { row: usize },
+    #[error(
+        "a tour of packages must present the main apps when apps hold 10% of the packages' code, and only then"
+    )]
+    TourAppsLead,
 }
 
 impl AnalysisResult {

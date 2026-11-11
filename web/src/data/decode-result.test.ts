@@ -715,12 +715,17 @@ describe('decodeResult', () => {
   })
 
   it('names the only app of a monorepo of libraries, but lists two after the main apps', () => {
+    // `api` holds 100 code files, the apps 8: they do not lead
+    const asLibraries = (json: Json) => {
+      asMonorepo(json)
+      ;(json.packages as { codeFiles: number[] }).codeFiles = [5, 3, 100]
+      json.tour.steps.splice(1, 1, { kind: 'otherApps', apps: [1] })
+      json.tour.steps.splice(3, 1)
+      // Inside the main library, `api`
+      ;(json.tour.steps[3] as { package: number }).package = 2
+    }
     const json = structuredClone(sample) as unknown as Json
-    asMonorepo(json)
-    json.tour.steps.splice(1, 1, { kind: 'otherApps', apps: [1] })
-    json.tour.steps.splice(3, 1)
-    // Inside the main library, `api`
-    ;(json.tour.steps[3] as { package: number }).package = 2
+    asLibraries(json)
     expect(decodeResult(json).tour.steps.map((step) => step.kind)).toEqual([
       'overview',
       'otherApps',
@@ -731,6 +736,12 @@ describe('decodeResult', () => {
     ])
     expect(
       decodeChanged((json) => {
+        asLibraries(json)
+        ;(json.tour.steps[3] as { package: number }).package = 0
+      }),
+    ).toThrow('tour.steps[3] names a library as an app, or an app as a library')
+    expect(
+      decodeChanged((json) => {
         asMonorepo(json)
         json.tour.steps.splice(2, 0, { kind: 'otherApps', apps: [1] })
       }),
@@ -738,15 +749,34 @@ describe('decodeResult', () => {
     expect(
       decodeChanged((json) => {
         asMonorepo(json)
-        json.tour.steps.splice(1, 1, { kind: 'otherApps', apps: [1] })
-      }),
-    ).toThrow('tour.steps[4] names a library as an app, or an app as a library')
-    expect(
-      decodeChanged((json) => {
-        asMonorepo(json)
         ;(json.tour.steps[4] as { package: number }).package = 2
       }),
     ).toThrow('tour.steps[4] names a library as an app, or an app as a library')
+  })
+
+  it('presents the main apps when they hold 10% of the packages code, and only then', () => {
+    expect(
+      decodeChanged((json) => {
+        asMonorepo(json)
+        // 8 of 81 code files
+        ;(json.packages as { codeFiles: number[] }).codeFiles = [5, 3, 73]
+      }),
+    ).toThrow(
+      "a tour of packages must present the main apps when apps hold 10% of the packages' code",
+    )
+    expect(
+      decodeChanged((json) => {
+        asMonorepo(json)
+        json.tour.steps.splice(1, 1, { kind: 'otherApps', apps: [1, 0] })
+      }),
+    ).toThrow(
+      "a tour of packages must present the main apps when apps hold 10% of the packages' code",
+    )
+    // 8 of 80: they still lead
+    const json = structuredClone(sample) as unknown as Json
+    asMonorepo(json)
+    ;(json.packages as { codeFiles: number[] }).codeFiles = [5, 3, 72]
+    expect(decodeResult(json).tour.steps[1]?.kind).toBe('applications')
   })
 
   it('requires a tour that never mixes packages and files', () => {

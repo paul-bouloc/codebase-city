@@ -12,6 +12,13 @@ use ts_rs::TS;
 /// know about; a result with another version is rejected, not guessed at.
 pub const FORMAT_VERSION: u32 = 11;
 
+/// The apps lead a monorepo when they hold this share of the packages'
+/// code files, in percent, at least: its tour presents them first. Below,
+/// a few small apps (the CLI of a compiler, a playground) sit beside the
+/// libraries the repository is about: babel's apps hold 1.9% of its
+/// packages' code, kit's 3.9%, grafana's 76.6%.
+pub const APPS_LEAD_SHARE: u64 = 10;
+
 /// One analysis of one repository at one commit.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -816,5 +823,20 @@ impl Ignored {
             .saturating_add(minified)
             .saturating_add(binary)
             .saturating_add(deep)
+    }
+}
+
+impl Packages {
+    /// Whether apps lead the monorepo these packages make
+    /// ([`APPS_LEAD_SHARE`]).
+    pub fn apps_lead(&self) -> bool {
+        let (mut apps, mut all) = (0u64, 0u64);
+        for (kind, &files) in self.kind.iter().zip(&self.code_files) {
+            all += u64::from(files);
+            if *kind == PackageKind::App {
+                apps += u64::from(files);
+            }
+        }
+        apps > 0 && apps * 100 >= all * APPS_LEAD_SHARE
     }
 }
