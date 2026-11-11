@@ -109,9 +109,6 @@ export function decodePackages(
     linked: column(groupFields.linked, 'packageGroups.linked', isBoolean, 'a boolean'),
   }
   inBoundsOrNull('packages.group', packages.group, packageGroups.prefix.length)
-  if (dir.length > 0 && workspaces.length === 0) {
-    fail('packages need a workspace that declares them')
-  }
   checkPackages(packages)
   checkGroups(packageGroups, packages.group)
 

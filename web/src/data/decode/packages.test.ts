@@ -79,9 +79,10 @@ describe('decodePackages', () => {
     )
   })
 
-  it('requires a workspace and packages in folder order, nested ones allowed', () => {
-    expect(decodeChanged((json) => (json.workspaces = []))).toThrow(
-      'packages need a workspace that declares them',
+  it('requires packages in folder order, nested and implicit ones allowed', () => {
+    // A repository that declares nothing has implicit packages
+    expect(decodeChanged((json) => (json.workspaces = []))().packages.dir).toEqual(
+      withPackages().packages.dir,
     )
     expect(decodeChanged((json) => (json.packages.dir = [7, 6]))).toThrow(
       'packages[1] must come after the previous package, by folder',
