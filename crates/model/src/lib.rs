@@ -9,9 +9,10 @@ mod result;
 mod validate;
 
 pub use result::{
-    AnalysisResult, Confidence, Cycles, Dirs, EdgeKind, Edges, Entries, EntryReason, Externals,
-    FORMAT_VERSION, Files, Framework, Grids, Ignored, Islands, Layout, Links, Lots, PackageGroups,
-    PackageKind, Packages, ParcelNature, Parcels, Ranked, Rects, Repo, Roles, Scope, Stats,
-    SymbolKind, Symbols, Tour, TourStep, Workspace, WorkspaceKind,
+    AnalysisResult, AppUnit, Confidence, Consumer, Cycles, Dirs, EdgeKind, Edges, Entries,
+    EntryReason, Externals, FORMAT_VERSION, Files, Framework, Grids, Ignored, Islands, Layout,
+    Links, Lots, PackageGroups, PackageKind, Packages, ParcelNature, Parcels, Ranked, Rects, Repo,
+    Roles, Scope, SharedLibrary, Stats, SymbolKind, Symbols, Tour, TourStep, Workspace,
+    WorkspaceKind,
 };
 pub use validate::InvalidResult;

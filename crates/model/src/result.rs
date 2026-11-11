@@ -542,12 +542,18 @@ pub struct Lots {
 #[ts(export)]
 pub struct Tour {
     /// Always starts with [`TourStep::Overview`]; the other kinds come at
-    /// most once each, in the order of [`TourStep`].
+    /// most once each, in the order of [`TourStep`]. A monorepo's tour
+    /// presents its packages, from [`TourStep::Applications`] to
+    /// [`TourStep::InsideApp`]; another repository's presents its files,
+    /// from [`TourStep::EntryPoints`] to [`TourStep::Foundations`]. A tour
+    /// never mixes the two.
     pub steps: Vec<TourStep>,
 }
 
-/// One step of the tour. Lists hold one to three rows, the first first.
+/// One step of the tour. Lists of files and roles hold one to three rows,
+/// the first first; lists of packages hold what their step says.
 /// Production files are [`Scope::Source`] files that are not generated.
+/// The production imports of a package are those of its production files.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(
     tag = "kind",
@@ -588,6 +594,38 @@ pub enum TourStep {
         /// or more.
         island: Option<u32>,
     },
+    /// The main apps of a monorepo: its groups of apps by name and its apps
+    /// outside a group, the largest first, from one to five.
+    Applications {
+        units: Vec<AppUnit>,
+        /// Code files of all the apps, to give each unit its share.
+        app_files: u32,
+    },
+    /// The other apps, two or more: rows of [`Packages`], the largest first.
+    OtherApps { apps: Vec<u32> },
+    /// The libraries of a monorepo and the packages that import them.
+    Libraries {
+        /// The libraries the most packages import, one to four, the first
+        /// first.
+        most_imported: Vec<u32>,
+        /// For each of them, how many packages import it.
+        importers: Vec<u32>,
+        /// The library with the most code files.
+        largest: u32,
+        /// Libraries that one app imports and no other package.
+        single_app: Vec<u32>,
+        /// Libraries no package imports, when the monorepo has apps:
+        /// without apps, the libraries at the top are imported by no
+        /// package by design.
+        unused: Vec<u32>,
+    },
+    /// What the apps share, beyond the most imported libraries.
+    AppLinks {
+        /// Production imports from an app to another app.
+        app_imports: u32,
+        /// One to three libraries that apps of different units import.
+        shared: Vec<SharedLibrary>,
+    },
     /// The layers of the islands, read from [`Islands::layer`], and how the
     /// imports between islands in layers follow them.
     Layers {
@@ -602,15 +640,41 @@ pub enum TourStep {
         /// when none does.
         worst_link: Option<u32>,
     },
+    /// In a monorepo without apps, the folders outside the packages whose
+    /// examples and tests import them.
+    Consumers {
+        /// One to three folders at the top of the repository, the one with
+        /// the most imports first.
+        folders: Vec<Consumer>,
+        /// The package they import the most.
+        package: u32,
+    },
+    /// Inside the app that holds most of the apps' code.
+    InsideApp {
+        /// A row of [`Packages`].
+        app: u32,
+        /// Its largest folders, one to three, the first first.
+        dirs: Vec<u32>,
+        /// Code files of each.
+        files: Vec<u32>,
+    },
     /// The largest loop of imports.
     Cycles {
         /// A row of [`Cycles`].
         cycle: u32,
         /// The deepest folder that holds all its files.
         dir: u32,
+        /// In a monorepo, the package that holds it.
+        package: Option<u32>,
+        /// Loops inside that package, this one included.
+        in_package: u32,
+        /// In a monorepo, loops whose files lie in more than one package
+        /// or outside the packages.
+        crossing: u32,
     },
     /// The most complex production files that other files import, each in
-    /// its own folder.
+    /// its own folder; in a monorepo, each in its own main unit of apps, or
+    /// its own package when there is no app.
     ComplexAreas {
         files: Vec<u32>,
         /// Complexity of all the production code, to give their share.
@@ -634,6 +698,48 @@ pub enum TourStep {
         /// lists.
         parks: Vec<u32>,
     },
+}
+
+/// Apps presented together: the apps of a group by name, or one app outside
+/// a group.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct AppUnit {
+    /// A row of [`PackageGroups`]; `null` for an app outside a group.
+    pub group: Option<u32>,
+    /// Rows of [`Packages`], the largest first.
+    pub apps: Vec<u32>,
+    /// Code files of those apps.
+    pub files: u32,
+}
+
+/// A library that apps of different units import.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct SharedLibrary {
+    /// A row of [`Packages`].
+    pub library: u32,
+    /// The apps that import it, two or more, the one with the most
+    /// importing files first.
+    pub apps: Vec<u32>,
+    /// Production files of those apps that import it.
+    pub files: u32,
+    /// Of them, files that import only its types.
+    pub type_only: u32,
+}
+
+/// A folder outside the packages whose examples or tests import them.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct Consumer {
+    pub dir: u32,
+    /// Its subfolders that import a package, such as one per example.
+    pub folders: u32,
+    /// Imports of a package from its files.
+    pub imports: u32,
 }
 
 /// Counts that describe the analysis itself.

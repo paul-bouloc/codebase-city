@@ -872,7 +872,10 @@
       {
         "kind": "cycles",
         "cycle": 0,
-        "dir": 2
+        "dir": 2,
+        "package": null,
+        "inPackage": 0,
+        "crossing": 0
       },
       {
         "kind": "rest",

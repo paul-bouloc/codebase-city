@@ -119,12 +119,16 @@ pub enum InvalidResult {
     TourStart,
     #[error("tour.steps[{row}] must come after the previous step, each kind once, in order")]
     TourOrder { row: usize },
-    #[error(
-        "a list of tour.steps[{row}] must hold up to three rows, each once, and only parks none"
-    )]
+    #[error("a list of tour.steps[{row}] must hold as many rows as its step allows, each once")]
     TourList { row: usize },
     #[error("the counts of tour.steps[{row}] do not add up")]
     TourCount { row: usize },
+    #[error(
+        "tour.steps[{row}] presents packages in a tour of files, or files in a tour of packages"
+    )]
+    TourMixed { row: usize },
+    #[error("tour.steps[{row}] names a library as an app, or an app as a library")]
+    TourPackageKind { row: usize },
 }
 
 impl AnalysisResult {
@@ -600,7 +604,13 @@ mod tests {
                         up: 0,
                         worst_link: None,
                     },
-                    TourStep::Cycles { cycle: 0, dir: 1 },
+                    TourStep::Cycles {
+                        cycle: 0,
+                        dir: 1,
+                        package: None,
+                        in_package: 0,
+                        crossing: 0,
+                    },
                     TourStep::ComplexAreas {
                         files: vec![0],
                         complexity: 8,

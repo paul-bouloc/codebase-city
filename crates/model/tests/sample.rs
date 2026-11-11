@@ -293,7 +293,13 @@ fn tour() -> Tour {
                 up: 0,
                 worst_link: None,
             },
-            TourStep::Cycles { cycle: 0, dir: 2 },
+            TourStep::Cycles {
+                cycle: 0,
+                dir: 2,
+                package: None,
+                in_package: 0,
+                crossing: 0,
+            },
             TourStep::Rest {
                 tests: 2,
                 examples: 0,

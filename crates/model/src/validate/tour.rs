@@ -2,10 +2,14 @@
 //! point at.
 
 use super::{InvalidResult, in_bounds};
-use crate::result::{AnalysisResult, TourStep};
+use crate::result::{AnalysisResult, PackageKind, TourStep};
 
-/// The most rows a list of a step holds.
+/// The most rows a list of files or roles holds.
 const MAX_ROWS: usize = 3;
+/// The most units of apps the applications step holds.
+const MAX_UNITS: usize = 5;
+/// The most libraries the libraries step ranks.
+const MAX_MOST_IMPORTED: usize = 4;
 
 /// The place of a kind of step in the tour.
 fn rank(step: &TourStep) -> u8 {
@@ -14,10 +18,42 @@ fn rank(step: &TourStep) -> u8 {
         TourStep::EntryPoints { .. } => 1,
         TourStep::Conductors { .. } => 2,
         TourStep::Foundations { .. } => 3,
-        TourStep::Layers { .. } => 4,
-        TourStep::Cycles { .. } => 5,
-        TourStep::ComplexAreas { .. } => 6,
-        TourStep::Rest { .. } => 7,
+        TourStep::Applications { .. } => 4,
+        TourStep::OtherApps { .. } => 5,
+        TourStep::Libraries { .. } => 6,
+        TourStep::AppLinks { .. } => 7,
+        TourStep::Layers { .. } => 8,
+        TourStep::Consumers { .. } => 9,
+        TourStep::InsideApp { .. } => 10,
+        TourStep::Cycles { .. } => 11,
+        TourStep::ComplexAreas { .. } => 12,
+        TourStep::Rest { .. } => 13,
+    }
+}
+
+/// Which tour a kind of step belongs to, when only one has it.
+#[derive(PartialEq)]
+enum Tour {
+    Files,
+    Packages,
+}
+
+fn tour_of(step: &TourStep) -> Option<Tour> {
+    match step {
+        TourStep::EntryPoints { .. }
+        | TourStep::Conductors { .. }
+        | TourStep::Foundations { .. } => Some(Tour::Files),
+        TourStep::Applications { .. }
+        | TourStep::OtherApps { .. }
+        | TourStep::Libraries { .. }
+        | TourStep::AppLinks { .. }
+        | TourStep::Consumers { .. }
+        | TourStep::InsideApp { .. } => Some(Tour::Packages),
+        TourStep::Overview { .. }
+        | TourStep::Layers { .. }
+        | TourStep::Cycles { .. }
+        | TourStep::ComplexAreas { .. }
+        | TourStep::Rest { .. } => None,
     }
 }
 
@@ -32,100 +68,271 @@ pub(super) fn tour(result: &AnalysisResult) -> Result<(), InvalidResult> {
     {
         return Err(InvalidResult::TourOrder { row: row + 1 });
     }
+    let mut first = None;
+    for (row, step) in steps.iter().enumerate() {
+        let Some(tour) = tour_of(step) else {
+            continue;
+        };
+        match &first {
+            None => first = Some(tour),
+            Some(first) if *first != tour => return Err(InvalidResult::TourMixed { row }),
+            Some(_) => {}
+        }
+    }
+    for (row, step) in steps.iter().enumerate() {
+        check_step(result, row, step)?;
+    }
+    Ok(())
+}
+
+#[expect(
+    clippy::too_many_lines,
+    reason = "one arm per kind of step, each short"
+)]
+fn check_step(result: &AnalysisResult, row: usize, step: &TourStep) -> Result<(), InvalidResult> {
     let file_count = result.files.dir.len();
     let dir_count = result.dirs.parent.len();
     let island_count = result.islands.dir.len();
-    for (row, step) in steps.iter().enumerate() {
-        let list = |column, rows: &[u32], len| {
-            listed(row, rows, 1)?;
-            in_bounds(column, rows, len)
-        };
-        let optional = |column, index: Option<u32>, len| in_bounds(column, index.as_slice(), len);
-        let required = |column, index: u32, len| in_bounds(column, &[index], len);
-        match step {
-            TourStep::Overview {
-                lines,
-                language,
-                language_lines,
-                biggest_island,
-                outside_island,
-                ..
-            } => {
-                optional("tour.language", *language, result.languages.len())?;
-                optional("tour.biggestIsland", *biggest_island, island_count)?;
-                optional("tour.outsideIsland", *outside_island, island_count)?;
-                if language_lines > lines || language.is_none() && *language_lines > 0 {
-                    return Err(InvalidResult::TourCount { row });
-                }
-            }
-            TourStep::EntryPoints { entries } => {
-                list("tour.entries", entries, result.roles.entries.file.len())?;
-            }
-            TourStep::Conductors { conductors } => {
-                list(
-                    "tour.conductors",
-                    conductors,
-                    result.roles.conductors.file.len(),
-                )?;
-            }
-            TourStep::Foundations {
+    let package_count = result.packages.dir.len();
+    let list = |column, rows: &[u32], len| {
+        listed(row, rows, 1, MAX_ROWS)?;
+        in_bounds(column, rows, len)
+    };
+    let optional = |column, index: Option<u32>, len| in_bounds(column, index.as_slice(), len);
+    let required = |column, index: u32, len| in_bounds(column, &[index], len);
+    // Packages of the kind the step says, each once
+    let packages = |column, rows: &[u32], kind, min, max| {
+        listed(row, rows, min, max)?;
+        in_bounds(column, rows, package_count)?;
+        if rows
+            .iter()
+            .all(|&at| result.packages.kind[at as usize] == kind)
+        {
+            Ok(())
+        } else {
+            Err(InvalidResult::TourPackageKind { row })
+        }
+    };
+    let count = |holds: bool| {
+        if holds {
+            Ok(())
+        } else {
+            Err(InvalidResult::TourCount { row })
+        }
+    };
+    match step {
+        TourStep::Overview {
+            lines,
+            language,
+            language_lines,
+            biggest_island,
+            outside_island,
+            ..
+        } => {
+            optional("tour.language", *language, result.languages.len())?;
+            optional("tour.biggestIsland", *biggest_island, island_count)?;
+            optional("tour.outsideIsland", *outside_island, island_count)?;
+            count(language_lines <= lines && (language.is_some() || *language_lines == 0))?;
+        }
+        TourStep::EntryPoints { entries } => {
+            list("tour.entries", entries, result.roles.entries.file.len())?;
+        }
+        TourStep::Conductors { conductors } => {
+            list(
+                "tour.conductors",
+                conductors,
+                result.roles.conductors.file.len(),
+            )?;
+        }
+        TourStep::Foundations {
+            foundations,
+            island,
+        } => {
+            list(
+                "tour.foundations",
                 foundations,
-                island,
-            } => {
-                list(
-                    "tour.foundations",
-                    foundations,
-                    result.roles.foundations.file.len(),
-                )?;
-                optional("tour.island", *island, island_count)?;
+                result.roles.foundations.file.len(),
+            )?;
+            optional("tour.island", *island, island_count)?;
+        }
+        TourStep::Applications { units, app_files } => {
+            if !(1..=MAX_UNITS).contains(&units.len()) {
+                return Err(InvalidResult::TourList { row });
             }
-            TourStep::Layers { worst_link, .. } => {
-                optional("tour.worstLink", *worst_link, result.links.from.len())?;
+            let mut apps = Vec::new();
+            for unit in units {
+                optional("tour.group", unit.group, result.package_groups.prefix.len())?;
+                apps.extend_from_slice(&unit.apps);
             }
-            TourStep::Cycles { cycle, dir } => {
-                required("tour.cycle", *cycle, result.cycles.members.len())?;
-                required("tour.dir", *dir, dir_count)?;
+            packages("tour.apps", &apps, PackageKind::App, 1, usize::MAX)?;
+            if units.iter().any(|unit| unit.apps.is_empty()) {
+                return Err(InvalidResult::TourList { row });
             }
-            TourStep::ComplexAreas { files, .. } => {
-                list("tour.files", files, file_count)?;
+            let files: u64 = units.iter().map(|unit| u64::from(unit.files)).sum();
+            let largest_first = units.windows(2).all(|pair| pair[0].files >= pair[1].files);
+            count(files <= u64::from(*app_files) && largest_first)?;
+        }
+        TourStep::OtherApps { apps } => {
+            packages("tour.apps", apps, PackageKind::App, 2, usize::MAX)?;
+        }
+        TourStep::Libraries {
+            most_imported,
+            importers,
+            largest,
+            single_app,
+            unused,
+        } => {
+            let library = PackageKind::Library;
+            packages(
+                "tour.mostImported",
+                most_imported,
+                library,
+                1,
+                MAX_MOST_IMPORTED,
+            )?;
+            packages("tour.largest", &[*largest], library, 1, 1)?;
+            packages("tour.singleApp", single_app, library, 0, usize::MAX)?;
+            packages("tour.unused", unused, library, 0, usize::MAX)?;
+            let most_first = importers.windows(2).all(|pair| pair[0] >= pair[1]);
+            count(importers.len() == most_imported.len() && most_first)?;
+        }
+        TourStep::AppLinks { shared, .. } => {
+            if !(1..=MAX_ROWS).contains(&shared.len()) {
+                return Err(InvalidResult::TourList { row });
             }
-            TourStep::Rest {
-                tests,
-                park_count,
-                park_tests,
-                parks,
-                ..
-            } => {
-                listed(row, parks, 0)?;
-                in_bounds("tour.parks", parks, dir_count)?;
-                if parks.len() > *park_count as usize || park_tests > tests {
-                    return Err(InvalidResult::TourCount { row });
-                }
+            let libraries: Vec<u32> = shared.iter().map(|shared| shared.library).collect();
+            packages(
+                "tour.library",
+                &libraries,
+                PackageKind::Library,
+                1,
+                MAX_ROWS,
+            )?;
+            for shared in shared {
+                packages("tour.apps", &shared.apps, PackageKind::App, 2, usize::MAX)?;
+                count(shared.type_only <= shared.files)?;
             }
+        }
+        TourStep::Layers { worst_link, .. } => {
+            optional("tour.worstLink", *worst_link, result.links.from.len())?;
+        }
+        TourStep::Consumers { folders, package } => {
+            if !(1..=MAX_ROWS).contains(&folders.len()) {
+                return Err(InvalidResult::TourList { row });
+            }
+            let dirs: Vec<u32> = folders.iter().map(|folder| folder.dir).collect();
+            list("tour.dir", &dirs, dir_count)?;
+            required("tour.package", *package, package_count)?;
+        }
+        TourStep::InsideApp { app, dirs, files } => {
+            packages("tour.app", &[*app], PackageKind::App, 1, 1)?;
+            list("tour.dirs", dirs, dir_count)?;
+            count(files.len() == dirs.len())?;
+        }
+        TourStep::Cycles {
+            cycle,
+            dir,
+            package,
+            in_package,
+            crossing,
+        } => {
+            required("tour.cycle", *cycle, result.cycles.members.len())?;
+            required("tour.dir", *dir, dir_count)?;
+            optional("tour.package", *package, package_count)?;
+            let cycles = result.cycles.members.len();
+            let inside = if package.is_some() {
+                (1..=cycles).contains(&(*in_package as usize))
+            } else {
+                *in_package == 0
+            };
+            count(inside && (*in_package as usize) + (*crossing as usize) <= cycles)?;
+        }
+        TourStep::ComplexAreas { files, .. } => {
+            list("tour.files", files, file_count)?;
+        }
+        TourStep::Rest {
+            tests,
+            park_count,
+            park_tests,
+            parks,
+            ..
+        } => {
+            listed(row, parks, 0, MAX_ROWS)?;
+            in_bounds("tour.parks", parks, dir_count)?;
+            count(parks.len() <= *park_count as usize && park_tests <= tests)?;
         }
     }
     Ok(())
 }
 
-/// A list of `min` to [`MAX_ROWS`] rows, each once.
-fn listed(row: usize, rows: &[u32], min: usize) -> Result<(), InvalidResult> {
+/// A list of `min` to `max` rows, each once.
+fn listed(row: usize, rows: &[u32], min: usize, max: usize) -> Result<(), InvalidResult> {
     // The length first: checking each row against the others is quadratic
-    let distinct = || {
-        rows.iter()
-            .enumerate()
-            .all(|(at, index)| !rows[..at].contains(index))
-    };
-    if (min..=MAX_ROWS).contains(&rows.len()) && distinct() {
-        Ok(())
-    } else {
-        Err(InvalidResult::TourList { row })
+    if !(min..=max).contains(&rows.len()) {
+        return Err(InvalidResult::TourList { row });
     }
+    let mut sorted = rows.to_vec();
+    sorted.sort_unstable();
+    if sorted.windows(2).any(|pair| pair[0] == pair[1]) {
+        return Err(InvalidResult::TourList { row });
+    }
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::result::{AppUnit, Packages, Workspace, WorkspaceKind};
     use crate::validate::tests::{invalid, result};
+
+    /// The sample as a monorepo of one app, `src/`, with a tour of
+    /// packages: its applications, then inside the app.
+    fn monorepo(r: &mut AnalysisResult) {
+        r.workspace = Some(Workspace {
+            kind: WorkspaceKind::Npm,
+            manifest: 0,
+        });
+        r.packages = Packages {
+            dir: vec![1],
+            name: vec!["app".to_owned()],
+            kind: vec![PackageKind::App],
+            framework: vec![None],
+            manifest: vec![None],
+            group: vec![None],
+            code_files: vec![2],
+            entry: vec![None],
+            routes: vec![None],
+            route_count: vec![0],
+            api_route_count: vec![0],
+        };
+        r.tour.steps.splice(
+            1..4,
+            [TourStep::Applications {
+                units: vec![AppUnit {
+                    group: None,
+                    apps: vec![0],
+                    files: 2,
+                }],
+                app_files: 2,
+            }],
+        );
+        r.tour.steps.insert(
+            3,
+            TourStep::InsideApp {
+                app: 0,
+                dirs: vec![1],
+                files: vec![2],
+            },
+        );
+    }
+
+    /// Why the monorepo's tour is invalid after a change.
+    fn invalid_monorepo(change: impl FnOnce(&mut AnalysisResult)) -> InvalidResult {
+        invalid(|r| {
+            monorepo(r);
+            change(r);
+        })
+    }
 
     fn step(r: &mut AnalysisResult, kind: u8) -> &mut TourStep {
         r.tour
@@ -173,7 +380,7 @@ mod tests {
         );
         assert_eq!(
             invalid(|r| {
-                if let TourStep::ComplexAreas { files, .. } = step(r, 6) {
+                if let TourStep::ComplexAreas { files, .. } = step(r, 12) {
                     *files = vec![0, 1, 0];
                 }
             }),
@@ -181,7 +388,7 @@ mod tests {
         );
         assert_eq!(
             invalid(|r| {
-                if let TourStep::Rest { parks, .. } = step(r, 7) {
+                if let TourStep::Rest { parks, .. } = step(r, 13) {
                     *parks = vec![0, 1, 0, 1];
                 }
             }),
@@ -219,7 +426,7 @@ mod tests {
         );
         assert_eq!(
             invalid(|r| {
-                if let TourStep::Layers { worst_link, .. } = step(r, 4) {
+                if let TourStep::Layers { worst_link, .. } = step(r, 8) {
                     *worst_link = Some(1);
                 }
             }),
@@ -232,7 +439,7 @@ mod tests {
         );
         assert_eq!(
             invalid(|r| {
-                if let TourStep::Cycles { dir, .. } = step(r, 5) {
+                if let TourStep::Cycles { dir, .. } = step(r, 11) {
                     *dir = 2;
                 }
             }),
@@ -257,7 +464,7 @@ mod tests {
         );
         assert_eq!(
             invalid(|r| {
-                if let TourStep::Rest { park_count, .. } = step(r, 7) {
+                if let TourStep::Rest { park_count, .. } = step(r, 13) {
                     *park_count = 0;
                 }
             }),
@@ -265,7 +472,7 @@ mod tests {
         );
         assert_eq!(
             invalid(|r| {
-                if let TourStep::Rest { park_tests, .. } = step(r, 7) {
+                if let TourStep::Rest { park_tests, .. } = step(r, 13) {
                     *park_tests = 1;
                 }
             }),
@@ -278,5 +485,118 @@ mod tests {
         let mut r = result();
         r.tour.steps.truncate(1);
         assert_eq!(r.validate(), Ok(()));
+    }
+
+    #[test]
+    fn a_tour_of_packages_is_valid() {
+        let mut r = result();
+        monorepo(&mut r);
+        assert_eq!(r.validate(), Ok(()));
+    }
+
+    #[test]
+    fn a_tour_never_mixes_packages_and_files() {
+        assert_eq!(
+            invalid(|r| {
+                r.tour
+                    .steps
+                    .insert(4, TourStep::OtherApps { apps: vec![0, 1] });
+            }),
+            InvalidResult::TourMixed { row: 4 }
+        );
+    }
+
+    #[test]
+    fn packages_are_of_the_kind_their_step_says() {
+        assert_eq!(
+            invalid_monorepo(|r| {
+                r.tour.steps.insert(
+                    2,
+                    TourStep::Libraries {
+                        most_imported: vec![0],
+                        importers: vec![1],
+                        largest: 0,
+                        single_app: Vec::new(),
+                        unused: Vec::new(),
+                    },
+                );
+            }),
+            InvalidResult::TourPackageKind { row: 2 }
+        );
+        assert_eq!(
+            invalid_monorepo(|r| {
+                r.packages.kind[0] = PackageKind::Library;
+            }),
+            InvalidResult::TourPackageKind { row: 1 }
+        );
+    }
+
+    #[test]
+    fn lists_of_packages_hold_what_their_step_says() {
+        assert_eq!(
+            invalid_monorepo(|r| {
+                r.tour
+                    .steps
+                    .insert(2, TourStep::OtherApps { apps: vec![0] });
+            }),
+            InvalidResult::TourList { row: 2 }
+        );
+        assert_eq!(
+            invalid_monorepo(|r| {
+                if let TourStep::Applications { units, .. } = &mut r.tour.steps[1] {
+                    units[0].apps.push(0);
+                }
+            }),
+            InvalidResult::TourList { row: 1 }
+        );
+        assert_eq!(
+            invalid_monorepo(|r| {
+                if let TourStep::Applications { units, .. } = &mut r.tour.steps[1] {
+                    units.clear();
+                }
+            }),
+            InvalidResult::TourList { row: 1 }
+        );
+        assert_eq!(
+            invalid_monorepo(|r| {
+                if let TourStep::InsideApp { dirs, .. } = &mut r.tour.steps[3] {
+                    dirs[0] = 2;
+                }
+            }),
+            InvalidResult::IndexOutOfBounds {
+                column: "tour.dirs",
+                row: 0,
+                index: 2,
+                len: 2,
+            }
+        );
+    }
+
+    #[test]
+    fn counts_of_packages_hold_together() {
+        assert_eq!(
+            invalid_monorepo(|r| {
+                if let TourStep::Applications { app_files, .. } = &mut r.tour.steps[1] {
+                    *app_files = 1;
+                }
+            }),
+            InvalidResult::TourCount { row: 1 }
+        );
+        assert_eq!(
+            invalid_monorepo(|r| {
+                if let TourStep::InsideApp { files, .. } = &mut r.tour.steps[3] {
+                    files.push(1);
+                }
+            }),
+            InvalidResult::TourCount { row: 3 }
+        );
+        assert_eq!(
+            invalid_monorepo(|r| {
+                if let TourStep::Cycles { package, .. } = &mut r.tour.steps[4] {
+                    *package = Some(0);
+                }
+            }),
+            InvalidResult::TourCount { row: 4 }
+        );
     }
 }
