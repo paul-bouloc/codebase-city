@@ -752,3 +752,20 @@ fn islands_outside_the_packages_have_no_layer() {
     assert_eq!(layer("cli"), None);
     assert!(layer("libs/b") > layer("libs/a"));
 }
+
+#[test]
+fn the_islands_of_a_root_package_keep_their_layer() {
+    let result = analyzed(OPERATOR);
+    let layer = |dir: &str| {
+        let island = result
+            .islands
+            .dir
+            .iter()
+            .position(|&island| dir_path(&result, island) == dir)
+            .unwrap();
+        result.islands.layer[island]
+    };
+    // `controllers` lies in the root package and imports the SDK
+    assert!(layer("controllers").is_some());
+    assert!(layer("controllers") > layer("pkg/sdk"));
+}

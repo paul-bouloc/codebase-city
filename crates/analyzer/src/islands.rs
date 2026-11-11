@@ -126,9 +126,10 @@ pub(crate) fn links(
 
 /// The layer of each island, from the plain imports and re-exports between
 /// production files, barrels left out; `None` for an island without
-/// production code. In a monorepo, `packages` holds the folders of its
-/// packages (`packages::monorepo_dirs`): an island outside them all, such
-/// as `scripts/`, has no layer, and its imports count for no other.
+/// production code. In a monorepo, `packages` holds the folders of all its
+/// packages, the root one included; none in another repository. An island
+/// outside them all, such as `scripts/`, has no layer, and its imports
+/// count for no other.
 pub(crate) fn layers(
     graph: &Graph,
     islands: &Islands,

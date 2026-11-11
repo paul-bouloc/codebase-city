@@ -254,12 +254,18 @@ pub fn analyze_with_report(
     let monorepo_dirs = packages::monorepo_dirs(&found.packages, &dirs.dirs.parent, code_files);
     let islands = islands::islands(&dirs.dirs.parent, &table.dir, &production, &monorepo_dirs);
     dirs.dirs.island.clone_from(&islands.of_dir);
+    // The root package has no island of its own, but its folders are in it
+    let layered_packages = if monorepo_dirs.is_empty() {
+        &[][..]
+    } else {
+        &found.packages.dir[..]
+    };
     let layers = islands::layers(
         &graph,
         &islands,
         &dirs.dirs.parent,
         &table.dir,
-        &monorepo_dirs,
+        layered_packages,
     );
     let links = islands::links(
         &islands,
