@@ -3,6 +3,10 @@
 use model::{AnalysisResult, TourStep};
 
 use super::{count, first_max, is_production, island_of_file};
+use crate::files::Language;
+
+/// What a result names the language of an unknown extension.
+const OTHER: &str = "Other";
 
 pub(super) fn step(result: &AnalysisResult) -> TourStep {
     let files = &result.files;
@@ -28,7 +32,15 @@ pub(super) fn step(result: &AnalysisResult) -> TourStep {
             }
         }
     }
-    let language = first_max(by_language.iter().copied());
+    // An unknown extension is no language: translation catalogs (`.po`)
+    // can outweigh the code
+    let language = first_max(by_language.iter().enumerate().map(|(row, &lines)| {
+        if result.languages[row] == OTHER {
+            0
+        } else {
+            lines
+        }
+    }));
     // Outside the code, not its entrance: the root island is left out
     let outside = by_island.iter().enumerate().map(|(island, &files)| {
         let root = result.islands.dir[island] == 0;
@@ -50,6 +62,9 @@ pub(super) fn step(result: &AnalysisResult) -> TourStep {
         lines: count(lines),
         language,
         language_lines: language.map_or(0, |language| count(by_language[language as usize])),
+        language_read: language.is_some_and(|language| {
+            Language::analyzed_named(&result.languages[language as usize]).is_some()
+        }),
         // Docs or examples can outnumber the code: the biggest island is the
         // one with the most code, or without code the one with most files
         biggest_island: first_max(code_by_island).or_else(|| first_max(by_island.iter().copied())),
@@ -82,6 +97,7 @@ mod tests {
             lines,
             language,
             language_lines,
+            language_read,
             biggest_island,
             outside_island,
         } = step(&repo.result)
@@ -92,6 +108,7 @@ mod tests {
         // Six TypeScript files of 10 lines, a little more than the stylesheet
         assert_eq!((lines, language_lines), (115, 60));
         assert_eq!(language, Some(0));
+        assert!(language_read);
         // `ui` has four files, but three of code, as many as `core`: the
         // first island wins
         assert_eq!(biggest_island, Some(repo.island("core")));
@@ -126,9 +143,42 @@ mod tests {
                 lines: 0,
                 language: None,
                 language_lines: 0,
+                language_read: false,
                 biggest_island: Some(0),
                 outside_island: None,
             }
         );
+    }
+
+    #[test]
+    fn an_unknown_extension_is_never_the_main_language_and_rust_is_not_read() {
+        let mut repo = Fixture::layered();
+        repo.result
+            .languages
+            .extend(["Other".to_owned(), "Rust".to_owned()]);
+        let catalog = repo.file("ui/fr.po", Scope::Source);
+        repo.result.files.language[catalog] = 1;
+        repo.result.files.lines[catalog] = 5_000;
+        let TourStep::Overview {
+            language,
+            language_read,
+            ..
+        } = step(&repo.result)
+        else {
+            unreachable!()
+        };
+        assert_eq!((language, language_read), (Some(0), true));
+        let crate_file = repo.file("core/lib.rs", Scope::Source);
+        repo.result.files.language[crate_file] = 2;
+        repo.result.files.lines[crate_file] = 900;
+        let TourStep::Overview {
+            language,
+            language_read,
+            ..
+        } = step(&repo.result)
+        else {
+            unreachable!()
+        };
+        assert_eq!((language, language_read), (Some(2), false));
     }
 }
