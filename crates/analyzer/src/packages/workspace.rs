@@ -14,6 +14,9 @@ pub(super) struct Declaration {
     pub manifest: String,
     include: GlobSet,
     exclude: GlobSet,
+    /// Whether the root itself is a member: `.` in `go.work`, or the root
+    /// project of a uv workspace, which uv always installs.
+    pub root: bool,
 }
 
 impl Declaration {
@@ -54,12 +57,13 @@ pub(super) fn declarations(manifests: &[(&str, &[u8])]) -> Vec<Declaration> {
     };
     let read = |kind: WorkspaceKind, manifest: &str, reader: Reader| {
         let patterns = reader(&root(manifest)?);
-        let (include, exclude) = globs(&patterns)?;
+        let (include, exclude, root) = globs(&patterns)?;
         Some(Declaration {
             kind,
             manifest: manifest.to_owned(),
             include,
             exclude,
+            root,
         })
     };
     let installed = read(WorkspaceKind::Pnpm, "pnpm-workspace.yaml", pnpm)
@@ -72,20 +76,28 @@ pub(super) fn declarations(manifests: &[(&str, &[u8])]) -> Vec<Declaration> {
             .filter_map(|(path, _)| path.strip_suffix("/project.json"))
             .map(globset::escape)
             .collect();
-        let (include, exclude) = globs(&projects)?;
+        let (include, exclude, _) = globs(&projects)?;
         Some(Declaration {
             kind: WorkspaceKind::Nx,
             manifest: "nx.json".to_owned(),
             include,
             exclude,
+            root: false,
         })
+    });
+    // uv installs the root project of its workspace with the members
+    let uv = read(WorkspaceKind::Uv, "pyproject.toml", uv).map(|mut uv| {
+        let project = root("pyproject.toml")
+            .is_some_and(|content| toml_sections(&content).contains_key("project"));
+        uv.root |= project;
+        uv
     });
     [
         installed,
         read(WorkspaceKind::Lerna, "lerna.json", lerna),
         nx,
         read(WorkspaceKind::GoWork, "go.work", go_work),
-        read(WorkspaceKind::Uv, "pyproject.toml", uv),
+        uv,
         deno,
     ]
     .into_iter()
@@ -94,16 +106,22 @@ pub(super) fn declarations(manifests: &[(&str, &[u8])]) -> Vec<Declaration> {
 }
 
 /// Patterns as folder globs: `*` stays within a folder, `**` crosses them,
-/// `!` excludes. `None` when nothing is included.
-fn globs(patterns: &[String]) -> Option<(GlobSet, GlobSet)> {
+/// `!` excludes; and whether `.` lists the root. `None` when nothing is
+/// included.
+fn globs(patterns: &[String]) -> Option<(GlobSet, GlobSet, bool)> {
     let mut include = GlobSetBuilder::new();
     let mut exclude = GlobSetBuilder::new();
     let mut any = false;
+    let mut root = false;
     for pattern in patterns {
         let (negated, pattern) = match pattern.strip_prefix('!') {
             Some(rest) => (true, rest),
             None => (false, pattern.as_str()),
         };
+        if matches!(pattern.trim(), "." | "./") {
+            root |= !negated;
+            continue;
+        }
         let pattern = pattern
             .trim()
             .trim_start_matches("./")
@@ -122,12 +140,13 @@ fn globs(patterns: &[String]) -> Option<(GlobSet, GlobSet)> {
         }
     }
     let empty = || GlobSetBuilder::new().build().ok();
-    if !any {
+    if !any && !root {
         return None;
     }
     Some((
         include.build().ok().or_else(empty)?,
         exclude.build().ok().or_else(empty)?,
+        root,
     ))
 }
 
@@ -460,5 +479,27 @@ mod tests {
         assert_eq!(deno.kind, WorkspaceKind::Deno);
         assert!(deno.matches("assert") && deno.matches("http"));
         assert!(!deno.matches("fs"));
+    }
+
+    #[test]
+    fn a_dot_lists_the_root_and_uv_always_installs_its_root_project() {
+        let go = declared(&[("go.work", "use (\n\t.\n\t./pkg/sdk\n)\n")]).unwrap();
+        assert!(go.root && go.matches("pkg/sdk"));
+        let only_root = declared(&[("go.work", "use ./\n")]).unwrap();
+        assert!(only_root.root);
+        let npm = declared(&[("package.json", r#"{"workspaces": ["apps/*", ""]}"#)]).unwrap();
+        assert!(!npm.root);
+        let uv = declared(&[(
+            "pyproject.toml",
+            "[project]\nname = \"meta\"\n\n[tool.uv.workspace]\nmembers = [\"libs/*\"]\n",
+        )])
+        .unwrap();
+        assert!(uv.root);
+        let bare_uv = declared(&[(
+            "pyproject.toml",
+            "[tool.uv.workspace]\nmembers = [\"libs/*\"]\n",
+        )])
+        .unwrap();
+        assert!(!bare_uv.root);
     }
 }
