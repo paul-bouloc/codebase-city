@@ -6,7 +6,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use model::{PackageKind, SharedLibrary, TourStep};
 
 use super::MAX_ROWS;
-use super::monorepo::Monorepo;
+use super::monorepo::{Monorepo, has_code};
 use crate::saturating_u32 as index;
 
 /// The most libraries ranked by their importers: a fourth one is often
@@ -26,10 +26,11 @@ fn importer_counts(repo: &Monorepo<'_>) -> BTreeMap<u32, u32> {
     counts
 }
 
+/// The libraries with production code.
 fn libraries_of(repo: &Monorepo<'_>) -> Vec<u32> {
     let kinds = &repo.result.packages.kind;
     (0..kinds.len())
-        .filter(|&package| kinds[package] == PackageKind::Library)
+        .filter(|&package| kinds[package] == PackageKind::Library && has_code(repo.result, package))
         .map(index)
         .collect()
 }
@@ -276,5 +277,22 @@ mod tests {
         }
         fixture.sort_edges();
         assert_eq!(app_links(&repo(&fixture)), None);
+    }
+
+    #[test]
+    fn packages_without_code_are_neither_libraries_nor_apps() {
+        let mut fixture = Fixture::monorepo();
+        // lonely, unused, and kiosk, an app, hold tooling only
+        fixture.result.packages.code_files[12] = 0;
+        fixture.result.packages.code_files[5] = 0;
+        let repo = repo(&fixture);
+        let Some(TourStep::Libraries { unused, .. }) = libraries(&repo) else {
+            unreachable!()
+        };
+        assert!(unused.is_empty());
+        let Some(TourStep::OtherApps { apps }) = super::super::apps::other_apps(&repo) else {
+            unreachable!()
+        };
+        assert_eq!(apps, [3, 4]);
     }
 }

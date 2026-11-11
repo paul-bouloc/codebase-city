@@ -145,6 +145,12 @@ impl<'a> Monorepo<'a> {
     }
 }
 
+/// Whether a package holds production code: a workspace also declares
+/// packages of tooling and tests, which the tour leaves out.
+pub(super) fn has_code(result: &AnalysisResult, package: usize) -> bool {
+    result.packages.code_files[package] > 0
+}
+
 /// Each folder inherits the package of its parent; parents come first.
 fn package_of_dir(result: &AnalysisResult) -> Vec<Option<u32>> {
     let parents = &result.dirs.parent;
@@ -161,14 +167,14 @@ fn package_of_dir(result: &AnalysisResult) -> Vec<Option<u32>> {
 }
 
 /// The apps of a group by name make one unit, each other app its own; the
-/// largest first, the apps of a unit too.
+/// largest first, the apps of a unit too. An app without code is left out.
 fn units(result: &AnalysisResult) -> Vec<AppUnit> {
     let packages = &result.packages;
     let files = |app: &u32| packages.code_files[*app as usize];
     let mut grouped: BTreeMap<u32, Vec<u32>> = BTreeMap::new();
     let mut units = Vec::new();
     for package in 0..packages.dir.len() {
-        if packages.kind[package] != PackageKind::App {
+        if packages.kind[package] != PackageKind::App || !has_code(result, package) {
             continue;
         }
         let app = index(package);
