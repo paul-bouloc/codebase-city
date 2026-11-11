@@ -95,8 +95,6 @@ pub enum InvalidResult {
         "stats.importsResolved and stats.importsExternal add up to more than stats.importsTotal"
     )]
     ImportCounts,
-    #[error("packages need a workspace that declares them")]
-    PackagesWithoutWorkspace,
     #[error("workspaces[{row}] repeats a kind of declaration")]
     WorkspaceRepeated { row: usize },
     #[error("packages[{row}] must come after the previous package, by folder")]

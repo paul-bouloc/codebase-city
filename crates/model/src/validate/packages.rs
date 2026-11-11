@@ -44,9 +44,6 @@ pub(super) fn packages(result: &AnalysisResult) -> Result<(), InvalidResult> {
     in_bounds_or_null("packages.routes", &packages.routes, dir_count)?;
     let groups = &result.package_groups;
     in_bounds_or_null("packages.group", &packages.group, groups.prefix.len())?;
-    if count > 0 && result.workspaces.is_empty() {
-        return Err(InvalidResult::PackagesWithoutWorkspace);
-    }
     if let Some(row) = packages.dir.windows(2).position(|pair| pair[0] >= pair[1]) {
         return Err(InvalidResult::PackageOrder { row: row + 1 });
     }
@@ -162,14 +159,12 @@ mod tests {
     }
 
     #[test]
-    fn packages_need_a_workspace() {
-        assert_eq!(
-            invalid(|result| {
-                with_package(result);
-                result.workspaces.clear();
-            }),
-            InvalidResult::PackagesWithoutWorkspace
-        );
+    fn packages_need_no_workspace() {
+        // A repository that declares nothing has implicit packages
+        let mut result = result();
+        with_two_packages(&mut result);
+        result.workspaces.clear();
+        assert_eq!(result.validate(), Ok(()));
     }
 
     #[test]
