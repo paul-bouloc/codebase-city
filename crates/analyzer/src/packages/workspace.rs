@@ -6,6 +6,7 @@ use model::WorkspaceKind;
 use serde_json::Value;
 
 use super::manifest::{toml_array, toml_sections};
+use crate::files::Language;
 
 /// The patterns a declaration lists its packages with.
 pub(super) struct Declaration {
@@ -39,6 +40,63 @@ impl Declaration {
             WorkspaceKind::Deno => &["deno.json", "deno.jsonc", "package.json"],
         }
     }
+}
+
+/// The languages a workspace declares packages in. A declaration speaks
+/// for its own language only: a `go.work` says nothing of the JavaScript
+/// beside it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum Ecosystem {
+    JavaScript,
+    Go,
+    Python,
+}
+
+impl Ecosystem {
+    const ALL: [Self; 3] = [Self::JavaScript, Self::Go, Self::Python];
+
+    fn of(kind: WorkspaceKind) -> Self {
+        match kind {
+            WorkspaceKind::Npm
+            | WorkspaceKind::Pnpm
+            | WorkspaceKind::Lerna
+            | WorkspaceKind::Nx
+            | WorkspaceKind::Deno => Self::JavaScript,
+            WorkspaceKind::GoWork => Self::Go,
+            WorkspaceKind::Uv => Self::Python,
+        }
+    }
+
+    /// The manifests that make a folder a project of the language.
+    pub fn manifests(self) -> &'static [&'static str] {
+        match self {
+            Self::JavaScript => &["package.json", "deno.json", "deno.jsonc"],
+            Self::Go => &["go.mod"],
+            Self::Python => &["pyproject.toml"],
+        }
+    }
+
+    /// Whether a file in `language` is code of the ecosystem.
+    pub fn holds(self, language: Language) -> bool {
+        match self {
+            Self::JavaScript => matches!(language, Language::JavaScript | Language::TypeScript),
+            Self::Go => language == Language::Go,
+            Self::Python => language == Language::Python,
+        }
+    }
+}
+
+/// The ecosystems no declaration covers: their projects are implicit
+/// packages.
+pub(super) fn undeclared(declarations: &[Declaration]) -> Vec<Ecosystem> {
+    Ecosystem::ALL
+        .into_iter()
+        .filter(|&ecosystem| {
+            !declarations
+                .iter()
+                .any(|declaration| Ecosystem::of(declaration.kind) == ecosystem)
+        })
+        .collect()
 }
 
 /// Reads the patterns of one kind of manifest.

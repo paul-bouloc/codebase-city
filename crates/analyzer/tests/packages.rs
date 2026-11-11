@@ -580,3 +580,106 @@ fn packages_that_hold_less_than_half_the_code_make_no_monorepo() {
     // The islands of a simple repository: `extensions` is not split
     assert!(island_paths(&result).contains(&"extensions".to_owned()));
 }
+
+/// A Go server at the root and a Vite app in `web`, declared by nothing.
+const SERVER_AND_WEB: &[(&str, &str)] = &[
+    ("go.mod", "module example.com/notes\n\ngo 1.22\n"),
+    (
+        "cmd/notes/main.go",
+        "package main\n\nimport \"example.com/notes/server\"\n\nfunc main() { server.Run() }\n",
+    ),
+    ("server/run.go", "package server\n\nfunc Run() {}\n"),
+    (
+        "web/package.json",
+        r#"{ "name": "notes-web", "scripts": { "dev": "vite", "build": "vite build" } }"#,
+    ),
+    ("web/src/main.ts", "export const app = 1\n"),
+    ("web/src/page.ts", "export const page = 1\n"),
+];
+
+#[test]
+fn projects_nothing_declares_are_implicit_packages() {
+    let result = analyzed(SERVER_AND_WEB);
+    assert!(result.workspaces.is_empty());
+    assert_eq!(package_paths(&result), ["", "web"]);
+    let root = row(&result, "");
+    assert_eq!(result.packages.kind[root], PackageKind::App);
+    let entry = result.packages.entry[root].unwrap();
+    assert_eq!(file_path(&result, entry), "cmd/notes/main.go");
+    assert_eq!(result.packages.code_files[root], 2);
+    assert_eq!(result.packages.kind[row(&result, "web")], PackageKind::App);
+    // The app in `web` is an island; the root's folders keep theirs
+    let islands = island_paths(&result);
+    assert!(islands.contains(&"web".to_owned()));
+}
+
+#[test]
+fn a_single_project_makes_no_package() {
+    let result = analyzed(&[
+        ("go.mod", "module example.com/tool\n\ngo 1.22\n"),
+        ("main.go", "package main\n\nfunc main() {}\n"),
+        ("run/run.go", "package run\n\nfunc Run() {}\n"),
+    ]);
+    assert!(result.packages.dir.is_empty());
+}
+
+#[test]
+fn examples_and_tools_config_make_no_implicit_package() {
+    let mut files = SERVER_AND_WEB.to_vec();
+    files.extend([
+        // An example has no production code
+        (
+            "examples/hello/package.json",
+            r#"{ "name": "hello", "scripts": { "start": "node main.js" } }"#,
+        ),
+        ("examples/hello/main.js", "console.log('hello')\n"),
+        // A pyproject.toml that only configures tools, over no Python
+        ("scripts/pyproject.toml", "[tool.ruff]\nline-length = 100\n"),
+        ("scripts/release.js", "console.log('release')\n"),
+    ]);
+    let result = analyzed(&files);
+    assert_eq!(package_paths(&result), ["", "web"]);
+}
+
+#[test]
+fn a_declaration_speaks_for_its_language_only() {
+    // `go.work` declares the Go modules; the JavaScript front is implicit,
+    // and a Go module go.work leaves out stays out
+    let result = analyzed(&[
+        ("go.work", "go 1.22\n\nuse (\n\t./core\n\t./cli\n)\n"),
+        ("core/go.mod", "module example.com/db/core\n\ngo 1.22\n"),
+        ("core/main.go", "package main\n\nfunc main() {}\n"),
+        ("cli/go.mod", "module example.com/db/cli\n\ngo 1.22\n"),
+        ("cli/main.go", "package main\n\nfunc main() {}\n"),
+        (
+            "desktop/go.mod",
+            "module example.com/db/desktop\n\ngo 1.22\n",
+        ),
+        ("desktop/main.go", "package main\n\nfunc main() {}\n"),
+        (
+            "frontend/package.json",
+            r#"{ "name": "frontend", "scripts": { "dev": "vite" } }"#,
+        ),
+        ("frontend/src/main.ts", "export const app = 1\n"),
+    ]);
+    assert_eq!(package_paths(&result), ["cli", "core", "frontend"]);
+}
+
+#[test]
+fn an_implicit_package_can_lie_inside_a_declared_one() {
+    // A uv workspace declares the CLI; its React front has a package.json
+    let result = analyzed(&[
+        (
+            "pyproject.toml",
+            "[tool.uv.workspace]\nmembers = [\"cli\", \"lib\"]\n",
+        ),
+        ("cli/pyproject.toml", "[project]\nname = \"cli\"\n"),
+        ("cli/cli/main.py", "print('cli')\n"),
+        ("cli/web-ui/package.json", r#"{ "name": "web-ui" }"#),
+        ("cli/web-ui/src/app.tsx", "export const App = 1\n"),
+        ("lib/pyproject.toml", "[project]\nname = \"lib\"\n"),
+        ("lib/lib/core.py", "VALUE = 1\n"),
+    ]);
+    assert_eq!(package_paths(&result), ["cli", "cli/web-ui", "lib"]);
+    assert_eq!(result.packages.code_files[row(&result, "cli")], 1);
+}
