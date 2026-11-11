@@ -117,13 +117,7 @@ function forward(result: AnalysisResult, rows: number[], at: (row: number) => Ta
       }
     }
   })
-  return {
-    ...NOTHING,
-    files: [...new Set(files)],
-    pinned,
-    labelled,
-    dim: 'all',
-  }
+  return { ...NOTHING, files: [...new Set(files)], pinned, labelled, dim: 'all' }
 }
 
 /** The production files right in a package's folder. */
