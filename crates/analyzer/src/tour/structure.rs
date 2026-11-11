@@ -45,7 +45,9 @@ pub(super) fn package_layers(result: &AnalysisResult) -> Option<TourStep> {
         return None;
     };
     let all = u64::from(down) + u64::from(level) + u64::from(up);
-    (u64::from(up) * 100 <= all * MAX_UP_SHARE).then_some(step)
+    // The layers come from the graph, which sees through barrels: their
+    // links may hold no production import at all
+    (all > 0 && u64::from(up) * 100 <= all * MAX_UP_SHARE).then_some(step)
 }
 
 /// The step from the imports and the upward imports of each link.
@@ -212,6 +214,10 @@ mod tests {
         // Two of eleven: they do not
         repo.result.links.production[3] = 2;
         repo.result.links.production_upward[3] = 2;
+        assert_eq!(package_layers(&repo.result), None);
+        // Nor without any production import
+        repo.result.links.production.fill(0);
+        repo.result.links.production_upward.fill(0);
         assert_eq!(package_layers(&repo.result), None);
     }
 
