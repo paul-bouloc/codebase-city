@@ -50,20 +50,6 @@ pub(super) fn packages(result: &AnalysisResult) -> Result<(), InvalidResult> {
     if let Some(row) = packages.dir.windows(2).position(|pair| pair[0] >= pair[1]) {
         return Err(InvalidResult::PackageOrder { row: row + 1 });
     }
-    // A package inside another would split one manifest's code in two
-    let mut is_package = vec![false; dir_count];
-    for &dir in &packages.dir {
-        is_package[dir as usize] = true;
-    }
-    for (row, &dir) in packages.dir.iter().enumerate() {
-        let mut parent = result.dirs.parent[dir as usize];
-        while let Some(dir) = parent {
-            if is_package[dir as usize] {
-                return Err(InvalidResult::PackageNested { row });
-            }
-            parent = result.dirs.parent[dir as usize];
-        }
-    }
     if let Some(row) = packages.name.iter().position(String::is_empty) {
         return Err(InvalidResult::PackageName { row });
     }
@@ -237,7 +223,7 @@ mod tests {
     }
 
     #[test]
-    fn packages_are_sorted_by_folder_and_never_nested() {
+    fn packages_are_sorted_by_folder_the_root_and_nested_ones_included() {
         assert_eq!(
             invalid(|result| {
                 with_two_packages(result);
@@ -245,13 +231,12 @@ mod tests {
             }),
             InvalidResult::PackageOrder { row: 1 }
         );
-        assert_eq!(
-            invalid(|result| {
-                with_two_packages(result);
-                result.packages.dir = vec![0, 1];
-            }),
-            InvalidResult::PackageNested { row: 1 }
-        );
+        // The root package holds the other one: a file belongs to the
+        // deepest
+        let mut nested = result();
+        with_two_packages(&mut nested);
+        nested.packages.dir = vec![0, 1];
+        assert_eq!(nested.validate(), Ok(()));
     }
 
     #[test]

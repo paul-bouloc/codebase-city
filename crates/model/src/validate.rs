@@ -101,8 +101,6 @@ pub enum InvalidResult {
     WorkspaceRepeated { row: usize },
     #[error("packages[{row}] must come after the previous package, by folder")]
     PackageOrder { row: usize },
-    #[error("packages.dir[{row}] lies inside another package")]
-    PackageNested { row: usize },
     #[error("packages.name[{row}] is empty")]
     PackageName { row: usize },
     #[error(
