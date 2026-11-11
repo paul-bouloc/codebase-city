@@ -64,6 +64,11 @@ impl Graph {
         self.production[file as usize]
     }
 
+    /// Whether a folder imported as a package holds production code.
+    pub fn is_production_dir(&self, dir: u32) -> bool {
+        self.dir_production[dir as usize]
+    }
+
     pub fn is_barrel(&self, file: u32) -> bool {
         self.barrel[file as usize]
     }

@@ -316,6 +316,13 @@ pub struct Links {
     /// than `from`. A barrel's re-exports do not count: it offers what it
     /// re-exports, it does not depend on it.
     pub upward: Vec<u32>,
+    /// Of [`Links::imports`], the plain imports and re-exports from a
+    /// production file that is not a barrel to production code: the
+    /// imports [`Islands::layer`] is read from. Tests and type imports are
+    /// left out.
+    pub production: Vec<u32>,
+    /// How many of them go up the layers.
+    pub production_upward: Vec<u32>,
 }
 
 /// Production files that import each other in a loop, one row per loop,
@@ -648,19 +655,19 @@ pub enum TourStep {
         shared: Vec<SharedLibrary>,
     },
     /// The layers of the islands, read from [`Islands::layer`], and how the
-    /// imports between islands in layers follow them. In a monorepo, only
-    /// its production imports count, and the step is shown when at most
-    /// 10% of them go up.
+    /// imports between islands in layers follow them: [`Links::imports`]
+    /// and [`Links::upward`]. In a monorepo, [`Links::production`] and
+    /// [`Links::production_upward`] instead, and the step is shown when at
+    /// most 10% of them go up.
     Layers {
         /// Imports to an island of a lower layer.
         down: u32,
         /// Imports to another island of the same layer.
         level: u32,
-        /// Imports to an island of a higher layer, as [`Links::upward`]
-        /// counts them.
+        /// Imports to an island of a higher layer.
         up: u32,
-        /// The row of [`Links`] with the most imports going up; `null`
-        /// when none does.
+        /// The row of [`Links`] with the most of those imports going up;
+        /// `null` when none does.
         worst_link: Option<u32>,
     },
     /// In a monorepo of libraries, the folders outside the packages whose

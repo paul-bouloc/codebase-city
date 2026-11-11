@@ -117,11 +117,11 @@ pub(crate) fn print_tour(result: &AnalysisResult) {
                             .map(|(_, name)| name.as_str())
                             .collect();
                         // Sixty islands in a layer would hide the order
-                        match names.len().checked_sub(MAX_LAYER_NAMES) {
-                            Some(more) if more > 0 => {
-                                format!("{} (+{more} more)", names[..MAX_LAYER_NAMES].join(" "))
-                            }
-                            _ => names.join(" "),
+                        if names.len() > MAX_LAYER_NAMES {
+                            let more = names.len() - MAX_LAYER_NAMES;
+                            format!("{} (+{more} more)", names[..MAX_LAYER_NAMES].join(" "))
+                        } else {
+                            names.join(" ")
                         }
                     })
                     .collect();
@@ -137,10 +137,11 @@ pub(crate) fn print_tour(result: &AnalysisResult) {
                     let links = &result.links;
                     let link = *link as usize;
                     println!(
-                        "              most up: {} → {} ({})",
+                        "              most up: {} → {} ({}, {} in production)",
                         island(links.from[link]),
                         island(links.to[link]),
-                        links.upward[link]
+                        links.upward[link],
+                        links.production_upward[link]
                     );
                 }
             }

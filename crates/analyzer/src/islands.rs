@@ -87,39 +87,60 @@ pub(crate) fn islands(
     islands
 }
 
-/// The imports between islands, from the edges of the result: `(importing
-/// file, imported folder)`, the folder of the imported file or the imported
-/// package. `layers` gives each island's layer, to count the imports that go
-/// up, barrels' re-exports left out.
+/// One edge of the result, as links count it.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct LinkEdge {
+    pub from_file: u32,
+    /// The folder of the imported file, or the imported package.
+    pub to_dir: u32,
+    /// A plain import or re-export from a production file that is not a
+    /// barrel to production code: one the layers are read from.
+    pub layered: bool,
+}
+
+/// The imports between islands, from the edges of the result. `layers`
+/// gives each island's layer, to count the imports that go up, barrels'
+/// re-exports left out.
 pub(crate) fn links(
     islands: &Islands,
     layers: &[Option<u32>],
     file_dirs: &[u32],
     barrels: &[bool],
-    edges: impl Iterator<Item = (u32, u32)>,
+    edges: impl Iterator<Item = LinkEdge>,
 ) -> Links {
-    let mut counts: BTreeMap<(u32, u32), (u32, u32)> = BTreeMap::new();
-    for (from_file, to_dir) in edges {
-        let from = islands.of_dir[file_dirs[from_file as usize] as usize];
-        let to = islands.of_dir[to_dir as usize];
+    #[derive(Default)]
+    struct Count {
+        imports: u32,
+        upward: u32,
+        production: u32,
+        production_upward: u32,
+    }
+    let mut counts: BTreeMap<(u32, u32), Count> = BTreeMap::new();
+    for edge in edges {
+        let from = islands.of_dir[file_dirs[edge.from_file as usize] as usize];
+        let to = islands.of_dir[edge.to_dir as usize];
         if let (Some(from), Some(to)) = (from, to)
             && from != to
         {
             let up = matches!(
                 (layers[from as usize], layers[to as usize]),
                 (Some(low), Some(high)) if high > low
-            ) && !barrels[from_file as usize];
+            ) && !barrels[edge.from_file as usize];
             let count = counts.entry((from, to)).or_default();
-            count.0 += 1;
-            count.1 += u32::from(up);
+            count.imports += 1;
+            count.upward += u32::from(up);
+            count.production += u32::from(edge.layered);
+            count.production_upward += u32::from(edge.layered && up);
         }
     }
     let mut links = Links::default();
-    for ((from, to), (imports, upward)) in counts {
+    for ((from, to), count) in counts {
         links.from.push(from);
         links.to.push(to);
-        links.imports.push(imports);
-        links.upward.push(upward);
+        links.imports.push(count.imports);
+        links.upward.push(count.upward);
+        links.production.push(count.production);
+        links.production_upward.push(count.production_upward);
     }
     links
 }
@@ -321,13 +342,28 @@ mod tests {
         let islands = islands(&parents, &file_dirs, &[false, true, true, true], &[]);
         let layers = [None, Some(1), Some(2)];
         let barrels = [false, false, false, true];
-        // a → b twice and from the barrel, b → a, a → a, root → b
-        let edges = [(1, 2), (1, 2), (3, 2), (2, 1), (1, 1), (0, 2)];
+        // a → b twice (once from a test) and from the barrel, b → a, a → a,
+        // root → b; what the layers read is said by the edge
+        let edges = [
+            (1, 2, true),
+            (1, 2, false),
+            (3, 2, false),
+            (2, 1, true),
+            (1, 1, true),
+            (0, 2, true),
+        ]
+        .map(|(from_file, to_dir, layered)| LinkEdge {
+            from_file,
+            to_dir,
+            layered,
+        });
         let links = links(&islands, &layers, &file_dirs, &barrels, edges.into_iter());
         assert_eq!(links.from, [0, 1, 2]);
         assert_eq!(links.to, [2, 2, 1]);
         assert_eq!(links.imports, [1, 3, 1]);
         // The barrel offers what it re-exports: it does not go up
         assert_eq!(links.upward, [0, 2, 0]);
+        assert_eq!(links.production, [1, 1, 1]);
+        assert_eq!(links.production_upward, [0, 1, 0]);
     }
 }

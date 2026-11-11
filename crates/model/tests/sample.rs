@@ -408,6 +408,8 @@ fn sample() -> AnalysisResult {
             to: LINKS.iter().map(|link| link.1).collect(),
             imports: LINKS.iter().map(|link| link.2).collect(),
             upward: vec![0; LINKS.len()],
+            production: LINKS.iter().map(|link| link.2).collect(),
+            production_upward: vec![0; LINKS.len()],
         },
         cycles: Cycles {
             members: vec![vec![5, 6], vec![9, 12]],

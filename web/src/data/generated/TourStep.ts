@@ -97,13 +97,12 @@ down: number,
  */
 level: number, 
 /**
- * Imports to an island of a higher layer, as [`Links::upward`]
- * counts them.
+ * Imports to an island of a higher layer.
  */
 up: number, 
 /**
- * The row of [`Links`] with the most imports going up; `null`
- * when none does.
+ * The row of [`Links`] with the most of those imports going up;
+ * `null` when none does.
  */
 worstLink: number | null, } | { "kind": "consumers", 
 /**

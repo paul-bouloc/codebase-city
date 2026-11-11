@@ -60,10 +60,13 @@ pub(crate) fn print_structure(result: &AnalysisResult, expected: Option<&Expecte
     let links = &result.links;
     let layer_of = |island: u32| islands.layer[island as usize];
     let mut between = 0u32;
+    let (mut production, mut production_up) = (0u32, 0u32);
     let mut upward: Vec<(u32, usize)> = Vec::new();
     for row in 0..links.from.len() {
         if layer_of(links.from[row]).is_some() && layer_of(links.to[row]).is_some() {
             between += links.imports[row];
+            production += links.production[row];
+            production_up += links.production_upward[row];
         }
         if links.upward[row] > 0 {
             upward.push((links.upward[row], row));
@@ -77,6 +80,14 @@ pub(crate) fn print_structure(result: &AnalysisResult, expected: Option<&Expecte
             0.0
         } else {
             100.0 * f64::from(up) / f64::from(between)
+        }
+    );
+    println!(
+        "              in production: {production_up} of {production} ({:.2}%)",
+        if production == 0 {
+            0.0
+        } else {
+            100.0 * f64::from(production_up) / f64::from(production)
         }
     );
     upward.sort_by_key(|&(imports, row)| (std::cmp::Reverse(imports), row));

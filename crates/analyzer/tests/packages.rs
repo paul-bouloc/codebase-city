@@ -769,3 +769,48 @@ fn the_islands_of_a_root_package_keep_their_layer() {
     assert!(layer("controllers").is_some());
     assert!(layer("controllers") > layer("pkg/sdk"));
 }
+
+#[test]
+fn a_test_that_imports_up_is_no_production_import() {
+    let result = analyzed(&[
+        (
+            "package.json",
+            r#"{ "name": "libs", "private": true, "workspaces": ["libs/*"] }"#,
+        ),
+        ("libs/a/package.json", r#"{ "name": "a" }"#),
+        ("libs/a/index.ts", "export const a = 1\n"),
+        // The test of `a` uses `b`, above it
+        (
+            "libs/a/index.test.ts",
+            "import { b } from '../b/index'\nexport const checked = b\n",
+        ),
+        ("libs/b/package.json", r#"{ "name": "b" }"#),
+        (
+            "libs/b/index.ts",
+            "import { a } from '../a/index'\nexport const b = a\n",
+        ),
+    ]);
+    let island = |dir: &str| {
+        result
+            .islands
+            .dir
+            .iter()
+            .position(|&island| dir_path(&result, island) == dir)
+            .unwrap() as u32
+    };
+    let (a, b) = (island("libs/a"), island("libs/b"));
+    let links = &result.links;
+    let row = |from: u32, to: u32| {
+        (0..links.from.len())
+            .find(|&row| links.from[row] == from && links.to[row] == to)
+            .unwrap()
+    };
+    let up = row(a, b);
+    assert_eq!((links.imports[up], links.upward[up]), (1, 1));
+    assert_eq!((links.production[up], links.production_upward[up]), (0, 0));
+    let down = row(b, a);
+    assert_eq!(
+        (links.production[down], links.production_upward[down]),
+        (1, 0)
+    );
+}

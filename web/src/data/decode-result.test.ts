@@ -388,7 +388,14 @@ describe('decodeResult', () => {
         // `src/core` in the root island, which does not start there
         json.islands.dir.splice(2, 1)
         json.islands.layer.splice(2, 1)
-        json.links = { from: [], to: [], imports: [], upward: [] }
+        json.links = {
+          from: [],
+          to: [],
+          imports: [],
+          upward: [],
+          production: [],
+          productionUpward: [],
+        }
         json.dirs.island = [0, 1, 0, 2, 3, 4, 5, 6]
       }),
     ).toThrow('dirs.island[2] must be its parent')
@@ -417,6 +424,17 @@ describe('decodeResult', () => {
         json.links.upward[1] = 1
       }),
     ).toThrow('links.upward[1] must be at most links.imports, between layers that go up')
+    expect(
+      decodeChanged((json) => {
+        json.links.production[0] = (json.links.imports[0] as number) + 1
+      }),
+    ).toThrow('links.production[0] must be at most links.imports')
+    expect(
+      decodeChanged((json) => {
+        // Nothing goes up from `src` to `src/app`: neither in production
+        json.links.productionUpward[1] = 1
+      }),
+    ).toThrow('links.production[1] must be at most links.imports')
     expect(
       decodeChanged((json) => {
         json.links.upward.pop()

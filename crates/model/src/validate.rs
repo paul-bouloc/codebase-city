@@ -68,6 +68,10 @@ pub enum InvalidResult {
     LinkImports { row: usize },
     #[error("links.upward[{row}] must be at most links.imports, between layers that go up")]
     LinkUpward { row: usize },
+    #[error(
+        "links.production[{row}] must be at most links.imports, and links.productionUpward at most links.production and links.upward"
+    )]
+    LinkProduction { row: usize },
     #[error("cycles.members[{row}] must hold two files or more, sorted, each once")]
     CycleMembers { row: usize },
     #[error("cycles.shortest[{row}] must go through two members or more, each once")]
@@ -323,6 +327,12 @@ fn links(links: &Links, layers: &[Option<u32>]) -> Result<(), InvalidResult> {
     same_length("links.to", count, links.to.len())?;
     same_length("links.imports", count, links.imports.len())?;
     same_length("links.upward", count, links.upward.len())?;
+    same_length("links.production", count, links.production.len())?;
+    same_length(
+        "links.productionUpward",
+        count,
+        links.production_upward.len(),
+    )?;
     in_bounds("links.from", &links.from, island_count)?;
     in_bounds("links.to", &links.to, island_count)?;
     for row in 0..count {
@@ -342,6 +352,13 @@ fn links(links: &Links, layers: &[Option<u32>]) -> Result<(), InvalidResult> {
         );
         if links.upward[row] > links.imports[row] || (links.upward[row] > 0 && !goes_up) {
             return Err(InvalidResult::LinkUpward { row });
+        }
+        let production_upward = links.production_upward[row];
+        if links.production[row] > links.imports[row]
+            || production_upward > links.production[row]
+            || production_upward > links.upward[row]
+        {
+            return Err(InvalidResult::LinkProduction { row });
         }
     }
     Ok(())
@@ -541,6 +558,8 @@ mod tests {
                 to: vec![0],
                 imports: vec![1],
                 upward: vec![0],
+                production: vec![1],
+                production_upward: vec![0],
             },
             cycles: Cycles {
                 members: vec![vec![0, 1]],
@@ -1018,6 +1037,8 @@ mod tests {
                 r.links.to.push(0);
                 r.links.imports.push(3);
                 r.links.upward.push(0);
+                r.links.production.push(3);
+                r.links.production_upward.push(0);
             }),
             InvalidResult::LinkOrder { row: 1 }
         );
@@ -1047,6 +1068,22 @@ mod tests {
                 r.links.upward[0] = 2;
             }),
             InvalidResult::LinkUpward { row: 0 }
+        );
+        // Production imports are some of the imports, and go up only when
+        // the imports go up
+        assert_eq!(
+            invalid(|r| r.links.production[0] = 2),
+            InvalidResult::LinkProduction { row: 0 }
+        );
+        assert_eq!(
+            invalid(|r| {
+                r.links.from[0] = 0;
+                r.links.to[0] = 1;
+                r.islands.layer[0] = Some(1);
+                r.islands.layer[1] = Some(2);
+                r.links.production_upward[0] = 1;
+            }),
+            InvalidResult::LinkProduction { row: 0 }
         );
         assert_eq!(
             invalid(|r| r.links.from[0] = 2),

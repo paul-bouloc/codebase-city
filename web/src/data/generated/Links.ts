@@ -15,4 +15,15 @@ imports: Array<number>,
  * than `from`. A barrel's re-exports do not count: it offers what it
  * re-exports, it does not depend on it.
  */
-upward: Array<number>, };
+upward: Array<number>, 
+/**
+ * Of [`Links::imports`], the plain imports and re-exports from a
+ * production file that is not a barrel to production code: the
+ * imports [`Islands::layer`] is read from. Tests and type imports are
+ * left out.
+ */
+production: Array<number>, 
+/**
+ * How many of them go up the layers.
+ */
+productionUpward: Array<number>, };

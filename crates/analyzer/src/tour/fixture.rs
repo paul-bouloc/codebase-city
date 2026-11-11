@@ -311,13 +311,16 @@ impl Fixture {
         ranked.count = rows.iter().map(|&(_, count)| count).collect();
     }
 
-    /// Adds a link; links must be added in order.
+    /// Adds a link whose imports are all production ones; links must be
+    /// added in order.
     pub fn link(&mut self, from: u32, to: u32, imports: u32, upward: u32) {
         let links = &mut self.result.links;
         links.from.push(from);
         links.to.push(to);
         links.imports.push(imports);
         links.upward.push(upward);
+        links.production.push(imports);
+        links.production_upward.push(upward);
     }
 
     /// `tour` in the result, laid out, once checked as the web app would.

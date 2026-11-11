@@ -3,8 +3,8 @@
 use std::collections::HashMap;
 
 use model::{
-    AnalysisResult, Dirs, Edges, FORMAT_VERSION, Files, Ignored, Islands, Repo, Roles, Scope,
-    Stats, Symbols, Tour,
+    AnalysisResult, Dirs, EdgeKind, Edges, FORMAT_VERSION, Files, Ignored, Islands, Repo, Roles,
+    Scope, Stats, Symbols, Tour,
 };
 use rayon::prelude::*;
 
@@ -267,13 +267,33 @@ pub fn analyze_with_report(
         &table.dir,
         layered_packages,
     );
-    let links = islands::links(
-        &islands,
-        &layers,
-        &table.dir,
-        &table.barrel,
-        import_dirs.iter().copied(),
-    );
+    // The imports the layers are read from: plain imports and re-exports
+    // between production code, a barrel never importing. A barrel is a
+    // target: the edges of the result stop at it, where the graph sees
+    // through it, and it lies in the package it gathers
+    let link_edges = (0..table_edges.from.len()).filter_map(|edge| {
+        let from_file = table_edges.from[edge];
+        let (to_dir, to_production) = match table_edges.to[edge] {
+            Some(to) => (table.dir[to as usize], production[to as usize]),
+            None => {
+                let dir = table_edges.to_dir[edge]?;
+                (dir, graph.is_production_dir(dir))
+            }
+        };
+        let layered = production[from_file as usize]
+            && !table.barrel[from_file as usize]
+            && to_production
+            && matches!(
+                table_edges.kind[edge],
+                EdgeKind::Import | EdgeKind::Reexport
+            );
+        Some(islands::LinkEdge {
+            from_file,
+            to_dir,
+            layered,
+        })
+    });
+    let links = islands::links(&islands, &layers, &table.dir, &table.barrel, link_edges);
     let analyzed: Vec<bool> = files
         .iter()
         .map(|file| file.language.is_analyzed())

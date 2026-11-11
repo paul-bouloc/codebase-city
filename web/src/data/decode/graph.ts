@@ -167,10 +167,14 @@ export function decodeLinks(value: unknown, layers: (number | null)[]): Links {
     to: u32Column(fields.to, 'links.to'),
     imports: u32Column(fields.imports, 'links.imports'),
     upward: u32Column(fields.upward, 'links.upward'),
+    production: u32Column(fields.production, 'links.production'),
+    productionUpward: u32Column(fields.productionUpward, 'links.productionUpward'),
   }
   sameLength('links.to', links.from.length, links.to)
   sameLength('links.imports', links.from.length, links.imports)
   sameLength('links.upward', links.from.length, links.upward)
+  sameLength('links.production', links.from.length, links.production)
+  sameLength('links.productionUpward', links.from.length, links.productionUpward)
   inBounds('links.from', links.from, islandCount)
   inBounds('links.to', links.to, islandCount)
   for (let row = 0; row < links.from.length; row++) {
@@ -195,6 +199,17 @@ export function decodeLinks(value: unknown, layers: (number | null)[]): Links {
     const goesUp = fromLayer !== null && toLayer !== null && toLayer > fromLayer
     if (upward > (links.imports[row] as number) || (upward > 0 && !goesUp)) {
       fail(`links.upward[${row}] must be at most links.imports, between layers that go up`)
+    }
+    const production = links.production[row] as number
+    const productionUpward = links.productionUpward[row] as number
+    if (
+      production > (links.imports[row] as number) ||
+      productionUpward > production ||
+      productionUpward > upward
+    ) {
+      fail(
+        `links.production[${row}] must be at most links.imports, and links.productionUpward at most links.production and links.upward`,
+      )
     }
   }
   return links
