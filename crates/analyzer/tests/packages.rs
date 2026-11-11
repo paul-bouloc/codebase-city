@@ -750,7 +750,9 @@ fn islands_outside_the_packages_have_no_layer() {
         result.islands.layer[island]
     };
     assert_eq!(layer("cli"), None);
-    assert!(layer("libs/b") > layer("libs/a"));
+    // Both have a layer: `None` would compare below any
+    let (a, b) = (layer("libs/a").unwrap(), layer("libs/b").unwrap());
+    assert!(b > a);
 }
 
 #[test]
@@ -766,8 +768,8 @@ fn the_islands_of_a_root_package_keep_their_layer() {
         result.islands.layer[island]
     };
     // `controllers` lies in the root package and imports the SDK
-    assert!(layer("controllers").is_some());
-    assert!(layer("controllers") > layer("pkg/sdk"));
+    let (controllers, sdk) = (layer("controllers").unwrap(), layer("pkg/sdk").unwrap());
+    assert!(controllers > sdk);
 }
 
 #[test]

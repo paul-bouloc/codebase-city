@@ -149,8 +149,9 @@ pub(crate) fn links(
 /// production files, barrels left out; `None` for an island without
 /// production code. In a monorepo, `packages` holds the folders of all its
 /// packages, the root one included; none in another repository. An island
-/// outside them all, such as `scripts/`, has no layer, and its imports
-/// count for no other.
+/// outside them all, such as `scripts/` beside packages under `packages/`,
+/// has no layer, and its imports count for no other. Under a root package,
+/// every island is in a package.
 pub(crate) fn layers(
     graph: &Graph,
     islands: &Islands,
@@ -198,20 +199,11 @@ fn in_packages(islands: &Islands, parents: &[Option<u32>], packages: &[u32]) -> 
     if packages.is_empty() {
         return vec![true; islands.dirs.len()];
     }
-    // Parents come first: a folder is in a package when its parent is
-    let mut inside = vec![false; parents.len()];
-    for &dir in packages {
-        inside[dir as usize] = true;
-    }
-    for dir in 0..parents.len() {
-        if let Some(parent) = parents[dir] {
-            inside[dir] |= inside[parent as usize];
-        }
-    }
+    let package_of = crate::packages::package_of_dirs(parents, packages);
     islands
         .dirs
         .iter()
-        .map(|&dir| inside[dir as usize])
+        .map(|&dir| package_of[dir as usize].is_some())
         .collect()
 }
 
