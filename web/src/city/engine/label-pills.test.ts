@@ -83,4 +83,24 @@ describe('LabelPills', () => {
     pills.clear()
     expect(pills.group.children).toHaveLength(0)
   })
+  it('draws a label of the guide with its leaders, ends them under it, and fades them with it', () => {
+    const pills = new LabelPills(() => 2)
+    const guide = label({
+      guide: 'full',
+      caption: 'app · 12 files',
+      leads: [
+        [0, 0, 0],
+        [5, 0, 5],
+      ],
+    })
+    pills.show([guide], 0, { snap: false, instant: true })
+    expect(pills.group.children).toHaveLength(3)
+    const lead = pills.group.children[1] as Mesh
+    const { uniforms } = lead.material as ShaderMaterial
+    // The middle of the box's bottom, (80, 60), from the anchor (100, 50), in device pixels
+    expect(uniforms.offset?.value.toArray()).toEqual([-40, 20])
+    expect(uniforms.opacity?.value).toBe(1)
+    settle(pills, [], 16)
+    expect(pills.group.children).toHaveLength(0)
+  })
 })
