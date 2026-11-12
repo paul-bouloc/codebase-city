@@ -145,12 +145,16 @@ pub fn analyze_with_report(
             (from, dir)
         })
         .collect();
-    let tooling = scope::tooling(&paths, &table.scope, imported_dirs.iter().copied());
-    for (scope, path) in table.scope.iter_mut().zip(&paths) {
-        if *scope == Scope::Source && scope::is_tooling(split_path(path).0, &tooling) {
-            *scope = Scope::Build;
+    let mark_tooling = |scopes: &mut [Scope]| {
+        let tooling = scope::tooling(&paths, scopes, imported_dirs.iter().copied());
+        for (scope, path) in scopes.iter_mut().zip(&paths) {
+            if *scope == Scope::Source && scope::is_tooling(split_path(path).0, &tooling) {
+                *scope = Scope::Build;
+            }
         }
-    }
+        tooling
+    };
+    mark_tooling(&mut table.scope);
     // Analyzed files gave their content to the parser: what is left is the
     // manifests'
     let manifests: Vec<(&str, &[u8])> = files
@@ -166,6 +170,8 @@ pub fn analyze_with_report(
         &manifests,
         imported_dirs.iter().copied(),
     );
+    // Tooling only the satellites use (a script of the site) is tooling
+    let tooling = mark_tooling(&mut table.scope);
 
     let (graph, barrel_report) = graph::build(&graph::Input {
         paths: &paths,

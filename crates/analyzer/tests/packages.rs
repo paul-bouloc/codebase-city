@@ -720,8 +720,10 @@ fn the_satellites_of_a_library_are_not_its_code() {
         ),
         (
             "website/src/pages/index.js",
-            "import { util } from '../../../src/index'\nexport default util\n",
+            "import { util } from '../../../src/index'\nimport { highlight } from '../../../utils/highlight'\nexport default util\n",
         ),
+        // Tooling only the site uses
+        ("utils/highlight.js", "export const highlight = 1\n"),
         (
             "app/package.json",
             r#"{ "name": "lib-app", "private": true, "dependencies": { "lib": "*" } }"#,
@@ -744,6 +746,7 @@ fn the_satellites_of_a_library_are_not_its_code() {
     assert_eq!(scope("app/src/main.js"), Scope::Example);
     // The root tooling comes first
     assert_eq!(scope("scripts/release/run.js"), Scope::Build);
+    assert_eq!(scope("utils/highlight.js"), Scope::Build);
     assert!(result.packages.dir.is_empty());
 }
 
