@@ -21,12 +21,12 @@ export type Measure = (text: string, font: string) => number
 /** An island's label shows its line of figures once its plateau spans this many CSS pixels. */
 export const CAPTION_PIXELS = 160
 
-const ISLAND_NAME_FONT = '600 22px "Space Grotesk", system-ui, sans-serif'
+const ISLAND_NAME_FONT = '600 18px "Space Grotesk", system-ui, sans-serif'
 const CAPTION_FONT = '500 11px "JetBrains Mono", ui-monospace, monospace'
 const PARCEL_FONT = '400 11px "JetBrains Mono", ui-monospace, monospace'
 /** Boxes, in CSS pixels: padding across and down, and the height of each line. */
-const ISLAND_PADDING = { across: 12, down: 6 }
-const ISLAND_NAME_LINE = 28
+const ISLAND_PADDING = { across: 10, down: 5 }
+const ISLAND_NAME_LINE = 22
 const CAPTION_LINE = 14
 const PARCEL_PADDING = { across: 8, down: 3 }
 const PARCEL_LINE = 14
