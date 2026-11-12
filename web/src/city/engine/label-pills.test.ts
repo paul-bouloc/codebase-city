@@ -87,6 +87,7 @@ describe('LabelPills', () => {
     const pills = new LabelPills(() => 2)
     const guide = label({
       guide: 'full',
+      order: 2,
       caption: 'app · 12 files',
       leads: [
         [0, 0, 0],
@@ -100,6 +101,10 @@ describe('LabelPills', () => {
     // The middle of the box's bottom, (80, 60), from the anchor (100, 50), in device pixels
     expect(uniforms.offset?.value.toArray()).toEqual([-40, 20])
     expect(uniforms.opacity?.value).toBe(1)
+    // In its order among the guide's labels, its leaders just under it
+    const pill = pills.group.children[0] as Mesh
+    expect(pill.renderOrder).toBe(lead.renderOrder + 1)
+    expect(lead.renderOrder).toBeGreaterThan(1001 + 2)
     settle(pills, [], 16)
     expect(pills.group.children).toHaveLength(0)
   })

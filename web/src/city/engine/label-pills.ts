@@ -42,6 +42,8 @@ export interface PlacedLabel {
   guide?: GuideLabelKind
   /** Points of the world its leader lines start from, to its pill: the same for a same path. */
   leads?: readonly Vec3[]
+  /** Among the guide's labels, drawn over those of a lower order, its leaders too. */
+  order?: number
 }
 
 /** A label comes and goes over this many ms. */
@@ -108,8 +110,11 @@ const LEADER: LeaderStyle = {
   halo: { width: 4, opacity: 0.85 },
   dot: { radius: 5, rim: 1.5 },
 }
-/** Folders under islands, leaders under the guide's labels, all over the city. */
-const ORDER = { parcel: 1000, island: 1001, leader: 1002, guide: 1003 }
+/**
+ * Folders under islands, all over the city; the guide's labels over them, each with its leaders
+ * just under it, in their own order.
+ */
+const ORDER = { parcel: 1000, island: 1001, guide: 1002 }
 
 /** The lines of a label, from the top: the figures over an island's name. */
 function linesOf(
@@ -228,6 +233,13 @@ export class LabelPills {
         x: Math.round((label.box.x - label.x) * ratio) - pill.margin,
         y: Math.round((label.box.y - label.y) * ratio) - pill.margin,
       }
+      if (label.guide) {
+        const under = ORDER.guide + 2 * (label.order ?? 0)
+        pill.mesh.renderOrder = under + 1
+        for (const lead of pill.leads) {
+          lead.renderOrder = under
+        }
+      }
       pill.foot = {
         x: Math.round((label.box.x + label.box.width / 2 - label.x) * ratio),
         y: Math.round((label.box.y + label.box.height - label.y) * ratio),
@@ -279,11 +291,10 @@ export class LabelPills {
       ratio,
     )
     const mesh = pillMesh(label.anchor, texture)
-    mesh.renderOrder = label.guide ? ORDER.guide : label.island ? ORDER.island : ORDER.parcel
+    mesh.renderOrder = label.island ? ORDER.island : ORDER.parcel
     this.group.add(mesh)
     const leads = (label.leads ?? []).map((from) => {
       const lead = leaderMesh(from, label.anchor, LEADER, ratio)
-      lead.renderOrder = ORDER.leader
       this.group.add(lead)
       return lead
     })
