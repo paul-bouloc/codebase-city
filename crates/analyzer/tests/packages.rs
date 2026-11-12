@@ -710,7 +710,7 @@ fn the_satellites_of_a_library_are_not_its_code() {
     let result = analyzed(&[
         (
             "package.json",
-            r#"{ "name": "lib", "main": "src/index.js" }"#,
+            r#"{ "name": "lib", "exports": "./src/index.js" }"#,
         ),
         ("src/index.js", "export { util } from './util'\n"),
         ("src/util.js", "export const util = 1\n"),
