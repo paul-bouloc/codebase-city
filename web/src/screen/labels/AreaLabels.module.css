@@ -33,19 +33,19 @@
 }
 
 .island {
-  padding: 5px 10px;
+  padding: 4px 8px;
   border-radius: var(--radius-md);
   background: rgba(255, 250, 240, 0.93);
   box-shadow: 0 4px 12px rgba(40, 60, 60, 0.16);
 }
 
 .island .name {
-  font: 600 18px / 22px var(--font-family-sans);
+  font: 600 15px / 19px var(--font-family-sans);
 }
 
 .caption {
   color: var(--color-text-secondary);
-  font: 500 11px / 14px var(--font-family-mono);
+  font: 500 10px / 13px var(--font-family-mono);
 }
 
 .parcel {
