@@ -13,15 +13,15 @@ const MIN_LAYERED_ISLANDS: usize = 3;
 /// fastapi's 25%.
 const MAX_UP_SHARE: u64 = 10;
 
-/// Whether the islands have layers worth a step: two layers or more, and
-/// enough islands in them.
-fn has_layers(result: &AnalysisResult) -> bool {
+/// The islands in layers, when they are worth a step: two layers or more,
+/// and enough islands in them.
+fn layered_islands(result: &AnalysisResult) -> Option<u64> {
     let layers = &result.islands.layer;
     let mut distinct: Vec<u32> = layers.iter().flatten().copied().collect();
     let layered = distinct.len();
     distinct.sort_unstable();
     distinct.dedup();
-    layered >= MIN_LAYERED_ISLANDS && distinct.len() >= 2
+    (layered >= MIN_LAYERED_ISLANDS && distinct.len() >= 2).then_some(layered as u64)
 }
 
 /// How the production imports between islands follow their layers, when
@@ -32,9 +32,7 @@ fn has_layers(result: &AnalysisResult) -> bool {
 /// between vuejs/core's packages go up against 1% of the production ones,
 /// and fastapi's tests dilute its 25% to 1%.
 pub(super) fn layers(result: &AnalysisResult) -> Option<TourStep> {
-    if !has_layers(result) {
-        return None;
-    }
+    let islands = layered_islands(result)?;
     let layers = &result.islands.layer;
     let links = &result.links;
     let (mut down, mut level, mut up) = (0u64, 0u64, 0u64);
@@ -55,8 +53,9 @@ pub(super) fn layers(result: &AnalysisResult) -> Option<TourStep> {
     }
     let all = down + level + up;
     // The layers come from the graph, which sees through barrels: their
-    // links may hold no production import at all
-    if all == 0 || up * 100 > all * MAX_UP_SHARE {
+    // links may hold few production imports, or none. Fewer imports than
+    // islands say nothing of how they stack (redux: 8 islands, 1 import)
+    if all < islands || up * 100 > all * MAX_UP_SHARE {
         return None;
     }
     Some(TourStep::Layers {
@@ -199,10 +198,12 @@ mod tests {
         repo.result.links.production[3] = 2;
         repo.result.links.production_upward[3] = 2;
         assert_eq!(layers(&repo.result), None);
-        // Nor without any production import
-        repo.result.links.production.fill(0);
-        repo.result.links.production_upward.fill(0);
+        // Nor on fewer production imports than islands in layers (three)
+        repo.result.links.production = vec![1, 1, 0, 0];
+        repo.result.links.production_upward = vec![0, 0, 0, 0];
         assert_eq!(layers(&repo.result), None);
+        repo.result.links.production[2] = 1;
+        assert!(layers(&repo.result).is_some());
     }
 
     #[test]

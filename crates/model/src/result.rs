@@ -688,7 +688,8 @@ pub enum TourStep {
     /// The layers of the islands, read from [`Islands::layer`], and how the
     /// production imports between islands in layers follow them:
     /// [`Links::production`] and [`Links::production_upward`]. Shown when at
-    /// most 10% of them go up.
+    /// most 10% of them go up, and when there are as many of them as
+    /// islands in layers at least.
     Layers {
         /// Imports to an island of a lower layer.
         down: u32,
