@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CityEngine } from '../city/engine/city-engine'
 import { cityCards } from '../city/interaction/city-cards'
 import type { GuidePaths } from '../city/interaction/city-guide'
-import type { AreaLabel, CameraView, CityHover, GuideLabel } from '../city/interaction/city-items'
+import type { CameraView, CityHover, GuideLabel } from '../city/interaction/city-items'
 import type { PortList } from '../city/interaction/open-port'
 import { cityFromResult } from '../city/world/from-result'
 import type { AnalysisResult } from '../data/generated/AnalysisResult'
@@ -21,6 +21,7 @@ import { GuideLabels } from './guide/GuideLabels'
 import { useDriveKeys } from './keys/use-drive-keys'
 import { useEscapeKey } from './keys/use-escape-key'
 import { AreaLabels } from './labels/AreaLabels'
+import { AreaLabelLayer } from './labels/area-label-layer'
 import { areaLabelTexts } from './labels/area-label-texts'
 import { CityLegend } from './legend/CityLegend'
 import { repoContents } from './legend/legend'
@@ -115,7 +116,8 @@ function Screen({
   const [legendExpanded, setLegendExpanded] = useState(false)
   const [aboutOpen, setAboutOpen] = useState(false)
   const [guideLabels, setGuideLabels] = useState<readonly GuideLabel[]>([])
-  const [areaLabels, setAreaLabels] = useState<readonly AreaLabel[]>([])
+  // The labels of islands and folders move with the city, in the frame it draws.
+  const [labelLayer] = useState(() => new AreaLabelLayer())
   const { selection, sheetOpen, setSheetOpen, openLine, choose, selectFromCity, openAtLine } =
     useScreenSelection(engine, index)
 
@@ -134,9 +136,9 @@ function Screen({
       view: setView,
       select: selectFromCity,
       guideLabels: setGuideLabels,
-      areaLabels: setAreaLabels,
+      areaLabels: labelLayer.update,
     })
-  }, [engine, selectFromCity])
+  }, [engine, selectFromCity, labelLayer])
 
   useEffect(() => {
     engine?.showGuide(guide?.paths ?? null)
@@ -238,10 +240,7 @@ function Screen({
   return (
     <main ref={screen} className={styles.screen}>
       <CityView layout={layout} showStats={showStats} onEngine={handleEngine} />
-      <AreaLabels
-        labels={areaLabels}
-        selected={selection?.kind === 'dir' ? selection.path : null}
-      />
+      <AreaLabels layer={labelLayer} selected={selection?.kind === 'dir' ? selection.path : null} />
       {guide && <GuideLabels labels={guideLabels} notes={guide.notes} />}
 
       <div className={styles.topBar}>
