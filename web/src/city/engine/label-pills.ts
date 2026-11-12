@@ -36,6 +36,11 @@ export interface PlacedLabel {
 
 /** A label comes and goes over this many ms. */
 const FADE_MS = 150
+/**
+ * A frame counts this many ms at most towards a fade: the first frame after the city stood
+ * still for a while would otherwise end every fade at once.
+ */
+const MAX_FRAME_MS = 50
 
 const INK = '#23313A'
 const SECONDARY = '#56656B'
@@ -126,7 +131,7 @@ export class LabelPills {
     now: number,
     { snap, instant }: { snap: boolean; instant: boolean },
   ): boolean {
-    const elapsed = this.lastTime === null ? 0 : now - this.lastTime
+    const elapsed = this.lastTime === null ? 0 : Math.min(now - this.lastTime, MAX_FRAME_MS)
     this.lastTime = now
     const step = instant ? 1 : Math.min(elapsed / FADE_MS, 1)
     const ratio = this.ratio()
