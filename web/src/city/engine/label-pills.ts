@@ -47,6 +47,11 @@ const SECONDARY = '#56656B'
 const ISLAND_NAME = { font: '600 15px "Space Grotesk", system-ui, sans-serif', height: 19 }
 const CAPTION = { font: '500 10px "JetBrains Mono", ui-monospace, monospace', height: 13 }
 const PARCEL_NAME = { font: '400 11px "JetBrains Mono", ui-monospace, monospace', height: 14 }
+/**
+ * The fonts labels are written in. The page loads a font only once something uses it: these
+ * are asked for, so that labels are not measured and drawn in a fallback for good.
+ */
+export const LABEL_FONTS = [ISLAND_NAME.font, CAPTION.font, PARCEL_NAME.font]
 const ISLAND_PADDING = { across: 8, down: 4 }
 const PARCEL_PADDING = { across: 8, down: 3 }
 const RIM = { colour: INK, width: 1.5 }

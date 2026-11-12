@@ -21,7 +21,7 @@ import { type Drive, STILL } from './drive'
 import { extentOf, FRAME_MARGIN, flightRadius } from './flight'
 import { FrameCounter, type FrameStats, type LinkStats, NO_LINKS } from './frame-stats'
 import { GuideLabels } from './guide-labels'
-import { LabelPills } from './label-pills'
+import { LABEL_FONTS, LabelPills } from './label-pills'
 
 /**
  * Boats and arcs move at 30 frames a second at most: every other frame at 60 Hz, a little under
@@ -113,12 +113,17 @@ export class CityEngine {
     this.areaLabels = new AreaLabels(this.renderer.domElement, this.rig.camera)
     this.labelPills = new LabelPills(() => this.renderer.getPixelRatio())
     this.scene.add(this.labelPills.group)
-    // Labels are measured and drawn in the page's fonts: again once they have loaded.
-    document.fonts?.ready.then(() => {
-      this.areaLabels.remeasure()
-      this.labelPills.redraw()
-      this.needsRender = true
-    })
+    // Labels are measured and drawn in their fonts: again once those have loaded.
+    if (document.fonts) {
+      Promise.all(LABEL_FONTS.map((font) => document.fonts.load(font))).then(
+        () => {
+          this.areaLabels.remeasure()
+          this.labelPills.redraw()
+          this.needsRender = true
+        },
+        () => {},
+      )
+    }
     this.setSize(container.clientWidth, container.clientHeight)
     this.renderer.setAnimationLoop((time) => this.frame(time))
   }
