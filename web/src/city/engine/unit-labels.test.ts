@@ -47,7 +47,7 @@ function setup() {
 const label = (name: string, caption: string | null = null) => ({ name, caption })
 
 describe('UnitLabels', () => {
-  it('labels each unit above its islands, a group with a leader to each', () => {
+  it('pins each unit straight over its largest island, a group with a leader to each', () => {
     const { labels } = setup()
     const units: CityGuideUnit[] = [
       { islands: [1, 2], parcel: null, label: label('billing', '2 apps · 40 files') },
@@ -60,8 +60,9 @@ describe('UnitLabels', () => {
       ['web', 'short', 1],
     ])
     for (const each of placed) {
-      // Over its anchor, clear of the islands' boxes
+      // Straight over its anchor, the middle of its island
       expect(each.box.y + each.box.height).toBeLessThanOrEqual(each.y)
+      expect(each.box.x + each.box.width / 2).toBeCloseTo(each.x)
     }
     expect(labels.active).toBe(true)
   })

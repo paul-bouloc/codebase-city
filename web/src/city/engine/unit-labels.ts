@@ -1,24 +1,18 @@
 import { type PerspectiveCamera, Vector3 } from 'three'
 import type { CityGuideUnit } from '../interaction/city-guide'
-import type { CityLayout, Point, Rect } from '../world/layout'
-import { boardToThree, layerAltitude, type Vec3 } from '../world/units'
+import type { CityLayout } from '../world/layout'
+import type { Vec3 } from '../world/units'
 import { canvasMeasure } from './area-labels'
 import { type GuideLabelKind, type Measure, type PlacedLabel, pillSize } from './label-pills'
 import { type LabelArea, labelAreas } from './label-placement'
-import { type Box, placeUnitLabels } from './unit-label-placement'
+import { placeUnitLabels } from './unit-label-placement'
 
-// The labels of the units of packages a step of the guide shows: where they stand on screen, and
-// the leader lines that tie them to their islands. They are placed again each time the camera
-// comes to rest; while it moves, each keeps its place beside its anchor.
+// The labels of the units of packages a step of the guide shows: each pinned over the middle of
+// its island, and the leader lines that tie it there. They are placed again each time the camera
+// comes to rest; while it moves, each keeps its place over its anchor.
 
 /** A unit on this many islands or fewer gets a leader to each: past them, to its largest alone. */
 const MAX_LEADERS = 4
-/** A leader to another island of a unit ends this far out of its plateau, in u. */
-const LEADER_SHORE = 1.4
-/** How high over its plateau an island stands in the way of labels, in u: its buildings. */
-const ISLAND_HEIGHT = 4
-/** The room kept around an island in the way, in CSS pixels. */
-const ISLAND_MARGIN = 4
 
 type Target = LabelArea['target']
 
@@ -42,11 +36,10 @@ interface Shown {
 }
 
 export class UnitLabels {
-  private layout: CityLayout | null = null
   private areas = new Map<string, LabelArea>()
   private labels: UnitLabel[] = []
-  /** The islands the step shows, which labels keep off. */
-  private islands: number[] = []
+  /** Whether the step shows units. */
+  private showing = false
   /** The islands holding a unit's parcel: their own labels stay, to say where it lies. */
   private hostIslands = new Set<number>()
   private shown: Shown[] = []
@@ -68,14 +61,13 @@ export class UnitLabels {
 
   /** The city whose units get labels; none for no city. */
   setLayout(layout: CityLayout | null): void {
-    this.layout = layout
     this.areas = new Map(layout ? labelAreas(layout).map((area) => [keyOf(area.target), area]) : [])
     this.setUnits([])
   }
 
   /** The units a step shows, the largest first; their labels come at the next frame. */
   setUnits(units: readonly CityGuideUnit[]): void {
-    this.islands = [...new Set(units.flatMap((unit) => unit.islands))]
+    this.showing = units.length > 0
     this.hostIslands = new Set(units.flatMap((unit) => (unit.parcel ? [unit.parcel.island] : [])))
     this.labels = units.flatMap((unit) => this.labelOf(unit) ?? [])
     this.shown = []
@@ -84,7 +76,7 @@ export class UnitLabels {
 
   /** Whether the step labels units: the labels of islands at rest then keep quiet. */
   get active(): boolean {
-    return this.islands.length > 0 || this.hostIslands.size > 0
+    return this.showing
   }
 
   /** Whether an island's own label stays while the step labels units: it holds one's parcel. */
@@ -176,7 +168,6 @@ export class UnitLabels {
 
   /** Places every label whose anchor is on the canvas, the largest unit first. */
   private arrange(): void {
-    const previous = new Map(this.shown.map((shown) => [shown.label.key, shown.offset]))
     const candidates = this.labels.flatMap((label) => {
       const anchor = this.onCanvas(label.anchor)
       if (!anchor || !this.inside(anchor)) {
@@ -189,12 +180,9 @@ export class UnitLabels {
         (text, font) => this.widthOf(text, font),
         label.kind,
       )
-      return [{ label, ...anchor, ...size, previous: previous.get(label.key) ?? null }]
+      return [{ label, ...anchor, ...size }]
     })
-    const boxes = placeUnitLabels(candidates, this.islandBoxes(), {
-      width: this.width,
-      height: this.height,
-    })
+    const boxes = placeUnitLabels(candidates, { width: this.width, height: this.height })
     this.shown = candidates.map(({ label, x, y, width, height }, at) => {
       const box = boxes[at] ?? { x, y }
       return {
@@ -206,53 +194,14 @@ export class UnitLabels {
     })
   }
 
-  /** The boxes on screen of the islands the step shows, their buildings and a margin included. */
-  private islandBoxes(): Box[] {
-    const layout = this.layout
-    if (!layout) {
-      return []
-    }
-    return this.islands.flatMap((index) => {
-      const island = layout.islands[index]
-      if (!island) {
-        return []
-      }
-      const { x, y, width, height } = island.plateau
-      const ground = layerAltitude(island.layer)
-      const corners = [ground, ground + ISLAND_HEIGHT].flatMap((z) =>
-        [
-          [x, y],
-          [x + width, y],
-          [x, y + height],
-          [x + width, y + height],
-        ].flatMap(([cx = 0, cy = 0]) => this.onCanvas(boardToThree(cx, cy, z)) ?? []),
-      )
-      if (corners.length === 0) {
-        return []
-      }
-      const xs = corners.map((corner) => corner.x)
-      const ys = corners.map((corner) => corner.y)
-      const left = Math.min(...xs) - ISLAND_MARGIN
-      const top = Math.min(...ys) - ISLAND_MARGIN
-      return [
-        {
-          x: left,
-          y: top,
-          width: Math.max(...xs) + ISLAND_MARGIN - left,
-          height: Math.max(...ys) + ISLAND_MARGIN - top,
-        },
-      ]
-    })
-  }
-
   /**
-   * A unit's label: by its parcel, or by its largest island's water, tied to each of its other
-   * islands while it has few; none for a unit past the labels the step has room for.
+   * A unit's label: over the middle of its parcel or of its largest island, tied to the middle of
+   * each of its other islands while it has few; none for a unit past the labels the step has
+   * room for.
    */
   private labelOf(unit: CityGuideUnit): UnitLabel | null {
     const { label } = unit
-    const layout = this.layout
-    if (!label || !layout) {
+    if (!label) {
       return null
     }
     const [largest] = unit.islands
@@ -266,18 +215,13 @@ export class UnitLabels {
     }
     const kind: GuideLabelKind =
       target.kind === 'parcel' ? 'parcel' : label.caption === null ? 'short' : 'full'
-    const anchor = area.anchor
+    const anchor = area.centre
     const others = unit.islands.length <= MAX_LEADERS ? unit.islands.slice(1) : []
-    const towards = { x: anchor[0], y: -anchor[2] }
     const leads = [
       anchor,
-      ...others.flatMap((index) => {
-        const plateau = layout.islands[index]?.plateau
-        if (!plateau) {
-          return []
-        }
-        const { x, y } = shoreTowards(plateau, towards)
-        return [boardToThree(x, y, 0)]
+      ...others.flatMap((island) => {
+        const centre = this.areas.get(keyOf({ kind: 'island', island }))?.centre
+        return centre ? [centre] : []
       }),
     ]
     return {
@@ -315,19 +259,6 @@ export class UnitLabels {
       y: ((1 - projected.y) / 2) * this.height,
     }
   }
-}
-
-/** Where the line from a plateau's middle towards a point leaves it, `LEADER_SHORE` out. */
-function shoreTowards(plateau: Rect, to: Point): Point {
-  const middle = { x: plateau.x + plateau.width / 2, y: plateau.y + plateau.height / 2 }
-  const dx = to.x - middle.x
-  const dy = to.y - middle.y
-  const t = Math.min(
-    (plateau.width / 2 + LEADER_SHORE) / Math.max(Math.abs(dx), 1e-6),
-    (plateau.height / 2 + LEADER_SHORE) / Math.max(Math.abs(dy), 1e-6),
-    1,
-  )
-  return { x: middle.x + dx * t, y: middle.y + dy * t }
 }
 
 function keyOf(target: Target): string {

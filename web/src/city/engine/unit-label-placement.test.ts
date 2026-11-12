@@ -4,45 +4,35 @@ import { LABEL_LIFT, placeUnitLabels, type UnitLabelCandidate } from './unit-lab
 const CANVAS = { width: 1000, height: 800 }
 
 function label(change: Partial<UnitLabelCandidate> = {}): UnitLabelCandidate {
-  return { x: 500, y: 400, width: 100, height: 40, previous: null, ...change }
+  return { x: 500, y: 400, width: 100, height: 40, ...change }
 }
 
-const overlapping = (a: { x: number; y: number }, b: { x: number; y: number }) =>
-  Math.abs(a.x - b.x) < 100 && Math.abs(a.y - b.y) < 40
-
 describe('placeUnitLabels', () => {
-  it('stands a label over its anchor, centred', () => {
-    expect(placeUnitLabels([label()], [], CANVAS)).toEqual([{ x: 450, y: 400 - LABEL_LIFT - 40 }])
+  it('stands a label straight over its anchor', () => {
+    expect(placeUnitLabels([label()], CANVAS)).toEqual([{ x: 450, y: 400 - LABEL_LIFT - 40 }])
   })
 
-  it('slides a later label off an earlier one', () => {
-    const [first, second] = placeUnitLabels([label(), label({ x: 510 })], [], CANVAS)
-    expect(first).toEqual({ x: 450, y: 337 })
-    expect(first && second && overlapping(first, second)).toBe(false)
+  it('raises a later label over an earlier one, never aside', () => {
+    const [first, second] = placeUnitLabels([label(), label({ x: 520, y: 410 })], CANVAS)
+    expect(first).toEqual({ x: 450, y: 336 })
+    // Its own place is covered: it stands over the first, the gap between
+    expect(second).toEqual({ x: 470, y: 336 - 6 - 40 })
   })
 
-  it('slides a label off the islands the step shows', () => {
-    const island = { x: 380, y: 300, width: 240, height: 100 }
-    const [placed] = placeUnitLabels([label()], [island], CANVAS)
-    const clear =
-      placed &&
-      (placed.x + 100 <= island.x ||
-        placed.x >= island.x + island.width ||
-        placed.y + 40 <= island.y ||
-        placed.y >= island.y + island.height)
-    expect(clear).toBe(true)
+  it('leaves a label that covers none where it stands', () => {
+    const placed = placeUnitLabels([label(), label({ x: 800 })], CANVAS)
+    expect(placed[1]).toEqual({ x: 750, y: 336 })
   })
 
-  it('keeps a label inside the canvas', () => {
-    const [placed] = placeUnitLabels([label({ x: 10, y: 20 })], [], CANVAS)
-    expect(placed).toEqual({ x: 4, y: 4 })
+  it('rises a bounded number of times', () => {
+    const placed = placeUnitLabels(
+      Array.from({ length: 12 }, () => label()),
+      CANVAS,
+    )
+    expect(placed.at(-1)?.y).toBe(336 - 8 * 46)
   })
 
-  it('keeps a label on show where it stood while that is nearly as good', () => {
-    const previous = { x: -50, y: -LABEL_LIFT - 40 - 24 }
-    expect(placeUnitLabels([label({ previous })], [], CANVAS)).toEqual([{ x: 450, y: 313 }])
-    // Far from its home, it comes back
-    const far = { x: 300, y: -LABEL_LIFT - 40 }
-    expect(placeUnitLabels([label({ previous: far })], [], CANVAS)).toEqual([{ x: 450, y: 337 }])
+  it('keeps a label inside the canvas across', () => {
+    expect(placeUnitLabels([label({ x: 10 })], CANVAS)[0]?.x).toBe(0)
   })
 })
