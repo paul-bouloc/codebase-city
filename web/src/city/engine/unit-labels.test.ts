@@ -54,7 +54,7 @@ describe('UnitLabels', () => {
       { islands: [0], parcel: null, label: label('web') },
     ]
     labels.setUnits(units)
-    const placed = labels.place(false)
+    const placed = labels.place()
     expect(placed.map((each) => [each.name, each.guide, each.leads?.length])).toEqual([
       ['billing', 'full', 2],
       ['web', 'short', 1],
@@ -72,24 +72,34 @@ describe('UnitLabels', () => {
     labels.setUnits([
       { islands: [], parcel: { island: 0, parcel: 0 }, label: label('ui', 'library inside web') },
     ])
-    const [placed] = labels.place(false)
+    const [placed] = labels.place()
     expect(placed?.guide).toBe('parcel')
     expect(labels.hosts(0)).toBe(true)
     expect(labels.hosts(1)).toBe(false)
   })
 
-  it('keeps each label beside its anchor while the camera moves, and places it again at rest', () => {
+  it('never moves a label aside, and orders labels from the farthest to the nearest', () => {
     const { labels, camera } = setup()
-    labels.setUnits([{ islands: [1], parcel: null, label: label('api') }])
-    const [before] = labels.place(false)
-    camera.position.set(30, 150, 45)
+    labels.setUnits([
+      { islands: [1], parcel: null, label: label('api') },
+      { islands: [0], parcel: null, label: label('web') },
+    ])
+    const placed = labels.place()
+    for (const each of placed) {
+      expect(each.box.x + each.box.width / 2).toBeCloseTo(each.x)
+    }
+    // Seen from the west, the island at x = -60 is the nearer: drawn last, over the other
+    camera.position.set(-200, 100, 0)
+    camera.lookAt(0, 0, 0)
     camera.updateMatrixWorld()
-    const [moving] = labels.place(true)
-    expect(moving && before && moving.box.x - moving.x).toBeCloseTo(
-      before ? before.box.x - before.x : 0,
-    )
-    expect(moving?.x).not.toBeCloseTo(before?.x ?? 0)
-    expect(labels.place(false)).toHaveLength(1)
+    expect(labels.place().map((each) => [each.name, each.order])).toEqual([
+      ['api', 0],
+      ['web', 1],
+    ])
+    camera.position.set(200, 100, 0)
+    camera.lookAt(0, 0, 0)
+    camera.updateMatrixWorld()
+    expect(labels.place().map((each) => each.name)).toEqual(['web', 'api'])
   })
 
   it('finds the island under a label, and gives no label to a unit without one', () => {
@@ -98,14 +108,14 @@ describe('UnitLabels', () => {
       { islands: [2], parcel: null, label: label('api') },
       { islands: [0], parcel: null, label: null },
     ])
-    const [placed] = labels.place(false)
+    const [placed] = labels.place()
     expect(placed && labels.at(placed.box.x + 1, placed.box.y + 1)).toEqual({
       kind: 'island',
       island: 2,
     })
     expect(labels.at(0, 0)).toBeNull()
     labels.setUnits([])
-    expect(labels.place(false)).toEqual([])
+    expect(labels.place()).toEqual([])
     expect(labels.active).toBe(false)
   })
 })

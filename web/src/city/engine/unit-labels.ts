@@ -5,14 +5,15 @@ import type { Vec3 } from '../world/units'
 import { canvasMeasure } from './area-labels'
 import { type GuideLabelKind, type Measure, type PlacedLabel, pillSize } from './label-pills'
 import { type LabelArea, labelAreas } from './label-placement'
-import { placeUnitLabels } from './unit-label-placement'
 
-// The labels of the units of packages a step of the guide shows: each pinned over the middle of
-// its island, and the leader lines that tie it there. They are placed again each time the camera
-// comes to rest; while it moves, each keeps its place over its anchor.
+// The labels of the units of packages a step of the guide shows: each pinned straight over the
+// middle of its island by a leader as long as the others. They never move aside: where they
+// cross, the nearer one is drawn over the farther, as the islands are.
 
 /** A unit on this many islands or fewer gets a leader to each: past them, to its largest alone. */
 const MAX_LEADERS = 4
+/** A label stands this many CSS pixels over its anchor. */
+export const LABEL_LIFT = 24
 
 type Target = LabelArea['target']
 
@@ -27,12 +28,10 @@ interface UnitLabel {
   leads: Vec3[]
 }
 
+/** A label on show this frame: its box on the canvas, in CSS pixels. */
 interface Shown {
   label: UnitLabel
-  /** Its box's top left corner from its anchor on screen. */
-  offset: { x: number; y: number }
-  width: number
-  height: number
+  box: { x: number; y: number; width: number; height: number }
 }
 
 export class UnitLabels {
@@ -42,12 +41,8 @@ export class UnitLabels {
   private showing = false
   /** The islands holding a unit's parcel: their own labels stay, to say where it lies. */
   private hostIslands = new Set<number>()
+  /** The labels on show this frame, the farthest first. */
   private shown: Shown[] = []
-  /**
-   * The view the labels were placed for, the canvas's size then the camera's matrix: placed
-   * again once it changes and comes to rest. NaN for none.
-   */
-  private readonly placedFor = new Float64Array(18).fill(Number.NaN)
   private readonly widths = new Map<string, number>()
   private readonly projected = new Vector3()
   private width = 0
@@ -71,7 +66,6 @@ export class UnitLabels {
     this.hostIslands = new Set(units.flatMap((unit) => (unit.parcel ? [unit.parcel.island] : [])))
     this.labels = units.flatMap((unit) => this.labelOf(unit) ?? [])
     this.shown = []
-    this.placedFor.fill(Number.NaN)
   }
 
   /** Whether the step labels units: the labels of islands at rest then keep quiet. */
@@ -87,111 +81,66 @@ export class UnitLabels {
   /** Measures the texts again: the fonts they are written in have loaded since. */
   remeasure(): void {
     this.widths.clear()
-    this.placedFor.fill(Number.NaN)
   }
 
   /**
-   * The labels on show this frame: placed again when the camera has come to rest somewhere
-   * new, kept beside their anchors while it moves.
+   * The labels on show this frame, each straight over its anchor, the farthest first: each is
+   * drawn over those before it.
    */
-  place(moving: boolean): PlacedLabel[] {
+  place(): PlacedLabel[] {
     this.width = this.canvas.clientWidth
     this.height = this.canvas.clientHeight
     if (this.labels.length === 0 || this.width === 0 || this.height === 0) {
       this.shown = []
       return []
     }
-    if (!moving && this.viewChanged()) {
-      this.arrange()
-    }
-    return this.shown.flatMap((shown) => {
-      const { label } = shown
+    const found = this.labels.flatMap((label) => {
       const anchor = this.onCanvas(label.anchor)
       if (!anchor) {
         return []
       }
-      const box = {
-        x: anchor.x + shown.offset.x,
-        y: anchor.y + shown.offset.y,
-        width: shown.width,
-        height: shown.height,
-      }
-      return [
-        {
-          path: label.key,
-          island: label.kind !== 'parcel',
-          name: label.name,
-          caption: label.caption,
-          selected: false,
-          lean: 'above' as const,
-          anchor: label.anchor,
-          x: anchor.x,
-          y: anchor.y,
-          box,
-          guide: label.kind,
-          leads: label.leads,
-        },
-      ]
-    })
-  }
-
-  /** The island or folder whose label is at this point of the canvas, in CSS pixels. */
-  at(x: number, y: number): Target | null {
-    for (let at = this.shown.length - 1; at >= 0; at -= 1) {
-      const shown = this.shown[at]
-      const anchor = shown && this.onCanvas(shown.label.anchor)
-      if (!shown || !anchor) {
-        continue
-      }
-      const left = anchor.x + shown.offset.x
-      const top = anchor.y + shown.offset.y
-      if (x >= left && x <= left + shown.width && y >= top && y <= top + shown.height) {
-        return shown.label.target
-      }
-    }
-    return null
-  }
-
-  /** Whether the canvas or the camera changed since the labels were placed; notes the new view. */
-  private viewChanged(): boolean {
-    const view = this.placedFor
-    const { elements } = this.camera.matrixWorld
-    let changed = view[0] !== this.width || view[1] !== this.height
-    view[0] = this.width
-    view[1] = this.height
-    for (let at = 0; at < elements.length; at += 1) {
-      changed ||= view[at + 2] !== elements[at]
-      view[at + 2] = elements[at] ?? Number.NaN
-    }
-    return changed
-  }
-
-  /** Places every label whose anchor is on the canvas, the largest unit first. */
-  private arrange(): void {
-    const candidates = this.labels.flatMap((label) => {
-      const anchor = this.onCanvas(label.anchor)
-      if (!anchor || !this.inside(anchor)) {
-        return []
-      }
-      const size = pillSize(
+      const { width, height } = pillSize(
         label.kind !== 'parcel',
         label.name,
         label.caption,
         (text, font) => this.widthOf(text, font),
         label.kind,
       )
-      return [{ label, ...anchor, ...size }]
+      const box = { x: anchor.x - width / 2, y: anchor.y - LABEL_LIFT - height, width, height }
+      return [{ label, anchor, box }]
     })
-    const boxes = placeUnitLabels(candidates, { width: this.width, height: this.height })
-    this.shown = candidates.map(({ label, x, y, width, height }, at) => {
-      const box = boxes[at] ?? { x, y }
-      return {
-        label,
-        offset: { x: box.x - x, y: box.y - y },
-        width,
-        height,
+    found.sort((a, b) => b.anchor.depth - a.anchor.depth)
+    this.shown = found
+    return found.map(({ label, anchor, box }, order) => ({
+      path: label.key,
+      island: label.kind !== 'parcel',
+      name: label.name,
+      caption: label.caption,
+      selected: false,
+      lean: 'above' as const,
+      anchor: label.anchor,
+      x: anchor.x,
+      y: anchor.y,
+      box,
+      guide: label.kind,
+      leads: label.leads,
+      order,
+    }))
+  }
+
+  /** The island or folder whose label is at this point of the canvas, the nearest drawn on top. */
+  at(x: number, y: number): Target | null {
+    for (let at = this.shown.length - 1; at >= 0; at -= 1) {
+      const shown = this.shown[at]
+      if (!shown) {
+        continue
       }
-    })
+      const { box } = shown
+      if (x >= box.x && x <= box.x + box.width && y >= box.y && y <= box.y + box.height) {
+        return shown.label.target
+      }
+    }
+    return null
   }
 
   /**
@@ -235,10 +184,6 @@ export class UnitLabels {
     }
   }
 
-  private inside(point: { x: number; y: number }): boolean {
-    return point.x >= 0 && point.x <= this.width && point.y >= 0 && point.y <= this.height
-  }
-
   private widthOf(text: string, font: string): number {
     const key = `${font}\n${text}`
     let width = this.widths.get(key)
@@ -249,7 +194,8 @@ export class UnitLabels {
     return width
   }
 
-  private onCanvas(point: Vec3): { x: number; y: number } | null {
+  /** A point on the canvas, and how deep (larger is farther); null behind the camera. */
+  private onCanvas(point: Vec3): { x: number; y: number; depth: number } | null {
     const projected = this.projected.set(...point).project(this.camera)
     if (projected.z > 1) {
       return null
@@ -257,6 +203,7 @@ export class UnitLabels {
     return {
       x: ((projected.x + 1) / 2) * this.width,
       y: ((1 - projected.y) / 2) * this.height,
+      depth: projected.z,
     }
   }
 }
