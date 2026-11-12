@@ -22,6 +22,7 @@ import { extentOf, FRAME_MARGIN, flightRadius } from './flight'
 import { FrameCounter, type FrameStats, type LinkStats, NO_LINKS } from './frame-stats'
 import { GuideLabels } from './guide-labels'
 import { LABEL_FONTS, LabelPills } from './label-pills'
+import { UnitLabels } from './unit-labels'
 
 /**
  * Boats and arcs move at 30 frames a second at most: every other frame at 60 Hz, a little under
@@ -73,6 +74,7 @@ export class CityEngine {
   private readonly guideLabels: GuideLabels
   private readonly areaLabels: AreaLabels
   private readonly labelPills: LabelPills
+  private readonly unitLabels: UnitLabels
 
   constructor(container: HTMLElement, { continuous = false }: CityEngineOptions = {}) {
     this.continuous = continuous
@@ -104,13 +106,14 @@ export class CityEngine {
       stopOrbit: () => this.rig.stopOrbit(),
       select: (target) => this.select(target),
       fly: (target) => this.fly(target),
-      labelAt: (x, y) => this.areaLabels.at(x, y),
+      labelAt: (x, y) => this.unitLabels.at(x, y) ?? this.areaLabels.at(x, y),
       pickTook: (ms) => {
         this.counter.stats.pickMs = ms
       },
     })
     this.guideLabels = new GuideLabels(this.renderer.domElement, this.rig.camera)
     this.areaLabels = new AreaLabels(this.renderer.domElement, this.rig.camera)
+    this.unitLabels = new UnitLabels(this.renderer.domElement, this.rig.camera)
     this.labelPills = new LabelPills(() => this.renderer.getPixelRatio())
     this.scene.add(this.labelPills.group)
     // Labels are measured and drawn in their fonts: again once those have loaded.
@@ -118,6 +121,7 @@ export class CityEngine {
       Promise.all(LABEL_FONTS.map((font) => document.fonts.load(font))).then(
         () => {
           this.areaLabels.remeasure()
+          this.unitLabels.remeasure()
           this.labelPills.redraw()
           this.needsRender = true
         },
@@ -191,9 +195,10 @@ export class CityEngine {
     if (!interaction || !layout || !targets) {
       return
     }
-    interaction.showGuide(
-      paths && cityGuideView(paths, layout, targets, (building) => interaction.cycleOf(building)),
-    )
+    const view =
+      paths && cityGuideView(paths, layout, targets, (building) => interaction.cycleOf(building))
+    interaction.showGuide(view)
+    this.unitLabels.setUnits(view?.units ?? [])
     this.needsRender = true
   }
 
@@ -305,6 +310,7 @@ export class CityEngine {
     this.targets = city.targets
     this.layout = layout
     this.areaLabels.setLayout(layout)
+    this.unitLabels.setLayout(layout)
     this.placed = city.placed
     this.density = city.density
     this.view = null
@@ -391,6 +397,7 @@ export class CityEngine {
     this.fleet = null
     this.targets = null
     this.areaLabels.setLayout(null)
+    this.unitLabels.setLayout(null)
     this.labelPills.clear()
     this.tellGuideLabels()
   }
@@ -440,7 +447,21 @@ export class CityEngine {
   private placeAreaLabels(): boolean {
     const now = performance.now()
     this.rig.camera.updateMatrixWorld()
-    const labels = this.areaLabels.place(this.interaction?.getSelection()?.target ?? null, now)
+    const selected = this.interaction?.getSelection()?.target ?? null
+    // While the guide labels units, an island keeps its own label only under the pointer,
+    // selected, or holding a unit's parcel.
+    const units = this.unitLabels.place(this.cameraMoving)
+    const hovered = this.interaction?.hoveredIsland() ?? null
+    this.areaLabels.setQuiet(
+      this.unitLabels.active
+        ? (target) =>
+            target.kind === 'island' &&
+            (target.island === hovered ||
+              (selected?.kind !== 'building' && selected?.island === target.island) ||
+              this.unitLabels.hosts(target.island))
+        : null,
+    )
+    const labels = [...this.areaLabels.place(selected, now), ...units]
     const fading = this.labelPills.show(labels, now, {
       snap: !this.cameraMoving,
       instant: this.lessMotion.matches,
