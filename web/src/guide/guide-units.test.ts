@@ -134,6 +134,13 @@ describe('guideUnits', () => {
     expect(units).toMatchObject([{ kind: 'library', folders: [5], host: 0 }])
   })
 
+  it('puts a package on an island of its own inside none, even under the root package', () => {
+    // `src/core` is an island, under `src`, which the root package holds
+    const repo = monorepo({ dir: [0, 2], kind: ['app', 'library'] })
+    const units = guideUnits(repo, { kind: 'otherApps', apps: [1] })
+    expect(units).toMatchObject([{ kind: 'library', folders: [2], host: null }])
+  })
+
   it('shows nothing for a step without packages', () => {
     expect(guideUnits(result, { kind: 'entryPoints', entries: [0] })).toEqual([])
   })

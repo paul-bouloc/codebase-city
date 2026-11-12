@@ -89,7 +89,9 @@ function unitOf(
     return null
   }
   const root = dir === 0
-  const parent = result.dirs.parent[dir] ?? null
+  // A package inside another stands on a parcel of that one's island; an island of its own is
+  // inside none, whatever folder holds it
+  const parent = result.islands.dir.includes(dir) ? null : (result.dirs.parent[dir] ?? null)
   return {
     kind: root ? 'root' : kind,
     packages: [row],
