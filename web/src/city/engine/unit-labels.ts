@@ -34,8 +34,7 @@ interface UnitLabel {
 }
 
 interface Shown {
-  key: string
-  target: Target
+  label: UnitLabel
   /** Its box's top left corner from its anchor on screen. */
   offset: { x: number; y: number }
   width: number
@@ -51,8 +50,11 @@ export class UnitLabels {
   /** The islands holding a unit's parcel: their own labels stay, to say where it lies. */
   private hostIslands = new Set<number>()
   private shown: Shown[] = []
-  /** The view the labels were placed for: placed again once it changes and comes to rest. */
-  private placedFor = ''
+  /**
+   * The view the labels were placed for, the canvas's size then the camera's matrix: placed
+   * again once it changes and comes to rest. NaN for none.
+   */
+  private readonly placedFor = new Float64Array(18).fill(Number.NaN)
   private readonly widths = new Map<string, number>()
   private readonly projected = new Vector3()
   private width = 0
@@ -77,7 +79,7 @@ export class UnitLabels {
     this.hostIslands = new Set(units.flatMap((unit) => (unit.parcel ? [unit.parcel.island] : [])))
     this.labels = units.flatMap((unit) => this.labelOf(unit) ?? [])
     this.shown = []
-    this.placedFor = ''
+    this.placedFor.fill(Number.NaN)
   }
 
   /** Whether the step labels units: the labels of islands at rest then keep quiet. */
@@ -93,7 +95,7 @@ export class UnitLabels {
   /** Measures the texts again: the fonts they are written in have loaded since. */
   remeasure(): void {
     this.widths.clear()
-    this.placedFor = ''
+    this.placedFor.fill(Number.NaN)
   }
 
   /**
@@ -107,16 +109,13 @@ export class UnitLabels {
       this.shown = []
       return []
     }
-    const view = [this.width, this.height, ...this.camera.matrixWorld.elements].join(',')
-    if (!moving && view !== this.placedFor) {
-      this.placedFor = view
+    if (!moving && this.viewChanged()) {
       this.arrange()
     }
-    const byKey = new Map(this.labels.map((label) => [label.key, label]))
     return this.shown.flatMap((shown) => {
-      const label = byKey.get(shown.key)
-      const anchor = label && this.onCanvas(label.anchor)
-      if (!label || !anchor) {
+      const { label } = shown
+      const anchor = this.onCanvas(label.anchor)
+      if (!anchor) {
         return []
       }
       const box = {
@@ -146,25 +145,38 @@ export class UnitLabels {
 
   /** The island or folder whose label is at this point of the canvas, in CSS pixels. */
   at(x: number, y: number): Target | null {
-    const byKey = new Map(this.labels.map((label) => [label.key, label]))
-    for (const shown of [...this.shown].reverse()) {
-      const label = byKey.get(shown.key)
-      const anchor = label && this.onCanvas(label.anchor)
-      if (!anchor) {
+    for (let at = this.shown.length - 1; at >= 0; at -= 1) {
+      const shown = this.shown[at]
+      const anchor = shown && this.onCanvas(shown.label.anchor)
+      if (!shown || !anchor) {
         continue
       }
       const left = anchor.x + shown.offset.x
       const top = anchor.y + shown.offset.y
       if (x >= left && x <= left + shown.width && y >= top && y <= top + shown.height) {
-        return shown.target
+        return shown.label.target
       }
     }
     return null
   }
 
+  /** Whether the canvas or the camera changed since the labels were placed; notes the new view. */
+  private viewChanged(): boolean {
+    const view = this.placedFor
+    const { elements } = this.camera.matrixWorld
+    let changed = view[0] !== this.width || view[1] !== this.height
+    view[0] = this.width
+    view[1] = this.height
+    for (let at = 0; at < elements.length; at += 1) {
+      changed ||= view[at + 2] !== elements[at]
+      view[at + 2] = elements[at] ?? Number.NaN
+    }
+    return changed
+  }
+
   /** Places every label whose anchor is on the canvas, the largest unit first. */
   private arrange(): void {
-    const previous = new Map(this.shown.map((shown) => [shown.key, shown.offset]))
+    const previous = new Map(this.shown.map((shown) => [shown.label.key, shown.offset]))
     const candidates = this.labels.flatMap((label) => {
       const anchor = this.onCanvas(label.anchor)
       if (!anchor || !this.inside(anchor)) {
@@ -186,8 +198,7 @@ export class UnitLabels {
     this.shown = candidates.map(({ label, x, y, width, height }, at) => {
       const box = boxes[at] ?? { x, y }
       return {
-        key: label.key,
-        target: label.target,
+        label,
         offset: { x: box.x - x, y: box.y - y },
         width,
         height,
