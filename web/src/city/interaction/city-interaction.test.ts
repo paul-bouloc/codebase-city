@@ -208,6 +208,7 @@ describe('CityInteraction', () => {
       pinned: [],
       labelled: [2],
       areas: [],
+      units: [],
       fade: 'all',
       cycle: null,
     })
@@ -222,6 +223,7 @@ describe('CityInteraction', () => {
       pinned: [],
       labelled: [],
       areas: [{ island: 0 }],
+      units: [],
       fade: 'others',
       cycle: null,
     })
@@ -236,6 +238,7 @@ describe('CityInteraction', () => {
       pinned: [],
       labelled: [],
       areas: [],
+      units: [],
       fade: 'none',
       cycle: null,
     })
@@ -251,6 +254,7 @@ describe('CityInteraction', () => {
       pinned: [],
       labelled: [],
       areas: [],
+      units: [],
       fade: 'all',
       cycle: null,
     })
@@ -263,6 +267,7 @@ describe('CityInteraction', () => {
       pinned: [],
       labelled: [],
       areas: [],
+      units: [],
       fade: 'all',
       cycle: null,
     })

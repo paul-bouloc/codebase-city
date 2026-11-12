@@ -18,6 +18,15 @@ import type { CityTargets } from './targets'
 /** What fades: nothing, all but what is put forward, or all but the folders ringed. */
 export type GuideFade = 'none' | 'all' | 'others'
 
+/** A unit of packages a step shows, as the city holds it. */
+export interface CityGuideUnit {
+  /** Its islands, the largest first. */
+  islands: number[]
+  /** Its parcel, for a package inside another's island. */
+  parcel: { island: number; parcel: number } | null
+  label: GuideUnitLabel | null
+}
+
 export interface CityGuideView {
   /** Buildings in the Guide state. */
   buildings: readonly number[]
@@ -26,8 +35,25 @@ export interface CityGuideView {
   /** Of those, the ones whose label stands over their pin. */
   labelled: readonly number[]
   areas: readonly Area[]
+  /** The units of packages on show; a unit the city shows nothing of is left out. */
+  units: readonly CityGuideUnit[]
   fade: GuideFade
   cycle: Cycle | null
+}
+
+/** What the label of a unit of packages says. */
+export interface GuideUnitLabel {
+  name: string
+  /** The line of figures over the name; none on a short label. */
+  caption: string | null
+}
+
+/** A unit of packages a step shows, by path: an app, a library, a group of apps, the root. */
+export interface GuideUnitPaths {
+  /** Its islands or its parcel, by the path of their folder. */
+  folders: readonly string[]
+  /** None past the labels a step has room for: its outline says enough. */
+  label: GuideUnitLabel | null
 }
 
 /** What a step puts forward, by path: what the screen knows. */
@@ -37,6 +63,8 @@ export interface GuidePaths {
   labelled: readonly string[]
   /** Islands or parcels, by the path of their folder. */
   folders: readonly string[]
+  /** The units of packages it shows, the largest first. */
+  units: readonly GuideUnitPaths[]
   fade: GuideFade
   /** The path of a file of the cycle to draw, if any. */
   cycle: string | null
@@ -62,6 +90,21 @@ export function cityGuideView(
       const target = targets.at(path)
       const area = target && areaOf(layout, target)
       return area ? [area] : []
+    }),
+    units: paths.units.flatMap((unit) => {
+      const islands: number[] = []
+      let parcel: CityGuideUnit['parcel'] = null
+      for (const path of unit.folders) {
+        const target = targets.at(path)
+        if (target?.kind === 'island') {
+          islands.push(target.island)
+        } else if (target?.kind === 'parcel') {
+          parcel ??= { island: target.island, parcel: target.parcel }
+        }
+      }
+      const lots = (island: number) => layout.islands[island]?.lots.length ?? 0
+      islands.sort((a, b) => lots(b) - lots(a))
+      return islands.length > 0 || parcel ? [{ islands, parcel, label: unit.label }] : []
     }),
     fade: paths.fade,
     cycle: cycleAt[0] === undefined ? null : (cycleOf(cycleAt[0]) ?? null),

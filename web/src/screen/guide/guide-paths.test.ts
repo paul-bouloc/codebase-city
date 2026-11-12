@@ -16,6 +16,7 @@ describe('guidePaths', () => {
       pinned: ['src/core/utils.ts', 'src/core/types.ts', 'src/core/events.ts'],
       labelled: ['src/core/utils.ts'],
       folders: ['src/core'],
+      units: [],
       fade: 'others',
       cycle: null,
     })
