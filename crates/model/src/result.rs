@@ -716,12 +716,14 @@ pub enum TourStep {
     /// repository of one project, when ten examples or more import its
     /// production code.
     ExamplesAndTests {
-        /// One to three folders at the top of the repository, the one with
-        /// the most such examples first.
+        /// One to three folders, each the highest one above its examples
+        /// that holds no production code (`docs_src/`, `src/examples/`),
+        /// the one with the most such examples first.
         folders: Vec<u32>,
-        /// For each, its example files that import production code.
+        /// For each, its example files that import production code files.
         examples: Vec<u32>,
-        /// Test files that import an example: the examples are tested.
+        /// Test files that import one of their examples: the examples are
+        /// tested.
         tests: u32,
     },
     /// In a monorepo of libraries, the folders outside the packages whose

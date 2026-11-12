@@ -174,13 +174,13 @@ function decodeStep(value: unknown, row: number, tables: Tables): TourStep {
         examples: counts('examples'),
         tests: count('tests'),
       }
-      // At the top of the repository, the most examples first
+      // Below the root, the most examples first
       const { examples, folders } = step
       const testFiles = tables.files.scope.filter((scope) => scope === 'test').length
       holds(
         examples.length === folders.length &&
           !examples.includes(0) &&
-          folders.every((dir) => tables.dirs.parent[dir] === 0) &&
+          !folders.includes(0) &&
           examples.every((each, at) => at === 0 || each <= (examples[at - 1] as number)) &&
           examples.reduce((sum, each) => sum + each, 0) >= MIN_EXAMPLES &&
           step.tests <= testFiles,

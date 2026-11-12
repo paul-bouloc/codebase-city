@@ -186,10 +186,8 @@ fn check_step(
             tests,
         } => {
             list("tour.folders", folders, dir_count)?;
-            // At the top of the repository, the most examples first
-            let at_top = folders
-                .iter()
-                .all(|&dir| result.dirs.parent[dir as usize] == Some(0));
+            // Below the root, the most examples first
+            let below_root = !folders.contains(&0);
             let sorted = examples.windows(2).all(|pair| pair[0] >= pair[1]);
             let all: u64 = examples.iter().copied().map(u64::from).sum();
             let test_files = result
@@ -201,7 +199,7 @@ fn check_step(
             count(
                 examples.len() == folders.len()
                     && !examples.contains(&0)
-                    && at_top
+                    && below_root
                     && sorted
                     && all >= MIN_EXAMPLES
                     && *tests as usize <= test_files,
@@ -746,7 +744,7 @@ mod tests {
     }
 
     #[test]
-    fn examples_and_tests_count_ten_examples_in_top_folders() {
+    fn examples_and_tests_count_ten_examples_below_the_root() {
         // After the layers, before the cycles: `src` holds ten examples
         let with = |examples: Vec<u32>, tests: u32| {
             move |r: &mut AnalysisResult| {
@@ -766,7 +764,7 @@ mod tests {
         for change in [with(vec![9], 0), with(vec![10, 2], 0), with(vec![10], 1)] {
             assert_eq!(invalid(change), InvalidResult::TourCount { row: 5 });
         }
-        // The root is no folder at the top
+        // The root is no folder of examples
         assert_eq!(
             invalid(|r| {
                 with(vec![10], 0)(r);

@@ -123,16 +123,18 @@ up: number,
  */
 worstLink: number | null, } | { "kind": "examplesAndTests", 
 /**
- * One to three folders at the top of the repository, the one with
- * the most such examples first.
+ * One to three folders, each the highest one above its examples
+ * that holds no production code (`docs_src/`, `src/examples/`),
+ * the one with the most such examples first.
  */
 folders: Array<number>, 
 /**
- * For each, its example files that import production code.
+ * For each, its example files that import production code files.
  */
 examples: Array<number>, 
 /**
- * Test files that import an example: the examples are tested.
+ * Test files that import one of their examples: the examples are
+ * tested.
  */
 tests: number, } | { "kind": "consumers", 
 /**

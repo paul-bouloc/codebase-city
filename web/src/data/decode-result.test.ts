@@ -600,7 +600,7 @@ describe('decodeResult', () => {
     }
   })
 
-  it('requires ten examples or more in folders at the top, the most first', () => {
+  it('requires ten examples or more in folders below the root, the most first', () => {
     // After the layers: `tests/` holds the examples
     const withExamples =
       (examples: number[], folders = [6]) =>
@@ -608,7 +608,9 @@ describe('decodeResult', () => {
         json.tour.steps.splice(6, 0, { kind: 'examplesAndTests', folders, examples, tests: 0 })
       }
     expect(decodeChanged(withExamples([10]))).not.toThrow()
-    for (const change of [withExamples([9]), withExamples([10], [2]), withExamples([10, 3])]) {
+    // `src/core` holds examples as well as `tests/`
+    expect(decodeChanged(withExamples([10], [2]))).not.toThrow()
+    for (const change of [withExamples([9]), withExamples([10], [0]), withExamples([10, 3])]) {
       expect(decodeChanged(change)).toThrow('the counts of tour.steps[6] do not add up')
     }
   })
