@@ -5,6 +5,7 @@ import type { CityLayout } from '../world/layout'
 import type { Vec3 } from '../world/units'
 import {
   ISLAND_LABEL_PIXELS,
+  LABEL_HYSTERESIS,
   type LabelArea,
   type LabelCandidate,
   labelAreas,
@@ -45,6 +46,8 @@ export class AreaLabels {
   private readonly widths = new Map<string, number>()
   private shown: Shown[] = []
   private last: readonly AreaLabel[] = []
+  /** The labels on show, by path, and whether with their line of figures. */
+  private onShow = new Map<string, boolean>()
   private readonly projected = new Vector3()
 
   constructor(
@@ -57,6 +60,7 @@ export class AreaLabels {
   setLayout(layout: CityLayout | null): void {
     this.areas = layout ? labelAreas(layout) : []
     this.shown = []
+    this.onShow = new Map()
   }
 
   /** What each folder's label says, by path: a folder without one gets no label. */
@@ -69,8 +73,11 @@ export class AreaLabels {
     this.widths.clear()
   }
 
-  /** The labels on show this frame, or null when they stand where they last stood. */
-  place(selected: CityTarget | null): readonly AreaLabel[] | null {
+  /**
+   * The labels on show this frame, or null when they stand where they last stood. While the
+   * camera moves, no label comes: labels coming and going all over the moving city blink.
+   */
+  place(selected: CityTarget | null, moving: boolean): readonly AreaLabel[] | null {
     const width = this.canvas.clientWidth
     const height = this.canvas.clientHeight
     const candidates: (LabelCandidate & { area: LabelArea; label: AreaLabel })[] = []
@@ -81,8 +88,16 @@ export class AreaLabels {
       }
       const island = area.target.kind === 'island'
       const isSelected = sameTarget(area.target, selected)
+      const wasShown = this.onShow.get(area.path)
+      if (moving && wasShown === undefined && !isSelected) {
+        continue
+      }
+      // A label on show goes only once its area is well under the threshold it passed.
+      const keep = (pixels: number, kept: boolean | undefined) =>
+        kept ? pixels / LABEL_HYSTERESIS : pixels
       const span = area.extent * this.pixelsPerUnit(area.centre)
-      if (span < (island ? ISLAND_LABEL_PIXELS : PARCEL_LABEL_PIXELS) && !isSelected) {
+      const threshold = island ? ISLAND_LABEL_PIXELS : PARCEL_LABEL_PIXELS
+      if (span < keep(threshold, wasShown !== undefined) && !isSelected) {
         continue
       }
       const anchor = this.onCanvas(area.anchor)
@@ -90,13 +105,16 @@ export class AreaLabels {
         continue
       }
       const lean = island ? leanAway(anchor, this.onCanvas(area.centre)) : 'centre'
-      const caption = island && span >= CAPTION_PIXELS ? text.caption : null
+      const captioned = island && span >= keep(CAPTION_PIXELS, wasShown)
+      // No line of figures comes while the camera moves either: the box would grow.
+      const caption = captioned && (!moving || wasShown) ? text.caption : null
       const size = this.boxSize(island, text.name, caption)
       const { x, y } = boxCorner(anchor, size, lean)
       candidates.push({
         island,
         span,
         selected: isSelected,
+        shown: wasShown !== undefined,
         x,
         y,
         ...size,
@@ -112,8 +130,9 @@ export class AreaLabels {
         },
       })
     }
-    const placed = placeLabels(candidates)
+    const placed = placeLabels(candidates, moving)
     const kept = candidates.filter((_, at) => placed[at])
+    this.onShow = new Map(kept.map(({ label }) => [label.path, label.caption !== null]))
     this.shown = kept.map(({ area, x, y, width, height }) => ({
       target: area.target,
       x,

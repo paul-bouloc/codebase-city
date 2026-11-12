@@ -12,11 +12,16 @@ const PARCEL_LABEL_LIFT = 0.3
 /** An island's label shows once its plateau spans this many CSS pixels, */
 export const ISLAND_LABEL_PIXELS = 60
 /** a folder's once its parcel spans this many. */
-export const PARCEL_LABEL_PIXELS = 80
+export const PARCEL_LABEL_PIXELS = 160
+/**
+ * A label on show stays until its area spans this much less than the threshold it passed: a
+ * slow zoom does not make it blink.
+ */
+export const LABEL_HYSTERESIS = 1.15
 /** No more labels than these on screen: of islands, of folders, and of both. */
-export const MAX_ISLAND_LABELS = 24
-export const MAX_PARCEL_LABELS = 30
-export const MAX_LABELS = 40
+export const MAX_ISLAND_LABELS = 12
+export const MAX_PARCEL_LABELS = 8
+export const MAX_LABELS = 20
 /** The screen is cut into square cells this many CSS pixels wide; a label takes those it covers. */
 export const LABEL_CELL = 24
 
@@ -88,8 +93,10 @@ export interface LabelCandidate {
   island: boolean
   /** The area's span on screen, in CSS pixels: the larger first. */
   span: number
-  /** The selected folder's label comes before all others. */
+  /** The selected folder's label comes before all others, */
   selected: boolean
+  /** then those on show already, that keep their place against newcomers. */
+  shown: boolean
   x: number
   y: number
   width: number
@@ -97,10 +104,12 @@ export interface LabelCandidate {
 }
 
 /**
- * Which of these labels show: the selected one first, then islands before folders, the larger
- * first; a label shows if no cell it covers is taken, and within the caps.
+ * Which of these labels show: the selected one first, then those on show already, then islands
+ * before folders, the larger first; a label shows if no cell it covers is taken, and within the
+ * caps. While the camera moves, those on show may cross one another: they part once it rests,
+ * rather than blink as it goes.
  */
-export function placeLabels(candidates: readonly LabelCandidate[]): boolean[] {
+export function placeLabels(candidates: readonly LabelCandidate[], moving = false): boolean[] {
   const order = candidates.map((_, at) => at).sort((a, b) => rank(candidates[a], candidates[b]))
   const shown = candidates.map(() => false)
   const taken = new Set<string>()
@@ -115,7 +124,7 @@ export function placeLabels(candidates: readonly LabelCandidate[]): boolean[] {
       continue
     }
     const cells = cellsOf(label)
-    if (cells.some((cell) => taken.has(cell))) {
+    if (!(moving && label.shown) && cells.some((cell) => taken.has(cell))) {
       continue
     }
     for (const cell of cells) {
@@ -137,6 +146,9 @@ function rank(a: LabelCandidate | undefined, b: LabelCandidate | undefined): num
   }
   if (a.selected !== b.selected) {
     return a.selected ? -1 : 1
+  }
+  if (a.shown !== b.shown) {
+    return a.shown ? -1 : 1
   }
   if (a.island !== b.island) {
     return a.island ? -1 : 1

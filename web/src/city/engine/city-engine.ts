@@ -423,7 +423,10 @@ export class CityEngine {
 
   /** Tells the listeners which labels of islands and folders show, and where, when that changes. */
   private tellAreaLabels(): void {
-    const labels = this.areaLabels.place(this.interaction?.getSelection()?.target ?? null)
+    const labels = this.areaLabels.place(
+      this.interaction?.getSelection()?.target ?? null,
+      this.cameraMoving,
+    )
     if (labels) {
       this.listeners.areaLabels?.(labels)
     }
@@ -440,6 +443,8 @@ export class CityEngine {
         this.interaction?.clearHover()
       } else {
         this.pointer.hover()
+        // At rest, the labels that held back while it moved come.
+        this.needsRender = true
       }
     }
     if (this.interaction?.update(time)) {

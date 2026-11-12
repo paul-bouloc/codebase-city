@@ -32,6 +32,7 @@ function candidate(overrides: Partial<LabelCandidate> = {}): LabelCandidate {
     island: true,
     span: 100,
     selected: false,
+    shown: false,
     x: 0,
     y: 0,
     width: 40,
@@ -121,6 +122,17 @@ describe('placeLabels', () => {
       candidate({ span: 10, x: 200 }),
     ])
     expect(shown).toEqual([false, true, false, true])
+  })
+
+  it('keeps a label on show against a larger newcomer', () => {
+    const shown = placeLabels([candidate({ span: 900 }), candidate({ span: 50, shown: true })])
+    expect(shown).toEqual([false, true])
+  })
+
+  it('lets labels on show cross while the camera moves, and parts them at rest', () => {
+    const labels = [candidate({ span: 900, shown: true }), candidate({ span: 50, shown: true })]
+    expect(placeLabels(labels, true)).toEqual([true, true])
+    expect(placeLabels(labels, false)).toEqual([true, false])
   })
 
   it('keeps to the caps of islands, folders and both', () => {

@@ -64,9 +64,17 @@ function setup(distance: number, texts: ReadonlyMap<string, AreaLabelText> = TEX
   return labels
 }
 
+/** Moves the camera of `labels` to look at the city from this far. */
+function moveTo(labels: AreaLabels, distance: number) {
+  const camera = (labels as unknown as { camera: PerspectiveCamera }).camera
+  camera.position.set(0, distance, distance * 0.3)
+  camera.lookAt(0, 0, 0)
+  camera.updateMatrixWorld()
+}
+
 describe('AreaLabels', () => {
   it('labels both islands and the folder up close, each island’s label out to the sea', () => {
-    const shown = setup(60).place(null) ?? []
+    const shown = setup(60).place(null, false) ?? []
     expect(shown.map((label) => label.path).sort()).toEqual(['core', 'core/src', 'web'])
     const core = shown.find((label) => label.path === 'core')
     const web = shown.find((label) => label.path === 'web')
@@ -81,35 +89,36 @@ describe('AreaLabels', () => {
   })
 
   it('drops the folder, then the line of figures, then the islands, as the camera pulls back', () => {
-    const near = setup(60).place(null) ?? []
+    const near = setup(60).place(null, false) ?? []
     expect(near.find((label) => label.path === 'core')?.caption).toBe('≈ 1,200 files · layer 1')
-    const middle = setup(250).place(null) ?? []
+    const middle = setup(250).place(null, false) ?? []
     expect(middle.map((label) => label.path).sort()).toEqual(['core', 'web'])
     expect(middle.every((label) => label.caption === null)).toBe(true)
     // Nothing to show from the start: nothing new to say.
-    expect(setup(2000).place(null)).toBeNull()
+    expect(setup(2000).place(null, false)).toBeNull()
   })
 
   it('keeps the label of the selected folder, however small', () => {
     const labels = setup(2000)
-    const shown = labels.place({ kind: 'parcel', island: 0, parcel: 0 }) ?? []
+    const shown = labels.place({ kind: 'parcel', island: 0, parcel: 0 }, false) ?? []
     expect(shown.map((label) => label.path)).toEqual(['core/src'])
   })
 
   it('gives no label to a folder the screen has no text for', () => {
-    const shown = setup(60, new Map([['web', { name: 'web', caption: null }]])).place(null) ?? []
+    const shown =
+      setup(60, new Map([['web', { name: 'web', caption: null }]])).place(null, false) ?? []
     expect(shown.map((label) => label.path)).toEqual(['web'])
   })
 
   it('says nothing new while the labels stand still', () => {
     const labels = setup(60)
-    expect(labels.place(null)).not.toBeNull()
-    expect(labels.place(null)).toBeNull()
+    expect(labels.place(null, false)).not.toBeNull()
+    expect(labels.place(null, false)).toBeNull()
   })
 
   it('finds the island or folder whose label is under a point of the canvas', () => {
     const labels = setup(60)
-    const shown = labels.place(null) ?? []
+    const shown = labels.place(null, false) ?? []
     const folder = shown.find((label) => label.path === 'core/src')
     if (!folder) {
       throw new Error('no label for core/src')
@@ -120,5 +129,32 @@ describe('AreaLabels', () => {
       parcel: 0,
     })
     expect(labels.at(0, 0)).toBeNull()
+  })
+
+  it('brings no label while the camera moves, and keeps those on show', () => {
+    const labels = setup(60)
+    expect(labels.place(null, true)).toBeNull()
+    expect(labels.place(null, false)?.length).toBe(3)
+    expect(labels.place(null, true)).toBeNull()
+  })
+
+  it('keeps a label on show a little under the threshold it passed', () => {
+    // From 330 u away, the islands span under 60 px, but more than 60 / 1.15.
+    expect(setup(330).place(null, false)).toBeNull()
+    const labels = setup(250)
+    expect(
+      labels
+        .place(null, false)
+        ?.map((label) => label.path)
+        .sort(),
+    ).toEqual(['core', 'web'])
+    moveTo(labels, 330)
+    // Still on show: they moved on screen, so they are told again.
+    expect(
+      labels
+        .place(null, false)
+        ?.map((label) => label.path)
+        .sort(),
+    ).toEqual(['core', 'web'])
   })
 })
