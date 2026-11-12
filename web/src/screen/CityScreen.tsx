@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CityEngine } from '../city/engine/city-engine'
 import { cityCards } from '../city/interaction/city-cards'
 import type { GuidePaths } from '../city/interaction/city-guide'
-import type { CameraView, CityHover, GuideLabel } from '../city/interaction/city-items'
+import type { AreaLabel, CameraView, CityHover, GuideLabel } from '../city/interaction/city-items'
 import type { PortList } from '../city/interaction/open-port'
 import { cityFromResult } from '../city/world/from-result'
 import type { AnalysisResult } from '../data/generated/AnalysisResult'
@@ -20,6 +20,8 @@ import { githubTreeUrl } from './github-links'
 import { GuideLabels } from './guide/GuideLabels'
 import { useDriveKeys } from './keys/use-drive-keys'
 import { useEscapeKey } from './keys/use-escape-key'
+import { AreaLabels } from './labels/AreaLabels'
+import { areaLabelTexts } from './labels/area-label-texts'
 import { CityLegend } from './legend/CityLegend'
 import { repoContents } from './legend/legend'
 import { type LegendContent, legendContent } from './legend/legend-content'
@@ -90,6 +92,7 @@ function Screen({
   const index = useMemo(() => indexResult(result), [result])
   const layout = useMemo(() => cityFromResult(result), [result])
   const cards = useMemo(() => cityCards(result), [result])
+  const labelTexts = useMemo(() => areaLabelTexts(layout, result.repo.name), [layout, result])
   const symbols = useMemo(() => symbolsByFile(index), [index])
   const about = useMemo(() => aboutData(index), [index])
   const searchIndex = useMemo(() => buildSearchIndex(index), [index])
@@ -112,6 +115,7 @@ function Screen({
   const [legendExpanded, setLegendExpanded] = useState(false)
   const [aboutOpen, setAboutOpen] = useState(false)
   const [guideLabels, setGuideLabels] = useState<readonly GuideLabel[]>([])
+  const [areaLabels, setAreaLabels] = useState<readonly AreaLabel[]>([])
   const { selection, sheetOpen, setSheetOpen, openLine, choose, selectFromCity, openAtLine } =
     useScreenSelection(engine, index)
 
@@ -130,12 +134,17 @@ function Screen({
       view: setView,
       select: selectFromCity,
       guideLabels: setGuideLabels,
+      areaLabels: setAreaLabels,
     })
   }, [engine, selectFromCity])
 
   useEffect(() => {
     engine?.showGuide(guide?.paths ?? null)
   }, [engine, guide])
+
+  useEffect(() => {
+    engine?.setAreaLabels(labelTexts)
+  }, [engine, labelTexts])
 
   // The legend lists the ways the engine drew links: known once the city is loaded, which the
   // view's own effect does first (a new result is a new index).
@@ -229,6 +238,10 @@ function Screen({
   return (
     <main ref={screen} className={styles.screen}>
       <CityView layout={layout} showStats={showStats} onEngine={handleEngine} />
+      <AreaLabels
+        labels={areaLabels}
+        selected={selection?.kind === 'dir' ? selection.path : null}
+      />
       {guide && <GuideLabels labels={guideLabels} notes={guide.notes} />}
 
       <div className={styles.topBar}>
