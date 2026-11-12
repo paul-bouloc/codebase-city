@@ -2,8 +2,18 @@
  * The labels of islands and folders (city language, labels): cream pills over the city, under the
  * panels. Their sizes match the boxes the city places them by (`area-labels.ts`).
  */
-.label {
+.anchor {
   position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.label {
+  position: absolute;
+  top: 0;
+  left: 0;
   display: flex;
   flex-direction: column;
   align-items: flex-start;

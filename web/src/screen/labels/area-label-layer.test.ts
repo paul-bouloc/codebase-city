@@ -7,7 +7,7 @@ function label(path: string, x: number, overrides: Partial<AreaLabel> = {}): Are
 }
 
 function element() {
-  return { style: { left: '', top: '' } }
+  return { style: { transform: '' } }
 }
 
 describe('AreaLabelLayer', () => {
@@ -22,12 +22,12 @@ describe('AreaLabelLayer', () => {
     const core = element()
     layer.element('core', core)
     layer.position()
-    expect(core.style).toEqual({ left: '100px', top: '10px' })
+    expect(core.style.transform).toBe('translate3d(100px, 10px, 0)')
 
     // The camera moves: the same label, elsewhere, moved in place.
     layer.update([label('core', 140)])
     expect(draw).toHaveBeenCalledTimes(2)
-    expect(core.style.left).toBe('140px')
+    expect(core.style.transform).toBe('translate3d(140px, 10px, 0)')
 
     // A line of figures comes: the set is drawn again.
     layer.update([label('core', 140, { caption: '12 files' })])
@@ -50,7 +50,7 @@ describe('AreaLabelLayer', () => {
     layer.element('core', core)
     layer.element('core', null)
     layer.update([label('core', 200)])
-    expect(core.style.left).toBe('')
+    expect(core.style.transform).toBe('')
   })
 
   it('keeps the set at hand until someone draws it', () => {

@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useState } from 'react'
 import type { AreaLabel } from '../../city/interaction/city-items'
 import styles from './AreaLabels.module.css'
-import type { AreaLabelLayer } from './area-label-layer'
+import { type AreaLabelLayer, placeAt } from './area-label-layer'
 
 /** A label the city stops showing fades out over this many ms. */
 const FADE_MS = 150
@@ -79,16 +79,19 @@ function Label({
     selected ? styles.selected : '',
     leaving ? styles.leaving : '',
   ]
+  // The anchor stands on the page; the label runs from it, out to the sea.
   return (
     <div
       ref={moved}
-      className={classes.join(' ')}
-      style={leaving ? { left: label.x, top: label.y } : undefined}
+      className={styles.anchor}
+      style={leaving ? { transform: placeAt(label.x, label.y) } : undefined}
       title={label.path}
       aria-hidden="true"
     >
-      {label.caption !== null && <span className={styles.caption}>{label.caption}</span>}
-      <span className={styles.name}>{label.name}</span>
+      <div className={classes.join(' ')}>
+        {label.caption !== null && <span className={styles.caption}>{label.caption}</span>}
+        <span className={styles.name}>{label.name}</span>
+      </div>
     </div>
   )
 }

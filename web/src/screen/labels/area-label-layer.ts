@@ -10,7 +10,15 @@ type Draw = (labels: readonly AreaLabel[], gone: readonly AreaLabel[]) => void
 
 /** Any element the layer moves: a label React drew. */
 interface Movable {
-  style: { left: string; top: string }
+  style: { transform: string }
+}
+
+/**
+ * Where a label stands on the page, to the fraction of a pixel: whole pixels would make it step
+ * while the city glides.
+ */
+export function placeAt(x: number, y: number): string {
+  return `translate3d(${x}px, ${y}px, 0)`
 }
 
 export class AreaLabelLayer {
@@ -63,8 +71,7 @@ export class AreaLabelLayer {
     for (const label of this.latest) {
       const element = this.elements.get(label.path)
       if (element) {
-        element.style.left = `${label.x}px`
-        element.style.top = `${label.y}px`
+        element.style.transform = placeAt(label.x, label.y)
       }
     }
   }
