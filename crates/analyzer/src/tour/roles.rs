@@ -10,10 +10,11 @@ use crate::saturating_u32 as index;
 const FOUNDATION_SHARE: u64 = 10;
 /// And at least this many.
 const FOUNDATION_MIN: u32 = 3;
-/// The first conductor shown pulls together this share of the code files,
-/// in percent, at least: below, it assembles a corner of the code, not the
-/// code (fastapi's `security/http.py`, 11 files of 52; flask's `views.py`,
-/// 21 of 24).
+/// The first conductor shown pulls together this share of the production
+/// files, in percent, at least: below, it assembles a corner of the code,
+/// not the code (fastapi's `security/http.py`, 11 files of 52; flask's
+/// `views.py`, 21 of 24). Its count holds every production file it reaches,
+/// stylesheets included: so does the share.
 const CONDUCTOR_SHARE: u64 = 50;
 
 /// A file, or for Go a package folder.
@@ -27,7 +28,8 @@ pub(super) fn entry_points(result: &AnalysisResult) -> Option<TourStep> {
 }
 
 /// The conductors not already shown as an entry point (an application's
-/// main file often is both), when the first pulls together half the code.
+/// main file often is both), when the first pulls together half the
+/// production files.
 pub(super) fn conductors(
     result: &AnalysisResult,
     entry_points: Option<&TourStep>,
@@ -47,7 +49,7 @@ pub(super) fn conductors(
         .map(index)
         .collect();
     let first = u64::from(ranked.count[*conductors.first()? as usize]);
-    (first * 100 >= super::code_files(result) * CONDUCTOR_SHARE)
+    (first * 100 >= production_files(result) * CONDUCTOR_SHARE)
         .then_some(TourStep::Conductors { conductors })
 }
 
@@ -56,9 +58,7 @@ pub(super) fn conductors(
 pub(super) fn foundations(result: &AnalysisResult) -> Option<TourStep> {
     let ranked = &result.roles.foundations;
     let first = *ranked.count.first()?;
-    let production = (0..result.files.dir.len())
-        .filter(|&file| is_production(result, file))
-        .count() as u64;
+    let production = production_files(result);
     if first < FOUNDATION_MIN || u64::from(first) * 100 < production * FOUNDATION_SHARE {
         return None;
     }
@@ -78,6 +78,13 @@ pub(super) fn foundations(result: &AnalysisResult) -> Option<TourStep> {
         foundations,
         island,
     })
+}
+
+/// Production files, as the roles count them.
+fn production_files(result: &AnalysisResult) -> u64 {
+    (0..result.files.dir.len())
+        .filter(|&file| is_production(result, file))
+        .count() as u64
 }
 
 fn target(ranked: &Ranked, row: usize) -> Target {
@@ -140,10 +147,14 @@ mod tests {
         assert!(conductors(&repo.result, shown.as_ref()).is_some());
         repo.result.roles.conductors.count[1] = 2;
         assert_eq!(conductors(&repo.result, shown.as_ref()), None);
-        // A test is no code: three of six still make half
+        // A test is no production file: three of six still make half
         repo.result.roles.conductors.count[1] = 3;
         repo.test("ui/view.test.ts");
         assert!(conductors(&repo.result, shown.as_ref()).is_some());
+        // A stylesheet is, as the conductor counts it: three of seven
+        let css = repo.file("ui/theme.css", Scope::Source);
+        repo.result.files.complexity[css] = None;
+        assert_eq!(conductors(&repo.result, shown.as_ref()), None);
     }
 
     /// [`Fixture::layered`] with Go packages as targets: `app` the entry
