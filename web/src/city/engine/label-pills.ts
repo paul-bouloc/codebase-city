@@ -1,4 +1,4 @@
-import { DoubleSide, Group, type Mesh, type ShaderMaterial } from 'three'
+import { Group, type Mesh } from 'three'
 import {
   disposePill,
   drawPill,
@@ -205,7 +205,6 @@ export class LabelPills {
       ratio,
     )
     const mesh = pillMesh(label.anchor, texture)
-    ;(mesh.material as ShaderMaterial).side = DoubleSide
     // Islands over folders, all over the city.
     mesh.renderOrder = label.island ? 1001 : 1000
     this.group.add(mesh)

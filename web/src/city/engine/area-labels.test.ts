@@ -7,8 +7,6 @@ import { LABEL_SETTLE_MS } from './label-placement'
 
 const WIDTH = 1000
 const HEIGHT = 600
-/** Where the canvas stands on the page. */
-const BOX = { left: 10, top: 20 }
 
 /** Two islands side by side, the first with a folder. */
 const LAYOUT: CityLayout = {
@@ -51,7 +49,6 @@ function setup(distance: number, texts: ReadonlyMap<string, AreaLabelText> = TEX
   const canvas = {
     clientWidth: WIDTH,
     clientHeight: HEIGHT,
-    getBoundingClientRect: () => BOX,
   } as unknown as HTMLCanvasElement
   const camera = new PerspectiveCamera(50, WIDTH / HEIGHT, 0.1, 5000)
   // Looking down at the city from the south: board x runs left to right on screen.
