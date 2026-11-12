@@ -32,6 +32,8 @@ const TEXT = {
 /** What a label says after its file's name, until the guide writes it. */
 function stepNote(result: AnalysisResult, step: TourStep): string {
   switch (step.kind) {
+    case 'builtOn':
+      return `builds on ${step.externals.map((row) => result.externals.name[row]).join(', ')}`
     case 'entryPoints':
       return 'entry point'
     case 'conductors':
