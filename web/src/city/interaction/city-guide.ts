@@ -115,8 +115,8 @@ export function cityGuideView(
 
 /** A cycle's arcs land this far above a roof, in u. */
 const ROOF_LIFT = 0.1
-/** A unit on more islands than this is tied by its outlines alone: ties would net the sea. */
-export const MAX_TIED_ISLANDS = 24
+/** A unit on more islands than this gets its outlines alone: ties and rings would net the sea. */
+const MAX_MARKED_ISLANDS = 24
 
 export class CityGuide {
   readonly group = new Group()
@@ -164,12 +164,9 @@ export class CityGuide {
     const units = view?.units ?? []
     const plateaux = (islands: readonly number[]) =>
       islands.flatMap((island) => this.layout.islands[island]?.plateau ?? [])
-    this.rings.show(plateaux(units.flatMap((unit) => unit.islands)))
-    this.ties.show(
-      units.flatMap(({ islands }) =>
-        islands.length <= MAX_TIED_ISLANDS ? guideTies(plateaux(islands)) : [],
-      ),
-    )
+    const marked = units.filter((unit) => unit.islands.length <= MAX_MARKED_ISLANDS)
+    this.rings.show(plateaux(marked.flatMap((unit) => unit.islands)))
+    this.ties.show(marked.flatMap((unit) => guideTies(plateaux(unit.islands))))
     const { placed } = this.buildings
     const cycle = view?.cycle ?? null
     this.cycleRings.show(cycle?.members.flatMap((member) => placed[member] ?? []) ?? [])

@@ -116,7 +116,7 @@ describe('CityGuide', () => {
     expect(guide.labels()).toEqual([])
   })
 
-  it('ties the islands of a unit and rings them, and takes both away', () => {
+  it('ties the islands of a unit and rings them, past 24 islands not, and takes both away', () => {
     const { guide } = setup()
     const drawn = () => guide.group.children.reduce((sum, child) => sum + child.children.length, 0)
     const view = {
@@ -132,6 +132,10 @@ describe('CityGuide', () => {
     guide.show({ ...view, units: [{ islands: [0, 1], parcel: null, label: null }] })
     // Their rings in one draw; the ties' halo, dots and ends
     expect(drawn() - outlines).toBe(4)
+    // Past 24 islands, the outlines alone
+    const many = Array.from({ length: 25 }, (_, at) => at % 2)
+    guide.show({ ...view, units: [{ islands: many, parcel: null, label: null }] })
+    expect(drawn()).toBe(outlines)
     guide.show(null)
     expect(drawn()).toBe(0)
     guide.dispose()
