@@ -66,8 +66,19 @@
   box-shadow: inset 0 0 0 1.5px var(--color-text-primary);
 }
 
+/* Labels come once the camera rests, and fade in; those that go fade out. */
+.label:not(.leaving) {
+  animation: fade-in 150ms ease-out;
+}
+
 .leaving {
   animation: fade-out 150ms ease-out forwards;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
 }
 
 @keyframes fade-out {
@@ -77,6 +88,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .label:not(.leaving) {
+    animation: none;
+  }
+
   .leaving {
     display: none;
   }
