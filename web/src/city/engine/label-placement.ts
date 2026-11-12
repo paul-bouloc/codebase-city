@@ -20,9 +20,6 @@ export const MAX_LABELS = 40
 /** The screen is cut into square cells this many CSS pixels wide; a label takes those it covers. */
 export const LABEL_CELL = 24
 
-/** Which way a label runs from its anchor on screen: out to the sea, or both ways for a folder. */
-export type LabelLean = 'start' | 'end' | 'centre'
-
 /** An island or a folder that may carry a label. */
 export interface LabelArea {
   target: Extract<CityTarget, { kind: 'island' | 'parcel' }>
@@ -99,9 +96,7 @@ export interface LabelCandidate {
  * first; a label shows if no cell it covers is taken, and within the caps.
  */
 export function placeLabels(candidates: readonly LabelCandidate[]): boolean[] {
-  const order = candidates
-    .map((_, at) => at)
-    .sort((a, b) => rank(candidates[a], candidates[b]))
+  const order = candidates.map((_, at) => at).sort((a, b) => rank(candidates[a], candidates[b]))
   const shown = candidates.map(() => false)
   const taken = new Set<string>()
   let islands = 0
