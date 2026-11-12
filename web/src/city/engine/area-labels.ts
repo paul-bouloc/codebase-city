@@ -20,7 +20,12 @@ import {
 // them; `LabelPills` draws them.
 
 /** An island's label shows its line of figures once its plateau spans this many CSS pixels. */
-export const CAPTION_PIXELS = 160
+const CAPTION_PIXELS = 160
+
+/** A threshold, lowered for a label already on show: it goes only once well under it. */
+function threshold(pixels: number, onShow: boolean | undefined): number {
+  return onShow ? pixels / LABEL_HYSTERESIS : pixels
+}
 
 interface Shown {
   target: LabelArea['target']
@@ -42,6 +47,9 @@ export class AreaLabels {
   /** The labels on show over a label before them, by path, and since when. */
   private crowded = new Map<string, number>()
   private readonly projected = new Vector3()
+  /** The canvas's size this frame, in CSS pixels: read once, not once an area. */
+  private width = 0
+  private height = 0
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -52,6 +60,11 @@ export class AreaLabels {
   /** The city whose islands and folders get labels; none for no city. */
   setLayout(layout: CityLayout | null): void {
     this.areas = layout ? labelAreas(layout) : []
+    this.forget()
+  }
+
+  /** Forgets every label on show, waiting or crowded. */
+  private forget(): void {
     this.shown = []
     this.onShow = new Map()
     this.waiting = new Map()
@@ -80,21 +93,24 @@ export class AreaLabels {
   place(selected: CityTarget | null, now: number): PlacedLabel[] {
     const width = this.canvas.clientWidth
     const height = this.canvas.clientHeight
+    this.width = width
+    this.height = height
+    if (width === 0 || height === 0) {
+      this.forget()
+      return []
+    }
     const candidates: (LabelCandidate & { area: LabelArea; label: PlacedLabel })[] = []
     for (const area of this.areas) {
       const text = this.texts.get(area.path)
-      if (!text || width === 0 || height === 0) {
+      if (!text) {
         continue
       }
       const island = area.target.kind === 'island'
       const isSelected = sameTarget(area.target, selected)
       const wasShown = this.onShow.get(area.path)
-      // A label on show goes only once its area is well under the threshold it passed.
-      const keep = (pixels: number, kept: boolean | undefined) =>
-        kept ? pixels / LABEL_HYSTERESIS : pixels
       const span = area.extent * this.pixelsPerUnit(area.centre)
-      const threshold = island ? ISLAND_LABEL_PIXELS : PARCEL_LABEL_PIXELS
-      if (span < keep(threshold, wasShown !== undefined) && !isSelected) {
+      const least = island ? ISLAND_LABEL_PIXELS : PARCEL_LABEL_PIXELS
+      if (span < threshold(least, wasShown !== undefined) && !isSelected) {
         continue
       }
       const anchor = this.onCanvas(area.anchor)
@@ -102,7 +118,7 @@ export class AreaLabels {
         continue
       }
       const lean = island ? leanAway(anchor, this.onCanvas(area.centre)) : 'centre'
-      const caption = island && span >= keep(CAPTION_PIXELS, wasShown) ? text.caption : null
+      const caption = island && span >= threshold(CAPTION_PIXELS, wasShown) ? text.caption : null
       const size = pillSize(island, text.name, caption, (line, font) => this.widthOf(line, font))
       const { x, y } = boxCorner(anchor, size, lean)
       candidates.push({
@@ -192,7 +208,7 @@ export class AreaLabels {
     if (depth <= 0) {
       return 0
     }
-    return (this.canvas.clientHeight * camera.projectionMatrix.elements[5]) / 2 / depth
+    return (this.height * camera.projectionMatrix.elements[5]) / 2 / depth
   }
 
   private onCanvas(point: Vec3): { x: number; y: number } | null {
@@ -201,8 +217,8 @@ export class AreaLabels {
       return null
     }
     return {
-      x: ((projected.x + 1) / 2) * this.canvas.clientWidth,
-      y: ((1 - projected.y) / 2) * this.canvas.clientHeight,
+      x: ((projected.x + 1) / 2) * this.width,
+      y: ((1 - projected.y) / 2) * this.height,
     }
   }
 }
