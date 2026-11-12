@@ -46,8 +46,9 @@ const CYCLE: Cycle = { members: [0, 1], loop: [0, 1], next: new Map([[0, [1]]]) 
 function setup() {
   const buildings = createBuildings(LAYOUT, 1, createFading())
   const guide = new CityGuide(LAYOUT, islandShapes(LAYOUT), buildings, 1)
-  // The cycle's rings and its arcs are always there; marks come and go.
-  const marks = () => guide.group.children.length - 2
+  // The rings of small islands, the ties, the cycle's rings and its arcs are always there;
+  // marks come and go.
+  const marks = () => guide.group.children.length - 4
   return { guide, marks }
 }
 
@@ -113,6 +114,27 @@ describe('CityGuide', () => {
     guide.show(null)
     expect(marks()).toBe(0)
     expect(guide.labels()).toEqual([])
+  })
+
+  it('ties the islands of a unit and rings them, and takes both away', () => {
+    const { guide } = setup()
+    const drawn = () => guide.group.children.reduce((sum, child) => sum + child.children.length, 0)
+    const view = {
+      buildings: [],
+      pinned: [],
+      labelled: [],
+      areas: [{ island: 0 }, { island: 1 }],
+      fade: 'others' as const,
+      cycle: null,
+    }
+    guide.show({ ...view, units: [] })
+    const outlines = drawn()
+    guide.show({ ...view, units: [{ islands: [0, 1], parcel: null, label: null }] })
+    // Their rings in one draw; the ties' halo, dots and ends
+    expect(drawn() - outlines).toBe(4)
+    guide.show(null)
+    expect(drawn()).toBe(0)
+    guide.dispose()
   })
 
   it('keeps what it puts forward and a cycle, or what stands in its folders', () => {

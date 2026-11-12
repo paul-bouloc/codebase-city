@@ -8,6 +8,8 @@ import type { CityLayout } from '../world/layout'
 import type { Vec3 } from '../world/units'
 import { type Area, AreaMark, areaOf, GUIDE_AREA } from './area-marks'
 import { BuildingMark, GUIDE_MARK, GUIDE_PIN_MARK, roofHeight } from './building-marks'
+import { GuideRings } from './guide-rings'
+import { GuideTies, guideTies } from './guide-ties'
 import { type KeptAreas, keptInAreas } from './kept-areas'
 import { CYCLE_RINGS, RingSet } from './rings'
 import type { CityTargets } from './targets'
@@ -113,6 +115,8 @@ export function cityGuideView(
 
 /** A cycle's arcs land this far above a roof, in u. */
 const ROOF_LIFT = 0.1
+/** A unit on more islands than this is tied by its outlines alone: ties would net the sea. */
+export const MAX_TIED_ISLANDS = 24
 
 export class CityGuide {
   readonly group = new Group()
@@ -123,6 +127,8 @@ export class CityGuide {
   private marks: BuildingMark[] = []
   private readonly areaMarks: AreaMark[] = []
   private readonly cycleRings: RingSet
+  private readonly ties: GuideTies
+  private readonly rings: GuideRings
 
   constructor(
     private readonly layout: CityLayout,
@@ -132,7 +138,9 @@ export class CityGuide {
   ) {
     this.arcs = new ArcLayer(pixelRatio)
     this.cycleRings = new RingSet(CYCLE_RINGS, pixelRatio)
-    this.group.add(this.cycleRings.group, this.arcs.group)
+    this.ties = new GuideTies(pixelRatio)
+    this.rings = new GuideRings(pixelRatio)
+    this.group.add(this.rings.group, this.ties.group, this.cycleRings.group, this.arcs.group)
   }
 
   get shown(): CityGuideView | null {
@@ -153,6 +161,15 @@ export class CityGuide {
       this.areaMarks.push(mark)
       this.group.add(mark.group)
     }
+    const units = view?.units ?? []
+    const plateaux = (islands: readonly number[]) =>
+      islands.flatMap((island) => this.layout.islands[island]?.plateau ?? [])
+    this.rings.show(plateaux(units.flatMap((unit) => unit.islands)))
+    this.ties.show(
+      units.flatMap(({ islands }) =>
+        islands.length <= MAX_TIED_ISLANDS ? guideTies(plateaux(islands)) : [],
+      ),
+    )
     const { placed } = this.buildings
     const cycle = view?.cycle ?? null
     this.cycleRings.show(cycle?.members.flatMap((member) => placed[member] ?? []) ?? [])
@@ -207,6 +224,8 @@ export class CityGuide {
 
   dispose(): void {
     this.show(null)
+    this.rings.dispose()
+    this.ties.dispose()
     this.cycleRings.dispose()
     this.arcs.dispose()
   }
