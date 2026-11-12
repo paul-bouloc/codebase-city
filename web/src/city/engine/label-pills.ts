@@ -40,7 +40,7 @@ export interface PlacedLabel {
   box: { x: number; y: number; width: number; height: number }
   /** For a label of the guide's tour, its kind; none for an island's or a folder's at rest. */
   guide?: GuideLabelKind
-  /** Points of the world its leader lines start from, to the bottom of its pill. */
+  /** Points of the world its leader lines start from, to its pill: the same for a same path. */
   leads?: readonly Vec3[]
 }
 
@@ -214,7 +214,6 @@ export class LabelPills {
         label.caption ?? '',
         label.selected,
         label.guide ?? '',
-        JSON.stringify(label.leads ?? []),
       ].join('\u0000')
       let pill = this.pills.get(label.path)
       if (!pill || pill.look !== look) {
