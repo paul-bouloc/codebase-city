@@ -18,12 +18,21 @@ export interface AreaStyle {
   gap: number
   /** Ink if absent. */
   colour?: Vec3
+  /** A white band under it, if any: its width in CSS pixels, and how opaque. */
+  halo?: { width: number; opacity: number }
 }
 
 export const HOVERED_AREA: AreaStyle = { width: 1.6, dash: [5, 4], gap: 0.25 }
 export const SELECTED_AREA: AreaStyle = { width: 2.6, gap: 0.35 }
-/** A folder the guide's tour puts forward: as wide as a selection, in Jade. */
-export const GUIDE_AREA: AreaStyle = { ...SELECTED_AREA, colour: srgb(GUIDE) }
+/** A folder the guide's tour puts forward: in Jade, on a white band that lifts it off the ground. */
+export const GUIDE_AREA: AreaStyle = {
+  ...SELECTED_AREA,
+  width: 3,
+  colour: srgb(GUIDE),
+  halo: { width: 6.5, opacity: 0.9 },
+}
+
+const WHITE: Vec3 = [1, 1, 1]
 
 /** Above the plateau, clear of the slabs of the first two levels. */
 const PARCEL_LIFT = 0.3
@@ -74,6 +83,16 @@ export class AreaMark {
             const out = offsets[0] ?? 0
             return boardToThree(x + nx * out, y + ny * out, altitude + EDGE_LIFT)
           })
+    const { halo } = this.style
+    if (halo) {
+      this.group.add(
+        createScreenLines(
+          [points],
+          { width: halo.width, colour: WHITE, opacity: halo.opacity },
+          this.pixelRatio,
+        ),
+      )
+    }
     this.group.add(
       createScreenLines(
         [points],
