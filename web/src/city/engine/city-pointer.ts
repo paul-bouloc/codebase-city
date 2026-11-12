@@ -203,11 +203,12 @@ export class CityPointer {
 
   /**
    * The bundle's hub or the port under the pointer, or under it its count, if any; a hub first,
-   * it floats over the city.
+   * it floats over the city. None under a label of an island or a folder: it is drawn over them.
    */
   private markAtPointer(): Mark | null {
     const interaction = this.host.interaction()
-    if (!interaction) {
+    const pointer = this.pointer
+    if (!interaction || (pointer && this.host.labelAt(pointer.x, pointer.y))) {
       return null
     }
     const hub = this.nearestAtPointer(
