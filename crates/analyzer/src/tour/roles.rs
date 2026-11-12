@@ -47,11 +47,8 @@ pub(super) fn conductors(
         .map(index)
         .collect();
     let first = u64::from(ranked.count[*conductors.first()? as usize]);
-    let files = &result.files;
-    let code = (0..files.dir.len())
-        .filter(|&file| is_production(result, file) && files.complexity[file].is_some())
-        .count() as u64;
-    (first * 100 >= code * CONDUCTOR_SHARE).then_some(TourStep::Conductors { conductors })
+    (first * 100 >= super::code_files(result) * CONDUCTOR_SHARE)
+        .then_some(TourStep::Conductors { conductors })
 }
 
 /// The first foundations, when the first one carries a good share of the

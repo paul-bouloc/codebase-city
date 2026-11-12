@@ -16,6 +16,13 @@ function step(kind: TourStep['kind']): TourStep {
 }
 
 describe('guideView', () => {
+  it('puts forward the manifest that declares what the project builds on', () => {
+    // `react`, declared by `package.json`, the first file
+    const view = guideView(result, step('builtOn'))
+    expect(view.files).toEqual([0])
+    expect(view.pinned).toEqual([0])
+  })
+
   it('shows nothing for the overview and the layers', () => {
     for (const kind of ['overview', 'layers'] as const) {
       expect(guideView(result, step(kind))).toEqual({

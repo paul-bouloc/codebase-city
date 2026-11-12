@@ -620,10 +620,23 @@ pub enum TourStep {
         /// `build/` or `test/`.
         outside_island: Option<u32>,
     },
+    /// What the project builds on: dependencies a manifest at the root
+    /// declares for running (or as peers), that a good share of the code
+    /// imports.
+    BuiltOn {
+        /// One to three rows of [`Externals`], outside any package, each
+        /// imported by 10% of the code files at least, the most imported
+        /// first.
+        externals: Vec<u32>,
+        /// Production files in a language the analyzer reads, to give each
+        /// its share.
+        code_files: u32,
+    },
     /// Where the code starts: rows of [`Roles::entries`].
     EntryPoints { entries: Vec<u32> },
     /// What pulls the code together: rows of [`Roles::conductors`], none of
-    /// them already shown as an entry point.
+    /// them already shown as an entry point, the first pulling together half
+    /// the code files at least.
     Conductors { conductors: Vec<u32> },
     /// What everything rests on: rows of [`Roles::foundations`].
     Foundations {

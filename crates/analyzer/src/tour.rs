@@ -12,6 +12,7 @@
 mod apps;
 mod complexity;
 mod consumers;
+mod dependencies;
 #[cfg(test)]
 mod fixture;
 mod libraries;
@@ -55,6 +56,7 @@ pub fn of_result(result: &AnalysisResult) -> Tour {
         steps.extend(consumers::consumers(repo));
         steps.extend(apps::inside(repo));
     } else {
+        steps.extend(dependencies::built_on(result));
         let entries = roles::entry_points(result);
         let conductors = roles::conductors(result, entries.as_ref());
         steps.extend(entries);
@@ -72,6 +74,15 @@ pub fn of_result(result: &AnalysisResult) -> Tour {
 fn reads_code(result: &AnalysisResult) -> bool {
     let files = &result.files;
     (0..files.dir.len()).any(|file| is_production(result, file) && files.complexity[file].is_some())
+}
+
+/// Production files in a language the analyzer reads: the code shares are
+/// counted in.
+fn code_files(result: &AnalysisResult) -> u64 {
+    let files = &result.files;
+    (0..files.dir.len())
+        .filter(|&file| is_production(result, file) && files.complexity[file].is_some())
+        .count() as u64
 }
 
 /// Source code that is not generated: what the rankings look at.
@@ -111,6 +122,7 @@ mod tests {
             .iter()
             .map(|step| match step {
                 TourStep::Overview { .. } => "overview",
+                TourStep::BuiltOn { .. } => "builtOn",
                 TourStep::EntryPoints { .. } => "entryPoints",
                 TourStep::Conductors { .. } => "conductors",
                 TourStep::Foundations { .. } => "foundations",

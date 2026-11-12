@@ -30,7 +30,7 @@ export function decodeResult(json: unknown): AnalysisResult {
   const links = decodeLinks(fields.links, islands.layer)
   const cycles = decodeCycles(fields.cycles, files.dir.length)
   const packageSections = decodePackages(fields, dirs.parent, files.dir.length)
-  const { packages, packageGroups } = packageSections
+  const { packages, packageGroups, externals } = packageSections
   return {
     formatVersion,
     analyzerVersion: string(fields.analyzerVersion, 'analyzerVersion'),
@@ -60,6 +60,7 @@ export function decodeResult(json: unknown): AnalysisResult {
       cycles,
       packages,
       packageGroups,
+      externals,
     }),
     stats: decodeStats(fields.stats),
   }

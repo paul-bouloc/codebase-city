@@ -10,8 +10,9 @@ use std::path::PathBuf;
 
 use model::{
     AnalysisResult, Confidence, Cycles, Dirs, EdgeKind, Edges, Entries, EntryReason, Externals,
-    FORMAT_VERSION, Files, Ignored, Islands, Layout, Links, Lots, PackageGroups, Packages,
-    ParcelNature, Parcels, Ranked, Repo, Roles, Scope, Stats, SymbolKind, Symbols, Tour, TourStep,
+    FORMAT_VERSION, Files, Ignored, InvalidResult, Islands, Layout, Links, Lots, PackageGroups,
+    Packages, ParcelNature, Parcels, Ranked, Repo, Roles, Scope, Stats, SymbolKind, Symbols, Tour,
+    TourStep,
 };
 
 const DIRS: &[(Option<u32>, &str)] = &[
@@ -279,6 +280,11 @@ fn tour() -> Tour {
                 biggest_island: Some(2),
                 outside_island: Some(6),
             },
+            // `react`, in 2 of 14 code files; `axios`, in 1, is not enough
+            TourStep::BuiltOn {
+                externals: vec![1],
+                code_files: 14,
+            },
             TourStep::EntryPoints { entries: vec![0] },
             // `main.ts` is already shown as the entry point
             TourStep::Conductors {
@@ -448,6 +454,44 @@ fn the_sample_is_valid() {
 }
 
 #[test]
+fn built_on_names_running_dependencies_of_the_root_a_tenth_of_the_code_imports() {
+    fn invalid(change: impl FnOnce(&mut AnalysisResult)) -> Result<(), InvalidResult> {
+        let mut result = sample();
+        change(&mut result);
+        result.validate()
+    }
+    let count = Err(InvalidResult::TourCount { row: 1 });
+    // `react`: 2 of 14 code files; of 21, below a tenth
+    fn code_files(result: &mut AnalysisResult, files: u32) {
+        if let TourStep::BuiltOn { code_files, .. } = &mut result.tour.steps[1] {
+            *code_files = files;
+        }
+    }
+    assert_eq!(invalid(|result| code_files(result, 20)), Ok(()));
+    assert_eq!(invalid(|result| code_files(result, 21)), count);
+    // For development only, or declared below the root (a site's)
+    assert_eq!(invalid(|result| result.externals.dev[1] = true), count);
+    assert_eq!(invalid(|result| result.externals.manifest[1] = 2), count);
+    // `axios` after `react`: the most imported first, and a tenth each
+    assert_eq!(
+        invalid(|result| {
+            if let TourStep::BuiltOn { externals, .. } = &mut result.tour.steps[1] {
+                externals.push(0);
+            }
+        }),
+        count
+    );
+    assert_eq!(
+        invalid(|result| {
+            if let TourStep::BuiltOn { externals, .. } = &mut result.tour.steps[1] {
+                externals.clear();
+            }
+        }),
+        Err(InvalidResult::TourList { row: 1 })
+    );
+}
+
+#[test]
 fn a_result_survives_a_json_round_trip() {
     let json = serde_json::to_string(&sample()).unwrap();
     let decoded: AnalysisResult = serde_json::from_str(&json).unwrap();
@@ -475,8 +519,10 @@ fn json_uses_the_names_of_the_generated_types() {
     assert_eq!(json["layout"]["lots"]["x"][0], 19);
     assert_eq!(json["tour"]["steps"][0]["kind"], "overview");
     assert_eq!(json["tour"]["steps"][0]["biggestIsland"], 2);
-    assert_eq!(json["tour"]["steps"][1]["kind"], "entryPoints");
-    assert!(json["tour"]["steps"][4]["worstLink"].is_null());
+    assert_eq!(json["tour"]["steps"][1]["kind"], "builtOn");
+    assert_eq!(json["tour"]["steps"][1]["codeFiles"], 14);
+    assert_eq!(json["tour"]["steps"][2]["kind"], "entryPoints");
+    assert!(json["tour"]["steps"][5]["worstLink"].is_null());
     assert!(json["workspace"].is_null());
     assert_eq!(json["packages"]["codeFiles"], serde_json::json!([]));
     assert_eq!(json["packageGroups"]["prefix"], serde_json::json!([]));

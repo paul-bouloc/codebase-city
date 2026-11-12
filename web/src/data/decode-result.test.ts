@@ -37,6 +37,7 @@ describe('decodeResult', () => {
     expect(result.layout.lots.x[0]).toBe(19)
     expect(result.tour.steps.map((step) => step.kind)).toEqual([
       'overview',
+      'builtOn',
       'entryPoints',
       'conductors',
       'foundations',
@@ -585,20 +586,34 @@ describe('decodeResult', () => {
     ).toThrow('tour.steps[1].kind is not a kind of step')
   })
 
+  it('requires what the project builds on to be declared at the root, for running, by a tenth of the code', () => {
+    // `react`: 2 of 14 code files
+    const builtOn = (json: Json) => json.tour.steps[1] as { externals: number[]; codeFiles: number }
+    expect(decodeChanged((json) => (builtOn(json).codeFiles = 20))).not.toThrow()
+    for (const change of [
+      (json: Json) => (builtOn(json).codeFiles = 21),
+      (json: Json) => ((json.externals as { dev: boolean[] }).dev[1] = true),
+      (json: Json) => ((json.externals as { manifest: number[] }).manifest[1] = 2),
+      (json: Json) => builtOn(json).externals.push(0),
+    ]) {
+      expect(decodeChanged(change)).toThrow('the counts of tour.steps[1] do not add up')
+    }
+  })
+
   it('requires tour steps that point inside their tables, one to three rows each', () => {
     expect(
       decodeChanged((json) => {
-        ;(json.tour.steps[1] as { entries: number[] }).entries = [1]
+        ;(json.tour.steps[2] as { entries: number[] }).entries = [1]
       }),
     ).toThrow('tour.entries[0] points to row 1, but the table has 1 rows')
     expect(
       decodeChanged((json) => {
-        ;(json.tour.steps[2] as { conductors: number[] }).conductors = []
+        ;(json.tour.steps[3] as { conductors: number[] }).conductors = []
       }),
-    ).toThrow('a list of tour.steps[2] must hold as many rows as its step allows, each once')
+    ).toThrow('a list of tour.steps[3] must hold as many rows as its step allows, each once')
     expect(
       decodeChanged((json) => {
-        ;(json.tour.steps[5] as { dir: number }).dir = 8
+        ;(json.tour.steps[6] as { dir: number }).dir = 8
       }),
     ).toThrow('tour.dir[0] points to row 8, but the table has 8 rows')
     expect(
@@ -620,14 +635,14 @@ describe('decodeResult', () => {
     ).toThrow('the counts of tour.steps[0] do not add up')
     expect(
       decodeChanged((json) => {
-        ;(json.tour.steps[6] as { parkCount: number }).parkCount = 0
+        ;(json.tour.steps[7] as { parkCount: number }).parkCount = 0
       }),
-    ).toThrow('the counts of tour.steps[6] do not add up')
+    ).toThrow('the counts of tour.steps[7] do not add up')
     expect(
       decodeChanged((json) => {
-        ;(json.tour.steps[6] as { parkTests: number }).parkTests = 3
+        ;(json.tour.steps[7] as { parkTests: number }).parkTests = 3
       }),
-    ).toThrow('the counts of tour.steps[6] do not add up')
+    ).toThrow('the counts of tour.steps[7] do not add up')
   })
 
   /** The sample as a monorepo of two apps, `src/core` and `src/ui`, and a library, `src/api`. */
@@ -664,7 +679,7 @@ describe('decodeResult', () => {
         shared: [{ library: 2, apps: [0, 1], files: 4, typeOnly: 1 }],
       },
       { kind: 'insidePackage', package: 0, dirs: [2], files: [5] },
-      ...steps.slice(5),
+      ...steps.slice(6),
     ]
   }
 

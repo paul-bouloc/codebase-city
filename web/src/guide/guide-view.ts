@@ -37,6 +37,13 @@ export function guideView(result: AnalysisResult, step: TourStep): GuideView {
     case 'overview':
     case 'layers':
       return NOTHING
+    case 'builtOn': {
+      // The dependencies are outside the city: the manifests that declare them are in it
+      const manifests = [
+        ...new Set(step.externals.flatMap((row) => result.externals.manifest[row] ?? [])),
+      ]
+      return forward(result, manifests, (file) => [file, null])
+    }
     case 'entryPoints': {
       const { file, dir } = result.roles.entries
       return forward(result, step.entries, (row) => [file[row] ?? null, dir[row] ?? null])

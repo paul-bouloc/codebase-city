@@ -49,6 +49,25 @@ pub(crate) fn print_tour(result: &AnalysisResult) {
                     println!("              outside the code {}", island(*outside));
                 }
             }
+            TourStep::BuiltOn {
+                externals,
+                code_files,
+            } => {
+                let table = &result.externals;
+                let named: Vec<String> = externals
+                    .iter()
+                    .map(|&row| {
+                        let row = row as usize;
+                        format!(
+                            "{} ({}, {})",
+                            table.name[row],
+                            share(table.files[row], *code_files),
+                            path(result, table.manifest[row] as usize)
+                        )
+                    })
+                    .collect();
+                println!("  built on    {}", named.join(", "));
+            }
             TourStep::EntryPoints { entries } => {
                 let roles = &result.roles.entries;
                 println!("  entries");

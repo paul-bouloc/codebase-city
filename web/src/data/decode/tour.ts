@@ -9,30 +9,34 @@ import { decodePackageStep } from './tour-packages'
 
 /** As APPS_LEAD_SHARE in crates/model/src/result.rs: apps lead with this share of the packages' code. */
 const APPS_LEAD_SHARE = 10
+/** As BUILT_ON_SHARE in crates/model/src/validate/tour.rs: the share of the code a dependency the project builds on is imported by. */
+const BUILT_ON_SHARE = 10
 
 type Kind = TourStep['kind']
 
 // The place of each kind in the tour; checked by the compiler against the generated union.
 const RANKS = {
   overview: 0,
-  entryPoints: 1,
-  conductors: 2,
-  foundations: 3,
-  applications: 4,
-  otherApps: 5,
-  libraries: 6,
-  appLinks: 7,
-  layers: 8,
-  consumers: 9,
-  insidePackage: 10,
-  cycles: 11,
-  complexAreas: 12,
-  rest: 13,
+  builtOn: 1,
+  entryPoints: 2,
+  conductors: 3,
+  foundations: 4,
+  applications: 5,
+  otherApps: 6,
+  libraries: 7,
+  appLinks: 8,
+  layers: 9,
+  consumers: 11,
+  insidePackage: 12,
+  cycles: 13,
+  complexAreas: 14,
+  rest: 15,
 } satisfies Record<Kind, number>
 
 // The kinds only one of the two tours has: a monorepo's presents its packages, another
 // repository's its files.
 const TOURS: Partial<Record<Kind, 'files' | 'packages'>> = {
+  builtOn: 'files',
   entryPoints: 'files',
   conductors: 'files',
   foundations: 'files',
@@ -132,6 +136,31 @@ function decodeStep(value: unknown, row: number, tables: Tables): TourStep {
       }
       const without = step.language === null && (step.languageLines > 0 || step.languageRead)
       holds(step.languageLines <= step.lines && !without)
+      return step
+    }
+    case 'builtOn': {
+      const step: TourStep = {
+        kind,
+        externals: list('externals', tables.externals.name.length),
+        codeFiles: count('codeFiles'),
+      }
+      // Declared at the root for running, outside any package, by a good share of the code, the
+      // most imported first
+      const { externals, files } = tables
+      let previous = Number.POSITIVE_INFINITY
+      for (const at of step.externals) {
+        const imported = externals.files[at] as number
+        const manifestDir = files.dir[externals.manifest[at] as number]
+        holds(
+          externals.package[at] === null &&
+            externals.dev[at] === false &&
+            manifestDir === 0 &&
+            imported <= previous &&
+            imported <= step.codeFiles &&
+            imported * 100 >= step.codeFiles * BUILT_ON_SHARE,
+        )
+        previous = imported
+      }
       return step
     }
     case 'entryPoints':

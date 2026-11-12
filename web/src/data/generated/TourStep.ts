@@ -46,7 +46,18 @@ biggestIsland: number | null,
  * The island without production code with the most files, such as
  * `build/` or `test/`.
  */
-outsideIsland: number | null, } | { "kind": "entryPoints", entries: Array<number>, } | { "kind": "conductors", conductors: Array<number>, } | { "kind": "foundations", foundations: Array<number>, 
+outsideIsland: number | null, } | { "kind": "builtOn", 
+/**
+ * One to three rows of [`Externals`], outside any package, each
+ * imported by 10% of the code files at least, the most imported
+ * first.
+ */
+externals: Array<number>, 
+/**
+ * Production files in a language the analyzer reads, to give each
+ * its share.
+ */
+codeFiles: number, } | { "kind": "entryPoints", entries: Array<number>, } | { "kind": "conductors", conductors: Array<number>, } | { "kind": "foundations", foundations: Array<number>, 
 /**
  * The island that holds most of the foundations, when it holds two
  * or more.

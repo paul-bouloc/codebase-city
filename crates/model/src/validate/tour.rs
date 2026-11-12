@@ -10,24 +10,28 @@ const MAX_ROWS: usize = 3;
 const MAX_UNITS: usize = 5;
 /// The most libraries the libraries step ranks.
 const MAX_MOST_IMPORTED: usize = 4;
+/// A dependency the project builds on is imported by this share of its
+/// code files, in percent, at least.
+const BUILT_ON_SHARE: u64 = 10;
 
 /// The place of a kind of step in the tour.
 fn rank(step: &TourStep) -> u8 {
     match step {
         TourStep::Overview { .. } => 0,
-        TourStep::EntryPoints { .. } => 1,
-        TourStep::Conductors { .. } => 2,
-        TourStep::Foundations { .. } => 3,
-        TourStep::Applications { .. } => 4,
-        TourStep::OtherApps { .. } => 5,
-        TourStep::Libraries { .. } => 6,
-        TourStep::AppLinks { .. } => 7,
-        TourStep::Layers { .. } => 8,
-        TourStep::Consumers { .. } => 9,
-        TourStep::InsidePackage { .. } => 10,
-        TourStep::Cycles { .. } => 11,
-        TourStep::ComplexAreas { .. } => 12,
-        TourStep::Rest { .. } => 13,
+        TourStep::BuiltOn { .. } => 1,
+        TourStep::EntryPoints { .. } => 2,
+        TourStep::Conductors { .. } => 3,
+        TourStep::Foundations { .. } => 4,
+        TourStep::Applications { .. } => 5,
+        TourStep::OtherApps { .. } => 6,
+        TourStep::Libraries { .. } => 7,
+        TourStep::AppLinks { .. } => 8,
+        TourStep::Layers { .. } => 9,
+        TourStep::Consumers { .. } => 11,
+        TourStep::InsidePackage { .. } => 12,
+        TourStep::Cycles { .. } => 13,
+        TourStep::ComplexAreas { .. } => 14,
+        TourStep::Rest { .. } => 15,
     }
 }
 
@@ -40,7 +44,8 @@ enum Tour {
 
 fn tour_of(step: &TourStep) -> Option<Tour> {
     match step {
-        TourStep::EntryPoints { .. }
+        TourStep::BuiltOn { .. }
+        | TourStep::EntryPoints { .. }
         | TourStep::Conductors { .. }
         | TourStep::Foundations { .. } => Some(Tour::Files),
         TourStep::Applications { .. }
@@ -148,6 +153,30 @@ fn check_step(
             optional("tour.outsideIsland", *outside_island, island_count)?;
             let without = language.is_none() && (*language_lines > 0 || *language_read);
             count(language_lines <= lines && !without)?;
+        }
+        TourStep::BuiltOn {
+            externals,
+            code_files,
+        } => {
+            let table = &result.externals;
+            list("tour.externals", externals, table.name.len())?;
+            // Declared at the root for running, outside any package, by a
+            // good share of the code, the most imported first
+            let mut previous = u32::MAX;
+            for &at in externals {
+                let at = at as usize;
+                let manifest = table.manifest[at] as usize;
+                let files = table.files[at];
+                count(
+                    table.package[at].is_none()
+                        && !table.dev[at]
+                        && result.files.dir[manifest] == 0
+                        && files <= previous
+                        && files <= *code_files
+                        && u64::from(files) * 100 >= u64::from(*code_files) * BUILT_ON_SHARE,
+                )?;
+                previous = files;
+            }
         }
         TourStep::EntryPoints { entries } => {
             list("tour.entries", entries, result.roles.entries.file.len())?;
@@ -400,7 +429,7 @@ mod tests {
     fn lists_hold_one_to_three_rows_each_once() {
         assert_eq!(
             invalid(|r| {
-                if let TourStep::EntryPoints { entries } = step(r, 1) {
+                if let TourStep::EntryPoints { entries } = step(r, 2) {
                     entries.clear();
                 }
             }),
@@ -408,7 +437,7 @@ mod tests {
         );
         assert_eq!(
             invalid(|r| {
-                if let TourStep::ComplexAreas { files, .. } = step(r, 12) {
+                if let TourStep::ComplexAreas { files, .. } = step(r, 14) {
                     *files = vec![0, 1, 0];
                 }
             }),
@@ -416,7 +445,7 @@ mod tests {
         );
         assert_eq!(
             invalid(|r| {
-                if let TourStep::Rest { parks, .. } = step(r, 13) {
+                if let TourStep::Rest { parks, .. } = step(r, 15) {
                     *parks = vec![0, 1, 0, 1];
                 }
             }),
@@ -428,7 +457,7 @@ mod tests {
     fn steps_point_inside_their_tables() {
         assert_eq!(
             invalid(|r| {
-                if let TourStep::Conductors { conductors } = step(r, 2) {
+                if let TourStep::Conductors { conductors } = step(r, 3) {
                     conductors[0] = 1;
                 }
             }),
@@ -454,7 +483,7 @@ mod tests {
         );
         assert_eq!(
             invalid(|r| {
-                if let TourStep::Layers { worst_link, .. } = step(r, 8) {
+                if let TourStep::Layers { worst_link, .. } = step(r, 9) {
                     *worst_link = Some(1);
                 }
             }),
@@ -467,7 +496,7 @@ mod tests {
         );
         assert_eq!(
             invalid(|r| {
-                if let TourStep::Cycles { dir, .. } = step(r, 11) {
+                if let TourStep::Cycles { dir, .. } = step(r, 13) {
                     *dir = 2;
                 }
             }),
@@ -492,7 +521,7 @@ mod tests {
         );
         assert_eq!(
             invalid(|r| {
-                if let TourStep::Rest { park_count, .. } = step(r, 13) {
+                if let TourStep::Rest { park_count, .. } = step(r, 15) {
                     *park_count = 0;
                 }
             }),
@@ -500,7 +529,7 @@ mod tests {
         );
         assert_eq!(
             invalid(|r| {
-                if let TourStep::Rest { park_tests, .. } = step(r, 13) {
+                if let TourStep::Rest { park_tests, .. } = step(r, 15) {
                     *park_tests = 1;
                 }
             }),

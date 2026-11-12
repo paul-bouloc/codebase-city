@@ -17,6 +17,7 @@ export type Tables = Pick<
   | 'cycles'
   | 'packages'
   | 'packageGroups'
+  | 'externals'
 >
 
 export interface StepFields {
