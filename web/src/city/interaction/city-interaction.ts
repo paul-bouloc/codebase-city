@@ -182,6 +182,18 @@ export class CityInteraction {
     this.redraw()
   }
 
+  /** The island under the pointer, or the one the building or folder under it stands on. */
+  hoveredIsland(): number | null {
+    const pointed = this.highlighted
+    if (pointed?.kind === 'island' || pointed?.kind === 'parcel') {
+      return pointed.island
+    }
+    if (pointed?.kind === 'building') {
+      return this.buildings.placed[pointed.index]?.island ?? null
+    }
+    return null
+  }
+
   /**
    * Shows what a step of the guide's tour puts forward, or nothing. A selection keeps its marks
    * and its fading over the guide's.
