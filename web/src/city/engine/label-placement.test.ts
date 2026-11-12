@@ -53,6 +53,34 @@ describe('labelAreas', () => {
     expect(east?.anchor[0]).toBeGreaterThan(80)
   })
 
+  it('stands the label of an island between two others on the open sea south of it', () => {
+    const middle = labelAreas(
+      city([island('a', 0, 30), island('b', 40, 30), island('c', 80, 30)]),
+    )[1]
+    // South of the plateau's middle (board y below 0 is three.js z above 0), at the water.
+    expect(middle?.anchor[0]).toBe(55)
+    expect(middle?.anchor[2]).toBeGreaterThan(0)
+  })
+
+  it('stands the label of an island hemmed in on the side with the most water', () => {
+    const at = (path: string, x: number, y: number) => ({
+      ...island(path, x, 20),
+      plateau: { x, y, width: 20, height: 20 },
+    })
+    const areas = labelAreas(
+      city([
+        at('centre', 0, 0),
+        at('west', -30, 0),
+        at('east', 26, 0),
+        at('south', 0, -28),
+        at('north', 0, 24),
+      ]),
+    )
+    // 10 u of water west, 6 east, 8 south, 4 north: west.
+    expect(areas[0]?.anchor[0]).toBeLessThan(0)
+    expect(areas[0]?.anchor[2]).toBe(-10)
+  })
+
   it('keeps a lone island’s label west of it', () => {
     const [only] = labelAreas(city([island('a', 0, 30)]))
     expect(only?.anchor[0]).toBeLessThan(0)

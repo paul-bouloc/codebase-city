@@ -1,5 +1,5 @@
 import type { CityTarget } from '../interaction/picking'
-import type { CityLayout } from '../world/layout'
+import type { CityLayout, Rect } from '../world/layout'
 import { boardToThree, layerAltitude, slabTop, type Vec3 } from '../world/units'
 
 // Which islands and folders get a label, where it stands, and which labels the screen has room
@@ -34,26 +34,31 @@ export interface LabelArea {
 
 /**
  * The islands and folders of the city that may carry a label: every island; every folder but
- * a park of tests, whose colour says enough. An island's label stands on the open sea, west of
- * it, or east for an island on the city's east edge, at the water.
+ * a park of tests, whose colour says enough. An island's label stands at the water, out from the
+ * middle of a side of its plateau: the first that faces the open sea, west, east, south then
+ * north; failing that, the one with the most water before the next island.
  */
 export function labelAreas(layout: CityLayout): LabelArea[] {
-  const { bounds } = layout
-  const east = bounds.x + bounds.width
+  const plateaux = layout.islands.map((island) => island.plateau)
   const areas: LabelArea[] = []
   layout.islands.forEach((island, at) => {
     const { plateau } = island
-    const middle = plateau.y + plateau.height / 2
-    const onEastEdge = plateau.x + plateau.width >= east - 1e-6 && plateau.x > bounds.x + 1e-6
-    const x = onEastEdge
-      ? plateau.x + plateau.width + ISLAND_LABEL_OFFSET
-      : plateau.x - ISLAND_LABEL_OFFSET
+    const middle = { x: plateau.x + plateau.width / 2, y: plateau.y + plateau.height / 2 }
+    const side = seaward(plateau, plateaux)
+    const anchor =
+      side === 'west'
+        ? { x: plateau.x - ISLAND_LABEL_OFFSET, y: middle.y }
+        : side === 'east'
+          ? { x: plateau.x + plateau.width + ISLAND_LABEL_OFFSET, y: middle.y }
+          : side === 'south'
+            ? { x: middle.x, y: plateau.y - ISLAND_LABEL_OFFSET }
+            : { x: middle.x, y: plateau.y + plateau.height + ISLAND_LABEL_OFFSET }
     const altitude = layerAltitude(island.layer)
     areas.push({
       target: { kind: 'island', island: at },
       path: island.path,
-      anchor: boardToThree(x, middle, 0),
-      centre: boardToThree(plateau.x + plateau.width / 2, middle, altitude),
+      anchor: boardToThree(anchor.x, anchor.y, 0),
+      centre: boardToThree(middle.x, middle.y, altitude),
       extent: Math.max(plateau.width, plateau.height),
     })
     island.parcels.forEach((parcel, index) => {
@@ -152,4 +157,54 @@ function cellsOf({ x, y, width, height }: LabelCandidate): string[] {
     }
   }
   return cells
+}
+
+type Side = 'west' | 'east' | 'south' | 'north'
+
+/** The side of a plateau its label stands on: open sea first, in this order, else the most water. */
+const SIDES: readonly Side[] = ['west', 'east', 'south', 'north']
+
+function seaward(plateau: Rect, plateaux: readonly Rect[]): Side {
+  let best: Side = 'west'
+  let widest = Number.NEGATIVE_INFINITY
+  for (const side of SIDES) {
+    const water = waterBefore(plateau, side, plateaux)
+    if (water === Number.POSITIVE_INFINITY) {
+      return side
+    }
+    if (water > widest) {
+      widest = water
+      best = side
+    }
+  }
+  return best
+}
+
+/** How much water lies off a side of a plateau before another one, in u; endless for the sea. */
+function waterBefore(plateau: Rect, side: Side, plateaux: readonly Rect[]): number {
+  const across = side === 'west' || side === 'east'
+  let water = Number.POSITIVE_INFINITY
+  for (const other of plateaux) {
+    if (other === plateau) {
+      continue
+    }
+    const facing = across
+      ? other.y < plateau.y + plateau.height && other.y + other.height > plateau.y
+      : other.x < plateau.x + plateau.width && other.x + other.width > plateau.x
+    if (!facing) {
+      continue
+    }
+    const gap =
+      side === 'west'
+        ? plateau.x - (other.x + other.width)
+        : side === 'east'
+          ? other.x - (plateau.x + plateau.width)
+          : side === 'south'
+            ? plateau.y - (other.y + other.height)
+            : other.y - (plateau.y + plateau.height)
+    if (gap >= 0) {
+      water = Math.min(water, gap)
+    }
+  }
+  return water
 }

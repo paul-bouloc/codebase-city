@@ -89,22 +89,16 @@ export class AreaLabels {
       if (!anchor || anchor.x < 0 || anchor.x > width || anchor.y < 0 || anchor.y > height) {
         continue
       }
-      const centre = this.onCanvas(area.centre)
-      const lean: LabelLean = !island ? 'centre' : centre && centre.x < anchor.x ? 'start' : 'end'
+      const lean = island ? leanAway(anchor, this.onCanvas(area.centre)) : 'centre'
       const caption = island && span >= CAPTION_PIXELS ? text.caption : null
       const size = this.boxSize(island, text.name, caption)
-      const left =
-        lean === 'start'
-          ? anchor.x
-          : lean === 'end'
-            ? anchor.x - size.width
-            : anchor.x - size.width / 2
+      const { x, y } = boxCorner(anchor, size, lean)
       candidates.push({
         island,
         span,
         selected: isSelected,
-        x: left,
-        y: anchor.y - size.height / 2,
+        x,
+        y,
         ...size,
         area,
         label: {
@@ -200,6 +194,39 @@ export class AreaLabels {
       y: ((1 - projected.y) / 2) * this.canvas.clientHeight,
     }
   }
+}
+
+/** Which way an island's label runs: away from the island's middle, as the screen shows it. */
+function leanAway(
+  anchor: { x: number; y: number },
+  centre: { x: number; y: number } | null,
+): LabelLean {
+  if (!centre) {
+    return 'end'
+  }
+  const across = anchor.x - centre.x
+  const down = anchor.y - centre.y
+  if (Math.abs(across) >= Math.abs(down)) {
+    return across >= 0 ? 'start' : 'end'
+  }
+  return down >= 0 ? 'below' : 'above'
+}
+
+/** The top left corner of a label's box, from its anchor and the way it runs. */
+function boxCorner(
+  anchor: { x: number; y: number },
+  size: { width: number; height: number },
+  lean: LabelLean,
+): { x: number; y: number } {
+  const x =
+    lean === 'start' ? anchor.x : lean === 'end' ? anchor.x - size.width : anchor.x - size.width / 2
+  const y =
+    lean === 'above'
+      ? anchor.y - size.height
+      : lean === 'below'
+        ? anchor.y
+        : anchor.y - size.height / 2
+  return { x, y }
 }
 
 function sameTarget(area: LabelArea['target'], selected: CityTarget | null): boolean {

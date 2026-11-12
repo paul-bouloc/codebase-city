@@ -20,6 +20,14 @@
   transform: translate(-100%, -50%);
 }
 
+.above {
+  transform: translate(-50%, -100%);
+}
+
+.below {
+  transform: translate(-50%, 0);
+}
+
 .centre {
   transform: translate(-50%, -50%);
 }

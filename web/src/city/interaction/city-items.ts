@@ -81,8 +81,11 @@ export interface GuideLabel {
   y: number
 }
 
-/** Which way a label runs from its anchor on screen: out to the sea, or both ways for a folder. */
-export type LabelLean = 'start' | 'end' | 'centre'
+/**
+ * Which way a label runs from its anchor on screen, out to the sea: right of it, left of it,
+ * over it or under it; or around it, for a folder's.
+ */
+export type LabelLean = 'start' | 'end' | 'above' | 'below' | 'centre'
 
 /** What the label of an island or a folder says: its name, and over it a line of figures. */
 export interface AreaLabelText {
