@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { AreaLabelText } from '../interaction/city-items'
 import type { CityLayout } from '../world/layout'
 import { AreaLabels } from './area-labels'
+import { LABEL_SETTLE_MS } from './label-placement'
 
 const WIDTH = 1000
 const HEIGHT = 600
@@ -72,10 +73,19 @@ function moveTo(labels: AreaLabels, distance: number) {
   camera.updateMatrixWorld()
 }
 
+/** The labels once they have settled: those with room come after `LABEL_SETTLE_MS`. */
+function settle(labels: AreaLabels, selected: Parameters<AreaLabels['place']>[0] = null) {
+  labels.place(selected, 0)
+  return labels.place(selected, LABEL_SETTLE_MS)
+}
+
+const paths = (shown: readonly { path: string }[] | null) =>
+  (shown ?? []).map((label) => label.path).sort()
+
 describe('AreaLabels', () => {
   it('labels both islands and the folder up close, each island’s label out to the sea', () => {
-    const shown = setup(60).place(null, false) ?? []
-    expect(shown.map((label) => label.path).sort()).toEqual(['core', 'core/src', 'web'])
+    const shown = settle(setup(60)) ?? []
+    expect(paths(shown)).toEqual(['core', 'core/src', 'web'])
     const core = shown.find((label) => label.path === 'core')
     const web = shown.find((label) => label.path === 'web')
     // `core` is west of the city: its label runs left of its anchor; `web`, on the east edge,
@@ -89,37 +99,41 @@ describe('AreaLabels', () => {
   })
 
   it('drops the folder, then the line of figures, then the islands, as the camera pulls back', () => {
-    const near = setup(60).place(null, false) ?? []
+    const near = settle(setup(60)) ?? []
     expect(near.find((label) => label.path === 'core')?.caption).toBe('≈ 1,200 files · layer 1')
-    const middle = setup(250).place(null, false) ?? []
-    expect(middle.map((label) => label.path).sort()).toEqual(['core', 'web'])
-    expect(middle.every((label) => label.caption === null)).toBe(true)
+    const middle = settle(setup(250))
+    expect(paths(middle)).toEqual(['core', 'web'])
+    expect((middle ?? []).every((label) => label.caption === null)).toBe(true)
     // Nothing to show from the start: nothing new to say.
-    expect(setup(2000).place(null, false)).toBeNull()
+    expect(settle(setup(2000))).toBeNull()
   })
 
-  it('keeps the label of the selected folder, however small', () => {
-    const labels = setup(2000)
-    const shown = labels.place({ kind: 'parcel', island: 0, parcel: 0 }, false) ?? []
-    expect(shown.map((label) => label.path)).toEqual(['core/src'])
+  it('brings a label once it has had room for a while, and the selected one at once', () => {
+    const labels = setup(60)
+    expect(labels.place(null, 0)).toBeNull()
+    expect(labels.pending).toBe(true)
+    expect(labels.place(null, LABEL_SETTLE_MS - 1)).toBeNull()
+    expect(paths(labels.place(null, LABEL_SETTLE_MS))).toEqual(['core', 'core/src', 'web'])
+    expect(labels.pending).toBe(false)
+    const far = setup(2000)
+    const selected = far.place({ kind: 'parcel', island: 0, parcel: 0 }, 0)
+    expect(paths(selected)).toEqual(['core/src'])
   })
 
   it('gives no label to a folder the screen has no text for', () => {
-    const shown =
-      setup(60, new Map([['web', { name: 'web', caption: null }]])).place(null, false) ?? []
-    expect(shown.map((label) => label.path)).toEqual(['web'])
+    const shown = settle(setup(60, new Map([['web', { name: 'web', caption: null }]])))
+    expect(paths(shown)).toEqual(['web'])
   })
 
   it('says nothing new while the labels stand still', () => {
     const labels = setup(60)
-    expect(labels.place(null, false)).not.toBeNull()
-    expect(labels.place(null, false)).toBeNull()
+    expect(settle(labels)).not.toBeNull()
+    expect(labels.place(null, 1000)).toBeNull()
   })
 
   it('finds the island or folder whose label is under a point of the canvas', () => {
     const labels = setup(60)
-    const shown = labels.place(null, false) ?? []
-    const folder = shown.find((label) => label.path === 'core/src')
+    const folder = (settle(labels) ?? []).find((label) => label.path === 'core/src')
     if (!folder) {
       throw new Error('no label for core/src')
     }
@@ -131,30 +145,13 @@ describe('AreaLabels', () => {
     expect(labels.at(0, 0)).toBeNull()
   })
 
-  it('brings no label while the camera moves, and keeps those on show', () => {
-    const labels = setup(60)
-    expect(labels.place(null, true)).toBeNull()
-    expect(labels.place(null, false)?.length).toBe(3)
-    expect(labels.place(null, true)).toBeNull()
-  })
-
   it('keeps a label on show a little under the threshold it passed', () => {
     // From 330 u away, the islands span under 60 px, but more than 60 / 1.15.
-    expect(setup(330).place(null, false)).toBeNull()
+    expect(settle(setup(330))).toBeNull()
     const labels = setup(250)
-    expect(
-      labels
-        .place(null, false)
-        ?.map((label) => label.path)
-        .sort(),
-    ).toEqual(['core', 'web'])
+    expect(paths(settle(labels))).toEqual(['core', 'web'])
     moveTo(labels, 330)
     // Still on show: they moved on screen, so they are told again.
-    expect(
-      labels
-        .place(null, false)
-        ?.map((label) => label.path)
-        .sort(),
-    ).toEqual(['core', 'web'])
+    expect(paths(labels.place(null, 1000))).toEqual(['core', 'web'])
   })
 })

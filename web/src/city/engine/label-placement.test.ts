@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { CityLayout, IslandLayout, ParcelLayout } from '../world/layout'
 import { layerAltitude, slabTop } from '../world/units'
 import {
-  LABEL_CELL,
+  LABEL_GAP,
   type LabelCandidate,
   labelAreas,
   MAX_ISLAND_LABELS,
@@ -105,11 +105,11 @@ describe('labelAreas', () => {
 })
 
 describe('placeLabels', () => {
-  it('drops a label that covers a cell another one took, the larger winning', () => {
+  it('drops a label whose box meets one before it, the larger winning', () => {
     const shown = placeLabels([
       candidate({ span: 80, x: 10 }),
       candidate({ span: 200, x: 30 }),
-      candidate({ span: 50, x: 10 * LABEL_CELL }),
+      candidate({ span: 50, x: 200 }),
     ])
     expect(shown).toEqual([false, true, true])
   })
@@ -124,22 +124,35 @@ describe('placeLabels', () => {
     expect(shown).toEqual([false, true, false, true])
   })
 
-  it('keeps a label on show against a larger newcomer', () => {
-    const shown = placeLabels([candidate({ span: 900 }), candidate({ span: 50, shown: true })])
-    expect(shown).toEqual([false, true])
+  it('lets a newcomer in only clear of the others by the gap; one on show only if it meets none', () => {
+    const near = { x: 40 + LABEL_GAP - 1 }
+    expect(placeLabels([candidate({ span: 900 }), candidate(near)])).toEqual([true, false])
+    expect(placeLabels([candidate({ span: 900 }), candidate({ ...near, shown: true })])).toEqual([
+      true,
+      true,
+    ])
+    // Importance still decides: a larger newcomer that meets one on show takes its place.
+    expect(placeLabels([candidate({ span: 900 }), candidate({ span: 50, shown: true })])).toEqual([
+      true,
+      false,
+    ])
   })
 
-  it('lets labels on show cross while the camera moves, and parts them at rest', () => {
-    const labels = [candidate({ span: 900, shown: true }), candidate({ span: 50, shown: true })]
-    expect(placeLabels(labels, true)).toEqual([true, true])
-    expect(placeLabels(labels, false)).toEqual([true, false])
+  it('brings a newcomer only when it is ready', () => {
+    const labels = [candidate({ span: 900 }), candidate({ x: 200, shown: true })]
+    expect(placeLabels(labels, { ready: () => false })).toEqual([false, true])
+    expect(placeLabels(labels, { ready: () => true })).toEqual([true, true])
+  })
+
+  it('keeps a label on show over one before it while it is tolerated', () => {
+    const labels = [candidate({ span: 900 }), candidate({ span: 50, shown: true })]
+    expect(placeLabels(labels, { tolerated: () => true })).toEqual([true, true])
+    expect(placeLabels(labels, { tolerated: () => false })).toEqual([true, false])
   })
 
   it('keeps to the caps of islands, folders and both', () => {
     const spread = (count: number, island: boolean, row: number) =>
-      Array.from({ length: count }, (_, at) =>
-        candidate({ island, x: at * 3 * LABEL_CELL, y: row * 3 * LABEL_CELL }),
-      )
+      Array.from({ length: count }, (_, at) => candidate({ island, x: at * 60, y: row * 60 }))
     const islands = placeLabels(spread(30, true, 0)).filter(Boolean).length
     expect(islands).toBe(MAX_ISLAND_LABELS)
     const parcels = placeLabels(spread(40, false, 0)).filter(Boolean).length

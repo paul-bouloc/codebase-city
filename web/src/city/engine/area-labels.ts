@@ -5,7 +5,9 @@ import type { CityLayout } from '../world/layout'
 import type { Vec3 } from '../world/units'
 import {
   ISLAND_LABEL_PIXELS,
+  LABEL_GRACE_MS,
   LABEL_HYSTERESIS,
+  LABEL_SETTLE_MS,
   type LabelArea,
   type LabelCandidate,
   labelAreas,
@@ -48,6 +50,10 @@ export class AreaLabels {
   private last: readonly AreaLabel[] = []
   /** The labels on show, by path, and whether with their line of figures. */
   private onShow = new Map<string, boolean>()
+  /** The labels waiting to come, by path, and since when they have had room. */
+  private waiting = new Map<string, number>()
+  /** The labels on show over a label before them, by path, and since when. */
+  private crowded = new Map<string, number>()
   private readonly projected = new Vector3()
 
   constructor(
@@ -61,6 +67,8 @@ export class AreaLabels {
     this.areas = layout ? labelAreas(layout) : []
     this.shown = []
     this.onShow = new Map()
+    this.waiting = new Map()
+    this.crowded = new Map()
   }
 
   /** What each folder's label says, by path: a folder without one gets no label. */
@@ -73,11 +81,16 @@ export class AreaLabels {
     this.widths.clear()
   }
 
+  /** Whether labels wait to come or go: the city must draw again for them, even standing still. */
+  get pending(): boolean {
+    return this.waiting.size > 0 || this.crowded.size > 0
+  }
+
   /**
-   * The labels on show this frame, or null when they stand where they last stood. While the
-   * camera moves, no label comes: labels coming and going all over the moving city blink.
+   * The labels on show this frame, `now` in ms, or null when they stand where they last stood.
+   * A label comes once it has had room for `LABEL_SETTLE_MS` in a row; the selected one at once.
    */
-  place(selected: CityTarget | null, moving: boolean): readonly AreaLabel[] | null {
+  place(selected: CityTarget | null, now: number): readonly AreaLabel[] | null {
     const width = this.canvas.clientWidth
     const height = this.canvas.clientHeight
     const candidates: (LabelCandidate & { area: LabelArea; label: AreaLabel })[] = []
@@ -89,9 +102,6 @@ export class AreaLabels {
       const island = area.target.kind === 'island'
       const isSelected = sameTarget(area.target, selected)
       const wasShown = this.onShow.get(area.path)
-      if (moving && wasShown === undefined && !isSelected) {
-        continue
-      }
       // A label on show goes only once its area is well under the threshold it passed.
       const keep = (pixels: number, kept: boolean | undefined) =>
         kept ? pixels / LABEL_HYSTERESIS : pixels
@@ -105,16 +115,14 @@ export class AreaLabels {
         continue
       }
       const lean = island ? leanAway(anchor, this.onCanvas(area.centre)) : 'centre'
-      const captioned = island && span >= keep(CAPTION_PIXELS, wasShown)
-      // No line of figures comes while the camera moves either: the box would grow.
-      const caption = captioned && (!moving || wasShown) ? text.caption : null
+      const caption = island && span >= keep(CAPTION_PIXELS, wasShown) ? text.caption : null
       const size = this.boxSize(island, text.name, caption)
       const { x, y } = boxCorner(anchor, size, lean)
       candidates.push({
         island,
         span,
         selected: isSelected,
-        shown: wasShown !== undefined,
+        shown: wasShown !== undefined || isSelected,
         x,
         y,
         ...size,
@@ -130,7 +138,32 @@ export class AreaLabels {
         },
       })
     }
-    const placed = placeLabels(candidates, moving)
+    // Labels with room to come start, or keep, waiting; labels on show that meet one before
+    // them start, or keep, their grace. The others wait no more.
+    const room = placeLabels(candidates)
+    const waiting = new Map<string, number>()
+    const crowded = new Map<string, number>()
+    candidates.forEach(({ label, shown }, at) => {
+      if (room[at] && !shown) {
+        waiting.set(label.path, this.waiting.get(label.path) ?? now)
+      } else if (!room[at] && shown) {
+        crowded.set(label.path, this.crowded.get(label.path) ?? now)
+      }
+    })
+    const pathAt = (at: number) => candidates[at]?.label.path ?? ''
+    const placed = placeLabels(candidates, {
+      ready: (at) => now - (waiting.get(pathAt(at)) ?? now) >= LABEL_SETTLE_MS,
+      tolerated: (at) => now - (crowded.get(pathAt(at)) ?? now) < LABEL_GRACE_MS,
+    })
+    candidates.forEach(({ label }, at) => {
+      if (placed[at]) {
+        waiting.delete(label.path)
+      } else {
+        crowded.delete(label.path)
+      }
+    })
+    this.waiting = waiting
+    this.crowded = crowded
     const kept = candidates.filter((_, at) => placed[at])
     this.onShow = new Map(kept.map(({ label }) => [label.path, label.caption !== null]))
     this.shown = kept.map(({ area, x, y, width, height }) => ({

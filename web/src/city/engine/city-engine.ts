@@ -425,10 +425,14 @@ export class CityEngine {
   private tellAreaLabels(): void {
     const labels = this.areaLabels.place(
       this.interaction?.getSelection()?.target ?? null,
-      this.cameraMoving,
+      performance.now(),
     )
     if (labels) {
       this.listeners.areaLabels?.(labels)
+    }
+    // Labels waiting to come need frames, even with nothing else moving.
+    if (this.areaLabels.pending) {
+      this.needsRender = true
     }
   }
 
@@ -443,8 +447,6 @@ export class CityEngine {
         this.interaction?.clearHover()
       } else {
         this.pointer.hover()
-        // At rest, the labels that held back while it moved come.
-        this.needsRender = true
       }
     }
     if (this.interaction?.update(time)) {

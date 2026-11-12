@@ -22,8 +22,12 @@ export const LABEL_HYSTERESIS = 1.15
 export const MAX_ISLAND_LABELS = 12
 export const MAX_PARCEL_LABELS = 8
 export const MAX_LABELS = 20
-/** The screen is cut into square cells this many CSS pixels wide; a label takes those it covers. */
-export const LABEL_CELL = 24
+/** A label that comes keeps this many CSS pixels from those on show. */
+export const LABEL_GAP = 8
+/** A label comes once it has had room for this many ms in a row, */
+export const LABEL_SETTLE_MS = 600
+/** and goes once it has met a label before it for this many: labels crossing do not blink. */
+export const LABEL_GRACE_MS = 500
 
 /** An island or a folder that may carry a label. */
 export interface LabelArea {
@@ -93,9 +97,9 @@ export interface LabelCandidate {
   island: boolean
   /** The area's span on screen, in CSS pixels: the larger first. */
   span: number
-  /** The selected folder's label comes before all others, */
+  /** The selected folder's label comes before all others. */
   selected: boolean
-  /** then those on show already, that keep their place against newcomers. */
+  /** On show already: it stays while it does not touch a label before it. */
   shown: boolean
   x: number
   y: number
@@ -103,16 +107,25 @@ export interface LabelCandidate {
   height: number
 }
 
+/** Which labels wait: newcomers not `ready` to come, labels on show `tolerated` over others. */
+export interface LabelTimes {
+  ready?(at: number): boolean
+  tolerated?(at: number): boolean
+}
+
 /**
- * Which of these labels show: the selected one first, then those on show already, then islands
- * before folders, the larger first; a label shows if no cell it covers is taken, and within the
- * caps. While the camera moves, those on show may cross one another: they part once it rests,
- * rather than blink as it goes.
+ * Which of these labels show: the selected one first, then islands before folders, the larger
+ * first, within the caps. A label on show stays while its box touches none of those before it,
+ * or while it is `tolerated` over them; a newcomer needs `LABEL_GAP` of room around it, and only
+ * those `ready` come: labels moving past one another do not swap at every frame.
  */
-export function placeLabels(candidates: readonly LabelCandidate[], moving = false): boolean[] {
+export function placeLabels(
+  candidates: readonly LabelCandidate[],
+  { ready = () => true, tolerated = () => false }: LabelTimes = {},
+): boolean[] {
   const order = candidates.map((_, at) => at).sort((a, b) => rank(candidates[a], candidates[b]))
   const shown = candidates.map(() => false)
-  const taken = new Set<string>()
+  const placed: LabelCandidate[] = []
   let islands = 0
   let parcels = 0
   for (const at of order) {
@@ -123,13 +136,14 @@ export function placeLabels(candidates: readonly LabelCandidate[], moving = fals
     if (label.island ? islands === MAX_ISLAND_LABELS : parcels === MAX_PARCEL_LABELS) {
       continue
     }
-    const cells = cellsOf(label)
-    if (!(moving && label.shown) && cells.some((cell) => taken.has(cell))) {
+    if (!label.shown && !ready(at)) {
       continue
     }
-    for (const cell of cells) {
-      taken.add(cell)
+    const gap = label.shown ? 0 : LABEL_GAP
+    if (!(label.shown && tolerated(at)) && placed.some((other) => overlap(label, other, gap))) {
+      continue
     }
+    placed.push(label)
     shown[at] = true
     if (label.island) {
       islands += 1
@@ -147,28 +161,20 @@ function rank(a: LabelCandidate | undefined, b: LabelCandidate | undefined): num
   if (a.selected !== b.selected) {
     return a.selected ? -1 : 1
   }
-  if (a.shown !== b.shown) {
-    return a.shown ? -1 : 1
-  }
   if (a.island !== b.island) {
     return a.island ? -1 : 1
   }
   return b.span - a.span
 }
 
-/** The cells a label's box covers. */
-function cellsOf({ x, y, width, height }: LabelCandidate): string[] {
-  const cells: string[] = []
-  const left = Math.floor(x / LABEL_CELL)
-  const right = Math.floor((x + width) / LABEL_CELL)
-  const top = Math.floor(y / LABEL_CELL)
-  const bottom = Math.floor((y + height) / LABEL_CELL)
-  for (let column = left; column <= right; column += 1) {
-    for (let row = top; row <= bottom; row += 1) {
-      cells.push(`${column},${row}`)
-    }
-  }
-  return cells
+/** Whether two boxes come closer than `gap`. */
+function overlap(a: LabelCandidate, b: LabelCandidate, gap: number): boolean {
+  return (
+    a.x < b.x + b.width + gap &&
+    b.x < a.x + a.width + gap &&
+    a.y < b.y + b.height + gap &&
+    b.y < a.y + a.height + gap
+  )
 }
 
 type Side = 'west' | 'east' | 'south' | 'north'
