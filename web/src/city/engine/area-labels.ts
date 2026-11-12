@@ -182,12 +182,16 @@ export class AreaLabels {
     return kept.map(({ label }) => label)
   }
 
-  /** The island or folder whose label is at this point of the canvas, in CSS pixels. */
+  /**
+   * The island or folder whose label is at this point of the canvas, in CSS pixels: an island's
+   * first, it is drawn over a folder's.
+   */
   at(x: number, y: number): LabelArea['target'] | null {
-    const found = this.shown.find(
+    const under = this.shown.filter(
       (label) =>
         x >= label.x && x <= label.x + label.width && y >= label.y && y <= label.y + label.height,
     )
+    const found = under.find((label) => label.target.kind === 'island') ?? under[0]
     return found?.target ?? null
   }
 
