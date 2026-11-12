@@ -45,7 +45,7 @@ impl Declaration {
 /// The languages a workspace declares packages in. A declaration speaks
 /// for its own language only: a `go.work` says nothing of the JavaScript
 /// beside it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(super) enum Ecosystem {
     JavaScript,
     Go,
