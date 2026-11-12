@@ -4,16 +4,20 @@
 //!
 //! Under a root project of a language no workspace declares, a folder
 //! with a manifest of that language and code of it is a satellite (the
-//! rule that keeps it from being a package, in `with_implicit`). Go is the
-//! exception: its toolchain keeps a nested module out of the one around
-//! it. A satellite that is published on its own (a named, public package
-//! that does not use the root one) stays code: the plugins of prettier.
-//! Under a JavaScript root, a first-level folder with an `index.html` and
-//! code is a satellite too, manifest or not: the editor of three.js.
+//! rule that keeps it from being a package, in `with_implicit`) when it is
+//! a documentation site, or when it depends on the root package: a test
+//! app, a usage example, a benchmark. Any other project stays code: the
+//! main process of an Electron app keeps a manifest of its own, often
+//! named as the root one. Go is the exception: its toolchain keeps a
+//! nested module out of the one around it. Under a JavaScript root, a
+//! first-level folder with an `index.html` and code is a satellite too,
+//! manifest or not: the editor of three.js. No satellite is imported by
+//! the source code outside it: an app's `src/index.html` is its own.
 
 use std::collections::HashMap;
 
 use model::Scope;
+use serde_json::Value;
 
 use super::manifest;
 use super::workspace::{self, Ecosystem};
@@ -40,10 +44,10 @@ const SITE_FOLDERS: &[&str] = &["manual", "site", "website", "www"];
 enum Kind {
     /// A documentation site: its source files are documentation.
     Site,
-    /// A test app, a sandbox, an editor: its source files are examples.
+    /// A test app, a benchmark, an editor: its source files are examples.
     Example,
-    /// A package published on its own: its files stay code.
-    Published,
+    /// A project of its own: its files stay code.
+    Code,
 }
 
 struct Candidate {
@@ -55,12 +59,14 @@ struct Candidate {
 
 /// Gives the source files of each satellite of the root project the scope
 /// of what it is. `paths`, `languages` and `scopes` are per file;
-/// `manifests` are the manifests that kept their content, by path.
-pub(crate) fn apply(
+/// `manifests` are the manifests that kept their content, by path;
+/// `imports` are `(importing file, imported folder)` pairs.
+pub(crate) fn apply<'a>(
     paths: &[&str],
     languages: &[Language],
     scopes: &mut [Scope],
     manifests: &[(&str, &[u8])],
+    imports: impl Iterator<Item = (u32, &'a str)>,
 ) {
     let content = |path: &str| {
         manifests
@@ -82,13 +88,13 @@ pub(crate) fn apply(
     if roots.is_empty() {
         return;
     }
-    let root_names: Vec<String> = [
-        content("package.json").and_then(|content| manifest::npm(content)?.name),
-        content("pyproject.toml").and_then(|content| manifest::pyproject(content).name),
-    ]
-    .into_iter()
-    .flatten()
-    .collect();
+    let root_npm = content("package.json").and_then(manifest::npm);
+    let root_python =
+        content("pyproject.toml").and_then(|content| manifest::pyproject(content).name);
+    let root = Root {
+        npm: root_npm.and_then(|manifest| manifest.name),
+        python: root_python.map(|name| manifest::python_key(&name)),
+    };
 
     let mut candidates: HashMap<&str, Candidate> = HashMap::new();
     for &(path, content) in manifests {
@@ -105,7 +111,7 @@ pub(crate) fn apply(
         if candidates.contains_key(dir) {
             continue;
         }
-        let kind = kind(dir, name, content, &root_names);
+        let kind = kind(dir, name, content, &root);
         candidates.insert(
             dir,
             Candidate {
@@ -143,6 +149,32 @@ pub(crate) fn apply(
             }
         }
     }
+    // A folder the source code outside it imports is part of the code
+    for (from, to) in imports {
+        let from = from as usize;
+        if scopes[from] != Scope::Source {
+            continue;
+        }
+        let from_dir = split_path(paths[from]).0;
+        let inside = |dir: &str| from_dir == dir || from_dir.starts_with(&format!("{dir}/"));
+        // Satellites may import one another: a site shows the test app
+        if around(paths[from]).any(|dir| {
+            candidates
+                .get(dir)
+                .is_some_and(|candidate| candidate.kind != Kind::Code)
+        }) {
+            continue;
+        }
+        let imported = std::iter::once(to).chain(to.match_indices('/').map(|(end, _)| &to[..end]));
+        for dir in imported {
+            if !inside(dir)
+                && let Some(candidate) = candidates.get_mut(dir)
+            {
+                candidate.code = false;
+                candidate.kind = Kind::Code;
+            }
+        }
+    }
     for (file, &path) in paths.iter().enumerate() {
         if scopes[file] != Scope::Source {
             continue;
@@ -152,7 +184,7 @@ pub(crate) fn apply(
         match satellite.map(|candidate| candidate.kind) {
             Some(Kind::Site) => scopes[file] = Scope::Docs,
             Some(Kind::Example) => scopes[file] = Scope::Example,
-            Some(Kind::Published) | None => {}
+            Some(Kind::Code) | None => {}
         }
     }
 }
@@ -165,35 +197,78 @@ fn around(path: &str) -> impl Iterator<Item = &str> {
         .chain((!dir.is_empty()).then_some(dir))
 }
 
+/// The name of the root project in each language it has a manifest of.
+struct Root {
+    npm: Option<String>,
+    /// As pip compares names ([`manifest::python_key`]).
+    python: Option<String>,
+}
+
 /// What the project in `dir`, with the manifest `name`, is.
-fn kind(dir: &str, name: &str, content: &[u8], root_names: &[String]) -> Kind {
-    let (project, dependencies, private) = if name == "pyproject.toml" {
-        let manifest = manifest::pyproject(content);
-        (manifest.name, manifest.dependencies, false)
+fn kind(dir: &str, name: &str, content: &[u8], root: &Root) -> Kind {
+    let (dependencies, uses_root) = if name == "pyproject.toml" {
+        let dependencies: Vec<String> = manifest::pyproject(content)
+            .dependencies
+            .iter()
+            .map(|dependency| manifest::python_key(dependency))
+            .collect();
+        let uses_root = root
+            .python
+            .as_ref()
+            .is_some_and(|root| dependencies.contains(root));
+        (dependencies, uses_root)
     } else {
         // `deno.json` lists no dependencies the way `package.json` does
-        let manifest = manifest::npm(content).unwrap_or_default();
-        let private = manifest.private;
-        (
-            manifest.name,
-            manifest.declared.into_iter().collect(),
-            private,
-        )
+        let dependencies: Vec<String> = manifest::npm(content)
+            .map(|manifest| manifest.declared.into_iter().collect())
+            .unwrap_or_default();
+        let uses_root = root
+            .npm
+            .as_ref()
+            .is_some_and(|root| npm_uses(dir, content, root));
+        (dependencies, uses_root)
     };
     let site = dependencies
         .iter()
         .any(|dependency| SITE_GENERATORS.contains(&dependency.as_str()));
-    if site {
-        return Kind::Site;
+    if site || folder_kind(dir) == Kind::Site {
+        Kind::Site
+    } else if uses_root {
+        Kind::Example
+    } else {
+        Kind::Code
     }
-    let uses_root = root_names
-        .iter()
-        .any(|root| dependencies.contains(root) || project.as_ref() == Some(root));
-    match folder_kind(dir) {
-        Kind::Site => Kind::Site,
-        _ if project.is_some() && !private && !uses_root => Kind::Published,
-        kind => kind,
-    }
+}
+
+/// Whether the `package.json` in `dir` depends on the root package
+/// `root`: by its name, by an alias of a version of it
+/// (`"immer10": "npm:immer@10"`), or by its folder (`"file:.."`).
+fn npm_uses(dir: &str, content: &[u8], root: &str) -> bool {
+    let Ok(manifest) = serde_json::from_slice::<Value>(content) else {
+        return false;
+    };
+    let up = vec![".."; dir.split('/').count()].join("/");
+    let alias = format!("npm:{root}@");
+    [
+        "dependencies",
+        "devDependencies",
+        "peerDependencies",
+        "optionalDependencies",
+    ]
+    .iter()
+    .filter_map(|field| manifest.get(*field)?.as_object())
+    .flatten()
+    .any(|(name, spec)| {
+        let spec = spec.as_str().unwrap_or_default();
+        let path = spec
+            .strip_prefix("file:")
+            .or_else(|| spec.strip_prefix("link:"))
+            .map(|path| path.trim_end_matches('/'));
+        name == root
+            || spec.starts_with(&alias)
+            || spec == format!("npm:{root}")
+            || path == Some(up.as_str())
+    })
 }
 
 /// What a satellite is from the name of its folder alone.
@@ -211,8 +286,9 @@ mod tests {
     use super::*;
 
     /// The scopes of `files` once the satellites are applied: each file is
-    /// `(path, content)`, a manifest when its name says so.
-    fn scopes(files: &[(&str, &str)]) -> Vec<(String, Scope)> {
+    /// `(path, content)`, a manifest when its name says so; `imports` are
+    /// `(importing file, imported folder)` by path.
+    fn scopes_with(files: &[(&str, &str)], imports: &[(&str, &str)]) -> Vec<(String, Scope)> {
         let paths: Vec<&str> = files.iter().map(|(path, _)| *path).collect();
         let languages: Vec<Language> = paths.iter().map(|path| Language::of(path)).collect();
         let mut scopes: Vec<Scope> = paths
@@ -223,20 +299,33 @@ mod tests {
             .iter()
             .filter(|(path, _)| {
                 let name = split_path(path).1;
-                matches!(
-                    name,
-                    "package.json" | "pyproject.toml" | "go.mod" | "pnpm-workspace.yaml"
-                )
+                matches!(name, "package.json" | "pyproject.toml" | "go.mod")
             })
             .map(|(path, content)| (*path, content.as_bytes()))
             .collect();
-        apply(&paths, &languages, &mut scopes, &manifests);
+        let imports: Vec<(u32, &str)> = imports
+            .iter()
+            .map(|&(from, to)| {
+                let from = paths.iter().position(|path| *path == from).unwrap();
+                (u32::try_from(from).unwrap(), to)
+            })
+            .collect();
+        apply(
+            &paths,
+            &languages,
+            &mut scopes,
+            &manifests,
+            imports.into_iter(),
+        );
         paths
             .iter()
             .zip(scopes)
-            .filter(|(path, _)| !path.ends_with(".json") && !path.ends_with(".html"))
             .map(|(path, scope)| ((*path).to_owned(), scope))
             .collect()
+    }
+
+    fn scopes(files: &[(&str, &str)]) -> Vec<(String, Scope)> {
+        scopes_with(files, &[])
     }
 
     fn scope_of(scopes: &[(String, Scope)], path: &str) -> Scope {
@@ -282,7 +371,7 @@ mod tests {
     }
 
     #[test]
-    fn a_test_app_that_uses_the_library_is_an_example() {
+    fn a_project_that_depends_on_the_root_package_is_an_example() {
         let scopes = scopes(&[
             LIB,
             CODE,
@@ -293,36 +382,49 @@ mod tests {
             ("app/src/main.tsx", "export default 1\n"),
             // Its tests stay tests
             ("app/src/main.test.tsx", "test('a', () => {})\n"),
+            // Versions of the root under aliases, or the root folder
             (
-                "bench/package.json",
-                r#"{ "name": "lib-bench", "private": true }"#,
+                "perf/package.json",
+                r#"{ "private": true, "dependencies": { "lib9": "npm:lib@9" } }"#,
             ),
-            ("bench/run.js", "console.log(1)\n"),
-            // A project without a name, or named as the root
-            ("usage/package.json", r#"{ "dependencies": {} }"#),
-            ("usage/index.js", "console.log(1)\n"),
-            ("demo-app/package.json", r#"{ "name": "lib" }"#),
-            ("demo-app/index.js", "console.log(1)\n"),
+            ("perf/run.js", "console.log(1)\n"),
+            (
+                "usage/esm/package.json",
+                r#"{ "dependencies": { "my-lib": "file:../.." } }"#,
+            ),
+            ("usage/esm/index.js", "console.log(1)\n"),
         ]);
         assert_eq!(scope_of(&scopes, "app/src/main.tsx"), Scope::Example);
         assert_eq!(scope_of(&scopes, "app/src/main.test.tsx"), Scope::Test);
-        // `bench` already sets the scope of what it holds
-        assert_eq!(scope_of(&scopes, "bench/run.js"), Scope::Bench);
-        assert_eq!(scope_of(&scopes, "usage/index.js"), Scope::Example);
-        assert_eq!(scope_of(&scopes, "demo-app/index.js"), Scope::Example);
+        assert_eq!(scope_of(&scopes, "perf/run.js"), Scope::Example);
+        assert_eq!(scope_of(&scopes, "usage/esm/index.js"), Scope::Example);
     }
 
     #[test]
-    fn a_package_published_on_its_own_stays_code() {
+    fn a_project_that_does_not_use_the_root_stays_code() {
         let scopes = scopes(&[
-            LIB,
-            CODE,
+            // The main process of an Electron app, named as the root
+            (
+                "package.json",
+                r#"{ "name": "term", "dependencies": { "react": "19" } }"#,
+            ),
+            ("lib/index.ts", "export const ui = 1\n"),
+            (
+                "app/package.json",
+                r#"{ "name": "term", "dependencies": { "chokidar": "4" } }"#,
+            ),
+            ("app/index.ts", "export const main = 1\n"),
+            // A private server, a published plugin
+            ("server/package.json", r#"{ "private": true }"#),
+            ("server/main.js", "console.log(1)\n"),
             (
                 "packages/plugin-a/package.json",
-                r#"{ "name": "@lib/plugin-a" }"#,
+                r#"{ "name": "@term/plugin-a" }"#,
             ),
             ("packages/plugin-a/index.js", "export default 1\n"),
         ]);
+        assert_eq!(scope_of(&scopes, "app/index.ts"), Scope::Source);
+        assert_eq!(scope_of(&scopes, "server/main.js"), Scope::Source);
         assert_eq!(
             scope_of(&scopes, "packages/plugin-a/index.js"),
             Scope::Source
@@ -348,6 +450,40 @@ mod tests {
     }
 
     #[test]
+    fn a_folder_the_code_outside_imports_is_code() {
+        // An app's page and code in `src`, which its server imports
+        let files = [
+            ("package.json", r#"{ "name": "app" }"#),
+            ("src/index.html", "<html></html>\n"),
+            ("src/main.js", "export const app = 1\n"),
+            ("server.js", "console.log(1)\n"),
+            ("lab/index.html", "<html></html>\n"),
+            ("lab/main.js", "console.log(1)\n"),
+            // A test that imports the lab does not make it code
+            ("test/lab.test.js", "test('a', () => {})\n"),
+        ];
+        let scopes = scopes_with(&files, &[("server.js", "src"), ("test/lab.test.js", "lab")]);
+        assert_eq!(scope_of(&scopes, "src/main.js"), Scope::Source);
+        assert_eq!(scope_of(&scopes, "lab/main.js"), Scope::Example);
+    }
+
+    #[test]
+    fn a_satellite_may_import_another_one() {
+        let files = [
+            LIB,
+            CODE,
+            ("website/package.json", r#"{ "private": true }"#),
+            ("website/main.js", "console.log(1)\n"),
+            ("playground/index.html", "<html></html>\n"),
+            ("playground/main.js", "console.log(1)\n"),
+            ("live/index.html", "<html></html>\n"),
+            ("live/main.js", "console.log(1)\n"),
+        ];
+        let scopes = scopes_with(&files, &[("website/main.js", "live")]);
+        assert_eq!(scope_of(&scopes, "live/main.js"), Scope::Example);
+    }
+
+    #[test]
     fn the_outermost_satellite_decides() {
         let scopes = scopes(&[
             LIB,
@@ -366,9 +502,26 @@ mod tests {
     }
 
     #[test]
+    fn a_python_project_that_depends_on_the_root_is_an_example() {
+        let scopes = scopes(&[
+            ("pyproject.toml", "[project]\nname = \"My_Lib\"\n"),
+            ("my_lib/core.py", "VALUE = 1\n"),
+            (
+                "demo_app/pyproject.toml",
+                "[project]\nname = \"demo\"\ndependencies = [\"my.lib\"]\n",
+            ),
+            ("demo_app/main.py", "print(1)\n"),
+            ("worker/pyproject.toml", "[project]\nname = \"worker\"\n"),
+            ("worker/run.py", "print(1)\n"),
+        ]);
+        assert_eq!(scope_of(&scopes, "demo_app/main.py"), Scope::Example);
+        assert_eq!(scope_of(&scopes, "worker/run.py"), Scope::Source);
+    }
+
+    #[test]
     fn nothing_changes_without_a_root_project_of_the_language() {
         let satellite = [
-            ("app/package.json", r#"{ "private": true }"#),
+            ("app/package.json", r#"{ "dependencies": { "repo": "*" } }"#),
             ("app/main.js", "console.log(1)\n"),
         ];
         // A declared workspace: `app` would be a package if it matched
@@ -401,13 +554,13 @@ mod tests {
 
     #[test]
     fn a_project_without_code_of_its_language_is_no_satellite() {
-        // A pyproject.toml that only configures tools, under a Python root
+        // A site folder of JavaScript under a Python root
         let scopes = scopes(&[
             ("pyproject.toml", "[project]\nname = \"lib\"\n"),
             ("lib/core.py", "VALUE = 1\n"),
-            ("tools/pyproject.toml", "[tool.ruff]\nline-length = 100\n"),
-            ("tools/gen.js", "console.log(1)\n"),
+            ("website/pyproject.toml", "[tool.ruff]\nline-length = 100\n"),
+            ("website/main.js", "console.log(1)\n"),
         ]);
-        assert_eq!(scope_of(&scopes, "tools/gen.js"), Scope::Source);
+        assert_eq!(scope_of(&scopes, "website/main.js"), Scope::Source);
     }
 }

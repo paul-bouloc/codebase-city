@@ -133,18 +133,19 @@ pub fn analyze_with_report(
     for (path, &dir) in &dirs.by_path {
         dir_paths[dir as usize] = path.as_str();
     }
-    let tooling = scope::tooling(
-        &paths,
-        &table.scope,
-        edges.keys().map(|&(from, is_dir, target)| {
+    // `(importing file, imported folder)`: the folder of the imported file
+    let imported_dirs: Vec<(u32, &str)> = edges
+        .keys()
+        .map(|&(from, is_dir, target)| {
             let dir = if is_dir {
                 dir_paths[target as usize]
             } else {
                 split_path(paths[target as usize]).0
             };
             (from, dir)
-        }),
-    );
+        })
+        .collect();
+    let tooling = scope::tooling(&paths, &table.scope, imported_dirs.iter().copied());
     for (scope, path) in table.scope.iter_mut().zip(&paths) {
         if *scope == Scope::Source && scope::is_tooling(split_path(path).0, &tooling) {
             *scope = Scope::Build;
@@ -158,7 +159,13 @@ pub fn analyze_with_report(
         .collect();
     let file_languages: Vec<Language> = files.iter().map(|file| file.language).collect();
     // After the root tooling: a project under `scripts` is tooling
-    packages::satellites::apply(&paths, &file_languages, &mut table.scope, &manifests);
+    packages::satellites::apply(
+        &paths,
+        &file_languages,
+        &mut table.scope,
+        &manifests,
+        imported_dirs.iter().copied(),
+    );
 
     let (graph, barrel_report) = graph::build(&graph::Input {
         paths: &paths,
