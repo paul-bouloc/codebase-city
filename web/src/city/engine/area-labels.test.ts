@@ -142,4 +142,11 @@ describe('AreaLabels', () => {
     moveTo(labels, 330)
     expect(paths(labels.place(null, 1000))).toEqual(['core', 'web'])
   })
+  it('keeps every label quiet but those it is told, which come at once, until told otherwise', () => {
+    const labels = setup(60)
+    labels.setQuiet((target) => target.kind === 'island' && target.island === 1)
+    expect(paths(labels.place(null, 0))).toEqual(['web'])
+    labels.setQuiet(null)
+    expect(paths(settle(labels))).toEqual(['core', 'core/src', 'web'])
+  })
 })

@@ -47,6 +47,8 @@ export class AreaLabels {
   /** The labels on show over a label before them, by path, and since when. */
   private crowded = new Map<string, number>()
   private readonly projected = new Vector3()
+  /** While the guide labels units: the labels that may still show, the others keep quiet. */
+  private quiet: ((target: LabelArea['target']) => boolean) | null = null
   /** The canvas's size this frame, in CSS pixels: read once, not once an area. */
   private width = 0
   private height = 0
@@ -81,6 +83,14 @@ export class AreaLabels {
     this.widths.clear()
   }
 
+  /**
+   * Keeps every label quiet but those `keep` says, which come at once (the island under the
+   * pointer); or, for null, lets them all speak again.
+   */
+  setQuiet(keep: ((target: LabelArea['target']) => boolean) | null): void {
+    this.quiet = keep
+  }
+
   /** Whether labels wait to come or go: the city must draw again for them, even standing still. */
   get pending(): boolean {
     return this.waiting.size > 0 || this.crowded.size > 0
@@ -103,6 +113,9 @@ export class AreaLabels {
     for (const area of this.areas) {
       const text = this.texts.get(area.path)
       if (!text) {
+        continue
+      }
+      if (this.quiet && !this.quiet(area.target)) {
         continue
       }
       const island = area.target.kind === 'island'
@@ -158,7 +171,8 @@ export class AreaLabels {
     })
     const pathAt = (at: number) => candidates[at]?.label.path ?? ''
     const placed = placeLabels(candidates, {
-      ready: (at) => now - (waiting.get(pathAt(at)) ?? now) >= LABEL_SETTLE_MS,
+      ready: (at) =>
+        this.quiet !== null || now - (waiting.get(pathAt(at)) ?? now) >= LABEL_SETTLE_MS,
       tolerated: (at) => now - (crowded.get(pathAt(at)) ?? now) < LABEL_GRACE_MS,
     })
     candidates.forEach(({ label }, at) => {
