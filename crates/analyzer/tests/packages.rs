@@ -6,7 +6,7 @@
 
 use analyzer::analyze;
 use analyzer::files::{Language, SourceFile, count_lines};
-use model::{AnalysisResult, Framework, Ignored, PackageKind, Repo, WorkspaceKind};
+use model::{AnalysisResult, Framework, Ignored, PackageKind, Repo, Scope, WorkspaceKind};
 
 /// `apps/acme` (Next.js) and `apps/acme-admin` (NestJS) share
 /// `libs/acme-ui`; `apps/site` and `apps/site-blog` share a prefix but no
@@ -700,6 +700,50 @@ fn a_project_of_the_root_language_is_its_satellite() {
         ),
         ("website/sidebars.js", "module.exports = {}\n"),
     ]);
+    assert!(result.packages.dir.is_empty());
+}
+
+#[test]
+fn the_satellites_of_a_library_are_not_its_code() {
+    // A library, its documentation site, a test app that uses it, and a
+    // release script with a manifest of its own
+    let result = analyzed(&[
+        (
+            "package.json",
+            r#"{ "name": "lib", "main": "src/index.js" }"#,
+        ),
+        ("src/index.js", "export { util } from './util'\n"),
+        ("src/util.js", "export const util = 1\n"),
+        (
+            "website/package.json",
+            r#"{ "name": "lib-website", "dependencies": { "@docusaurus/core": "3" } }"#,
+        ),
+        (
+            "website/src/pages/index.js",
+            "import { util } from '../../../src/index'\nexport default util\n",
+        ),
+        (
+            "app/package.json",
+            r#"{ "name": "lib-app", "private": true, "dependencies": { "lib": "*" } }"#,
+        ),
+        (
+            "app/src/main.js",
+            "import { util } from '../../src/index'\nexport default util\n",
+        ),
+        ("scripts/release/package.json", r#"{ "private": true }"#),
+        ("scripts/release/run.js", "console.log('release')\n"),
+    ]);
+    let scope = |path: &str| {
+        let file = (0..result.files.name.len())
+            .find(|&file| file_path(&result, u32::try_from(file).unwrap()) == path)
+            .unwrap();
+        result.files.scope[file]
+    };
+    assert_eq!(scope("src/util.js"), Scope::Source);
+    assert_eq!(scope("website/src/pages/index.js"), Scope::Docs);
+    assert_eq!(scope("app/src/main.js"), Scope::Example);
+    // The root tooling comes first
+    assert_eq!(scope("scripts/release/run.js"), Scope::Build);
     assert!(result.packages.dir.is_empty());
 }
 
