@@ -1,6 +1,6 @@
 //! The first step: the size of the city and what it is made of.
 
-use model::{AnalysisResult, TourStep};
+use model::{AnalysisResult, Scope, TourStep};
 
 use super::{count, first_max, is_production, island_of_file};
 use crate::files::Language;
@@ -95,40 +95,58 @@ const LANGUAGE_CODES: &[&str] = &[
     "xh", "yi", "yo", "za", "zh", "zu",
 ];
 
-/// Whether a folder name is a language code, with a region or a script
-/// after it: `en`, `pt-BR`, `zh_CN`, `zh-hant`.
+/// The scripts documentation folders are named by, after a language code:
+/// `zh-hant`, `sr-latn`. A list, not any four letters: `ts-node` is a
+/// folder of code.
+const SCRIPTS: &[&str] = &["arab", "cyrl", "deva", "hans", "hant", "latn"];
+
+/// Whether a folder name is a language code, with a region (two letters
+/// or three digits) or a script after it: `en`, `pt-BR`, `es-419`,
+/// `zh_CN`, `zh-hant`. Folder names in other scripts are no codes.
 fn is_language(name: &str) -> bool {
+    if !name.is_ascii() || name.len() < 2 {
+        return false;
+    }
     let lower = name.to_ascii_lowercase();
-    let (code, rest) = lower.split_at(lower.len().min(2));
+    let (code, rest) = lower.split_at(2);
     let suffix_ok = rest.is_empty()
         || rest.strip_prefix(['-', '_']).is_some_and(|suffix| {
-            (2..=4).contains(&suffix.len()) && suffix.chars().all(|c| c.is_ascii_alphanumeric())
+            let letters = suffix.chars().all(|c| c.is_ascii_alphabetic());
+            let digits = suffix.chars().all(|c| c.is_ascii_digit());
+            (suffix.len() == 2 && letters)
+                || (suffix.len() == 3 && digits)
+                || SCRIPTS.contains(&suffix)
         });
     suffix_ok && LANGUAGE_CODES.binary_search(&code).is_ok()
 }
 
 /// The most subfolders named by a language code under one folder, each
-/// holding documentation; 0 below two: a lone `docs/en` says nothing.
+/// holding documentation and neither code nor tests (`src/io`,
+/// `bindings/cs` are code); 0 below two: a lone `docs/en` says nothing.
 fn doc_languages(result: &AnalysisResult) -> u32 {
     let (dirs, files) = (&result.dirs, &result.files);
     let mut docs = vec![false; dirs.parent.len()];
+    let mut code = vec![false; dirs.parent.len()];
     for file in 0..files.dir.len() {
-        if files.scope[file] == model::Scope::Docs {
-            docs[files.dir[file] as usize] = true;
+        let dir = files.dir[file] as usize;
+        match files.scope[file] {
+            Scope::Docs => docs[dir] = true,
+            Scope::Source | Scope::Test => code[dir] = true,
+            _ => {}
         }
     }
     // Children come after their parent: going backwards marks each subtree
     for dir in (1..docs.len()).rev() {
-        if let Some(parent) = dirs.parent[dir]
-            && docs[dir]
-        {
-            docs[parent as usize] = true;
+        if let Some(parent) = dirs.parent[dir] {
+            docs[parent as usize] |= docs[dir];
+            code[parent as usize] |= code[dir];
         }
     }
     let mut languages = vec![0u32; dirs.parent.len()];
-    for ((&parent, name), &docs) in dirs.parent.iter().zip(&dirs.name).zip(&docs) {
+    for (dir, (&parent, name)) in dirs.parent.iter().zip(&dirs.name).enumerate() {
         if let Some(parent) = parent
-            && docs
+            && docs[dir]
+            && !code[dir]
             && is_language(name)
         {
             languages[parent as usize] += 1;
@@ -247,9 +265,17 @@ mod tests {
         for folder in ["pt-BR", "zh-hant", "de/docs", "es"] {
             repo.file(&format!("docs/{folder}/index.md"), Scope::Docs);
         }
-        // `api` is no language, and `fr` holds no documentation
+        // `api` is no language, `fr` holds no documentation, and `中文` is
+        // no code
         repo.file("docs/api/index.md", Scope::Docs);
         repo.file("docs/fr/build.ts", Scope::Source);
+        repo.file("docs/中文/index.md", Scope::Docs);
+        assert_eq!(languages(&repo), 5);
+        // Code folders with a readme are no documentation
+        for folder in ["src/io", "src/os"] {
+            repo.file(&format!("{folder}/README.md"), Scope::Docs);
+            repo.file(&format!("{folder}/mod.ts"), Scope::Source);
+        }
         assert_eq!(languages(&repo), 5);
     }
 
@@ -258,6 +284,10 @@ mod tests {
         assert!(LANGUAGE_CODES.windows(2).all(|pair| pair[0] < pair[1]));
         assert!(is_language("zh_CN") && is_language("EN") && !is_language("english"));
         assert!(!is_language("js") && !is_language("de-") && !is_language("pt-BRAZIL"));
+        assert!(is_language("es-419") && is_language("zh-hant"));
+        // Other scripts, and suffixes that are no region nor script
+        assert!(!is_language("中文") && !is_language("aé") && !is_language("ts-node"));
+        assert!(!is_language("my-app") && !is_language("de-12"));
     }
 
     #[test]
