@@ -108,6 +108,29 @@ pub(super) fn pyproject(content: &[u8]) -> Pyproject {
     }
 }
 
+/// The words of a requirements file name that say it is for development:
+/// `requirements-dev.txt`, `requirements_test.txt`, `requirements.lint.txt`.
+const DEVELOPMENT_WORDS: &[&str] = &[
+    "ci",
+    "dev",
+    "develop",
+    "development",
+    "doc",
+    "docs",
+    "lint",
+    "test",
+    "testing",
+    "tests",
+];
+
+/// Whether a requirements file lists what the project is developed with,
+/// by the words of its name: `requirements-latest.txt` is no test file.
+pub(super) fn is_development_requirements(name: &str) -> bool {
+    let stem = name.strip_suffix(".txt").unwrap_or(name);
+    stem.split(['-', '_', '.'])
+        .any(|word| DEVELOPMENT_WORDS.contains(&word.to_ascii_lowercase().as_str()))
+}
+
 /// The packages a `requirements.txt` lists, options and includes left out.
 pub(super) fn requirements(content: &[u8]) -> Vec<String> {
     String::from_utf8_lossy(content)
@@ -355,5 +378,24 @@ mod tests {
         assert_eq!(python_key("Typing_Extensions"), "typing-extensions");
         assert_eq!(python_key("zope.interface"), "zope-interface");
         assert_eq!(python_key("a__b"), "a-b");
+    }
+
+    #[test]
+    fn requirements_for_development_are_named_so() {
+        for name in [
+            "requirements-dev.txt",
+            "requirements_test.txt",
+            "requirements.docs.txt",
+            "requirements-lint.txt",
+        ] {
+            assert!(is_development_requirements(name), "{name}");
+        }
+        for name in [
+            "requirements.txt",
+            "requirements-latest.txt",
+            "requirements-prod.txt",
+        ] {
+            assert!(!is_development_requirements(name), "{name}");
+        }
     }
 }

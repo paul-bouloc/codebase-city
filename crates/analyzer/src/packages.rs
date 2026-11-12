@@ -616,11 +616,10 @@ impl<'a> Manifests<'a> {
                 }
                 _ => Vec::new(),
             };
-            // `requirements-dev.txt`, `requirements-test.txt`: for development
+            // `requirements-dev.txt`, `requirements_test.txt`: for development
             let source = Source {
                 manifest: file,
-                dev: name.starts_with("requirements")
-                    && (name.contains("dev") || name.contains("test")),
+                dev: manifest::is_development_requirements(name),
             };
             for project in python {
                 let key = manifest::python_key(&project);
