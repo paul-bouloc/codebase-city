@@ -1,0 +1,75 @@
+/*
+ * The labels of islands and folders (city language, labels): cream pills over the city, under the
+ * panels. Their sizes match the boxes the city places them by (`area-labels.ts`).
+ */
+.label {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.start {
+  transform: translate(0, -50%);
+}
+
+.end {
+  transform: translate(-100%, -50%);
+}
+
+.centre {
+  transform: translate(-50%, -50%);
+}
+
+.island {
+  padding: 6px 12px;
+  border-radius: var(--radius-lg);
+  background: rgba(255, 250, 240, 0.93);
+  box-shadow: 0 4px 12px rgba(40, 60, 60, 0.16);
+}
+
+.island .name {
+  font: 600 22px / 28px var(--font-family-sans);
+}
+
+.caption {
+  color: var(--color-text-secondary);
+  font: 500 11px / 14px var(--font-family-mono);
+}
+
+.parcel {
+  padding: 3px 8px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 250, 240, 0.94);
+  font: 400 11px / 14px var(--font-family-mono);
+}
+
+/* The selected folder's label: an ink rim, inside, so that its box keeps its size. */
+.island.selected {
+  box-shadow:
+    inset 0 0 0 1.5px var(--color-text-primary),
+    0 4px 12px rgba(40, 60, 60, 0.16);
+}
+
+.parcel.selected {
+  box-shadow: inset 0 0 0 1.5px var(--color-text-primary);
+}
+
+.leaving {
+  animation: fade-out 150ms ease-out forwards;
+}
+
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .leaving {
+    display: none;
+  }
+}
