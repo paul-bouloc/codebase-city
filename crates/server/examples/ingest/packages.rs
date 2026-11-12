@@ -1,6 +1,8 @@
 //! The packages found: the workspace, apps and libraries, frameworks,
 //! groups and the dependencies they import, against what a person expects.
 
+use std::collections::BTreeMap;
+
 use model::{AnalysisResult, PackageKind};
 
 use crate::expected::Expected;
@@ -86,29 +88,48 @@ pub(crate) fn print_packages(result: &AnalysisResult, expected: Option<&Expected
     }
 }
 
+/// The dependencies for running one owner imports, most imported first:
+/// a name declared by several manifests (a library and its site) counts
+/// once, with all its files.
+fn imported(result: &AnalysisResult, owner: Option<Option<u32>>) -> Vec<(String, u32)> {
+    let externals = &result.externals;
+    let mut files: BTreeMap<&str, u32> = BTreeMap::new();
+    for row in 0..externals.name.len() {
+        if !externals.dev[row] && owner.is_none_or(|owner| externals.package[row] == owner) {
+            *files.entry(externals.name[row].as_str()).or_default() += externals.files[row];
+        }
+    }
+    let mut ranked: Vec<(String, u32)> = files
+        .into_iter()
+        .map(|(name, files)| (name.to_owned(), files))
+        .collect();
+    ranked.sort_by_key(|(name, files)| (std::cmp::Reverse(*files), name.clone()));
+    ranked
+}
+
 /// The dependencies most imported, outside packages and in each.
 fn print_externals(result: &AnalysisResult) {
     let externals = &result.externals;
     let mut owners: Vec<Option<u32>> = externals.package.clone();
     owners.dedup();
     for owner in owners {
-        let mut rows: Vec<usize> = (0..externals.name.len())
-            .filter(|&row| externals.package[row] == owner)
-            .collect();
-        rows.sort_by_key(|&row| std::cmp::Reverse(externals.files[row]));
-        let shown: Vec<String> = rows
+        let ranked = imported(result, Some(owner));
+        let shown: Vec<String> = ranked
             .iter()
             .take(SHOWN_EXTERNALS)
-            .map(|&row| format!("{} {}", externals.name[row], externals.files[row]))
+            .map(|(name, files)| format!("{name} {files}"))
             .collect();
+        let dev = (0..externals.name.len())
+            .filter(|&row| externals.package[row] == owner && externals.dev[row])
+            .count();
         let owner = owner.map_or_else(
             || "outside packages".to_owned(),
             |package| result.packages.name[package as usize].clone(),
         );
         println!(
-            "  imports of {owner}: {} ({} in all)",
+            "  imports of {owner}: {} ({} in all, {dev} for development)",
             shown.join(", "),
-            rows.len()
+            ranked.len()
         );
     }
 }
@@ -195,13 +216,10 @@ fn compare(result: &AnalysisResult, expected: &Expected, folder: &dyn Fn(usize) 
         println!("  groups found but not expected: {unexpected:?}");
     }
     if !expected.built_on.is_empty() {
-        let externals = &result.externals;
-        let mut rows: Vec<usize> = (0..externals.name.len()).collect();
-        rows.sort_by_key(|&row| std::cmp::Reverse(externals.files[row]));
-        let top: Vec<&String> = rows
-            .iter()
+        let top: Vec<String> = imported(result, None)
+            .into_iter()
             .take(SHOWN_EXTERNALS)
-            .map(|&row| &externals.name[row])
+            .map(|(name, _)| name)
             .collect();
         let hits = expected
             .built_on
