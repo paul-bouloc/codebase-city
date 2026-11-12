@@ -4,7 +4,7 @@ import { BOAT_LENGTH, type DecorStats } from '../decor/decor-mesh'
 import type { Fleet } from '../decor/fleet'
 import { cityGuideView, type GuidePaths } from '../interaction/city-guide'
 import type { CityInteraction } from '../interaction/city-interaction'
-import type { CameraView, CityItem, CityListeners } from '../interaction/city-items'
+import type { AreaLabelText, CameraView, CityItem, CityListeners } from '../interaction/city-items'
 import type { CityPicker, CityTarget } from '../interaction/picking'
 import type { CityTargets } from '../interaction/targets'
 import { DASH_PERIOD } from '../render/arc-mesh'
@@ -12,6 +12,7 @@ import { disposeObject } from '../render/dispose-object'
 import { OPEN_SEA, seaSize } from '../terrain/sea'
 import type { CityLayout } from '../world/layout'
 import { boardToThree } from '../world/units'
+import { AreaLabels } from './area-labels'
 import { CameraRig } from './camera-rig'
 import { CityPointer } from './city-pointer'
 import { buildCity } from './city-scene'
@@ -69,6 +70,7 @@ export class CityEngine {
   private drive: Drive = STILL
   private readonly pointer: CityPointer
   private readonly guideLabels: GuideLabels
+  private readonly areaLabels: AreaLabels
 
   constructor(container: HTMLElement, { continuous = false }: CityEngineOptions = {}) {
     this.continuous = continuous
@@ -100,11 +102,18 @@ export class CityEngine {
       stopOrbit: () => this.rig.stopOrbit(),
       select: (target) => this.select(target),
       fly: (target) => this.fly(target),
+      labelAt: (x, y) => this.areaLabels.at(x, y),
       pickTook: (ms) => {
         this.counter.stats.pickMs = ms
       },
     })
     this.guideLabels = new GuideLabels(this.renderer.domElement, this.rig.camera)
+    this.areaLabels = new AreaLabels(this.renderer.domElement, this.rig.camera)
+    // Labels are measured in the page's fonts: again once they have loaded.
+    document.fonts?.ready.then(() => {
+      this.areaLabels.remeasure()
+      this.needsRender = true
+    })
     this.setSize(container.clientWidth, container.clientHeight)
     this.renderer.setAnimationLoop((time) => this.frame(time))
   }
@@ -175,6 +184,12 @@ export class CityEngine {
     interaction.showGuide(
       paths && cityGuideView(paths, layout, targets, (building) => interaction.cycleOf(building)),
     )
+    this.needsRender = true
+  }
+
+  /** What the labels of islands and folders say, by path; a folder not in it gets none. */
+  setAreaLabels(texts: ReadonlyMap<string, AreaLabelText>): void {
+    this.areaLabels.setTexts(texts)
     this.needsRender = true
   }
 
@@ -279,6 +294,7 @@ export class CityEngine {
     this.picker = city.picker
     this.targets = city.targets
     this.layout = layout
+    this.areaLabels.setLayout(layout)
     this.placed = city.placed
     this.density = city.density
     this.view = null
@@ -362,7 +378,9 @@ export class CityEngine {
     this.picker = null
     this.fleet = null
     this.targets = null
+    this.areaLabels.setLayout(null)
     this.tellGuideLabels()
+    this.tellAreaLabels()
   }
 
   /**
@@ -400,6 +418,14 @@ export class CityEngine {
     const labels = this.guideLabels.place(roofs)
     if (labels) {
       this.listeners.guideLabels?.(labels)
+    }
+  }
+
+  /** Tells the listeners which labels of islands and folders show, and where, when that changes. */
+  private tellAreaLabels(): void {
+    const labels = this.areaLabels.place(this.interaction?.getSelection()?.target ?? null)
+    if (labels) {
+      this.listeners.areaLabels?.(labels)
     }
   }
 
@@ -450,6 +476,7 @@ export class CityEngine {
       // The view changes only with a frame drawn: the camera moved, or the window's size.
       this.tellView()
       this.tellGuideLabels()
+      this.tellAreaLabels()
       // An open port's card keeps beside its badge.
       const port = this.interaction?.openedPort
       if (port) {

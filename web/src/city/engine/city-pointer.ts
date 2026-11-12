@@ -28,6 +28,8 @@ export interface PointerHost {
   stopOrbit(): void
   select(target: CityTarget | null): void
   fly(target: CityTarget): void
+  /** The island or folder whose label is at this point of the canvas, in CSS pixels. */
+  labelAt(x: number, y: number): CityTarget | null
   /** How long the last search for what the pointer rests on took, in ms. */
   pickTook(ms: number): void
 }
@@ -73,7 +75,7 @@ export class CityPointer {
     const stop = () => this.host.stopOrbit()
     const leave = () => {
       this.pointer = null
-      this.showPointerOn(null)
+      this.showPointerOn(false)
       this.host.interaction()?.point(null, { x: 0, y: 0 })
     }
     const down = (event: PointerEvent) => {
@@ -150,13 +152,17 @@ export class CityPointer {
     }
   }
 
-  /** What is under the pointer, if anything. */
+  /** What is under the pointer, if anything: a label first, it stands over the city. */
   private pick(): CityTarget | null {
     const pointer = this.pointer
     const picker = this.host.picker()
     const canvas = this.canvas
     if (!pointer || !picker || canvas.clientWidth === 0 || canvas.clientHeight === 0) {
       return null
+    }
+    const labelled = this.host.labelAt(pointer.x, pointer.y)
+    if (labelled) {
+      return labelled
     }
     const started = performance.now()
     this.ndc.set(
@@ -183,16 +189,16 @@ export class CityPointer {
     const pointer = this.pointer
     if (pointer) {
       const mark = this.markAtPointer()
-      this.showPointerOn(mark)
+      this.showPointerOn(mark !== null || this.host.labelAt(pointer.x, pointer.y) !== null)
       this.host
         .interaction()
         ?.point(mark ?? this.pick(), { x: pointer.clientX, y: pointer.clientY })
     }
   }
 
-  /** Over a hub or a port's badge, the pointer says it can be clicked. */
-  private showPointerOn(mark: Mark | null): void {
-    this.canvas.style.cursor = mark ? 'pointer' : ''
+  /** Over a hub, a port's badge or a label, the pointer says it can be clicked. */
+  private showPointerOn(clickable: boolean): void {
+    this.canvas.style.cursor = clickable ? 'pointer' : ''
   }
 
   /**
