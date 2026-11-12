@@ -23,6 +23,8 @@ pub(super) struct Npm {
     pub main: Option<String>,
     /// Whether it declares a program to install (`bin`).
     pub bin: bool,
+    /// Whether it keeps itself from being published (`private`).
+    pub private: bool,
 }
 
 pub(super) fn npm(content: &[u8]) -> Option<Npm> {
@@ -67,6 +69,7 @@ pub(super) fn npm(content: &[u8]) -> Option<Npm> {
             Some(Value::Object(programs)) => !programs.is_empty(),
             _ => false,
         },
+        private: manifest.get("private").and_then(Value::as_bool) == Some(true),
     })
 }
 

@@ -150,6 +150,15 @@ pub fn analyze_with_report(
             *scope = Scope::Build;
         }
     }
+    // Analyzed files gave their content to the parser: what is left is the
+    // manifests'
+    let manifests: Vec<(&str, &[u8])> = files
+        .iter()
+        .filter_map(|file| Some((file.path.as_str(), file.content.as_deref()?)))
+        .collect();
+    let file_languages: Vec<Language> = files.iter().map(|file| file.language).collect();
+    // After the root tooling: a project under `scripts` is tooling
+    packages::satellites::apply(&paths, &file_languages, &mut table.scope, &manifests);
 
     let (graph, barrel_report) = graph::build(&graph::Input {
         paths: &paths,
@@ -203,12 +212,6 @@ pub fn analyze_with_report(
             dir_paths: &dir_paths,
         },
     );
-    // Analyzed files gave their content to the parser: what is left is the
-    // manifests'
-    let manifests: Vec<(&str, &[u8])> = files
-        .iter()
-        .filter_map(|file| Some((file.path.as_str(), file.content.as_deref()?)))
-        .collect();
     let entries = entries::find(&entries::Input {
         paths: &paths,
         dir_paths: &dir_paths,
@@ -223,7 +226,6 @@ pub fn analyze_with_report(
     let production: Vec<bool> = (0..files.len())
         .map(|file| graph.is_production(index(file)))
         .collect();
-    let file_languages: Vec<Language> = files.iter().map(|file| file.language).collect();
     // The imports the layers are read from: plain imports and re-exports
     // between production code, a barrel never importing. A barrel is a
     // target: the edges of the result stop at it, where the graph sees

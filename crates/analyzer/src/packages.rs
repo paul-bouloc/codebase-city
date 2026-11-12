@@ -8,6 +8,7 @@ mod externals;
 mod framework;
 mod groups;
 mod manifest;
+pub(crate) mod satellites;
 mod workspace;
 
 use std::collections::{BTreeSet, HashMap, HashSet};
