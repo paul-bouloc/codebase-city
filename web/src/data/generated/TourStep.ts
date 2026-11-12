@@ -46,7 +46,13 @@ biggestIsland: number | null,
  * The island without production code with the most files, such as
  * `build/` or `test/`.
  */
-outsideIsland: number | null, } | { "kind": "builtOn", 
+outsideIsland: number | null, 
+/**
+ * The languages the documentation is written in: the most folders
+ * named by a language code (`en`, `pt-BR`, `zh-hant`) under one
+ * folder, each holding documentation; 0 below two.
+ */
+docLanguages: number, } | { "kind": "builtOn", 
 /**
  * One to three rows of [`Externals`], outside any package, each
  * imported by 10% of the code files at least, the most imported

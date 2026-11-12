@@ -150,13 +150,14 @@ fn check_step(
             language_read,
             biggest_island,
             outside_island,
+            doc_languages,
             ..
         } => {
             optional("tour.language", *language, result.languages.len())?;
             optional("tour.biggestIsland", *biggest_island, island_count)?;
             optional("tour.outsideIsland", *outside_island, island_count)?;
             let without = language.is_none() && (*language_lines > 0 || *language_read);
-            count(language_lines <= lines && !without)?;
+            count(language_lines <= lines && !without && *doc_languages != 1)?;
         }
         TourStep::BuiltOn {
             externals,
@@ -542,6 +543,15 @@ mod tests {
 
     #[test]
     fn counts_hold_together() {
+        // One language is no languages
+        assert_eq!(
+            invalid(|r| {
+                if let TourStep::Overview { doc_languages, .. } = step(r, 0) {
+                    *doc_languages = 1;
+                }
+            }),
+            InvalidResult::TourCount { row: 0 }
+        );
         assert_eq!(
             invalid(|r| {
                 if let TourStep::Overview { language_lines, .. } = step(r, 0) {

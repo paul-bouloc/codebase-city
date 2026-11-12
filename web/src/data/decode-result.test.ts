@@ -641,6 +641,11 @@ describe('decodeResult', () => {
     ).toThrow('tour.steps[0].languageRead is not a boolean')
     expect(
       decodeChanged((json) => {
+        ;(json.tour.steps[0] as { docLanguages: number }).docLanguages = 1
+      }),
+    ).toThrow('the counts of tour.steps[0] do not add up')
+    expect(
+      decodeChanged((json) => {
         const overview = json.tour.steps[0] as { language: unknown; languageLines: number }
         overview.language = null
         overview.languageLines = 0

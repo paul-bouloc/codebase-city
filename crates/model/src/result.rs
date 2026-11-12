@@ -619,6 +619,10 @@ pub enum TourStep {
         /// The island without production code with the most files, such as
         /// `build/` or `test/`.
         outside_island: Option<u32>,
+        /// The languages the documentation is written in: the most folders
+        /// named by a language code (`en`, `pt-BR`, `zh-hant`) under one
+        /// folder, each holding documentation; 0 below two.
+        doc_languages: u32,
     },
     /// What the project builds on: dependencies a manifest at the root
     /// declares for running (or as peers), that a good share of the code

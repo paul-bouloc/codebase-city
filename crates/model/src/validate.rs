@@ -613,6 +613,7 @@ mod tests {
                         language_read: true,
                         biggest_island: Some(1),
                         outside_island: None,
+                        doc_languages: 0,
                     },
                     TourStep::EntryPoints { entries: vec![0] },
                     TourStep::Conductors {

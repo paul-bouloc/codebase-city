@@ -137,9 +137,10 @@ function decodeStep(value: unknown, row: number, tables: Tables): TourStep {
         languageRead: boolean('languageRead'),
         biggestIsland: optional('biggestIsland', islandCount),
         outsideIsland: optional('outsideIsland', islandCount),
+        docLanguages: count('docLanguages'),
       }
       const without = step.language === null && (step.languageLines > 0 || step.languageRead)
-      holds(step.languageLines <= step.lines && !without)
+      holds(step.languageLines <= step.lines && !without && step.docLanguages !== 1)
       return step
     }
     case 'builtOn': {

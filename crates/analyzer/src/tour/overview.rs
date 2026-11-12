@@ -74,7 +74,71 @@ pub(super) fn step(result: &AnalysisResult) -> TourStep {
         // one with the most code, or without code the one with most files
         biggest_island: first_max(code_by_island).or_else(|| first_max(by_island.iter().copied())),
         outside_island: first_max(outside),
+        doc_languages: doc_languages(result),
     }
+}
+
+/// Two-letter language codes (ISO 639-1), as documentation folders are
+/// named: `docs/en`, `docs/pt`.
+const LANGUAGE_CODES: &[&str] = &[
+    "aa", "ab", "af", "ak", "am", "an", "ar", "as", "av", "ay", "az", "ba", "be", "bg", "bi", "bm",
+    "bn", "bo", "br", "bs", "ca", "ce", "ch", "co", "cr", "cs", "cu", "cv", "cy", "da", "de", "dv",
+    "dz", "ee", "el", "en", "eo", "es", "et", "eu", "fa", "ff", "fi", "fj", "fo", "fr", "fy", "ga",
+    "gd", "gl", "gn", "gu", "gv", "ha", "he", "hi", "ho", "hr", "ht", "hu", "hy", "hz", "ia", "id",
+    "ie", "ig", "ii", "ik", "io", "is", "it", "iu", "ja", "jv", "ka", "kg", "ki", "kj", "kk", "kl",
+    "km", "kn", "ko", "kr", "ks", "ku", "kv", "kw", "ky", "la", "lb", "lg", "li", "ln", "lo", "lt",
+    "lu", "lv", "mg", "mh", "mi", "mk", "ml", "mn", "mr", "ms", "mt", "my", "na", "nb", "nd", "ne",
+    "ng", "nl", "nn", "no", "nr", "nv", "ny", "oc", "oj", "om", "or", "os", "pa", "pi", "pl", "ps",
+    "pt", "qu", "rm", "rn", "ro", "ru", "rw", "sa", "sc", "sd", "se", "sg", "si", "sk", "sl", "sm",
+    "sn", "so", "sq", "sr", "ss", "st", "su", "sv", "sw", "ta", "te", "tg", "th", "ti", "tk", "tl",
+    "tn", "to", "tr", "ts", "tt", "tw", "ty", "ug", "uk", "ur", "uz", "ve", "vi", "vo", "wa", "wo",
+    "xh", "yi", "yo", "za", "zh", "zu",
+];
+
+/// Whether a folder name is a language code, with a region or a script
+/// after it: `en`, `pt-BR`, `zh_CN`, `zh-hant`.
+fn is_language(name: &str) -> bool {
+    let lower = name.to_ascii_lowercase();
+    let (code, rest) = lower.split_at(lower.len().min(2));
+    let suffix_ok = rest.is_empty()
+        || rest.strip_prefix(['-', '_']).is_some_and(|suffix| {
+            (2..=4).contains(&suffix.len()) && suffix.chars().all(|c| c.is_ascii_alphanumeric())
+        });
+    suffix_ok && LANGUAGE_CODES.binary_search(&code).is_ok()
+}
+
+/// The most subfolders named by a language code under one folder, each
+/// holding documentation; 0 below two: a lone `docs/en` says nothing.
+fn doc_languages(result: &AnalysisResult) -> u32 {
+    let (dirs, files) = (&result.dirs, &result.files);
+    let mut docs = vec![false; dirs.parent.len()];
+    for file in 0..files.dir.len() {
+        if files.scope[file] == model::Scope::Docs {
+            docs[files.dir[file] as usize] = true;
+        }
+    }
+    // Children come after their parent: going backwards marks each subtree
+    for dir in (1..docs.len()).rev() {
+        if let Some(parent) = dirs.parent[dir]
+            && docs[dir]
+        {
+            docs[parent as usize] = true;
+        }
+    }
+    let mut languages = vec![0u32; dirs.parent.len()];
+    for ((&parent, name), &docs) in dirs.parent.iter().zip(&dirs.name).zip(&docs) {
+        if let Some(parent) = parent
+            && docs
+            && is_language(name)
+        {
+            languages[parent as usize] += 1;
+        }
+    }
+    languages
+        .into_iter()
+        .max()
+        .filter(|&most| most >= 2)
+        .unwrap_or(0)
 }
 
 #[cfg(test)]
@@ -105,6 +169,7 @@ mod tests {
             language_read,
             biggest_island,
             outside_island,
+            ..
         } = step(&repo.result)
         else {
             unreachable!()
@@ -163,8 +228,36 @@ mod tests {
                 language_read: false,
                 biggest_island: Some(0),
                 outside_island: None,
+                doc_languages: 0,
             }
         );
+    }
+
+    #[test]
+    fn the_languages_of_the_docs_are_its_folders_named_by_a_language_code() {
+        let mut repo = Fixture::layered();
+        let languages = |repo: &Fixture| {
+            let TourStep::Overview { doc_languages, .. } = step(&repo.result) else {
+                unreachable!()
+            };
+            doc_languages
+        };
+        repo.file("docs/en/index.md", Scope::Docs);
+        assert_eq!(languages(&repo), 0);
+        for folder in ["pt-BR", "zh-hant", "de/docs", "es"] {
+            repo.file(&format!("docs/{folder}/index.md"), Scope::Docs);
+        }
+        // `api` is no language, and `fr` holds no documentation
+        repo.file("docs/api/index.md", Scope::Docs);
+        repo.file("docs/fr/build.ts", Scope::Source);
+        assert_eq!(languages(&repo), 5);
+    }
+
+    #[test]
+    fn language_codes_are_sorted_for_their_search() {
+        assert!(LANGUAGE_CODES.windows(2).all(|pair| pair[0] < pair[1]));
+        assert!(is_language("zh_CN") && is_language("EN") && !is_language("english"));
+        assert!(!is_language("js") && !is_language("de-") && !is_language("pt-BRAZIL"));
     }
 
     #[test]

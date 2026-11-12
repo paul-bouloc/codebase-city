@@ -30,6 +30,7 @@ pub(crate) fn print_tour(result: &AnalysisResult) {
                 language_read,
                 biggest_island,
                 outside_island,
+                doc_languages,
             } => {
                 let language =
                     language.map_or("-", |language| result.languages[language as usize].as_str());
@@ -47,6 +48,9 @@ pub(crate) fn print_tour(result: &AnalysisResult) {
                 }
                 if let Some(outside) = outside_island {
                     println!("              outside the code {}", island(*outside));
+                }
+                if *doc_languages > 0 {
+                    println!("              documentation in {doc_languages} languages");
                 }
             }
             TourStep::BuiltOn {

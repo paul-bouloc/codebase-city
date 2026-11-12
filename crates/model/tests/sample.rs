@@ -279,6 +279,7 @@ fn tour() -> Tour {
                 // `core` and `ui` tie at five files: the first island wins
                 biggest_island: Some(2),
                 outside_island: Some(6),
+                doc_languages: 0,
             },
             // `react`, in 2 of 14 code files; `axios`, in 1, is not enough
             TourStep::BuiltOn {
