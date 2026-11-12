@@ -271,7 +271,7 @@ function sameTarget(area: LabelArea['target'], selected: CityTarget | null): boo
  * Measures on a canvas of its own, in the fonts the page loaded; without a page (tests), as if
  * each character were 0.6 of the font's size.
  */
-function canvasMeasure(): Measure {
+export function canvasMeasure(): Measure {
   const context =
     typeof document === 'undefined' ? null : document.createElement('canvas').getContext('2d')
   return (text, font) => {
