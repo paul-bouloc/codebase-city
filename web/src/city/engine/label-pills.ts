@@ -86,6 +86,11 @@ export function pillSize(
   }
 }
 
+/** An opacity a step closer to its target, and no further. */
+export function fadeToward(opacity: number, target: number, step: number): number {
+  return target > opacity ? Math.min(opacity + step, target) : Math.max(opacity - step, target)
+}
+
 interface Pill {
   mesh: Mesh
   /** What its texture shows: drawn again when that changes. */
@@ -156,8 +161,7 @@ export class LabelPills {
         pill.shown = false
       }
       const target = pill.shown ? 1 : 0
-      pill.opacity =
-        target > pill.opacity ? Math.min(pill.opacity + step, 1) : Math.max(pill.opacity - step, 0)
+      pill.opacity = fadeToward(pill.opacity, target, step)
       if (!pill.shown && pill.opacity === 0) {
         this.drop(path, pill)
         continue
