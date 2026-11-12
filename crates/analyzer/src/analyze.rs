@@ -24,7 +24,7 @@ use crate::saturating_u32 as index;
 
 /// Version of the algorithms. Bumped whenever a change would give another
 /// result for the same commit, so stored results are recomputed.
-pub const ANALYZER_VERSION: &str = "0.17.0";
+pub const ANALYZER_VERSION: &str = "0.18.0";
 
 /// What an analysis found beyond its result.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
