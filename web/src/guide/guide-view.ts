@@ -1,6 +1,7 @@
 import type { AnalysisResult } from '../data/generated/AnalysisResult'
 import type { Ranked } from '../data/generated/Ranked'
 import type { TourStep } from '../data/generated/TourStep'
+import { type GuideUnit, guideUnits, unitFolders } from './guide-units'
 
 // What the city shows of a step of the tour: the files it puts forward, the folders it rings,
 // what fades, and the cycle it draws. Rows of the result, not paths: the screen turns them into
@@ -18,6 +19,8 @@ export interface GuideView {
   labelled: number[]
   /** Folders ringed in Jade: islands or parcels. */
   folders: number[]
+  /** The packages shown, unit by unit, the largest first. */
+  units: GuideUnit[]
   dim: GuideDim
   /** A row of `cycles`, drawn as a loop. */
   cycle: number | null
@@ -28,6 +31,7 @@ const NOTHING: GuideView = {
   pinned: [],
   labelled: [],
   folders: [],
+  units: [],
   dim: 'none',
   cycle: null,
 }
@@ -56,19 +60,12 @@ export function guideView(result: AnalysisResult, step: TourStep): GuideView {
       return island === undefined ? view : { ...view, folders: [island], dim: 'others' }
     }
     case 'applications':
-      return packages(
-        result,
-        step.units.flatMap((unit) => unit.apps),
-      )
     case 'otherApps':
-      return packages(result, step.apps)
     case 'libraries':
-      return packages(result, [...step.mostImported, step.largest])
-    case 'appLinks':
-      return packages(
-        result,
-        step.shared.flatMap((shared) => [shared.library, ...shared.apps]),
-      )
+    case 'appLinks': {
+      const units = guideUnits(result, step)
+      return { ...ringed(unitFolders(units)), units }
+    }
     case 'examplesAndTests':
       return ringed(step.folders)
     case 'consumers':
@@ -84,44 +81,10 @@ export function guideView(result: AnalysisResult, step: TourStep): GuideView {
   }
 }
 
-/** These folders ringed, the rest faded. */
+/** These folders ringed, the rest faded; nothing fades without them. */
 function ringed(folders: number[]): GuideView {
-  return { ...NOTHING, folders: [...new Set(folders)], dim: 'others' }
-}
-
-/**
- * The ground of these packages ringed, the rest faded. A package of a monorepo is an island; the
- * root package owns the islands no other package holds; a package inside another is a parcel of
- * that one's island.
- */
-function packages(result: AnalysisResult, rows: number[]): GuideView {
-  const owner = packageOfDirs(result)
-  return ringed(
-    rows.flatMap((row) => {
-      const dir = result.packages.dir[row]
-      if (dir === undefined) {
-        return []
-      }
-      if (dir === 0) {
-        return result.islands.dir.filter((island) => owner[island] === row)
-      }
-      return [dir]
-    }),
-  )
-}
-
-/** The package of each folder: the deepest that holds it. Parents come before their children. */
-function packageOfDirs(result: AnalysisResult): (number | null)[] {
-  const owner: (number | null)[] = result.dirs.parent.map(() => null)
-  result.packages.dir.forEach((dir, row) => {
-    owner[dir] = row
-  })
-  result.dirs.parent.forEach((parent, dir) => {
-    if (owner[dir] === null && parent !== null) {
-      owner[dir] = owner[parent] ?? null
-    }
-  })
-  return owner
+  const shown = [...new Set(folders)]
+  return { ...NOTHING, folders: shown, dim: shown.length > 0 ? 'others' : 'none' }
 }
 
 type Target = [file: number | null, dir: number | null]
