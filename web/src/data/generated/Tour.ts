@@ -12,8 +12,9 @@ export type Tour = {
  * Always starts with [`TourStep::Overview`]; the other kinds come at
  * most once each, in the order of [`TourStep`]. A monorepo's tour
  * presents its packages, from [`TourStep::Applications`] to
- * [`TourStep::InsidePackage`]; another repository's presents its files,
- * from [`TourStep::EntryPoints`] to [`TourStep::Foundations`]. A tour
+ * [`TourStep::InsidePackage`]; another repository's presents its files:
+ * [`TourStep::BuiltOn`], from [`TourStep::EntryPoints`] to
+ * [`TourStep::Foundations`], and [`TourStep::ExamplesAndTests`]. A tour
  * never mixes the two.
  */
 steps: Array<TourStep>, };

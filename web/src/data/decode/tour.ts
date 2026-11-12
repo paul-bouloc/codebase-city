@@ -149,16 +149,15 @@ function decodeStep(value: unknown, row: number, tables: Tables): TourStep {
         externals: list('externals', tables.externals.name.length),
         codeFiles: count('codeFiles'),
       }
-      // Declared at the root for running, outside any package, by a good share of the code, the
-      // most imported first
+      // Declared at the root for running (the root may be a package of its own), by a good share
+      // of the code, the most imported first
       const { externals, files } = tables
       let previous = Number.POSITIVE_INFINITY
       for (const at of step.externals) {
         const imported = externals.files[at] as number
         const manifestDir = files.dir[externals.manifest[at] as number]
         holds(
-          externals.package[at] === null &&
-            externals.dev[at] === false &&
+          externals.dev[at] === false &&
             manifestDir === 0 &&
             imported <= previous &&
             imported <= step.codeFiles &&

@@ -54,9 +54,9 @@ outsideIsland: number | null,
  */
 docLanguages: number, } | { "kind": "builtOn", 
 /**
- * One to three rows of [`Externals`], outside any package, each
- * imported by 10% of the code files at least, the most imported
- * first.
+ * One to three rows of [`Externals`], declared by a manifest at the
+ * root, each imported by [`BUILT_ON_SHARE`] of the code files at
+ * least, the most imported first.
  */
 externals: Array<number>, 
 /**

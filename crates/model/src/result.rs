@@ -19,6 +19,16 @@ pub const FORMAT_VERSION: u32 = 11;
 /// packages' code, kit's 3.9%, grafana's 76.6%.
 pub const APPS_LEAD_SHARE: u64 = 10;
 
+/// A dependency a project builds on ([`TourStep::BuiltOn`]) is imported by
+/// this share of its code files, in percent, at least: fastapi's
+/// `pydantic` (25%) is, a helper two files of a hundred use is not.
+pub const BUILT_ON_SHARE: u64 = 10;
+
+/// Fewer examples that import the code make no
+/// [`TourStep::ExamplesAndTests`]: a handful of samples says nothing of how
+/// the project is used.
+pub const MIN_EXAMPLES: u64 = 10;
+
 /// One analysis of one repository at one commit.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -578,8 +588,9 @@ pub struct Tour {
     /// Always starts with [`TourStep::Overview`]; the other kinds come at
     /// most once each, in the order of [`TourStep`]. A monorepo's tour
     /// presents its packages, from [`TourStep::Applications`] to
-    /// [`TourStep::InsidePackage`]; another repository's presents its files,
-    /// from [`TourStep::EntryPoints`] to [`TourStep::Foundations`]. A tour
+    /// [`TourStep::InsidePackage`]; another repository's presents its files:
+    /// [`TourStep::BuiltOn`], from [`TourStep::EntryPoints`] to
+    /// [`TourStep::Foundations`], and [`TourStep::ExamplesAndTests`]. A tour
     /// never mixes the two.
     pub steps: Vec<TourStep>,
 }
@@ -628,9 +639,9 @@ pub enum TourStep {
     /// declares for running (or as peers), that a good share of the code
     /// imports.
     BuiltOn {
-        /// One to three rows of [`Externals`], outside any package, each
-        /// imported by 10% of the code files at least, the most imported
-        /// first.
+        /// One to three rows of [`Externals`], declared by a manifest at the
+        /// root, each imported by [`BUILT_ON_SHARE`] of the code files at
+        /// least, the most imported first.
         externals: Vec<u32>,
         /// Production files in a language the analyzer reads, to give each
         /// its share.

@@ -40,7 +40,8 @@ pub fn of_result(result: &AnalysisResult) -> Tour {
     let mut steps = Vec::new();
     let small = matches!(overview, TourStep::Overview { files, .. } if files < MIN_FILES);
     steps.push(overview);
-    if small || !reads_code(result) {
+    let code = code_files(result);
+    if small || code == 0 {
         return Tour { steps };
     }
     let repo = monorepo::Monorepo::of(result);
@@ -57,7 +58,7 @@ pub fn of_result(result: &AnalysisResult) -> Tour {
         steps.extend(consumers::consumers(repo));
         steps.extend(apps::inside(repo));
     } else {
-        steps.extend(dependencies::built_on(result));
+        steps.extend(dependencies::built_on(result, code));
         let entries = roles::entry_points(result);
         let conductors = roles::conductors(result, entries.as_ref());
         steps.extend(entries);
@@ -72,14 +73,8 @@ pub fn of_result(result: &AnalysisResult) -> Tour {
     Tour { steps }
 }
 
-/// Whether some production file is in a language the analyzer reads.
-fn reads_code(result: &AnalysisResult) -> bool {
-    let files = &result.files;
-    (0..files.dir.len()).any(|file| is_production(result, file) && files.complexity[file].is_some())
-}
-
 /// Production files in a language the analyzer reads: the code shares are
-/// counted in.
+/// counted in. Without one, the tour is the overview alone.
 fn code_files(result: &AnalysisResult) -> u64 {
     let files = &result.files;
     (0..files.dir.len())

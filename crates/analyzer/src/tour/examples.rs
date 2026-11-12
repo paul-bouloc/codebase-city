@@ -3,14 +3,10 @@
 
 use std::collections::{BTreeMap, HashSet};
 
-use model::{AnalysisResult, Scope, TourStep};
+use model::{AnalysisResult, MIN_EXAMPLES, Scope, TourStep};
 
 use super::{MAX_ROWS, count, is_production};
 use crate::saturating_u32 as index;
-
-/// Fewer examples that import the code make no step: a handful of samples
-/// says nothing of how the project is used.
-const MIN_EXAMPLES: u64 = 10;
 
 /// The folders at the top of the repository whose examples import
 /// production code, the one with the most first, and the tests that import

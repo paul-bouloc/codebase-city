@@ -2,7 +2,7 @@
 //! point at.
 
 use super::{InvalidResult, in_bounds};
-use crate::result::{AnalysisResult, PackageKind, TourStep};
+use crate::result::{AnalysisResult, BUILT_ON_SHARE, MIN_EXAMPLES, PackageKind, TourStep};
 
 /// The most rows a list of files or roles holds.
 const MAX_ROWS: usize = 3;
@@ -10,11 +10,6 @@ const MAX_ROWS: usize = 3;
 const MAX_UNITS: usize = 5;
 /// The most libraries the libraries step ranks.
 const MAX_MOST_IMPORTED: usize = 4;
-/// A dependency the project builds on is imported by this share of its
-/// code files, in percent, at least.
-const BUILT_ON_SHARE: u64 = 10;
-/// Fewer examples that import the code make no step.
-const MIN_EXAMPLES: u64 = 10;
 
 /// The place of a kind of step in the tour.
 fn rank(step: &TourStep) -> u8 {
@@ -165,16 +160,15 @@ fn check_step(
         } => {
             let table = &result.externals;
             list("tour.externals", externals, table.name.len())?;
-            // Declared at the root for running, outside any package, by a
-            // good share of the code, the most imported first
+            // Declared at the root for running (the root may be a package of
+            // its own), by a good share of the code, the most imported first
             let mut previous = u32::MAX;
             for &at in externals {
                 let at = at as usize;
                 let manifest = table.manifest[at] as usize;
                 let files = table.files[at];
                 count(
-                    table.package[at].is_none()
-                        && !table.dev[at]
+                    !table.dev[at]
                         && result.files.dir[manifest] == 0
                         && files <= previous
                         && files <= *code_files
