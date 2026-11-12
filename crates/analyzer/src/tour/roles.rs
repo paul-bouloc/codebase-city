@@ -10,6 +10,11 @@ use crate::saturating_u32 as index;
 const FOUNDATION_SHARE: u64 = 10;
 /// And at least this many.
 const FOUNDATION_MIN: u32 = 3;
+/// The first conductor shown pulls together this share of the code files,
+/// in percent, at least: below, it assembles a corner of the code, not the
+/// code (fastapi's `security/http.py`, 11 files of 52; flask's `views.py`,
+/// 21 of 24).
+const CONDUCTOR_SHARE: u64 = 50;
 
 /// A file, or for Go a package folder.
 type Target = (Option<u32>, Option<u32>);
@@ -21,8 +26,8 @@ pub(super) fn entry_points(result: &AnalysisResult) -> Option<TourStep> {
     })
 }
 
-/// The conductors not already shown as an entry point: an application's
-/// main file often is both.
+/// The conductors not already shown as an entry point (an application's
+/// main file often is both), when the first pulls together half the code.
 pub(super) fn conductors(
     result: &AnalysisResult,
     entry_points: Option<&TourStep>,
@@ -41,7 +46,12 @@ pub(super) fn conductors(
         .take(MAX_ROWS)
         .map(index)
         .collect();
-    (!conductors.is_empty()).then_some(TourStep::Conductors { conductors })
+    let first = u64::from(ranked.count[*conductors.first()? as usize]);
+    let files = &result.files;
+    let code = (0..files.dir.len())
+        .filter(|&file| is_production(result, file) && files.complexity[file].is_some())
+        .count() as u64;
+    (first * 100 >= code * CONDUCTOR_SHARE).then_some(TourStep::Conductors { conductors })
 }
 
 /// The first foundations, when the first one carries a good share of the
@@ -109,7 +119,7 @@ mod tests {
         let shown = entry_points(&repo.result);
         // `app/main.ts` is both
         assert_eq!(conductors(&repo.result, shown.as_ref()), None);
-        repo.ranked(Role::Conductor, &[(5, 5), (3, 2), (4, 2), (0, 1), (1, 1)]);
+        repo.ranked(Role::Conductor, &[(5, 5), (3, 3), (4, 2), (0, 1), (1, 1)]);
         assert_eq!(
             conductors(&repo.result, shown.as_ref()),
             Some(TourStep::Conductors {
@@ -124,6 +134,21 @@ mod tests {
         );
     }
 
+    #[test]
+    fn the_first_conductor_shown_pulls_together_half_the_code() {
+        // Six code files: `ui/view.ts` pulls together three, then two
+        let mut repo = Fixture::layered();
+        let shown = entry_points(&repo.result);
+        repo.ranked(Role::Conductor, &[(5, 5), (3, 3)]);
+        assert!(conductors(&repo.result, shown.as_ref()).is_some());
+        repo.result.roles.conductors.count[1] = 2;
+        assert_eq!(conductors(&repo.result, shown.as_ref()), None);
+        // A test is no code: three of six still make half
+        repo.result.roles.conductors.count[1] = 3;
+        repo.test("ui/view.test.ts");
+        assert!(conductors(&repo.result, shown.as_ref()).is_some());
+    }
+
     /// [`Fixture::layered`] with Go packages as targets: `app` the entry
     /// point and first conductor, `core` then `core/net` the foundations.
     fn with_packages() -> Fixture {
@@ -136,7 +161,7 @@ mod tests {
         roles.conductors = Ranked {
             file: vec![None, Some(3)],
             dir: vec![Some(app), None],
-            count: vec![5, 2],
+            count: vec![5, 4],
         };
         roles.foundations = Ranked {
             file: vec![None, None],
