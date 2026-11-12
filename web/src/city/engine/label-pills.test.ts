@@ -38,6 +38,14 @@ const opacityOf = (pills: LabelPills) =>
 
 const SHOW = { snap: false, instant: false }
 
+/** Shows `labels` frame after frame from `now`, until no pill fades any more. */
+function settle(pills: LabelPills, labels: readonly PlacedLabel[], now: number) {
+  let time = now
+  for (let frame = 0; frame < 100 && pills.show(labels, time, SHOW); frame += 1) {
+    time += 16
+  }
+}
+
 describe('LabelPills', () => {
   // No page in the tests: pills draw on canvases that draw nothing.
   beforeEach(() => {
@@ -54,8 +62,7 @@ describe('LabelPills', () => {
     expect(pills.show([label()], 5000, SHOW)).toBe(true)
     expect(opacityOf(pills)).toBeGreaterThan(0)
     expect(opacityOf(pills)).toBeLessThan(1)
-    let now = 5000
-    while (pills.show([label()], (now += 16), SHOW)) {}
+    settle(pills, [label()], 5016)
     expect(opacityOf(pills)).toBe(1)
   })
 
@@ -65,8 +72,7 @@ describe('LabelPills', () => {
     pills.show([label({ caption: '12 files' })], 16, SHOW)
     expect(pills.group.children).toHaveLength(1)
     expect(opacityOf(pills)).toBe(1)
-    let now = 16
-    while (pills.show([], (now += 16), SHOW)) {}
+    settle(pills, [], 32)
     expect(pills.group.children).toHaveLength(0)
   })
 
