@@ -70,8 +70,6 @@ export interface CityListeners {
   view?(view: CameraView): void
   /** Where the labels of the guide's step stand on the page, each time that changes. */
   guideLabels?(labels: readonly GuideLabel[]): void
-  /** The labels of islands and folders on show, and where they stand, each time that changes. */
-  areaLabels?(labels: readonly AreaLabel[]): void
 }
 
 /** A label of the guide over a roof: the file, and where its foot stands on the page. */
@@ -81,28 +79,10 @@ export interface GuideLabel {
   y: number
 }
 
-/**
- * Which way a label runs from its anchor on screen, out to the sea: right of it, left of it,
- * over it or under it; or around it, for a folder's.
- */
-export type LabelLean = 'start' | 'end' | 'above' | 'below' | 'centre'
-
 /** What the label of an island or a folder says: its name, and over it a line of figures. */
 export interface AreaLabelText {
   name: string
   caption: string | null
-}
-
-/** The label of an island or a folder on show, and where its anchor stands on the page. */
-export interface AreaLabel {
-  path: string
-  island: boolean
-  name: string
-  /** The line of figures, when the island spans enough of the screen for it. */
-  caption: string | null
-  x: number
-  y: number
-  lean: LabelLean
 }
 
 /** A press that moves less than this, in CSS pixels, is a click, not a drag of the camera. */

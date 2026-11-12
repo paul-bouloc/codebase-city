@@ -21,6 +21,7 @@ import { type Drive, STILL } from './drive'
 import { extentOf, FRAME_MARGIN, flightRadius } from './flight'
 import { FrameCounter, type FrameStats, type LinkStats, NO_LINKS } from './frame-stats'
 import { GuideLabels } from './guide-labels'
+import { LabelPills } from './label-pills'
 
 /**
  * Boats and arcs move at 30 frames a second at most: every other frame at 60 Hz, a little under
@@ -71,6 +72,7 @@ export class CityEngine {
   private readonly pointer: CityPointer
   private readonly guideLabels: GuideLabels
   private readonly areaLabels: AreaLabels
+  private readonly labelPills: LabelPills
 
   constructor(container: HTMLElement, { continuous = false }: CityEngineOptions = {}) {
     this.continuous = continuous
@@ -109,9 +111,12 @@ export class CityEngine {
     })
     this.guideLabels = new GuideLabels(this.renderer.domElement, this.rig.camera)
     this.areaLabels = new AreaLabels(this.renderer.domElement, this.rig.camera)
-    // Labels are measured in the page's fonts: again once they have loaded.
+    this.labelPills = new LabelPills(() => this.renderer.getPixelRatio())
+    this.scene.add(this.labelPills.group)
+    // Labels are measured and drawn in the page's fonts: again once they have loaded.
     document.fonts?.ready.then(() => {
       this.areaLabels.remeasure()
+      this.labelPills.redraw()
       this.needsRender = true
     })
     this.setSize(container.clientWidth, container.clientHeight)
@@ -349,6 +354,8 @@ export class CityEngine {
       disposeObject(this.city)
       this.city = null
     }
+    this.scene.remove(this.labelPills.group)
+    this.labelPills.dispose()
     this.sun.dispose()
     this.timer.dispose()
     if (import.meta.env.DEV) {
@@ -379,8 +386,8 @@ export class CityEngine {
     this.fleet = null
     this.targets = null
     this.areaLabels.setLayout(null)
+    this.labelPills.clear()
     this.tellGuideLabels()
-    this.tellAreaLabels()
   }
 
   /**
@@ -421,20 +428,19 @@ export class CityEngine {
     }
   }
 
-  /** Tells the listeners which labels of islands and folders show, and where, when that changes. */
-  private tellAreaLabels(): void {
-    const labels = this.areaLabels.place(
-      this.interaction?.getSelection()?.target ?? null,
-      performance.now(),
-      this.cameraMoving,
-    )
-    if (labels) {
-      this.listeners.areaLabels?.(labels)
-    }
-    // Labels waiting to come need frames, even with nothing else moving.
-    if (this.areaLabels.pending) {
-      this.needsRender = true
-    }
+  /**
+   * Places the labels of islands and folders for the frame about to be drawn: between pixels
+   * while the camera glides, on whole pixels once it rests. True while they still come or go.
+   */
+  private placeAreaLabels(): boolean {
+    const now = performance.now()
+    this.rig.camera.updateMatrixWorld()
+    const labels = this.areaLabels.place(this.interaction?.getSelection()?.target ?? null, now)
+    const fading = this.labelPills.show(labels, now, {
+      snap: !this.cameraMoving,
+      instant: this.lessMotion.matches,
+    })
+    return fading || this.areaLabels.pending
   }
 
   private frame(time: number): void {
@@ -481,12 +487,13 @@ export class CityEngine {
     }
     if (moved || this.needsRender || this.continuous) {
       this.rig.fitNear()
+      const labelsMove = this.placeAreaLabels()
       this.renderer.render(this.scene, this.rig.camera)
-      this.needsRender = false
+      // Labels coming, going or waiting to need frames, even with nothing else moving.
+      this.needsRender = labelsMove
       // The view changes only with a frame drawn: the camera moved, or the window's size.
       this.tellView()
       this.tellGuideLabels()
-      this.tellAreaLabels()
       // An open port's card keeps beside its badge.
       const port = this.interaction?.openedPort
       if (port) {

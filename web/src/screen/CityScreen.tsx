@@ -20,8 +20,6 @@ import { githubTreeUrl } from './github-links'
 import { GuideLabels } from './guide/GuideLabels'
 import { useDriveKeys } from './keys/use-drive-keys'
 import { useEscapeKey } from './keys/use-escape-key'
-import { AreaLabels } from './labels/AreaLabels'
-import { AreaLabelLayer } from './labels/area-label-layer'
 import { areaLabelTexts } from './labels/area-label-texts'
 import { CityLegend } from './legend/CityLegend'
 import { repoContents } from './legend/legend'
@@ -116,8 +114,6 @@ function Screen({
   const [legendExpanded, setLegendExpanded] = useState(false)
   const [aboutOpen, setAboutOpen] = useState(false)
   const [guideLabels, setGuideLabels] = useState<readonly GuideLabel[]>([])
-  // The labels of islands and folders move with the city, in the frame it draws.
-  const [labelLayer] = useState(() => new AreaLabelLayer())
   const { selection, sheetOpen, setSheetOpen, openLine, choose, selectFromCity, openAtLine } =
     useScreenSelection(engine, index)
 
@@ -136,9 +132,8 @@ function Screen({
       view: setView,
       select: selectFromCity,
       guideLabels: setGuideLabels,
-      areaLabels: labelLayer.update,
     })
-  }, [engine, selectFromCity, labelLayer])
+  }, [engine, selectFromCity])
 
   useEffect(() => {
     engine?.showGuide(guide?.paths ?? null)
@@ -240,7 +235,6 @@ function Screen({
   return (
     <main ref={screen} className={styles.screen}>
       <CityView layout={layout} showStats={showStats} onEngine={handleEngine} />
-      <AreaLabels layer={labelLayer} selected={selection?.kind === 'dir' ? selection.path : null} />
       {guide && <GuideLabels labels={guideLabels} notes={guide.notes} />}
 
       <div className={styles.topBar}>

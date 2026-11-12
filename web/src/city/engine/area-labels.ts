@@ -1,8 +1,9 @@
 import { type PerspectiveCamera, Vector3 } from 'three'
-import type { AreaLabel, AreaLabelText, LabelLean } from '../interaction/city-items'
+import type { AreaLabelText } from '../interaction/city-items'
 import type { CityTarget } from '../interaction/picking'
 import type { CityLayout } from '../world/layout'
 import type { Vec3 } from '../world/units'
+import { type LabelLean, type Measure, type PlacedLabel, pillSize } from './label-pills'
 import {
   ISLAND_LABEL_PIXELS,
   LABEL_GRACE_MS,
@@ -15,24 +16,11 @@ import {
   placeLabels,
 } from './label-placement'
 
-// The labels of islands and folders: where each would stand on the page this frame, and which
-// of them show. The screen writes them; their fonts and boxes here match its styles.
-
-/** The width of a text in a CSS font, in CSS pixels. */
-export type Measure = (text: string, font: string) => number
+// The labels of islands and folders: which of them show this frame, and where. The screen writes
+// them; `LabelPills` draws them.
 
 /** An island's label shows its line of figures once its plateau spans this many CSS pixels. */
 export const CAPTION_PIXELS = 160
-
-const ISLAND_NAME_FONT = '600 15px "Space Grotesk", system-ui, sans-serif'
-const CAPTION_FONT = '500 10px "JetBrains Mono", ui-monospace, monospace'
-const PARCEL_FONT = '400 11px "JetBrains Mono", ui-monospace, monospace'
-/** Boxes, in CSS pixels: padding across and down, and the height of each line. */
-const ISLAND_PADDING = { across: 8, down: 4 }
-const ISLAND_NAME_LINE = 19
-const CAPTION_LINE = 13
-const PARCEL_PADDING = { across: 8, down: 3 }
-const PARCEL_LINE = 14
 
 interface Shown {
   target: LabelArea['target']
@@ -47,7 +35,6 @@ export class AreaLabels {
   private texts: ReadonlyMap<string, AreaLabelText> = new Map()
   private readonly widths = new Map<string, number>()
   private shown: Shown[] = []
-  private last: readonly AreaLabel[] = []
   /** The labels on show, by path, and whether with their line of figures. */
   private onShow = new Map<string, boolean>()
   /** The labels waiting to come, by path, and since when they have had room. */
@@ -87,15 +74,13 @@ export class AreaLabels {
   }
 
   /**
-   * The labels on show this frame, `now` in ms, or null when they stand where they last stood.
-   * A label comes once it has had room for `LABEL_SETTLE_MS` in a row; the selected one at once.
-   * They stand to the fraction of a pixel while the camera `moving` glides, on whole pixels once
-   * it rests: text between pixels blurs.
+   * The labels on show this frame, `now` in ms. A label comes once it has had room for
+   * `LABEL_SETTLE_MS` in a row; the selected one at once.
    */
-  place(selected: CityTarget | null, now: number, moving = false): readonly AreaLabel[] | null {
+  place(selected: CityTarget | null, now: number): PlacedLabel[] {
     const width = this.canvas.clientWidth
     const height = this.canvas.clientHeight
-    const candidates: (LabelCandidate & { area: LabelArea; label: AreaLabel })[] = []
+    const candidates: (LabelCandidate & { area: LabelArea; label: PlacedLabel })[] = []
     for (const area of this.areas) {
       const text = this.texts.get(area.path)
       if (!text || width === 0 || height === 0) {
@@ -118,7 +103,7 @@ export class AreaLabels {
       }
       const lean = island ? leanAway(anchor, this.onCanvas(area.centre)) : 'centre'
       const caption = island && span >= keep(CAPTION_PIXELS, wasShown) ? text.caption : null
-      const size = this.boxSize(island, text.name, caption)
+      const size = pillSize(island, text.name, caption, (line, font) => this.widthOf(line, font))
       const { x, y } = boxCorner(anchor, size, lean)
       candidates.push({
         island,
@@ -134,9 +119,12 @@ export class AreaLabels {
           island,
           name: text.name,
           caption,
+          selected: isSelected,
+          lean,
+          anchor: area.anchor,
           x: anchor.x,
           y: anchor.y,
-          lean,
+          box: { x, y, ...size },
         },
       })
     }
@@ -175,18 +163,7 @@ export class AreaLabels {
       width,
       height,
     }))
-    const box = kept.length > 0 ? this.canvas.getBoundingClientRect() : { left: 0, top: 0 }
-    const snap = moving ? (value: number) => value : Math.round
-    const labels = kept.map(({ label }) => ({
-      ...label,
-      x: snap(label.x + box.left),
-      y: snap(label.y + box.top),
-    }))
-    if (sameLabels(labels, this.last)) {
-      return null
-    }
-    this.last = labels
-    return labels
+    return kept.map(({ label }) => label)
   }
 
   /** The island or folder whose label is at this point of the canvas, in CSS pixels. */
@@ -196,27 +173,6 @@ export class AreaLabels {
         x >= label.x && x <= label.x + label.width && y >= label.y && y <= label.y + label.height,
     )
     return found?.target ?? null
-  }
-
-  private boxSize(
-    island: boolean,
-    name: string,
-    caption: string | null,
-  ): { width: number; height: number } {
-    if (!island) {
-      return {
-        width: this.widthOf(name, PARCEL_FONT) + 2 * PARCEL_PADDING.across,
-        height: PARCEL_LINE + 2 * PARCEL_PADDING.down,
-      }
-    }
-    const text = Math.max(
-      this.widthOf(name, ISLAND_NAME_FONT),
-      caption === null ? 0 : this.widthOf(caption, CAPTION_FONT),
-    )
-    return {
-      width: text + 2 * ISLAND_PADDING.across,
-      height: ISLAND_NAME_LINE + (caption === null ? 0 : CAPTION_LINE) + 2 * ISLAND_PADDING.down,
-    }
   }
 
   private widthOf(text: string, font: string): number {
@@ -289,24 +245,6 @@ function sameTarget(area: LabelArea['target'], selected: CityTarget | null): boo
     return false
   }
   return area.kind === 'island' || (selected.kind === 'parcel' && selected.parcel === area.parcel)
-}
-
-function sameLabels(a: readonly AreaLabel[], b: readonly AreaLabel[]): boolean {
-  return (
-    a.length === b.length &&
-    a.every((label, at) => {
-      const other = b[at]
-      return (
-        other !== undefined &&
-        label.path === other.path &&
-        label.x === other.x &&
-        label.y === other.y &&
-        label.caption === other.caption &&
-        label.lean === other.lean &&
-        label.name === other.name
-      )
-    })
-  )
 }
 
 /**
