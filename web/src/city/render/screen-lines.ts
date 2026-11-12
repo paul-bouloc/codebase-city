@@ -49,11 +49,17 @@ uniform float width;
 uniform float opacity;
 uniform vec2 dash;
 uniform vec2 sceneDash;
+uniform float dots;
 varying float vPixels;
 varying float vDistance;
 varying float vAcross;
 void main() {
   float cover = clamp(width * 0.5 - abs(vAcross) + 0.5, 0.0, 1.0);
+  if (dots > 0.0) {
+    // Round dots as wide as the line, one every so many pixels, the first on its start.
+    float along = mod(vPixels + dots * 0.5, dots) - dots * 0.5;
+    cover = clamp(width * 0.5 - length(vec2(along, vAcross)) + 0.5, 0.0, 1.0);
+  }
   if (dash.y > 0.0 && mod(vPixels, dash.x + dash.y) > dash.x) {
     discard;
   }
@@ -84,6 +90,8 @@ export interface LineStyle {
    * Used instead of `dash`.
    */
   sceneDash?: [number, number]
+  /** Round dots as wide as the line, this many CSS pixels apart, instead of a line. */
+  dots?: number
   /** 1 if absent. */
   opacity?: number
 }
@@ -156,6 +164,7 @@ export function createScreenLines(
         value: new Vector2(...(style.dash ?? [0, 0]).map((length) => length * pixelRatio)),
       },
       sceneDash: { value: new Vector2(...(style.sceneDash ?? [0, 0])) },
+      dots: { value: (style.dots ?? 0) * pixelRatio },
     },
     vertexShader,
     fragmentShader,
