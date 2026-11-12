@@ -426,6 +426,7 @@ export class CityEngine {
     const labels = this.areaLabels.place(
       this.interaction?.getSelection()?.target ?? null,
       performance.now(),
+      this.cameraMoving,
     )
     if (labels) {
       this.listeners.areaLabels?.(labels)
@@ -447,6 +448,8 @@ export class CityEngine {
         this.interaction?.clearHover()
       } else {
         this.pointer.hover()
+        // At rest, the labels come down on whole pixels.
+        this.needsRender = true
       }
     }
     if (this.interaction?.update(time)) {

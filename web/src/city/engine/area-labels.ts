@@ -89,8 +89,10 @@ export class AreaLabels {
   /**
    * The labels on show this frame, `now` in ms, or null when they stand where they last stood.
    * A label comes once it has had room for `LABEL_SETTLE_MS` in a row; the selected one at once.
+   * They stand to the fraction of a pixel while the camera `moving` glides, on whole pixels once
+   * it rests: text between pixels blurs.
    */
-  place(selected: CityTarget | null, now: number): readonly AreaLabel[] | null {
+  place(selected: CityTarget | null, now: number, moving = false): readonly AreaLabel[] | null {
     const width = this.canvas.clientWidth
     const height = this.canvas.clientHeight
     const candidates: (LabelCandidate & { area: LabelArea; label: AreaLabel })[] = []
@@ -132,8 +134,8 @@ export class AreaLabels {
           island,
           name: text.name,
           caption,
-          x: Math.round(anchor.x),
-          y: Math.round(anchor.y),
+          x: anchor.x,
+          y: anchor.y,
           lean,
         },
       })
@@ -174,10 +176,11 @@ export class AreaLabels {
       height,
     }))
     const box = kept.length > 0 ? this.canvas.getBoundingClientRect() : { left: 0, top: 0 }
+    const snap = moving ? (value: number) => value : Math.round
     const labels = kept.map(({ label }) => ({
       ...label,
-      x: label.x + Math.round(box.left),
-      y: label.y + Math.round(box.top),
+      x: snap(label.x + box.left),
+      y: snap(label.y + box.top),
     }))
     if (sameLabels(labels, this.last)) {
       return null

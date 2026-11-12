@@ -154,4 +154,15 @@ describe('AreaLabels', () => {
     // Still on show: they moved on screen, so they are told again.
     expect(paths(labels.place(null, 1000))).toEqual(['core', 'web'])
   })
+
+  it('stands labels to the fraction of a pixel while the camera moves, on whole pixels at rest', () => {
+    const labels = setup(61)
+    labels.place(null, 0, true)
+    const moving = labels.place(null, LABEL_SETTLE_MS, true) ?? []
+    expect(moving.some((label) => !Number.isInteger(label.x))).toBe(true)
+    const still = labels.place(null, LABEL_SETTLE_MS, false) ?? []
+    expect(still.every((label) => Number.isInteger(label.x) && Number.isInteger(label.y))).toBe(
+      true,
+    )
+  })
 })
