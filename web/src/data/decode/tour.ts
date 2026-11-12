@@ -11,6 +11,8 @@ import { decodePackageStep } from './tour-packages'
 const APPS_LEAD_SHARE = 10
 /** As BUILT_ON_SHARE in crates/model/src/validate/tour.rs: the share of the code a dependency the project builds on is imported by. */
 const BUILT_ON_SHARE = 10
+/** As MIN_EXAMPLES in crates/model/src/validate/tour.rs: fewer examples that import the code make no step. */
+const MIN_EXAMPLES = 10
 
 type Kind = TourStep['kind']
 
@@ -26,6 +28,7 @@ const RANKS = {
   libraries: 7,
   appLinks: 8,
   layers: 9,
+  examplesAndTests: 10,
   consumers: 11,
   insidePackage: 12,
   cycles: 13,
@@ -37,6 +40,7 @@ const RANKS = {
 // repository's its files.
 const TOURS: Partial<Record<Kind, 'files' | 'packages'>> = {
   builtOn: 'files',
+  examplesAndTests: 'files',
   entryPoints: 'files',
   conductors: 'files',
   foundations: 'files',
@@ -114,7 +118,7 @@ function packagesLeadByApps(packages: Tables['packages']): boolean {
 function decodeStep(value: unknown, row: number, tables: Tables): TourStep {
   const path = `tour.steps[${row}]`
   const fields = object(value, path)
-  const { count, index, optional, list, holds } = stepFields(fields, path, row)
+  const { count, counts, index, optional, list, holds } = stepFields(fields, path, row)
   const boolean = (name: string) =>
     typeof fields[name] === 'boolean'
       ? (fields[name] as boolean)
@@ -161,6 +165,26 @@ function decodeStep(value: unknown, row: number, tables: Tables): TourStep {
         )
         previous = imported
       }
+      return step
+    }
+    case 'examplesAndTests': {
+      const step: TourStep = {
+        kind,
+        folders: list('folders', tables.dirs.parent.length),
+        examples: counts('examples'),
+        tests: count('tests'),
+      }
+      // At the top of the repository, the most examples first
+      const { examples, folders } = step
+      const testFiles = tables.files.scope.filter((scope) => scope === 'test').length
+      holds(
+        examples.length === folders.length &&
+          !examples.includes(0) &&
+          folders.every((dir) => tables.dirs.parent[dir] === 0) &&
+          examples.every((each, at) => at === 0 || each <= (examples[at - 1] as number)) &&
+          examples.reduce((sum, each) => sum + each, 0) >= MIN_EXAMPLES &&
+          step.tests <= testFiles,
+      )
       return step
     }
     case 'entryPoints':

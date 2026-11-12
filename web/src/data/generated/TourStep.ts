@@ -115,7 +115,20 @@ up: number,
  * The row of [`Links`] with the most of those imports going up;
  * `null` when none does.
  */
-worstLink: number | null, } | { "kind": "consumers", 
+worstLink: number | null, } | { "kind": "examplesAndTests", 
+/**
+ * One to three folders at the top of the repository, the one with
+ * the most such examples first.
+ */
+folders: Array<number>, 
+/**
+ * For each, its example files that import production code.
+ */
+examples: Array<number>, 
+/**
+ * Test files that import an example: the examples are tested.
+ */
+tests: number, } | { "kind": "consumers", 
 /**
  * One to three folders at the top of the repository, the one with
  * the most imports first.

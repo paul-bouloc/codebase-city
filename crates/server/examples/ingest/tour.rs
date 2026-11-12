@@ -68,6 +68,21 @@ pub(crate) fn print_tour(result: &AnalysisResult) {
                     .collect();
                 println!("  built on    {}", named.join(", "));
             }
+            TourStep::ExamplesAndTests {
+                folders,
+                examples,
+                tests,
+            } => {
+                let named: Vec<String> = folders
+                    .iter()
+                    .zip(examples)
+                    .map(|(&dir, examples)| format!("{} {examples}", dir_path(result, dir)))
+                    .collect();
+                println!(
+                    "  examples    {} import the code; {tests} tests import an example",
+                    named.join(", ")
+                );
+            }
             TourStep::EntryPoints { entries } => {
                 let roles = &result.roles.entries;
                 println!("  entries");

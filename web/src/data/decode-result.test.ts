@@ -600,6 +600,19 @@ describe('decodeResult', () => {
     }
   })
 
+  it('requires ten examples or more in folders at the top, the most first', () => {
+    // After the layers: `tests/` holds the examples
+    const withExamples =
+      (examples: number[], folders = [6]) =>
+      (json: Json) => {
+        json.tour.steps.splice(6, 0, { kind: 'examplesAndTests', folders, examples, tests: 0 })
+      }
+    expect(decodeChanged(withExamples([10]))).not.toThrow()
+    for (const change of [withExamples([9]), withExamples([10], [2]), withExamples([10, 3])]) {
+      expect(decodeChanged(change)).toThrow('the counts of tour.steps[6] do not add up')
+    }
+  })
+
   it('requires tour steps that point inside their tables, one to three rows each', () => {
     expect(
       decodeChanged((json) => {

@@ -13,6 +13,8 @@ const MAX_MOST_IMPORTED: usize = 4;
 /// A dependency the project builds on is imported by this share of its
 /// code files, in percent, at least.
 const BUILT_ON_SHARE: u64 = 10;
+/// Fewer examples that import the code make no step.
+const MIN_EXAMPLES: u64 = 10;
 
 /// The place of a kind of step in the tour.
 fn rank(step: &TourStep) -> u8 {
@@ -27,6 +29,7 @@ fn rank(step: &TourStep) -> u8 {
         TourStep::Libraries { .. } => 7,
         TourStep::AppLinks { .. } => 8,
         TourStep::Layers { .. } => 9,
+        TourStep::ExamplesAndTests { .. } => 10,
         TourStep::Consumers { .. } => 11,
         TourStep::InsidePackage { .. } => 12,
         TourStep::Cycles { .. } => 13,
@@ -45,6 +48,7 @@ enum Tour {
 fn tour_of(step: &TourStep) -> Option<Tour> {
     match step {
         TourStep::BuiltOn { .. }
+        | TourStep::ExamplesAndTests { .. }
         | TourStep::EntryPoints { .. }
         | TourStep::Conductors { .. }
         | TourStep::Foundations { .. } => Some(Tour::Files),
@@ -180,6 +184,33 @@ fn check_step(
         }
         TourStep::EntryPoints { entries } => {
             list("tour.entries", entries, result.roles.entries.file.len())?;
+        }
+        TourStep::ExamplesAndTests {
+            folders,
+            examples,
+            tests,
+        } => {
+            list("tour.folders", folders, dir_count)?;
+            // At the top of the repository, the most examples first
+            let at_top = folders
+                .iter()
+                .all(|&dir| result.dirs.parent[dir as usize] == Some(0));
+            let sorted = examples.windows(2).all(|pair| pair[0] >= pair[1]);
+            let all: u64 = examples.iter().copied().map(u64::from).sum();
+            let test_files = result
+                .files
+                .scope
+                .iter()
+                .filter(|&&scope| scope == crate::result::Scope::Test)
+                .count();
+            count(
+                examples.len() == folders.len()
+                    && !examples.contains(&0)
+                    && at_top
+                    && sorted
+                    && all >= MIN_EXAMPLES
+                    && *tests as usize <= test_files,
+            )?;
         }
         TourStep::Conductors { conductors } => {
             list(
@@ -707,6 +738,39 @@ mod tests {
                 index: 1,
                 len: 1,
             })
+        );
+    }
+
+    #[test]
+    fn examples_and_tests_count_ten_examples_in_top_folders() {
+        // After the layers, before the cycles: `src` holds ten examples
+        let with = |examples: Vec<u32>, tests: u32| {
+            move |r: &mut AnalysisResult| {
+                r.tour.steps.insert(
+                    5,
+                    TourStep::ExamplesAndTests {
+                        folders: vec![1],
+                        examples,
+                        tests,
+                    },
+                );
+            }
+        };
+        let mut r = result();
+        with(vec![10], 0)(&mut r);
+        assert_eq!(r.validate(), Ok(()));
+        for change in [with(vec![9], 0), with(vec![10, 2], 0), with(vec![10], 1)] {
+            assert_eq!(invalid(change), InvalidResult::TourCount { row: 5 });
+        }
+        // The root is no folder at the top
+        assert_eq!(
+            invalid(|r| {
+                with(vec![10], 0)(r);
+                if let TourStep::ExamplesAndTests { folders, .. } = &mut r.tour.steps[5] {
+                    folders[0] = 0;
+                }
+            }),
+            InvalidResult::TourCount { row: 5 }
         );
     }
 

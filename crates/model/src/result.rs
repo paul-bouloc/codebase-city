@@ -696,6 +696,18 @@ pub enum TourStep {
         /// `null` when none does.
         worst_link: Option<u32>,
     },
+    /// How the examples use the code, and the tests the examples: in a
+    /// repository of one project, when ten examples or more import its
+    /// production code.
+    ExamplesAndTests {
+        /// One to three folders at the top of the repository, the one with
+        /// the most such examples first.
+        folders: Vec<u32>,
+        /// For each, its example files that import production code.
+        examples: Vec<u32>,
+        /// Test files that import an example: the examples are tested.
+        tests: u32,
+    },
     /// In a monorepo of libraries, the folders outside the packages whose
     /// examples and tests import them.
     Consumers {

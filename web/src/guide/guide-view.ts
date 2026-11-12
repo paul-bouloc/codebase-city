@@ -69,6 +69,8 @@ export function guideView(result: AnalysisResult, step: TourStep): GuideView {
         result,
         step.shared.flatMap((shared) => [shared.library, ...shared.apps]),
       )
+    case 'examplesAndTests':
+      return ringed(step.folders)
     case 'consumers':
       return ringed(step.folders.map((folder) => folder.dir))
     case 'insidePackage':

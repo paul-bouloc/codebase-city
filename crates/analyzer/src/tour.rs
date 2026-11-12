@@ -13,6 +13,7 @@ mod apps;
 mod complexity;
 mod consumers;
 mod dependencies;
+mod examples;
 #[cfg(test)]
 mod fixture;
 mod libraries;
@@ -63,6 +64,7 @@ pub fn of_result(result: &AnalysisResult) -> Tour {
         steps.extend(conductors);
         steps.extend(roles::foundations(result));
         steps.extend(structure::layers(result));
+        steps.extend(examples::examples_and_tests(result));
     }
     steps.extend(structure::cycles(result, repo.as_ref()));
     steps.extend(complexity::complex_areas(result, repo.as_ref()));
@@ -131,6 +133,7 @@ mod tests {
                 TourStep::Libraries { .. } => "libraries",
                 TourStep::AppLinks { .. } => "appLinks",
                 TourStep::Layers { .. } => "layers",
+                TourStep::ExamplesAndTests { .. } => "examplesAndTests",
                 TourStep::Consumers { .. } => "consumers",
                 TourStep::InsidePackage { .. } => "insidePackage",
                 TourStep::Cycles { .. } => "cycles",

@@ -23,6 +23,17 @@ describe('guideView', () => {
     expect(view.pinned).toEqual([0])
   })
 
+  it('rings the folders of the examples', () => {
+    const view = guideView(result, {
+      kind: 'examplesAndTests',
+      folders: [6],
+      examples: [12],
+      tests: 3,
+    })
+    expect(view.folders).toEqual([6])
+    expect(view.dim).toBe('others')
+  })
+
   it('shows nothing for the overview and the layers', () => {
     for (const kind of ['overview', 'layers'] as const) {
       expect(guideView(result, step(kind))).toEqual({
