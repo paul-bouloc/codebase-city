@@ -9,7 +9,7 @@ import type { TourTarget, TourText } from './tour/tour-spans'
 import { useContentHeight } from './use-content-height'
 
 const TEXT = {
-  step: (at: number, of: number, title: string) => `Step ${at} of ${of} · ${title}`.toUpperCase(),
+  step: (at: number, of: number, title: string) => `Step ${at} of ${of} · ${title}`,
   skip: 'Skip tour',
   progress: 'Tour progress',
   closer: 'Look closer',
