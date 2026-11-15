@@ -129,7 +129,9 @@ export function useGuide(
   // ← and → go back and on, while touring; Space pauses or plays, and starts a tour when none is
   // on: from the page, the city or the guide, whose buttons it does not press.
   useEffect(() => {
+    // A city without a tour leaves Space alone.
     const ours = (event: KeyboardEvent) =>
+      steps.length > 0 &&
       !event.defaultPrevented &&
       isTourKeyTarget(event.target) &&
       !event.metaKey &&
@@ -141,7 +143,7 @@ export function useGuide(
       }
       if (event.code === 'Space' && !event.shiftKey) {
         event.preventDefault()
-        if (!event.repeat && steps.length > 0) {
+        if (!event.repeat) {
           dispatch({ kind: 'toggle' })
         }
       } else if (touring && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
