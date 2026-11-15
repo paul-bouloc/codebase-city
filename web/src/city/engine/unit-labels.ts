@@ -19,6 +19,8 @@ type Target = LabelArea['target']
 
 interface UnitLabel {
   key: string
+  /** Its unit's index among those on show; none for a link's count. */
+  unit: number | null
   target: Target | null
   name: string
   caption: string | null
@@ -72,7 +74,7 @@ export class UnitLabels {
   setUnits(units: readonly CityGuideUnit[]): void {
     this.showing = units.length > 0
     this.hostIslands = new Set(units.flatMap((unit) => (unit.parcel ? [unit.parcel.island] : [])))
-    this.labels = units.flatMap((unit) => this.labelOf(unit) ?? [])
+    this.labels = units.flatMap((unit, at) => this.labelOf(unit, at) ?? [])
     this.shown = []
   }
 
@@ -93,9 +95,10 @@ export class UnitLabels {
 
   /**
    * The labels on show this frame, the farthest first: each is drawn over those before it. A
-   * unit's stands straight over its anchor, a link's count on the middle of its way.
+   * unit's stands straight over its anchor, a link's count on the middle of its way. The `lit`
+   * unit's leaders stand out.
    */
-  place(counts: readonly LinkCount[] = []): PlacedLabel[] {
+  place(counts: readonly LinkCount[] = [], lit: number | null = null): PlacedLabel[] {
     this.width = this.canvas.clientWidth
     this.height = this.canvas.clientHeight
     if (
@@ -137,6 +140,7 @@ export class UnitLabels {
           box,
           guide: label.kind,
           leads: label.leads,
+          lit: label.unit !== null && label.unit === lit,
           order: 0,
         },
       })
@@ -148,6 +152,7 @@ export class UnitLabels {
       add(
         {
           key: count.key,
+          unit: null,
           target: null,
           name: count.files,
           caption: count.typeOnly,
@@ -184,7 +189,7 @@ export class UnitLabels {
    * each of its other islands while it has few; none for a unit past the labels the step has
    * room for.
    */
-  private labelOf(unit: CityGuideUnit): UnitLabel | null {
+  private labelOf(unit: CityGuideUnit, index: number): UnitLabel | null {
     const { label } = unit
     if (!label) {
       return null
@@ -211,6 +216,7 @@ export class UnitLabels {
     ]
     return {
       key: `guide\n${unit.islands.join(',')}\n${unit.parcel ? keyOf(target) : ''}`,
+      unit: index,
       target,
       name: label.name,
       caption: label.caption,

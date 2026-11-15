@@ -65,6 +65,8 @@ describe('UnitLabels', () => {
       expect(each.box.x + each.box.width / 2).toBeCloseTo(each.x)
     }
     expect(labels.active).toBe(true)
+    // The unit under the pointer has its leaders lit up
+    expect(labels.place([], 0).map((each) => each.lit)).toEqual([true, false])
   })
 
   it('centres the count of a link on its way, a click on it going to what lies under', () => {

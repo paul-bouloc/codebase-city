@@ -47,6 +47,8 @@ export interface PlacedLabel {
   leads?: readonly Vec3[]
   /** Among the guide's labels, drawn over those of a lower order, its leaders too. */
   order?: number
+  /** Its unit is under the pointer: its leaders stand out. */
+  lit?: boolean
 }
 
 /** A label comes and goes over this many ms. */
@@ -126,6 +128,13 @@ const LEADER: LeaderStyle = {
   width: 1.8,
   halo: { width: 4, opacity: 0.85 },
   dot: { radius: 5, rim: 1.5 },
+}
+/** The leaders of a unit under the pointer, wider as its ties. */
+const LIT_LEADER: LeaderStyle = {
+  ...LEADER,
+  width: 3.3,
+  halo: { width: 5.5, opacity: 0.9 },
+  dot: { radius: 5.75, rim: 1.5 },
 }
 /**
  * Folders under islands, all over the city; the guide's labels over them, each with its leaders
@@ -243,6 +252,7 @@ export class LabelPills {
         label.caption ?? '',
         label.selected,
         label.guide ?? '',
+        label.lit ?? false,
       ].join('\u0000')
       let pill = this.pills.get(label.path)
       if (!pill || pill.look !== look) {
@@ -318,7 +328,7 @@ export class LabelPills {
     mesh.renderOrder = label.island ? ORDER.island : ORDER.parcel
     this.group.add(mesh)
     const leads = (label.leads ?? []).map((from) => {
-      const lead = leaderMesh(from, label.anchor, LEADER, ratio)
+      const lead = leaderMesh(from, label.anchor, label.lit ? LIT_LEADER : LEADER, ratio)
       this.group.add(lead)
       return lead
     })
