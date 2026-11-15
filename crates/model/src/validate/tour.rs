@@ -281,7 +281,11 @@ fn check_step(
             )?;
             for shared in shared {
                 packages("tour.apps", &shared.apps, PackageKind::App, 2, usize::MAX)?;
-                count(shared.type_only <= shared.files)?;
+                let aligned = shared.files.len() == shared.apps.len()
+                    && shared.type_only.len() == shared.apps.len();
+                let most_first = shared.files.windows(2).all(|pair| pair[0] >= pair[1]);
+                let types = shared.type_only.iter().zip(&shared.files);
+                count(aligned && most_first && types.into_iter().all(|(t, f)| t <= f))?;
             }
         }
         TourStep::Layers { worst_link, .. } => {
@@ -363,7 +367,7 @@ fn listed(row: usize, rows: &[u32], min: usize, max: usize) -> Result<(), Invali
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::result::{AppUnit, Packages, Workspace, WorkspaceKind};
+    use crate::result::{AppUnit, Packages, SharedLibrary, Workspace, WorkspaceKind};
     use crate::validate::tests::{invalid, result};
 
     /// The sample as a monorepo of one app, `src/`, with a tour of
@@ -656,6 +660,60 @@ mod tests {
         // 2 of 21: a monorepo of libraries, whose tour has no main apps
         r.packages.code_files[0] = 19;
         assert_eq!(r.validate(), Err(InvalidResult::TourAppsLead));
+    }
+
+    /// The monorepo with `lib` and a second app, `other`, and the step that
+    /// says the two apps share `lib`, the app with the most files first.
+    fn shared(files: Vec<u32>, type_only: Vec<u32>) -> impl FnOnce(&mut AnalysisResult) {
+        move |r| {
+            monorepo(r);
+            library(r, 18);
+            r.dirs.parent.push(Some(0));
+            r.dirs.name.push("other".to_owned());
+            r.dirs.island.push(None);
+            let packages = &mut r.packages;
+            packages.dir.push(2);
+            packages.name.push("other".to_owned());
+            packages.kind.push(PackageKind::App);
+            packages.framework.push(None);
+            packages.manifest.push(None);
+            packages.group.push(None);
+            packages.code_files.push(1);
+            packages.entry.push(None);
+            packages.routes.push(None);
+            packages.route_count.push(0);
+            packages.api_route_count.push(0);
+            r.tour.steps.insert(
+                2,
+                TourStep::AppLinks {
+                    app_imports: 0,
+                    shared: vec![SharedLibrary {
+                        library: 0,
+                        apps: vec![1, 2],
+                        files,
+                        type_only,
+                    }],
+                },
+            );
+        }
+    }
+
+    #[test]
+    fn each_app_sharing_a_library_has_its_counts() {
+        let mut r = result();
+        shared(vec![2, 1], vec![0, 1])(&mut r);
+        assert_eq!(r.validate(), Ok(()));
+        for (files, type_only) in [
+            (vec![2], vec![0, 1]),
+            (vec![2, 1], vec![0]),
+            (vec![1, 2], vec![0, 1]),
+            (vec![2, 1], vec![0, 2]),
+        ] {
+            assert_eq!(
+                invalid(shared(files, type_only)),
+                InvalidResult::TourCount { row: 2 }
+            );
+        }
     }
 
     #[test]

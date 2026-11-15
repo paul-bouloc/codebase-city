@@ -7,7 +7,7 @@ import { decodeTour } from './decode/tour'
 import type { AnalysisResult } from './generated/AnalysisResult'
 
 // FORMAT_VERSION in crates/model; the generated sample result keeps the two in step.
-export const FORMAT_VERSION = 11
+export const FORMAT_VERSION = 12
 
 /**
  * Turns a parsed JSON analysis result into a typed one, or throws an

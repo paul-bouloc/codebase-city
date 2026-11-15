@@ -696,7 +696,7 @@ describe('decodeResult', () => {
       {
         kind: 'appLinks',
         appImports: 0,
-        shared: [{ library: 2, apps: [0, 1], files: 4, typeOnly: 1 }],
+        shared: [{ library: 2, apps: [0, 1], files: [3, 1], typeOnly: [1, 0] }],
       },
       { kind: 'insidePackage', package: 0, dirs: [2], files: [5] },
       ...steps.slice(6),
@@ -725,7 +725,7 @@ describe('decodeResult', () => {
       decodeChanged((json) => {
         asMonorepo(json)
         ;(json.tour.steps[3] as { shared: unknown[] }).shared = [
-          { library: 2, apps: [0], files: 4, typeOnly: 1 },
+          { library: 2, apps: [0], files: [4], typeOnly: [1] },
         ]
       }),
     ).toThrow('a list of tour.steps[3] must hold as many rows as its step allows, each once')
@@ -735,6 +735,20 @@ describe('decodeResult', () => {
         ;(json.tour.steps[1] as { appFiles: number }).appFiles = 4
       }),
     ).toThrow('the counts of tour.steps[1] do not add up')
+    for (const counts of [
+      { files: [3], typeOnly: [1, 0] },
+      { files: [1, 3], typeOnly: [0, 1] },
+      { files: [3, 1], typeOnly: [0, 2] },
+    ]) {
+      expect(
+        decodeChanged((json) => {
+          asMonorepo(json)
+          ;(json.tour.steps[3] as { shared: unknown[] }).shared = [
+            { library: 2, apps: [0, 1], ...counts },
+          ]
+        }),
+      ).toThrow('the counts of tour.steps[3] do not add up')
+    }
     expect(
       decodeChanged((json) => {
         asMonorepo(json)

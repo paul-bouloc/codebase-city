@@ -202,8 +202,8 @@ pub(super) fn app_links(repo: &Monorepo<'_>) -> Option<TourStep> {
             SharedLibrary {
                 library,
                 apps: importing.iter().map(|&(app, _, _)| app).collect(),
-                files: importing.iter().map(|&(_, files, _)| files).sum(),
-                type_only: importing.iter().map(|&(_, _, types)| types).sum(),
+                files: importing.iter().map(|&(_, files, _)| files).collect(),
+                type_only: importing.iter().map(|&(_, _, types)| types).collect(),
             },
         ));
     }
@@ -340,10 +340,28 @@ mod tests {
                 shared: vec![SharedLibrary {
                     library: 10,
                     apps: vec![0, 3],
-                    files: 2,
-                    type_only: 1,
+                    files: vec![1, 1],
+                    type_only: vec![1, 0],
                 }],
             })
+        );
+    }
+
+    #[test]
+    fn each_app_has_its_own_counts_the_largest_first() {
+        let mut fixture = Fixture::monorepo();
+        let contracts = fixture.file_at("libs/contracts/index.ts");
+        for path in ["apps/admin/a.ts", "apps/admin/b.ts"] {
+            let file = fixture.file(path, Scope::Source);
+            fixture.import(file, contracts, EdgeKind::Import);
+        }
+        fixture.sort_edges();
+        let Some(TourStep::AppLinks { shared, .. }) = app_links(&repo(&fixture)) else {
+            panic!("no app links");
+        };
+        assert_eq!(
+            (&shared[0].apps, &shared[0].files, &shared[0].type_only),
+            (&vec![3, 0], &vec![3, 1], &vec![0, 1])
         );
     }
 

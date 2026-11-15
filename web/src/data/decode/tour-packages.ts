@@ -108,12 +108,17 @@ export function decodePackageStep(
       const shared = values.map((value, at) => {
         const each = object(value, `${path}.shared[${at}]`)
         const own = stepFields(each, `${path}.shared[${at}]`, row)
-        return {
-          library: own.count('library'),
-          apps: packages(each.apps, 'apps', 'app', 2, Number.MAX_SAFE_INTEGER),
-          files: own.count('files'),
-          typeOnly: own.count('typeOnly'),
-        }
+        const apps = packages(each.apps, 'apps', 'app', 2, Number.MAX_SAFE_INTEGER)
+        const files = own.counts('files')
+        const typeOnly = own.counts('typeOnly')
+        // One count of each per app, the app with the most files first
+        holds(
+          files.length === apps.length &&
+            typeOnly.length === apps.length &&
+            files.every((each, app) => app === 0 || (files[app - 1] ?? 0) >= each) &&
+            typeOnly.every((each, app) => each <= (files[app] ?? 0)),
+        )
+        return { library: own.count('library'), apps, files, typeOnly }
       })
       packages(
         shared.map((each) => each.library),
@@ -122,7 +127,6 @@ export function decodePackageStep(
         1,
         MAX_ROWS,
       )
-      holds(shared.every((each) => each.typeOnly <= each.files))
       return { kind, appImports: count('appImports'), shared }
     }
     case 'consumers': {

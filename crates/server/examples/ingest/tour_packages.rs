@@ -87,7 +87,7 @@ pub(crate) fn print_package_step(result: &AnalysisResult, step: &TourStep) {
             println!("  app links   {app_imports} production imports between apps");
             for shared in shared {
                 println!(
-                    "              {} by {}: {} files, {} types only",
+                    "              {} by {}: {:?} files, {:?} types only",
                     packages.name[shared.library as usize],
                     names(result, &shared.apps),
                     shared.files,

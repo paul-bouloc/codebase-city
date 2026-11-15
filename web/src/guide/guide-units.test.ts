@@ -102,8 +102,8 @@ describe('guideUnits', () => {
       kind: 'appLinks',
       appImports: 0,
       shared: [
-        { library: 0, apps: [1, 2], files: 4, typeOnly: 0 },
-        { library: 0, apps: [2], files: 1, typeOnly: 0 },
+        { library: 0, apps: [1, 2], files: [2, 2], typeOnly: [0, 0] },
+        { library: 0, apps: [2], files: [1], typeOnly: [0] },
       ],
     })
     expect(units.map((unit) => unit.packages[0])).toEqual([0, 1, 2])

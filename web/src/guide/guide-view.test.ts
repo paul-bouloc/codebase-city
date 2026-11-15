@@ -133,7 +133,7 @@ describe('guideView', () => {
       guideView(monorepo, {
         kind: 'appLinks',
         appImports: 0,
-        shared: [{ library: 2, apps: [0, 1], files: 4, typeOnly: 0 }],
+        shared: [{ library: 2, apps: [0, 1], files: [2, 2], typeOnly: [0, 0] }],
       }),
     ).toMatchObject(ringed([2, 3, 4]))
     expect(

@@ -10,7 +10,7 @@ use ts_rs::TS;
 
 /// Version of the shape of the data. Bumped on any change the web app has to
 /// know about; a result with another version is rejected, not guessed at.
-pub const FORMAT_VERSION: u32 = 11;
+pub const FORMAT_VERSION: u32 = 12;
 
 /// The apps lead a monorepo when they hold this share of the packages'
 /// code files, in percent, at least: its tour presents them first. Below,
@@ -811,10 +811,10 @@ pub struct SharedLibrary {
     /// The apps that import it, two or more, the one with the most
     /// importing files first.
     pub apps: Vec<u32>,
-    /// Production files of those apps that import it.
-    pub files: u32,
-    /// Of them, files that import only its types.
-    pub type_only: u32,
+    /// For each app, its production files that import it.
+    pub files: Vec<u32>,
+    /// For each app, those of its files that import only its types.
+    pub type_only: Vec<u32>,
 }
 
 /// A folder outside the packages whose examples or tests import them.

@@ -14,10 +14,10 @@ library: number,
  */
 apps: Array<number>, 
 /**
- * Production files of those apps that import it.
+ * For each app, its production files that import it.
  */
-files: number, 
+files: Array<number>, 
 /**
- * Of them, files that import only its types.
+ * For each app, those of its files that import only its types.
  */
-typeOnly: number, };
+typeOnly: Array<number>, };
