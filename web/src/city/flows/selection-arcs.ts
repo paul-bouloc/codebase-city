@@ -199,6 +199,20 @@ export function loopDrawing(
   return { lines, dots, stems: [], labels }
 }
 
+/** A route through files, over their roofs in import order: a Marine arc from each to the next. */
+export function routeDrawing(roofs: readonly Vec3[]): ArcDrawing {
+  const colour = COLOURS.outgoing
+  const lines: ArcLine[] = []
+  const dots: ArcDot[] = []
+  roofs.slice(1).forEach((end, at) => {
+    const start = roofs[at] ?? end
+    const points = arcPoints(start, end, ARC_SEGMENTS)
+    lines.push({ points, colour, width: ARC_WIDTH, upward: false, solid: true })
+    dots.push(targetDot(end, colour))
+  })
+  return { lines, dots, stems: [], labels: [] }
+}
+
 function targetDot(position: Vec3, colour: Vec3): ArcDot {
   return { position, colour, size: TARGET_DOT, rim: TARGET_RIM, rimColour: WHITE }
 }

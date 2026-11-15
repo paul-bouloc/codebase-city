@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { ARC_SEGMENTS } from '../render/arc-path'
 import { INCOMING_LINK, OUTGOING_LINK, UPWARD } from '../render/palette'
 import { srgb, type Vec3 } from '../world/units'
-import { bundleWidth, HUB_RISE, selectionArcs } from './selection-arcs'
+import { bundleWidth, HUB_RISE, routeDrawing, selectionArcs } from './selection-arcs'
 import type { LinkEnd, Linked, SelectionLinks } from './selection-links'
 
 const linked = (building: number, island: number, upward = false): Linked => ({
@@ -165,5 +165,25 @@ describe('selectionArcs', () => {
     expect(there?.[2]).toBe(0)
     expect(back?.[2]).toBe(0)
     expect(back?.[1] ?? 0).toBeGreaterThan((there?.[1] ?? 0) + 2)
+  })
+})
+
+describe('routeDrawing', () => {
+  it('draws a solid Marine arc from each file to the next, a dot where each lands', () => {
+    const roofs: Vec3[] = [
+      [0, 1, 0],
+      [10, 1, 0],
+      [10, 2, 10],
+    ]
+    const drawing = routeDrawing(roofs)
+    expect(drawing.lines).toHaveLength(2)
+    expect(drawing.lines.every((line) => line.solid && !line.upward)).toBe(true)
+    expect(drawing.lines[0]?.points[0]).toEqual(roofs[0])
+    expect(drawing.lines[1]?.points.at(-1)).toEqual(roofs[2])
+    expect(drawing.dots.map((dot) => dot.position)).toEqual([roofs[1], roofs[2]])
+  })
+
+  it('draws nothing for a single file', () => {
+    expect(routeDrawing([[0, 0, 0]]).lines).toEqual([])
   })
 })
