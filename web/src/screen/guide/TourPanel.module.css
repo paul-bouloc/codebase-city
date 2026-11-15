@@ -19,11 +19,15 @@
   padding: var(--space-3-5) var(--space-4) var(--space-4);
 }
 
-/* What a step says, and its chips: a new step fades in. */
+/* What a step says, and its chips. */
 .said {
   display: flex;
   flex-direction: column;
   gap: var(--space-3-5);
+}
+
+/* A new step fades in. */
+.fade {
   animation: said-in var(--duration-base) var(--easing-enter) both;
 }
 
@@ -169,7 +173,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .panel,
-  .said {
+  .fade {
     animation: none;
   }
 

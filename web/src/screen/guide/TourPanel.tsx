@@ -76,13 +76,15 @@ export const TourPanel = forwardRef<HTMLHeadingElement, TourPanelProps>(function
             />
           ))}
         </div>
-        {/* A new step fades in. */}
-        <div key={step} className={styles.said}>
-          <p className={styles.text} aria-live="polite">
-            <TourSpans spans={text.text} repoName={repoName} onChip={onChip} />
-          </p>
+        {/* A new step fades in; the region that reads it out stays. */}
+        <div className={styles.said}>
+          <div aria-live="polite">
+            <p key={step} className={`${styles.text} ${styles.fade}`}>
+              <TourSpans spans={text.text} repoName={repoName} onChip={onChip} />
+            </p>
+          </div>
           {text.closer.length > 0 && (
-            <div className={styles.closer}>
+            <div key={step} className={`${styles.closer} ${styles.fade}`}>
               <span className={styles.eyebrow}>{TEXT.closer}</span>
               <ul className={styles.chips}>
                 {text.closer.map((chip, at) => (
