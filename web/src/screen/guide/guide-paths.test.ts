@@ -17,6 +17,7 @@ describe('guidePaths', () => {
       labelled: ['src/core/utils.ts'],
       folders: ['src/core'],
       units: [],
+      links: [],
       fade: 'others',
       cycle: null,
     })
@@ -49,6 +50,29 @@ describe('guidePaths', () => {
     }
     expect(guidePaths({ ...view, units: [unit] }, { ...index, result }).units).toEqual([
       { folders: ['src/core'], label: { name: '@harbor/core', caption: 'library · 4 files' } },
+    ])
+  })
+
+  it('names the folders at both ends of each link, and counts it', () => {
+    const view = guideView(index.result, { kind: 'entryPoints', entries: [] })
+    const unit = (folders: number[]) => ({
+      kind: 'app' as const,
+      packages: [0],
+      packageKind: 'app' as const,
+      group: null,
+      folders,
+      host: null,
+      framework: null,
+      codeFiles: 4,
+      importers: null,
+    })
+    const links = [{ from: 1, to: 0, files: 2, typeOnly: 1 }]
+    expect(guidePaths({ ...view, units: [unit([2]), unit([3, 4])], links }, index).links).toEqual([
+      {
+        from: ['src/ui', 'src/api'],
+        to: ['src/core'],
+        label: { files: '2 files', typeOnly: '1 types only' },
+      },
     ])
   })
 })

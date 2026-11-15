@@ -29,6 +29,15 @@ export interface CityGuideUnit {
   label: GuideUnitLabel | null
 }
 
+/** A link between two units a step shows: from the islands of the importing one to the other's. */
+export interface CityGuideLink {
+  /** The islands of the importing unit, the largest first. */
+  from: number[]
+  /** The island of the imported one: its own, or the one holding its parcel. */
+  to: number
+  label: GuideLinkLabel
+}
+
 export interface CityGuideView {
   /** Buildings in the Guide state. */
   buildings: readonly number[]
@@ -39,6 +48,8 @@ export interface CityGuideView {
   areas: readonly Area[]
   /** The units of packages on show; a unit the city shows nothing of is left out. */
   units: readonly CityGuideUnit[]
+  /** The links between them; one with an end the city shows nothing of is left out. */
+  links: readonly CityGuideLink[]
   fade: GuideFade
   cycle: Cycle | null
 }
@@ -48,6 +59,20 @@ export interface GuideUnitLabel {
   name: string
   /** The line of figures over the name; none on a short label. */
   caption: string | null
+}
+
+/** What the count of a link says: "612 files" over "470 types only". */
+export interface GuideLinkLabel {
+  files: string
+  /** None when no file imports types alone. */
+  typeOnly: string | null
+}
+
+/** A link between two units a step shows, by the paths of their islands or parcels. */
+export interface GuideLinkPaths {
+  from: readonly string[]
+  to: readonly string[]
+  label: GuideLinkLabel
 }
 
 /** A unit of packages a step shows, by path: an app, a library, a group of apps, the root. */
@@ -67,6 +92,7 @@ export interface GuidePaths {
   folders: readonly string[]
   /** The units of packages it shows, the largest first. */
   units: readonly GuideUnitPaths[]
+  links: readonly GuideLinkPaths[]
   fade: GuideFade
   /** The path of a file of the cycle to draw, if any. */
   cycle: string | null
@@ -84,6 +110,18 @@ export function cityGuideView(
     return target?.kind === 'building' ? [target.index] : []
   }
   const cycleAt = paths.cycle === null ? [] : building(paths.cycle)
+  const lots = (island: number) => layout.islands[island]?.lots.length ?? 0
+  // The islands of these folders, the largest first; a parcel stands for its island
+  const islandsOf = (folders: readonly string[]) => {
+    const islands = new Set<number>()
+    for (const path of folders) {
+      const target = targets.at(path)
+      if (target?.kind === 'island' || target?.kind === 'parcel') {
+        islands.add(target.island)
+      }
+    }
+    return [...islands].sort((a, b) => lots(b) - lots(a))
+  }
   return {
     buildings: paths.files.flatMap(building),
     pinned: paths.pinned.flatMap(building),
@@ -104,9 +142,13 @@ export function cityGuideView(
           parcel ??= { island: target.island, parcel: target.parcel }
         }
       }
-      const lots = (island: number) => layout.islands[island]?.lots.length ?? 0
       islands.sort((a, b) => lots(b) - lots(a))
       return islands.length > 0 || parcel ? [{ islands, parcel, label: unit.label }] : []
+    }),
+    links: paths.links.flatMap((link) => {
+      const [to] = islandsOf(link.to)
+      const from = islandsOf(link.from).filter((island) => island !== to)
+      return to === undefined || from.length === 0 ? [] : [{ from, to, label: link.label }]
     }),
     fade: paths.fade,
     cycle: cycleAt[0] === undefined ? null : (cycleOf(cycleAt[0]) ?? null),

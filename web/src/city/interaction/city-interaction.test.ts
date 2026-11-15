@@ -209,6 +209,7 @@ describe('CityInteraction', () => {
       labelled: [2],
       areas: [],
       units: [],
+      links: [],
       fade: 'all',
       cycle: null,
     })
@@ -224,6 +225,7 @@ describe('CityInteraction', () => {
       labelled: [],
       areas: [{ island: 0 }],
       units: [],
+      links: [],
       fade: 'others',
       cycle: null,
     })
@@ -239,6 +241,7 @@ describe('CityInteraction', () => {
       labelled: [],
       areas: [],
       units: [],
+      links: [],
       fade: 'none',
       cycle: null,
     })
@@ -255,6 +258,7 @@ describe('CityInteraction', () => {
       labelled: [],
       areas: [],
       units: [],
+      links: [],
       fade: 'all',
       cycle: null,
     })
@@ -268,6 +272,7 @@ describe('CityInteraction', () => {
       labelled: [],
       areas: [],
       units: [],
+      links: [],
       fade: 'all',
       cycle: null,
     })

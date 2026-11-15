@@ -65,6 +65,13 @@ describe('cityGuideView', () => {
           { folders: ['a/ui'], label: null },
           { folders: ['gone'], label: null },
         ],
+        links: [
+          // To a parcel: to its island
+          { from: ['b'], to: ['a/ui'], label: { files: '3 files', typeOnly: null } },
+          // Nothing left on either side
+          { from: ['a'], to: ['a/ui'], label: { files: '1 file', typeOnly: null } },
+          { from: ['b'], to: ['gone'], label: { files: '1 file', typeOnly: null } },
+        ],
         fade: 'others',
         cycle: 'a/ui/view.ts',
       },
@@ -81,6 +88,7 @@ describe('cityGuideView', () => {
         { islands: [0, 1], parcel: null, label: { name: 'pair', caption: null } },
         { islands: [], parcel: { island: 0, parcel: 0 }, label: null },
       ],
+      links: [{ from: [1], to: 0, label: { files: '3 files', typeOnly: null } }],
       fade: 'others',
       cycle: CYCLE,
     })
@@ -100,6 +108,7 @@ describe('CityGuide', () => {
       labelled: [0],
       areas: [{ island: 1 }],
       units: [],
+      links: [],
       fade: 'all',
       cycle: null,
     })
@@ -124,6 +133,7 @@ describe('CityGuide', () => {
       pinned: [],
       labelled: [],
       areas: [{ island: 0 }, { island: 1 }],
+      links: [],
       fade: 'others' as const,
       cycle: null,
     }
@@ -152,6 +162,7 @@ describe('CityGuide', () => {
       labelled: [],
       areas: [],
       units: [],
+      links: [],
       fade: 'all',
       cycle: CYCLE,
     })
@@ -163,6 +174,7 @@ describe('CityGuide', () => {
       labelled: [],
       areas: [],
       units: [],
+      links: [],
       fade: 'all',
       cycle: null,
     })
@@ -173,6 +185,7 @@ describe('CityGuide', () => {
       labelled: [],
       areas: [{ island: 0, rect: { x: 0, y: 5, width: 10, height: 5 }, level: 1 }],
       units: [],
+      links: [],
       fade: 'others',
       cycle: null,
     })
@@ -186,6 +199,7 @@ describe('CityGuide', () => {
       labelled: [],
       areas: [],
       units: [],
+      links: [],
       fade: 'none',
       cycle: null,
     })

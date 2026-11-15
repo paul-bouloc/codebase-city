@@ -1,6 +1,7 @@
-import type { GuideUnitLabel } from '../../city/interaction/city-guide'
+import type { GuideLinkLabel, GuideUnitLabel } from '../../city/interaction/city-guide'
 import type { AnalysisResult } from '../../data/generated/AnalysisResult'
 import type { Framework } from '../../data/generated/Framework'
+import type { GuideLink } from '../../guide/guide-links'
 import type { GuideUnit } from '../../guide/guide-units'
 import { exactCount } from '../../ui/display/count-format'
 
@@ -107,6 +108,14 @@ export function shortName(name: string, most: number): string {
     }
   }
   return `…/${last.slice(0, most - 3)}…`
+}
+
+/** What a link's count says: "612 files" over "470 types only", or the files alone. */
+export function guideLinkLabel(link: GuideLink): GuideLinkLabel {
+  return {
+    files: filesCount(link.files),
+    typeOnly: link.typeOnly > 0 ? `${exactCount(link.typeOnly)} types only` : null,
+  }
 }
 
 function filesCount(files: number): string {

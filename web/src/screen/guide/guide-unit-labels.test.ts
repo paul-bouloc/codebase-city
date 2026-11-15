@@ -5,6 +5,7 @@ import sample from '../../data/generated/sample-result.json'
 import type { GuideUnit } from '../../guide/guide-units'
 import {
   FULL_LABELS,
+  guideLinkLabel,
   guideUnitLabels,
   MAX_LABELS,
   shortName,
@@ -123,5 +124,18 @@ describe('guideUnitLabels', () => {
       result,
     )
     expect(labels.map((label) => label?.name)).toEqual(['billing', 'harbor'])
+  })
+})
+
+describe('guideLinkLabel', () => {
+  it('counts the files of a link, and those that import types alone if any', () => {
+    expect(guideLinkLabel({ from: 0, to: 1, files: 1612, typeOnly: 470 })).toEqual({
+      files: '1,612 files',
+      typeOnly: '470 types only',
+    })
+    expect(guideLinkLabel({ from: 0, to: 1, files: 1, typeOnly: 0 })).toEqual({
+      files: '1 file',
+      typeOnly: null,
+    })
   })
 })

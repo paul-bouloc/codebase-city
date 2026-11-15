@@ -1,7 +1,7 @@
 import type { GuidePaths } from '../../city/interaction/city-guide'
 import type { GuideView } from '../../guide/guide-view'
 import type { ResultIndex } from '../result-index'
-import { guideUnitLabels } from './guide-unit-labels'
+import { guideLinkLabel, guideUnitLabels } from './guide-unit-labels'
 
 /** What a step shows, by the paths the city knows its files and folders by. */
 export function guidePaths(view: GuideView, index: ResultIndex): GuidePaths {
@@ -17,6 +17,11 @@ export function guidePaths(view: GuideView, index: ResultIndex): GuidePaths {
     units: view.units.map((unit, at) => ({
       folders: folders(unit.folders),
       label: labels[at] ?? null,
+    })),
+    links: view.links.map((link) => ({
+      from: folders(view.units[link.from]?.folders ?? []),
+      to: folders(view.units[link.to]?.folders ?? []),
+      label: guideLinkLabel(link),
     })),
     fade: view.dim,
     cycle: member === undefined ? null : (index.filePaths[member] ?? null),
