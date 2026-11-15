@@ -105,6 +105,8 @@
   height: 100%;
   border-radius: 4px;
   background: var(--meaning-incoming);
+  transform-origin: left;
+  animation: bar-in var(--duration-slow) var(--easing-enter) both;
 }
 
 .count,
@@ -122,4 +124,29 @@
 .actions {
   display: flex;
   justify-content: flex-end;
+}
+
+/* A new answer fades in, its bars grow from the left. */
+.fade {
+  animation: said-in var(--duration-base) var(--easing-enter) both;
+}
+
+@keyframes said-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@keyframes bar-in {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade,
+  .bar {
+    animation: none;
+  }
 }

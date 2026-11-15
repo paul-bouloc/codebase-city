@@ -23,6 +23,9 @@ const TEXT = {
   choose: 'Choose a file to see every file that depends on it.',
 }
 
+/** Between the growth of one bar and the next, in ms. */
+const BAR_STAGGER = 30
+
 /** Only an analyzed file's imports are known: the field offers no other. */
 const analyzed = (hit: FileHit) => ANALYZED_LANGUAGES.has(hit.languageName)
 
@@ -61,23 +64,27 @@ export const ImpactPanel = forwardRef<HTMLHeadingElement, ImpactPanelProps>(func
         offers={analyzed}
         onChoose={onChoose}
       />
+      {/* Each file's answer fades in; the region that reads it out stays. */}
       <div aria-live="polite">
-        {!text && <p className={styles.hint}>{TEXT.choose}</p>}
-        {text?.none && <p className={styles.none}>{text.none}</p>}
-        {text?.lead && (
-          <div className={styles.result}>
-            <p className={styles.lead}>
-              {text.lead} <code className={styles.name}>{name}</code>
-            </p>
-            <p className={styles.detail}>{text.detail}</p>
-          </div>
-        )}
+        <div key={file ?? ''} className={styles.fade}>
+          {!text && <p className={styles.hint}>{TEXT.choose}</p>}
+          {text?.none && <p className={styles.none}>{text.none}</p>}
+          {text?.lead && (
+            <div className={styles.result}>
+              <p className={styles.lead}>
+                {text.lead} <code className={styles.name}>{name}</code>
+              </p>
+              <p className={styles.detail}>{text.detail}</p>
+            </div>
+          )}
+        </div>
       </div>
-      {impact && text?.lead && (
-        <div className={styles.islands}>
+      {/* One island alone would be one full bar: its count is the total already. */}
+      {impact && text?.lead && impact.islands.length + (impact.otherIslands ? 1 : 0) > 1 && (
+        <div key={file ?? ''} className={`${styles.islands} ${styles.fade}`}>
           <h3 className={styles.eyebrow}>{TEXT.byIsland}</h3>
           <ul className={styles.rows}>
-            {impact.islands.map((island) => (
+            {impact.islands.map((island, at) => (
               <li key={island.name} className={styles.row}>
                 <span className={styles.island} title={island.name}>
                   {island.name}
@@ -85,7 +92,11 @@ export const ImpactPanel = forwardRef<HTMLHeadingElement, ImpactPanelProps>(func
                 <span className={styles.track}>
                   <span
                     className={styles.bar}
-                    style={{ width: `${most > 0 ? (island.count / most) * 100 : 0}%` }}
+                    // The bars grow from the left, one after the other.
+                    style={{
+                      width: `${most > 0 ? (island.count / most) * 100 : 0}%`,
+                      animationDelay: `${at * BAR_STAGGER}ms`,
+                    }}
                   />
                 </span>
                 <span className={island.count > 0 ? styles.count : styles.zero}>
