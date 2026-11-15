@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { StepText } from './tour/tour-spans'
 import {
   clockDue,
   MAX_STEP_SECONDS,
@@ -8,7 +9,6 @@ import {
   startClock,
   stepSeconds,
 } from './tour-clock'
-import type { StepText } from './tour/tour-spans'
 
 const text = (words: number, chips: string[] = []): StepText => ({
   text: [Array(words).fill('word').join(' ')],

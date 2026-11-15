@@ -6,6 +6,8 @@ import { isTourKeyTarget } from '../keys/screen-keys'
 import type { ResultIndex } from '../result-index'
 import { guideFrame, guidePaths } from './guide-paths'
 import { FOLDED, type GuideAction, type GuideState, nextGuide, tourLength } from './guide-state'
+import { type TourContext, type TourText, tourContext } from './tour/tour-spans'
+import { tourNote, tourText } from './tour/tour-text'
 import {
   clockDue,
   pauseClock,
@@ -14,8 +16,6 @@ import {
   startClock,
   stepSeconds,
 } from './tour-clock'
-import { type TourContext, type TourText, tourContext } from './tour/tour-spans'
-import { tourNote, tourText } from './tour/tour-text'
 
 /** Pixels the tour's panel keeps clear on the left of the city: the camera frames right of them. */
 const TOUR_INSET = 520
