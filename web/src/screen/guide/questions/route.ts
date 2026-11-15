@@ -117,8 +117,11 @@ function levels(
 ): { level: Int32Array; reached: number } {
   const level = new Int32Array(imports.length).fill(-1)
   level[from] = 0
-  const queue = [from]
-  for (let at = 0; at < queue.length; at++) {
+  // Each file goes in once: the queue never outgrows the files.
+  const queue = new Int32Array(imports.length)
+  let length = 1
+  queue[0] = from
+  for (let at = 0; at < length; at++) {
     const file = queue[at] ?? 0
     const next = (level[file] ?? 0) + 1
     // Every file on `to`'s level is known once the level before it is gone through.
@@ -128,11 +131,11 @@ function levels(
     for (const imported of imports[file] ?? []) {
       if ((level[imported] ?? 0) < 0) {
         level[imported] = next
-        queue.push(imported)
+        queue[length++] = imported
       }
     }
   }
-  return { level, reached: queue.length - 1 }
+  return { level, reached: length - 1 }
 }
 
 function noRouteReason(
