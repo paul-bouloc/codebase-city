@@ -16,6 +16,7 @@ import { CameraControls } from './camera/CameraControls'
 import { MapScale } from './camera/MapScale'
 import { useCameraActions } from './camera/use-camera-actions'
 import { githubTreeUrl } from './github-links'
+import { localTourStorage, startsFirstTour, tourSeenKey } from './guide/first-tour'
 import { GuideDock } from './guide/GuideDock'
 import { GuideLabels } from './guide/GuideLabels'
 import type { GuideState } from './guide/guide-state'
@@ -62,6 +63,8 @@ interface CityScreenProps {
   /** What the guide shows, when the caller keeps it (development); the screen's own otherwise. */
   guide?: GuideState
   onGuideChange?: (guide: GuideState) => void
+  /** The tour opens on its own the first time this browser sees the city (off in development). */
+  firstTour?: boolean
   /** Where the logo leads. */
   homeHref?: string
   /** Draw every frame and show the frame rate (development). */
@@ -83,6 +86,7 @@ function Screen({
   result,
   guide: guideState,
   onGuideChange,
+  firstTour = true,
   homeHref = '/',
   showStats = false,
   onEngine,
@@ -139,6 +143,14 @@ function Screen({
       gesture: pauseTour,
     })
   }, [engine, selectFromCity, pauseTour])
+
+  // The first time this browser sees the city, once it is there, the tour starts.
+  const seenKey = tourSeenKey(result.repo.owner, result.repo.name)
+  useEffect(() => {
+    if (firstTour && engine && startsFirstTour(localTourStorage(), seenKey, window.location.hash)) {
+      guideDispatch({ kind: 'start' })
+    }
+  }, [firstTour, engine, seenKey, guideDispatch])
 
   useEffect(() => {
     engine?.showGuide(guide.shown?.paths ?? null)
