@@ -198,6 +198,9 @@ export class CityInteraction {
    * selection's fading, and the selection's links make way for them.
    */
   showImpact(impact: CityImpact | null): void {
+    if (!impact && !this.impact) {
+      return
+    }
     const placed = impact ? this.buildings.placed[impact.building] : undefined
     if (impact && placed) {
       const [x, y, z] = placed.position
