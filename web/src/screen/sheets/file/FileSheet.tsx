@@ -90,10 +90,10 @@ export function FileSheet({
   )
 
   const footer =
-    !loading && file.analyzed && onShowImpact && onFindPath ? (
+    !loading && file.analyzed && (onShowImpact || onFindPath) ? (
       <>
-        <Button onClick={onShowImpact}>{TEXT.showImpact}</Button>
-        <Button onClick={onFindPath}>{TEXT.findPath}</Button>
+        {onShowImpact && <Button onClick={onShowImpact}>{TEXT.showImpact}</Button>}
+        {onFindPath && <Button onClick={onFindPath}>{TEXT.findPath}</Button>}
       </>
     ) : undefined
 
