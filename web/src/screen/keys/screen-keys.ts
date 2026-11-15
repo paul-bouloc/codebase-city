@@ -24,11 +24,14 @@ export function isSearchKey(
 
 /**
  * The tour's arrows come from the page, the city or the guide only: elsewhere (a code view, a
- * toolbar) they scroll or move what has the focus.
+ * toolbar) they scroll or move what has the focus, and in a field (a question's) they type.
  */
 export function isTourKeyTarget(target: EventTarget | null): boolean {
   if (typeof HTMLElement === 'undefined' || !(target instanceof HTMLElement)) {
     return true
+  }
+  if (isTyping(target)) {
+    return false
   }
   return (
     target === document.body ||
