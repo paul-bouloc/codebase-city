@@ -19,7 +19,7 @@ const SHORT_NAME = 18
 /** Past this many islands, the root says how many of the city's it stands on. */
 const ROOT_SHARE_FROM = 24
 
-const FRAMEWORKS: Record<Framework, string> = {
+export const FRAMEWORKS: Record<Framework, string> = {
   nextjs: 'Next.js',
   nestjs: 'NestJS',
   reactNative: 'React Native',
