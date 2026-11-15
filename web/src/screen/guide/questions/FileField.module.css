@@ -1,7 +1,6 @@
 /* The "File" field of a question, on "City UI · 08": 44 px, the path in mono 13. */
 
 .box {
-  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-1-5);
@@ -79,16 +78,11 @@
   color: var(--color-text-primary);
 }
 
-/* The files found, over what follows the field. */
+/* The files found, under the field: the guide stands at the bottom and grows upward. */
 .list {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  left: 0;
-  z-index: 1;
   display: flex;
   flex-direction: column;
-  margin: var(--space-1) 0 0;
+  margin: 0;
   padding: var(--space-1);
   border: var(--glass-border);
   border-radius: var(--radius-md);
@@ -132,7 +126,12 @@
   color: var(--color-text-secondary);
   text-overflow: ellipsis;
   direction: rtl;
-  unicode-bidi: plaintext;
+}
+
+/* Left to right inside the right-to-left box: its start is what gives way. */
+.optionFolderText {
+  direction: ltr;
+  unicode-bidi: isolate;
 }
 
 .optionName {

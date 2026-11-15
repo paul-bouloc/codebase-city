@@ -146,7 +146,11 @@ export function FileField({ label, value, searchIndex, onChoose }: FileFieldProp
             >
               <Icon name="file" size={16} className={styles.optionIcon} />
               <span className={styles.optionPath}>
-                <span className={styles.optionFolder}>{hit.path.slice(0, hit.nameStart)}</span>
+                <span className={styles.optionFolder}>
+                  <span className={styles.optionFolderText}>
+                    {hit.path.slice(0, hit.nameStart)}
+                  </span>
+                </span>
                 <span className={styles.optionName}>{hit.path.slice(hit.nameStart)}</span>
               </span>
             </div>
