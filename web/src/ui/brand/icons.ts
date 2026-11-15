@@ -8,6 +8,7 @@ import {
   ChartColumn,
   Check,
   ChevronDown,
+  ChevronUp,
   CircleAlert,
   CircleCheck,
   CircleMinus,
@@ -36,6 +37,7 @@ import {
   LogOut,
   type LucideIcon,
   Map as MapIcon,
+  MapPin,
   Minus,
   Network,
   Pause,
@@ -75,6 +77,7 @@ export const LUCIDE_ICONS = {
   'zoom-in': ZoomIn,
   'zoom-out': ZoomOut,
   'chevron-down': ChevronDown,
+  'chevron-up': ChevronUp,
   external: ExternalLink,
 
   // Actions
@@ -122,6 +125,7 @@ export const LUCIDE_ICONS = {
   'scale-height': ChartColumn,
   'scale-footprint': Scaling,
   canal: WavesHorizontal,
+  guide: MapPin,
 
   // Administration and privacy
   dashboard: LayoutDashboard,
