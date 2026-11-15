@@ -10,3 +10,6 @@ export type FileRole =
   | 'test'
   | 'config'
   | 'generated'
+
+/** The roles a file's path tells, rather than the graph: never "likely". */
+export type PathRole = Extract<FileRole, 'generated' | 'test' | 'config'>

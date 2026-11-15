@@ -1,5 +1,5 @@
 import { folderPaths } from '../city/world/from-result'
-import type { Language } from '../data/file-kinds'
+import type { Language, PathRole } from '../data/file-kinds'
 import type { AnalysisResult } from '../data/generated/AnalysisResult'
 import type { EntryReason } from '../data/generated/EntryReason'
 
@@ -25,9 +25,6 @@ export type GraphRole =
   | { role: 'conductor'; dependencies: number }
   | { role: 'foundation'; dependents: number }
   | { role: 'facade' }
-
-/** What a file's path says it is, rather than the graph: never "likely". */
-export type PathRole = 'generated' | 'test' | 'config'
 
 /** A file's path role: generated code first, then its scope when that is tests or config. */
 export function pathRoleOf(result: AnalysisResult, file: number): PathRole | null {
