@@ -29,9 +29,15 @@ export function FileFacts({ file, onOpenFolder, onShowCycle }: FileFactsProps) {
         <span className={`${styles.trait} ${styles.incoming}`} />
         <span>
           {TEXT.importedBy} <strong>{exactCount(file.importers)}</strong>
-          {TEXT.filesDirectly(file.importers)}
-          <strong>{exactCount(file.dependents)}</strong>
-          {TEXT.inTotal}
+          {file.dependents === undefined ? (
+            TEXT.filesSuffix(file.importers)
+          ) : (
+            <>
+              {TEXT.filesDirectly(file.importers)}
+              <strong>{exactCount(file.dependents)}</strong>
+              {TEXT.inTotal}
+            </>
+          )}
           {file.shownImporters !== undefined && (
             <span className={styles.subFact}>
               {TEXT.showing(file.shownImporters, file.importers)}

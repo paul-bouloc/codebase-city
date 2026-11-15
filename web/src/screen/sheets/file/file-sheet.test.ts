@@ -92,6 +92,18 @@ describe('fileSheetData', () => {
     }
   })
 
+  it('gives no total of dependents that would read smaller than its direct importers', () => {
+    // Outside production, the analysis counts no total.
+    expect(file('src/generated/schema.ts')).toMatchObject({ importers: 1 })
+    expect(file('src/generated/schema.ts')).not.toHaveProperty('dependents')
+    // A total below the direct importers (tests among them, a facade seen through) is dropped.
+    const json = structuredClone(sample) as unknown as AnalysisResult
+    json.files.dependents[8] = 3
+    expect(file('src/core/utils.ts', indexResult(json))).not.toHaveProperty('dependents')
+    json.files.dependents[8] = 4
+    expect(file('src/core/utils.ts', indexResult(json))).toMatchObject({ dependents: 4 })
+  })
+
   it('tells the size of the cycle a file is in', () => {
     expect(file('src/core/store.ts')?.cycles).toEqual([2])
   })

@@ -62,6 +62,13 @@ describe('FileSheet', () => {
     expect(tabLabels(html)).toEqual(['Imports', 'Imported by', 'Symbols', 'Code'])
   })
 
+  it('says only how many import the file when it has no total', () => {
+    const { dependents: _, ...noTotal } = FILE
+    const html = render(noTotal)
+    expect(html).toContain('Imported by <strong>1,204</strong> files')
+    expect(html).not.toContain('in total')
+  })
+
   it('names a path role without "likely", after the inferred roles', () => {
     const html = render({ ...FILE, pathRole: 'test' })
     expect(html.indexOf('Conductor')).toBeLessThan(html.indexOf('>Test<'))
