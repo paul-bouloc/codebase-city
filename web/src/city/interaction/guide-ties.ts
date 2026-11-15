@@ -17,6 +17,8 @@ const WHITE: Vec3 = [1, 1, 1]
 const HALO = { width: 7, colour: WHITE, opacity: 0.8 }
 const DOTS = { width: 4, dots: 7.1 }
 const END = { radius: 3.5, rim: { width: 1.2, colour: WHITE } }
+/** How much wider the ties of a unit under the pointer are, in CSS pixels. */
+const LIT_WIDER = 1.5
 
 /**
  * The ties between these plateaux: a minimum spanning tree over their middles, each tie from the
@@ -74,7 +76,11 @@ function distance(a: Point | undefined, b: Point | undefined): number {
 export class GuideTies {
   readonly group = new Group()
 
-  constructor(private readonly pixelRatio: number) {}
+  /** `lit`: the ties of a unit under the pointer, wider. */
+  constructor(
+    private readonly pixelRatio: number,
+    private readonly lit = false,
+  ) {}
 
   /** Draws these ties, or none. */
   show(ties: readonly [Point, Point][]): void {
@@ -84,10 +90,20 @@ export class GuideTies {
     }
     const lines = ties.map((tie) => tie.map(({ x, y }) => boardToThree(x, y, WATER_LIFT)))
     const colour = srgb(GUIDE)
+    const wider = this.lit ? LIT_WIDER : 0
     this.group.add(
-      createScreenLines(lines, HALO, this.pixelRatio, false),
-      createScreenLines(lines, { ...DOTS, colour }, this.pixelRatio, false),
-      createScreenDots(lines.flat(), { ...END, fill: colour }, this.pixelRatio),
+      createScreenLines(lines, { ...HALO, width: HALO.width + wider }, this.pixelRatio, false),
+      createScreenLines(
+        lines,
+        { ...DOTS, width: DOTS.width + wider, colour },
+        this.pixelRatio,
+        false,
+      ),
+      createScreenDots(
+        lines.flat(),
+        { ...END, radius: END.radius + wider / 2, fill: colour },
+        this.pixelRatio,
+      ),
     )
     // Drawn in this order, over the water.
     this.group.children.forEach((child, at) => {
