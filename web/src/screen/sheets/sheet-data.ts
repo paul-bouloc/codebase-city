@@ -46,9 +46,11 @@ export interface FileSheetData {
   // Generated code, a test or a config, as its path tells: shown after the inferred roles.
   pathRole?: PathRole
   importers: number
-  // All files that depend on it, directly or not. Absent when the analysis counts no total that
-  // holds its direct importers: outside production, a facade seen through, tests among them.
+  // The production files that depend on it, directly or not. Absent when the analysis counts none
+  // that holds its direct importers in production (outside production, a facade seen through).
   dependents?: number
+  // Set when files outside production (tests) import it too: the total then says "in production".
+  dependentsInProduction?: boolean
   // Set when the city groups the arcs: "Showing 20 of 1,204 importers".
   shownImporters?: number
   imports: number

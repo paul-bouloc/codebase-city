@@ -93,11 +93,13 @@ describe('fileSheetData', () => {
     }
   })
 
-  it('gives no total of dependents that would read smaller than its direct importers', () => {
+  it('gives no total of dependents that would read smaller than its production importers', () => {
     // Outside production, the analysis counts no total.
     expect(file('src/generated/schema.ts')).toMatchObject({ importers: 1 })
     expect(file('src/generated/schema.ts')).not.toHaveProperty('dependents')
-    // A total below the direct importers (tests among them, a facade seen through) is dropped.
+    // Production files only import it: the total holds them all, and says nothing more.
+    expect(file('src/core/utils.ts')).not.toHaveProperty('dependentsInProduction')
+    // A total below the direct importers in production (a facade seen through) is dropped.
     const json = structuredClone(sample) as unknown as AnalysisResult
     const utils = index.fileAt('src/core/utils.ts') ?? -1
     expect(utils).toBeGreaterThanOrEqual(0)
@@ -105,6 +107,22 @@ describe('fileSheetData', () => {
     expect(file('src/core/utils.ts', indexResult(json))).not.toHaveProperty('dependents')
     json.files.dependents[utils] = 4
     expect(file('src/core/utils.ts', indexResult(json))).toMatchObject({ dependents: 4 })
+  })
+
+  it('says the total counts production only when tests import the file too', () => {
+    const store = file('src/core/store.ts')
+    expect(store?.importerList.map(({ path }) => path)).toContain('tests/store.test.ts')
+    expect(store).toMatchObject({ dependents: 7, dependentsInProduction: true })
+    // A total of none, with only tests importing it, is no total.
+    const json = structuredClone(sample) as unknown as AnalysisResult
+    const at = index.fileAt('src/core/store.ts') ?? -1
+    json.files.dependents[at] = 0
+    for (const other of index.importers[at] ?? []) {
+      if (json.files.dependents[other] !== null) {
+        json.files.dependents[other] = null
+      }
+    }
+    expect(file('src/core/store.ts', indexResult(json))).not.toHaveProperty('dependents')
   })
 
   it('tells the size of the cycle a file is in', () => {

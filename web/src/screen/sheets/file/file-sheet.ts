@@ -118,10 +118,12 @@ export function fileSheetData(
     reason: roleReason(role, dependencies),
   }))
   const pathRole = pathRoleOf(result, file)
-  // The total counts production files only, and goes through facades: shown only when it holds
-  // every direct importer, so that it never reads smaller than they are.
+  // The total counts production files only, and goes through facades: shown when it holds every
+  // direct importer in production. Tests among the importers make the sheet say "in production".
   const dependents = table.dependents[file] ?? null
-  const total = dependents !== null && dependents >= importers.length ? dependents : null
+  const productionImporters = importers.filter((other) => table.dependents[other] != null).length
+  const total =
+    dependents !== null && dependents > 0 && dependents >= productionImporters ? dependents : null
 
   return {
     path,
@@ -140,7 +142,12 @@ export function fileSheetData(
     roles,
     ...(pathRole !== null ? { pathRole } : {}),
     importers: importers.length,
-    ...(total !== null ? { dependents: total } : {}),
+    ...(total !== null
+      ? {
+          dependents: total,
+          ...(productionImporters < importers.length ? { dependentsInProduction: true } : {}),
+        }
+      : {}),
     // The city draws the nearest importers' arcs one by one, and groups the rest by island.
     ...(importers.length > SINGLE_ARCS ? { shownImporters: SINGLE_ARCS } : {}),
     imports: imports.length,

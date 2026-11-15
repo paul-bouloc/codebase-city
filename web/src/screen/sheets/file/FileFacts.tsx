@@ -7,6 +7,7 @@ const TEXT = {
   importedBy: 'Imported by',
   filesDirectly: (count: number) => ` ${count === 1 ? 'file' : 'files'} directly · `,
   inTotal: ' in total',
+  inProduction: ' in production, directly or not',
   showing: (shown: number, of: number) =>
     `Showing ${exactCount(shown)} of ${exactCount(of)} importers; the rest are grouped by island`,
   imports: 'Imports',
@@ -35,7 +36,7 @@ export function FileFacts({ file, onOpenFolder, onShowCycle }: FileFactsProps) {
             <>
               {TEXT.filesDirectly(file.importers)}
               <strong>{exactCount(file.dependents)}</strong>
-              {TEXT.inTotal}
+              {file.dependentsInProduction ? TEXT.inProduction : TEXT.inTotal}
             </>
           )}
           {file.shownImporters !== undefined && (

@@ -62,6 +62,12 @@ describe('FileSheet', () => {
     expect(tabLabels(html)).toEqual(['Imports', 'Imported by', 'Symbols', 'Code'])
   })
 
+  it('says the total counts production when tests import the file too', () => {
+    const html = render({ ...FILE, dependentsInProduction: true })
+    expect(html).toContain('6,213</strong> in production, directly or not')
+    expect(html).not.toContain('in total')
+  })
+
   it('says only how many import the file when it has no total', () => {
     const { dependents: _, ...noTotal } = FILE
     const html = render(noTotal)
