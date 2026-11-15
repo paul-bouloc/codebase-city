@@ -182,7 +182,12 @@ export function CityPage() {
       const impact = params.get('impact')
       const [from = '', to = ''] = params.get('route')?.split(',') ?? []
       const route = params.has('route')
+      // A place in the list, from 1; any other value opens on none.
       const cycle = Number(params.get('cycle') ?? 0) - 1
+      const cycleAt =
+        Number.isInteger(cycle) && cycle >= 0 && cycle < decoded.cycles.members.length
+          ? cycle
+          : null
       const step = decoded.tour.steps.findIndex((each) => each.kind === kind)
       if (impact && step < 0) {
         window.history.replaceState(null, '', `?${params}${hashOf({ kind: 'file', path: impact })}`)
@@ -196,7 +201,7 @@ export function CityPage() {
             : route
               ? nextGuide(FOLDED, { kind: 'route', from: from || null, to: to || null }, 0)
               : params.has('cycle')
-                ? nextGuide(FOLDED, { kind: 'cycles', cycle: cycle >= 0 ? cycle : null }, 0)
+                ? nextGuide(FOLDED, { kind: 'cycles', cycle: cycleAt }, 0)
                 : FOLDED,
       )
       setError(null)
