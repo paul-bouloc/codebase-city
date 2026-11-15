@@ -19,7 +19,7 @@ type Target = LabelArea['target']
 
 interface UnitLabel {
   key: string
-  target: Target
+  target: Target | null
   name: string
   caption: string | null
   kind: GuideLabelKind
@@ -28,9 +28,17 @@ interface UnitLabel {
   leads: Vec3[]
 }
 
-/** A label on show this frame: its box on the canvas, in CSS pixels. */
+/** The count of a link, at the middle of its way. */
+export interface LinkCount {
+  key: string
+  anchor: Vec3
+  files: string
+  typeOnly: string | null
+}
+
+/** A label on show this frame: what a click on it selects, and its box on the canvas, in CSS px. */
 interface Shown {
-  label: UnitLabel
+  target: Target | null
   box: { x: number; y: number; width: number; height: number }
 }
 
@@ -84,20 +92,25 @@ export class UnitLabels {
   }
 
   /**
-   * The labels on show this frame, each straight over its anchor, the farthest first: each is
-   * drawn over those before it.
+   * The labels on show this frame, the farthest first: each is drawn over those before it. A
+   * unit's stands straight over its anchor, a link's count on the middle of its way.
    */
-  place(): PlacedLabel[] {
+  place(counts: readonly LinkCount[] = []): PlacedLabel[] {
     this.width = this.canvas.clientWidth
     this.height = this.canvas.clientHeight
-    if (this.labels.length === 0 || this.width === 0 || this.height === 0) {
+    if (
+      (this.labels.length === 0 && counts.length === 0) ||
+      this.width === 0 ||
+      this.height === 0
+    ) {
       this.shown = []
       return []
     }
-    const found = this.labels.flatMap((label) => {
+    const found: { target: Target | null; depth: number; placed: PlacedLabel }[] = []
+    const add = (label: UnitLabel, lift: number | null) => {
       const anchor = this.onCanvas(label.anchor)
       if (!anchor) {
-        return []
+        return
       }
       const { width, height } = pillSize(
         label.kind !== 'parcel',
@@ -106,26 +119,48 @@ export class UnitLabels {
         (text, font) => this.widthOf(text, font),
         label.kind,
       )
-      const box = { x: anchor.x - width / 2, y: anchor.y - LABEL_LIFT - height, width, height }
-      return [{ label, anchor, box }]
-    })
-    found.sort((a, b) => b.anchor.depth - a.anchor.depth)
-    this.shown = found
-    return found.map(({ label, anchor, box }, order) => ({
-      path: label.key,
-      island: label.kind !== 'parcel',
-      name: label.name,
-      caption: label.caption,
-      selected: false,
-      lean: 'above' as const,
-      anchor: label.anchor,
-      x: anchor.x,
-      y: anchor.y,
-      box,
-      guide: label.kind,
-      leads: label.leads,
-      order,
-    }))
+      const top = lift === null ? anchor.y - height / 2 : anchor.y - lift - height
+      const box = { x: anchor.x - width / 2, y: top, width, height }
+      found.push({
+        target: label.target,
+        depth: anchor.depth,
+        placed: {
+          path: label.key,
+          island: label.kind !== 'parcel',
+          name: label.name,
+          caption: label.caption,
+          selected: false,
+          lean: lift === null ? 'centre' : 'above',
+          anchor: label.anchor,
+          x: anchor.x,
+          y: anchor.y,
+          box,
+          guide: label.kind,
+          leads: label.leads,
+          order: 0,
+        },
+      })
+    }
+    for (const label of this.labels) {
+      add(label, LABEL_LIFT)
+    }
+    for (const count of counts) {
+      add(
+        {
+          key: count.key,
+          target: null,
+          name: count.files,
+          caption: count.typeOnly,
+          kind: 'count',
+          anchor: count.anchor,
+          leads: [],
+        },
+        null,
+      )
+    }
+    found.sort((a, b) => b.depth - a.depth)
+    this.shown = found.map(({ target, placed }) => ({ target, box: placed.box }))
+    return found.map(({ placed }, order) => ({ ...placed, order }))
   }
 
   /** The island or folder whose label is at this point of the canvas, the nearest drawn on top. */
@@ -135,9 +170,10 @@ export class UnitLabels {
       if (!shown) {
         continue
       }
-      const { box } = shown
-      if (x >= box.x && x <= box.x + box.width && y >= box.y && y <= box.y + box.height) {
-        return shown.label.target
+      const { box, target } = shown
+      // A link's count selects nothing: what lies under it does
+      if (target && x >= box.x && x <= box.x + box.width && y >= box.y && y <= box.y + box.height) {
+        return target
       }
     }
     return null

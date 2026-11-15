@@ -67,6 +67,22 @@ describe('UnitLabels', () => {
     expect(labels.active).toBe(true)
   })
 
+  it('centres the count of a link on its way, a click on it going to what lies under', () => {
+    const { labels } = setup()
+    labels.setUnits([{ islands: [1], parcel: null, label: label('web') }])
+    const placed = labels.place([
+      { key: 'link', anchor: [0, 0, 0], files: '612 files', typeOnly: null },
+    ])
+    const found = placed.find((each) => each.guide === 'count')
+    expect(found?.name).toBe('612 files')
+    expect(found?.leads).toEqual([])
+    expect(found && found.box.x + found.box.width / 2).toBeCloseTo(found?.x ?? 0)
+    expect(found && found.box.y + found.box.height / 2).toBeCloseTo(found?.y ?? 0)
+    // Drawn in depth order with the units' labels
+    expect(placed.map((each) => each.order)).toEqual([0, 1])
+    expect(labels.at(found?.x ?? 0, found?.y ?? 0)).toBeNull()
+  })
+
   it('labels a package inside another by its parcel, and keeps its host island named', () => {
     const { labels } = setup()
     labels.setUnits([
