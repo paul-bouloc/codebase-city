@@ -86,6 +86,12 @@ describe('unionSphere', () => {
     expect(sphere?.radius).toBe(45 + 20 + FRAME_MARGIN)
   })
 
+  it('frames neighbouring files no tighter than one of them alone', () => {
+    const file = (x: number): Extent => ({ centre: [x, 0, 0], radius: 1, height: 2, folder: false })
+    const one = unionSphere([file(0)])?.radius ?? 0
+    expect(unionSphere([file(0), file(2)])?.radius).toBeGreaterThanOrEqual(one)
+  })
+
   it('keeps a tall building in view', () => {
     const tower: Extent = { centre: [40, 0, 0], radius: 1, height: 30, folder: false }
     const sphere = unionSphere([island(-50, 0, 10), tower])

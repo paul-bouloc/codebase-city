@@ -67,7 +67,8 @@ export function flightRadius({ radius, height, folder }: Extent): number {
 
 /**
  * The sphere that frames several files and folders together: around all their extents, each
- * with the room a flight to it alone would give. Null for none.
+ * with the room a flight to it alone would give, and with files, never tighter than a flight to
+ * one of them. Null for none.
  */
 export function unionSphere(extents: readonly Extent[]): { centre: Vec3; radius: number } | null {
   const [first] = extents
@@ -84,7 +85,10 @@ export function unionSphere(extents: readonly Extent[]): { centre: Vec3; radius:
     0,
     (Math.min(...zs) + Math.max(...zs)) / 2,
   ]
+  // Files close together are framed no tighter than one of them alone: with their block.
+  const files = extents.some((extent) => !extent.folder)
   const radius = Math.max(
+    files ? BLOCK_RADIUS : 0,
     ...extents.map(
       (extent) =>
         Math.hypot(extent.centre[0] - centre[0], extent.centre[2] - centre[2]) +
