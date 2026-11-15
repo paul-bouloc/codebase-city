@@ -222,16 +222,28 @@
   font-weight: 600;
 }
 
+/* The line under the title unfolds on hover: its row grows from nothing to its height. */
+.questionMore {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows var(--duration-base) var(--easing-standard),
+    opacity var(--duration-base) var(--easing-standard);
+}
+
+.question:hover .questionMore,
+.question:focus-visible .questionMore {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
 .questionSubtitle {
-  display: none;
+  overflow: hidden;
+  min-height: 0;
   font-size: 12px;
   line-height: 16px;
   color: var(--color-text-secondary);
-}
-
-.question:hover .questionSubtitle,
-.question:focus-visible .questionSubtitle {
-  display: block;
 }
 
 /* A chevron pointing right: the down one, turned. */
@@ -252,5 +264,9 @@
   .pill,
   .card {
     animation: none;
+  }
+
+  .questionMore {
+    transition: none;
   }
 }

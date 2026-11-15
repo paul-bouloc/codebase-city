@@ -119,7 +119,9 @@ export const GuideCard = forwardRef<HTMLHeadingElement, GuideCardProps>(function
                   </span>
                   <span className={styles.questionWords}>
                     <span className={styles.questionTitle}>{question.title}</span>
-                    <span className={styles.questionSubtitle}>{question.subtitle}</span>
+                    <span className={styles.questionMore}>
+                      <span className={styles.questionSubtitle}>{question.subtitle}</span>
+                    </span>
                   </span>
                   <Icon name="chevron-down" size={16} className={styles.questionChevron} />
                 </button>
