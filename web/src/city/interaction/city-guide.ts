@@ -1,17 +1,15 @@
 import { Group } from 'three'
 import type { CityBuildings } from '../buildings/buildings'
 import type { Cycle } from '../flows/cycles'
-import { loopDrawing } from '../flows/selection-arcs'
-import { ArcLayer } from '../render/arc-mesh'
 import type { IslandShape } from '../terrain/island-shape'
 import type { CityLayout } from '../world/layout'
 import type { Vec3 } from '../world/units'
 import { type Area, AreaMark, areaOf, GUIDE_AREA } from './area-marks'
 import { BuildingMark, GUIDE_MARK, GUIDE_PIN_MARK, roofHeight } from './building-marks'
+import { CycleLoop } from './cycle-loop'
 import { GuideRings } from './guide-rings'
 import { GuideTies, guideTies } from './guide-ties'
 import { type KeptAreas, keptInAreas } from './kept-areas'
-import { CYCLE_RINGS, RingSet } from './rings'
 import type { CityTargets } from './targets'
 
 // What a step of the guide's tour puts forward in the city: buildings in Jade, folders ringed in
@@ -155,20 +153,17 @@ export function cityGuideView(
   }
 }
 
-/** A cycle's arcs land this far above a roof, in u. */
-const ROOF_LIFT = 0.1
 /** A unit on more islands than this gets its outlines alone: ties and rings would net the sea. */
 const MAX_MARKED_ISLANDS = 24
 
 export class CityGuide {
   readonly group = new Group()
-  /** The loop of the cycle on show. */
-  readonly arcs: ArcLayer
   private view: CityGuideView | null = null
   private selected: number | null = null
   private marks: BuildingMark[] = []
   private readonly areaMarks: AreaMark[] = []
-  private readonly cycleRings: RingSet
+  /** The cycle on show, with its loop. */
+  private readonly cycle: CycleLoop
   private readonly ties: GuideTies
   /** The ties of the unit under the pointer, over the others. */
   private readonly litTies: GuideTies
@@ -181,18 +176,11 @@ export class CityGuide {
     private readonly buildings: CityBuildings,
     private readonly pixelRatio: number,
   ) {
-    this.arcs = new ArcLayer(pixelRatio)
-    this.cycleRings = new RingSet(CYCLE_RINGS, pixelRatio)
+    this.cycle = new CycleLoop(buildings, pixelRatio)
     this.ties = new GuideTies(pixelRatio)
     this.litTies = new GuideTies(pixelRatio, true)
     this.rings = new GuideRings(pixelRatio)
-    this.group.add(
-      this.rings.group,
-      this.ties.group,
-      this.litTies.group,
-      this.cycleRings.group,
-      this.arcs.group,
-    )
+    this.group.add(this.rings.group, this.ties.group, this.litTies.group, ...this.cycle.groups)
   }
 
   get shown(): CityGuideView | null {
@@ -221,19 +209,7 @@ export class CityGuide {
     this.ties.show(marked.flatMap((unit) => guideTies(plateaux(unit.islands))))
     this.lit = null
     this.litTies.show([])
-    const { placed } = this.buildings
-    const cycle = view?.cycle ?? null
-    this.cycleRings.show(cycle?.members.flatMap((member) => placed[member] ?? []) ?? [])
-    this.arcs.show(
-      cycle
-        ? loopDrawing(
-            cycle.loop.map((building) => this.roof(building)),
-            cycle.members,
-            (end) =>
-              'building' in end ? (placed[end.building]?.position ?? [0, 0, 0]) : [0, 0, 0],
-          )
-        : null,
-    )
+    this.cycle.show(view?.cycle ?? null)
     this.markBuildings()
   }
 
@@ -300,7 +276,7 @@ export class CityGuide {
   labels(): { building: number; roof: Vec3 }[] {
     return (this.view?.labelled ?? []).map((building) => ({
       building,
-      roof: this.roof(building, 0),
+      roof: this.roof(building),
     }))
   }
 
@@ -309,8 +285,7 @@ export class CityGuide {
     this.rings.dispose()
     this.ties.dispose()
     this.litTies.dispose()
-    this.cycleRings.dispose()
-    this.arcs.dispose()
+    this.cycle.dispose()
   }
 
   private markBuildings(): void {
@@ -334,10 +309,10 @@ export class CityGuide {
     })
   }
 
-  /** Over the building's highest point, `lift` u higher. */
-  private roof(index: number, lift = ROOF_LIFT): Vec3 {
+  /** The building's highest point. */
+  private roof(index: number): Vec3 {
     const placed = this.buildings.placed[index]
     const [x, y, z] = placed?.position ?? [0, 0, 0]
-    return [x, y + (placed ? roofHeight(placed.building) : 0) + lift, z]
+    return [x, y + (placed ? roofHeight(placed.building) : 0), z]
   }
 }
