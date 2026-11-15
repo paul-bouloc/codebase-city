@@ -11,6 +11,12 @@ describe('escapeTarget', () => {
     expect(escapeTarget({ ...NOTHING, guideOpen: true })).toBe('guide')
   })
 
+  it('leaves an answer for the questions before the selection', () => {
+    const answer = { panelOpen: false, hasSelection: true, guideOpen: true, answerOpen: true }
+    expect(escapeTarget(answer)).toBe('answer')
+    expect(escapeTarget({ ...answer, panelOpen: true })).toBe('panel')
+  })
+
   it('does nothing when nothing is open or selected', () => {
     expect(escapeTarget(NOTHING)).toBeNull()
   })

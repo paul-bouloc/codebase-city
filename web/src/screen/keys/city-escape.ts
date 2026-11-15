@@ -4,17 +4,24 @@ export interface EscapeState {
   hasSelection: boolean
   // The guide is open, or touring.
   guideOpen: boolean
+  // The guide shows the answer to a question.
+  answerOpen?: boolean
 }
 
-// Esc in three steps: it closes the open panel first, then clears the selection, then folds the
-// guide: during the tour, what a chip opened goes before the tour.
+// Esc in steps: it closes the open panel first, then leaves an answer for the questions, then
+// clears the selection, then folds the guide: during the tour, what a chip opened goes before
+// the tour.
 export function escapeTarget({
   panelOpen,
   hasSelection,
   guideOpen,
-}: EscapeState): 'panel' | 'selection' | 'guide' | null {
+  answerOpen = false,
+}: EscapeState): 'panel' | 'answer' | 'selection' | 'guide' | null {
   if (panelOpen) {
     return 'panel'
+  }
+  if (answerOpen) {
+    return 'answer'
   }
   if (hasSelection) {
     return 'selection'
