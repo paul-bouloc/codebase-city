@@ -78,6 +78,8 @@ export const OUTGOING_MARK: MarkStyle = {
   colour: srgb(OUTGOING_LINK),
 }
 export const INCOMING_MARK: MarkStyle = { ...OUTGOING_MARK, colour: srgb(INCOMING_LINK) }
+/** Either end of a route: in ink like a selection, its number standing where the pin would. */
+export const ROUTE_END_MARK: MarkStyle = { ...SELECTED_MARK, pin: false }
 /** A file the guide's tour puts forward: two Jade rings on a Jade-tinted disc. */
 export const GUIDE_MARK: MarkStyle = {
   outline: 2,
