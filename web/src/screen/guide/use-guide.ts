@@ -55,11 +55,9 @@ export function useGuide(
   const kept = controlled ?? own
   const state = kept.mode === 'touring' && kept.step >= steps.length ? FOLDED : kept
   const context = useMemo<TourContext>(() => tourContext(index), [index])
-  // How long each step stays on show when the tour plays.
-  const seconds = useMemo(
-    () => steps.map((step) => stepSeconds(tourText(context, step))),
-    [steps, context],
-  )
+  // What each step says, and how long it stays on show when the tour plays.
+  const texts = useMemo(() => steps.map((step) => tourText(context, step)), [steps, context])
+  const seconds = useMemo(() => texts.map(stepSeconds), [texts])
 
   // Actions in a row, faster than renders (a key held down), each start from the one before.
   const latest = useRef(state)
@@ -77,14 +75,14 @@ export function useGuide(
   )
 
   const step = state.mode === 'touring' ? (steps[state.step] ?? null) : null
-  const { text, shown, frame } = useMemo(() => {
+  const text = state.mode === 'touring' ? (texts[state.step] ?? null) : null
+  const { shown, frame } = useMemo(() => {
     if (!step) {
-      return { text: null, shown: null, frame: null }
+      return { shown: null, frame: null }
     }
     const view = guideView(index.result, step)
     const note = tourNote(context, step)
     return {
-      text: tourText(context, step),
       shown: {
         paths: guidePaths(view, index),
         notes: new Map(
