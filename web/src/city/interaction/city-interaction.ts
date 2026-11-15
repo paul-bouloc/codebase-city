@@ -14,7 +14,7 @@ import type { Port } from '../waterways/links'
 import type { CityLayout } from '../world/layout'
 import type { Vec3 } from '../world/units'
 import { type Area, AreaMark, areaOf, HOVERED_AREA, SELECTED_AREA } from './area-marks'
-import { BuildingMark, HOVERED_MARK, roofHeight, SELECTED_MARK } from './building-marks'
+import { BuildingMark, HOVERED_MARK, roofPoint, SELECTED_MARK } from './building-marks'
 import { CityGuide, type CityGuideView } from './city-guide'
 import {
   type CityFlows,
@@ -236,12 +236,11 @@ export class CityInteraction {
     const placed =
       answer?.labelled === undefined ? undefined : this.buildings.placed[answer.labelled]
     if (answer) {
-      const [x, y, z] = placed?.position ?? [0, 0, 0]
       this.answer = {
         kept: new Set(answer.kept),
         label:
           placed && answer.labelled !== undefined
-            ? { building: answer.labelled, roof: [x, y + roofHeight(placed.building), z] }
+            ? { building: answer.labelled, roof: roofPoint(placed) }
             : null,
         cycle: answer.cycle ?? null,
       }

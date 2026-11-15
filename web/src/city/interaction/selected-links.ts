@@ -16,7 +16,7 @@ import {
 import type { ArcLayer } from '../render/arc-mesh'
 import type { CityLayout } from '../world/layout'
 import { boardToThree, layerAltitude, type Vec3 } from '../world/units'
-import { BuildingMark, INCOMING_MARK, OUTGOING_MARK, roofHeight } from './building-marks'
+import { BuildingMark, INCOMING_MARK, OUTGOING_MARK, roofPoint } from './building-marks'
 
 /** Arcs land this far above a roof or the ground, in u, clear of their surface. */
 const ARC_LIFT = 0.1
@@ -155,9 +155,7 @@ export class SelectedLinks {
   private roof(index: number): Vec3 {
     let roof = this.roofs.get(index)
     if (!roof) {
-      const placed = this.buildings.placed[index]
-      const [x, y, z] = placed?.position ?? [0, 0, 0]
-      roof = [x, y + (placed ? roofHeight(placed.building) : 0) + ARC_LIFT, z]
+      roof = roofPoint(this.buildings.placed[index], ARC_LIFT)
       this.roofs.set(index, roof)
     }
     return roof

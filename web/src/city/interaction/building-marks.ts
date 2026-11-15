@@ -32,6 +32,12 @@ export function roofHeight(building: Building): number {
   return topOf(buildingGeometry(building).flat(), building)
 }
 
+/** The point over a building's highest point, `lift` u higher; the origin for no building. */
+export function roofPoint(placed: PlacedBuilding | undefined, lift = 0): Vec3 {
+  const [x, y, z] = placed?.position ?? [0, 0, 0]
+  return [x, y + (placed ? roofHeight(placed.building) : 0) + lift, z]
+}
+
 function topOf(vertices: readonly Vertex[], building: Building): number {
   let top = 0
   for (const { position: p, sideFactor: s, heightFactor: h } of vertices) {

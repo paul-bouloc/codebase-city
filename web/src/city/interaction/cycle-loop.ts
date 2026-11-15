@@ -3,7 +3,7 @@ import type { CityBuildings } from '../buildings/buildings'
 import { type CycleOnShow, loopDrawing } from '../flows/selection-arcs'
 import { ArcLayer } from '../render/arc-mesh'
 import type { Vec3 } from '../world/units'
-import { roofHeight } from './building-marks'
+import { roofPoint } from './building-marks'
 import { CYCLE_RINGS, RingSet } from './rings'
 
 /** A cycle's arcs land this far above a roof, in u. */
@@ -51,8 +51,6 @@ export class CycleLoop {
 
   /** Just over the building's highest point. */
   private roof(index: number): Vec3 {
-    const placed = this.buildings.placed[index]
-    const [x, y, z] = placed?.position ?? [0, 0, 0]
-    return [x, y + (placed ? roofHeight(placed.building) : 0) + ROOF_LIFT, z]
+    return roofPoint(this.buildings.placed[index], ROOF_LIFT)
   }
 }

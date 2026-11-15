@@ -5,7 +5,7 @@ import type { IslandShape } from '../terrain/island-shape'
 import type { CityLayout } from '../world/layout'
 import type { Vec3 } from '../world/units'
 import { type Area, AreaMark, areaOf, GUIDE_AREA } from './area-marks'
-import { BuildingMark, GUIDE_MARK, GUIDE_PIN_MARK, roofHeight } from './building-marks'
+import { BuildingMark, GUIDE_MARK, GUIDE_PIN_MARK, roofPoint } from './building-marks'
 import { CycleLoop } from './cycle-loop'
 import { GuideRings } from './guide-rings'
 import { GuideTies, guideTies } from './guide-ties'
@@ -311,8 +311,6 @@ export class CityGuide {
 
   /** The building's highest point. */
   private roof(index: number): Vec3 {
-    const placed = this.buildings.placed[index]
-    const [x, y, z] = placed?.position ?? [0, 0, 0]
-    return [x, y + (placed ? roofHeight(placed.building) : 0), z]
+    return roofPoint(this.buildings.placed[index])
   }
 }

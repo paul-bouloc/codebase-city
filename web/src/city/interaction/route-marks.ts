@@ -3,7 +3,7 @@ import type { CityBuildings } from '../buildings/buildings'
 import { routeDrawing } from '../flows/selection-arcs'
 import { ArcLayer } from '../render/arc-mesh'
 import type { Vec3 } from '../world/units'
-import { BuildingMark, OUTGOING_MARK, ROUTE_END_MARK, roofHeight } from './building-marks'
+import { BuildingMark, OUTGOING_MARK, ROUTE_END_MARK, roofPoint } from './building-marks'
 
 /** Arcs land this far above a roof, in u, clear of it. */
 const ARC_LIFT = 0.1
@@ -63,9 +63,7 @@ export class RouteMarks {
   }
 
   private roof(index: number, lift: number): Vec3 {
-    const placed = this.buildings.placed[index]
-    const [x, y, z] = placed?.position ?? [0, 0, 0]
-    return [x, y + (placed ? roofHeight(placed.building) : 0) + lift, z]
+    return roofPoint(this.buildings.placed[index], lift)
   }
 
   private clearMarks(): void {
