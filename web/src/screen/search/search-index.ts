@@ -1,4 +1,4 @@
-import { languageOf, type ResultIndex } from '../result-index'
+import { languageOf, pathRoleOf, type ResultIndex } from '../result-index'
 import type { FileHit, FolderHit, SearchGroup, SearchResults, SymbolHit } from './search-data'
 import { editDistance, fuzzyMatch, lowerCase, type Match } from './search-match'
 
@@ -129,11 +129,7 @@ export function buildSearchIndex(index: ResultIndex): SearchIndex {
     if (graph) {
       return { role: graph.role, inferred: true }
     }
-    if (files.generated[file]) {
-      return { role: 'generated', inferred: false }
-    }
-    const scope = files.scope[file]
-    return { role: scope === 'test' || scope === 'config' ? scope : null, inferred: false }
+    return { role: pathRoleOf(result, file), inferred: false }
   }
 
   const fileHit = (file: number, positions: number[]): FileHit => {

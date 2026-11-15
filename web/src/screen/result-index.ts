@@ -26,6 +26,19 @@ export type GraphRole =
   | { role: 'foundation'; dependents: number }
   | { role: 'facade' }
 
+/** What a file's path says it is, rather than the graph: never "likely". */
+export type PathRole = 'generated' | 'test' | 'config'
+
+/** A file's path role: generated code first, then its scope when that is tests or config. */
+export function pathRoleOf(result: AnalysisResult, file: number): PathRole | null {
+  const { files } = result
+  if (files.generated[file]) {
+    return 'generated'
+  }
+  const scope = files.scope[file]
+  return scope === 'test' || scope === 'config' ? scope : null
+}
+
 export interface ResultIndex {
   result: AnalysisResult
   /** Every file's path from the repository root, by file. */
