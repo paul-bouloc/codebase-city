@@ -8,7 +8,8 @@ import type { CodeState, FileSheetData, FileSymbol, InferredRole, RankedFile } f
 
 // A file's sheet, read from the analysis result. Its code comes from GitHub, apart.
 
-const ENTRY_REASONS: Record<EntryReason, string> = {
+/** Why a file is an entry point, in a sentence. */
+export const ENTRY_REASONS: Record<EntryReason, string> = {
   packageBin: 'package.json names it as a command.',
   packageMain: 'package.json names it as the package’s main file.',
   packageScript: 'A script of package.json runs it.',
