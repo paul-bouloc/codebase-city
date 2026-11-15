@@ -9,6 +9,7 @@ import type { TourTarget, TourText } from './tour/tour-spans'
 import { useContentHeight } from './use-content-height'
 
 const TEXT = {
+  label: 'Guide',
   step: (at: number, of: number, title: string) => `Step ${at} of ${of} · ${title}`,
   skip: 'Skip tour',
   progress: 'Tour progress',
@@ -57,7 +58,13 @@ export const TourPanel = forwardRef<HTMLHeadingElement, TourPanelProps>(function
     onBack()
   }
   return (
-    <Glass ref={boxRef} as="section" className={styles.panel} style={{ height }} aria-label="Guide">
+    <Glass
+      ref={boxRef}
+      as="section"
+      className={styles.panel}
+      style={{ height }}
+      aria-label={TEXT.label}
+    >
       <div ref={contentRef} className={styles.content}>
         <div className={styles.head}>
           <h2 ref={titleRef} tabIndex={-1} className={styles.step}>
