@@ -5,7 +5,7 @@ import { type Cycle, loopThrough } from '../flows/cycles'
 import { islandExtras } from '../flows/extra-ferries'
 import { FolderLinkMarks, folderWays } from '../flows/folder-link-marks'
 import { folderFlows } from '../flows/folder-links'
-import type { Hub } from '../flows/selection-arcs'
+import type { CycleOnShow, Hub } from '../flows/selection-arcs'
 import { OPENED_ARCS } from '../flows/selection-links'
 import { ArcLayer } from '../render/arc-mesh'
 import type { Fading } from '../render/dimming'
@@ -23,6 +23,7 @@ import {
   type Pointed,
   sameTarget,
 } from './city-items'
+import { CycleLoop } from './cycle-loop'
 import { DimFade } from './dim-fade'
 import { type GuideLinkCount, GuideLinkWays } from './guide-link-ways'
 import { HoverTiming } from './hover-timing'
@@ -35,7 +36,7 @@ import { SelectedLinks } from './selected-links'
 
 /**
  * What the answer to one of the guide's questions shows, by building: what keeps its colours
- * while the rest fades, a file labelled over its roof, and a route.
+ * while the rest fades, a file labelled over its roof, a route, and a cycle.
  */
 export interface CityAnswer {
   kept: readonly number[]
@@ -43,6 +44,8 @@ export interface CityAnswer {
   labelled?: number
   /** The files of a route, in import order: its ends in ink, Marine arcs from each to the next. */
   route?: readonly number[]
+  /** A cycle: a red ring around each of its files, red arcs along its loop, its badge. */
+  cycle?: CycleOnShow
 }
 
 /** A file an answer labels, and the point over its roof where its label stands. */
@@ -69,9 +72,15 @@ export class CityInteraction {
   private highlighted: Pointed | null = null
   private selected: CityTarget | null = null
   private routeFiles: readonly number[] | null = null
-  private answer: { kept: ReadonlySet<number>; label: AnswerLabel | null } | null = null
+  private answer: {
+    kept: ReadonlySet<number>
+    label: AnswerLabel | null
+    cycle: CycleOnShow | null
+  } | null = null
   /** The route of the answer on show, if it has one. */
   readonly route: RouteMarks
+  /** The cycle of the answer on show, if it has one. */
+  readonly answerCycle: CycleLoop
   private pointer = { x: 0, y: 0 }
   private carded: Pointed | null = null
   private readonly dim: DimFade
@@ -123,6 +132,7 @@ export class CityInteraction {
     this.portBadges = this.ports.badges
     this.guide = new CityGuide(layout, shapes, buildings, pixelRatio)
     this.route = new RouteMarks(buildings, pixelRatio)
+    this.answerCycle = new CycleLoop(buildings, pixelRatio)
     this.guideLinks = new GuideLinkWays(
       layout,
       flows,
@@ -138,6 +148,7 @@ export class CityInteraction {
       this.portBadges.group,
       this.cycleWays.group,
       this.cycleRings.group,
+      ...this.answerCycle.groups,
       this.hoveredArea.group,
       this.selectedArea.group,
       this.hoveredBuilding.group,
@@ -232,11 +243,13 @@ export class CityInteraction {
           placed && answer.labelled !== undefined
             ? { building: answer.labelled, roof: [x, y + roofHeight(placed.building), z] }
             : null,
+        cycle: answer.cycle ?? null,
       }
     } else {
       this.answer = null
     }
     this.routeFiles = answer?.route ?? null
+    this.answerCycle.show(this.answer?.cycle ?? null)
     this.showLinks()
     this.showRoute()
     this.fade()
@@ -382,12 +395,16 @@ export class CityInteraction {
     this.ports.dispose()
     this.links.dispose()
     this.route.dispose()
+    this.answerCycle.dispose()
     this.arcs.dispose()
   }
 
-  /** The ways the loop of the selected file's cycle takes between islands, outlined in red. */
+  /**
+   * The ways the loop of the cycle on show takes between islands, outlined in red: the answer's,
+   * or the selected file's.
+   */
   private showCycleWays(): void {
-    const loop = this.links.cycle?.loop
+    const loop = this.answer?.cycle?.loop ?? this.links.cycle?.loop
     if (!loop) {
       this.cycleWays.show(null)
       return

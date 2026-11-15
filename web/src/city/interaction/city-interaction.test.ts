@@ -77,6 +77,19 @@ function setup(layout = LAYOUT, ferries: Ferry[] = []) {
 
 const POINTER = { x: 10, y: 10 }
 
+/** `a/main.ts` and `a/ui/view.ts` import each other. */
+const TWO_FILE_CYCLE = {
+  members: [
+    { island: 0, lot: 0 },
+    { island: 0, lot: 1 },
+  ],
+  loop: [0, 1],
+  imports: [
+    [0, 1],
+    [1, 0],
+  ] as [number, number][],
+}
+
 describe('CityInteraction', () => {
   beforeEach(() => {
     vi.useFakeTimers()
@@ -214,23 +227,7 @@ describe('CityInteraction', () => {
   it('rings the files of the cycle of a selected one, and keeps them', () => {
     // The cycle's badge is drawn on a canvas, which the tests have none of.
     vi.stubGlobal('document', { createElement: () => ({ getContext: () => null }) })
-    // `a/main.ts` and `a/ui/view.ts` import each other
-    const { interaction, keptNow } = setup({
-      ...LAYOUT,
-      cycles: [
-        {
-          members: [
-            { island: 0, lot: 0 },
-            { island: 0, lot: 1 },
-          ],
-          loop: [0, 1],
-          imports: [
-            [0, 1],
-            [1, 0],
-          ],
-        },
-      ],
-    })
+    const { interaction, keptNow } = setup({ ...LAYOUT, cycles: [TWO_FILE_CYCLE] })
     interaction.select({ kind: 'building', index: 1 })
     expect(keptNow()).toEqual([true, true, false])
     expect(interaction.cycleRings.group.visible).toBe(true)
@@ -238,6 +235,26 @@ describe('CityInteraction', () => {
     interaction.select({ kind: 'building', index: 2 })
     expect(interaction.cycleRings.group.visible).toBe(false)
     expect(interaction.arcs.group.visible).toBe(false)
+    vi.unstubAllGlobals()
+  })
+
+  it('draws the cycle of an answer in place of the selection’s, then gives the selection back', () => {
+    vi.stubGlobal('document', { createElement: () => ({ getContext: () => null }) })
+    const { interaction, keptNow } = setup({ ...LAYOUT, cycles: [TWO_FILE_CYCLE] })
+    const [rings, arcs] = interaction.answerCycle.groups
+    interaction.select({ kind: 'building', index: 1 })
+    interaction.showAnswer({ kept: [0, 1], cycle: { members: [0, 1], loop: [0, 1] } })
+    expect(keptNow()).toEqual([true, true, false])
+    expect(rings?.visible).toBe(true)
+    expect(arcs?.visible).toBe(true)
+    // The selection's own rings and arcs make way for it.
+    expect(interaction.cycleRings.group.visible).toBe(false)
+    expect(interaction.arcs.group.visible).toBe(false)
+
+    interaction.showAnswer(null)
+    expect(rings?.visible).toBe(false)
+    expect(arcs?.visible).toBe(false)
+    expect(interaction.cycleRings.group.visible).toBe(true)
     vi.unstubAllGlobals()
   })
 

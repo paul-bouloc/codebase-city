@@ -237,10 +237,16 @@ export class CityEngine {
   /**
    * Shows the answer to a question of the guide, by path: what it keeps keeps its colours and the
    * rest fades; the file it is about, or each stop of its route, gets a label, heard of by
-   * `guideLabels`. Null shows nothing; the camera stays.
+   * `guideLabels`; a cycle gets its rings, its loop and its badge. Null shows nothing; the camera
+   * stays.
    */
   showAnswer(
-    answer: { kept: readonly string[]; labelled?: string; route?: readonly string[] } | null,
+    answer: {
+      kept: readonly string[]
+      labelled?: string
+      route?: readonly string[]
+      cycle?: { members: readonly string[]; loop: readonly string[] }
+    } | null,
   ): void {
     const { interaction, targets } = this
     if (!interaction || !targets) {
@@ -256,11 +262,18 @@ export class CityEngine {
     // its arcs and its numbers.
     const route = answer?.route && buildings(answer.route)
     const whole = route && route.length === answer?.route?.length ? route : null
+    // So is a cycle's loop; its rings go round the members the city shows.
+    const loop = answer?.cycle && buildings(answer.cycle.loop)
+    const cycle =
+      answer?.cycle && loop && loop.length === answer.cycle.loop.length
+        ? { members: buildings(answer.cycle.members), loop }
+        : null
     interaction.showAnswer(
       answer && {
         kept: buildings(answer.kept),
         ...(labelled === null ? {} : { labelled }),
         ...(whole ? { route: whole } : {}),
+        ...(cycle ? { cycle } : {}),
       },
     )
     this.needsRender = true
