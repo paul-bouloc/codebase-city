@@ -1,0 +1,74 @@
+/* The answer to a question, 400 px at the guide's corner ("City UI · 08"). */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3-5);
+  width: 400px;
+  max-width: calc(100vw - 2 * var(--space-3));
+  box-sizing: border-box;
+  padding: var(--space-3-5) var(--space-4) var(--space-4);
+  transform-origin: bottom left;
+  animation: answer-in var(--duration-slow) var(--easing-enter) both;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.words {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  font: var(--heading-3);
+  font-size: 16px;
+  line-height: 22px;
+}
+
+.title:focus-visible {
+  outline: none;
+}
+
+.subtitle {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--color-text-secondary);
+}
+
+.icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.icon:hover {
+  background: var(--state-hover);
+}
+
+@keyframes answer-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    animation: none;
+  }
+}
