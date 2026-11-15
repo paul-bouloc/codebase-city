@@ -54,12 +54,14 @@ export function applicationsText(context: TourContext, step: Step<'applications'
   const { result } = context.index
   const units = guideUnits(result, step)
   const named = units.slice(0, IN_TEXT)
-  const text: TourSpan[] = [
-    `${files(step.appFiles)} are apps. `,
-    named.length === 1 ? 'The main one: ' : 'The main ones: ',
-    ...listed(named.map((unit, at) => unitItem(context, unit, at === 0))),
-    '.',
-  ]
+  const text: TourSpan[] = [`${files(step.appFiles)} are apps.`]
+  if (named.length > 0) {
+    text.push(
+      named.length === 1 ? ' The main one: ' : ' The main ones: ',
+      ...listed(named.map((unit, at) => unitItem(context, unit, at === 0))),
+      '.',
+    )
+  }
   const closer = units.slice(IN_TEXT).flatMap((unit) => unitChip(context, unit))
   const others = result.tour.steps.find((each) => each.kind === 'otherApps')
   if (others?.kind === 'otherApps' && closer.length < CHIPS) {
@@ -78,14 +80,20 @@ export function otherAppsText(context: TourContext, step: Step<'otherApps'>): St
   const lead = result.tour.steps.some((each) => each.kind === 'applications')
   const noun = lead ? 'smaller app' : 'app'
   const named = units.slice(0, 2)
+  // Units are the apps the city shows: one standing on every island has none
+  const count = step.apps.length
+  const [only] = units
   const text: TourSpan[] =
-    units.length === 1
-      ? [`One ${noun}: `, ...unitItem(context, units[0] as GuideUnit, true), '.']
-      : [
-          `${counted(step.apps.length, noun)} hold ${files(all)}. The biggest: `,
-          ...listed(named.map((unit, at) => unitItem(context, unit, at === 0))),
-          '.',
-        ]
+    count === 1 && only
+      ? [`One ${noun}: `, ...unitItem(context, only, true), '.']
+      : [`${counted(count, noun)} ${count === 1 ? 'holds' : 'hold'} ${files(all)}.`]
+  if (count > 1 && named.length > 0) {
+    text.push(
+      ' The biggest: ',
+      ...listed(named.map((unit, at) => unitItem(context, unit, at === 0))),
+      '.',
+    )
+  }
   return {
     text,
     closer: units

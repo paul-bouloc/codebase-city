@@ -220,6 +220,33 @@ describe('tourText of packages', () => {
     ])
   })
 
+  it('counts the apps even when the city shows none of them', () => {
+    // One app, the root, on every island: the city shows no unit for it
+    const of = result((changed) => {
+      changed.workspaces = [{ kind: 'npm', manifest: 0 }]
+      changed.packages = {
+        dir: [0],
+        name: ['harbor'],
+        kind: ['app'],
+        framework: [null],
+        manifest: [0],
+        group: [null],
+        codeFiles: [14],
+        entry: [null],
+        routes: [null],
+        routeCount: [0],
+        apiRouteCount: [0],
+      }
+    })
+    expect(plain(textOf(of, { kind: 'otherApps', apps: [0] }).text)).toBe('1 app holds 14 files.')
+    const applications: TourStep = {
+      kind: 'applications',
+      units: [{ group: null, apps: [0], files: 14 }],
+      appFiles: 14,
+    }
+    expect(plain(textOf(of, applications).text)).toBe('14 files are apps.')
+  })
+
   it('says whether apps import each other, and what they share', () => {
     const of = monorepo()
     const step: TourStep = {
