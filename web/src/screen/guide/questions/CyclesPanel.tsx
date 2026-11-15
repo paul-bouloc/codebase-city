@@ -13,10 +13,11 @@ import {
 } from './cycles-text'
 import { QuestionPanel } from './QuestionPanel'
 
-export const CYCLES_QUESTION = {
-  title: 'Where are the cycles?',
-  /** The line under the question in the list, with the count of cycles. */
-  subtitle: cyclesSubtitle,
+const QUESTION = 'Where are the cycles?'
+
+/** The question in the guide's list, its line under it counting the city's cycles. */
+export function cyclesQuestion(cycles: number) {
+  return { title: QUESTION, subtitle: cyclesSubtitle(cycles) }
 }
 
 const TEXT = {
@@ -53,7 +54,7 @@ export const CyclesPanel = forwardRef<HTMLHeadingElement, CyclesPanelProps>(func
   return (
     <QuestionPanel
       ref={titleRef}
-      title={CYCLES_QUESTION.title}
+      title={QUESTION}
       subtitle={TEXT.subtitle}
       onBack={onBack}
       onCollapse={onCollapse}

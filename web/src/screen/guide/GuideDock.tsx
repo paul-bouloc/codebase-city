@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import type { SearchIndex } from '../search/search-index'
 import { GuideCard, GuidePill, type GuideQuestion } from './GuideCard'
 import type { GuideAction, GuideMode, GuideState } from './guide-state'
-import { CYCLES_QUESTION, CyclesPanel } from './questions/CyclesPanel'
+import { CyclesPanel, cyclesQuestion } from './questions/CyclesPanel'
 import type { CycleList } from './questions/cycles'
 import { IMPACT_QUESTION, ImpactPanel } from './questions/ImpactPanel'
 import type { Impact } from './questions/impact'
@@ -111,12 +111,7 @@ export function GuideDock({
   const questions: GuideQuestion[] = [
     { ...IMPACT_QUESTION, icon: 'foundation', onAsk: onAskImpact },
     { ...ROUTE_QUESTION, icon: 'route', onAsk: onAskRoute },
-    {
-      title: CYCLES_QUESTION.title,
-      subtitle: CYCLES_QUESTION.subtitle(cycles.cycles.length),
-      icon: 'cycle',
-      onAsk: onAskCycles,
-    },
+    { ...cyclesQuestion(cycles.cycles.length), icon: 'cycle', onAsk: onAskCycles },
   ]
 
   return (
