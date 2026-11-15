@@ -1,0 +1,68 @@
+/* A name in a sentence of the guide: Jade on its soft tint, underlined at 40%. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  max-width: 100%;
+  padding: 0 6px 0 5px;
+  border-radius: var(--radius-sm);
+  background: var(--meaning-guide-soft);
+  color: var(--meaning-guide-strong);
+  text-decoration: underline;
+  text-decoration-color: rgb(22 122 92 / 40%);
+  text-underline-offset: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+}
+
+/* A file or a folder: a path, in mono. */
+.path {
+  font-family: var(--font-family-mono);
+  font-size: 0.86em;
+}
+
+/* A package or an island: a name, not a path. */
+.island {
+  font-weight: 600;
+}
+
+.link {
+  margin: 0;
+  border: 0;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  cursor: pointer;
+}
+
+.link.path {
+  font-family: var(--font-family-mono);
+  font-size: 0.86em;
+}
+
+.link.island {
+  font-weight: 600;
+}
+
+.link:hover {
+  background: var(--meaning-guide-border);
+}
+
+/* "billing ×3": the count of a group, plainer. */
+.count {
+  font-weight: 500;
+  color: var(--color-text-body);
+  text-decoration: none;
+}
+
+.repo {
+  font-family: var(--font-family-mono);
+  font-weight: 700;
+}
+
+.code {
+  font-family: var(--font-family-mono);
+  font-size: 0.86em;
+}
