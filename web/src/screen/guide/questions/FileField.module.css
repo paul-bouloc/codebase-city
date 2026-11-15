@@ -89,6 +89,7 @@
   background: var(--glass-bg-fallback);
   box-shadow: var(--shadow-md);
   list-style: none;
+  animation: list-in var(--duration-fast) var(--easing-enter) both;
 }
 
 .option {
@@ -140,10 +141,25 @@
 }
 
 .nothing {
+  animation: list-in var(--duration-fast) var(--easing-enter) both;
   margin: 0;
   padding: var(--space-1) var(--space-1) 0;
   font-size: 13px;
   line-height: 18px;
   color: var(--color-text-secondary);
   overflow-wrap: anywhere;
+}
+
+@keyframes list-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .list,
+  .nothing {
+    animation: none;
+  }
 }
