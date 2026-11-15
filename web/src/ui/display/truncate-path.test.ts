@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { truncatePath } from './truncate-path'
+import { truncateMiddle, truncatePath } from './truncate-path'
 
 const LONG = 'src/vs/workbench/contrib/terminal/browser/terminalInstance.ts'
 
@@ -33,5 +33,15 @@ describe('truncatePath', () => {
     // Three folders: "a/b/…/c/name" would be longer than the path itself.
     expect(truncatePath('lib/router/layer/index.js', 22)).toBe('lib/router/…/index.js')
     expect(truncatePath('lib/router/index.js', 15)).toBe('lib/…/index.js')
+  })
+})
+
+describe('truncateMiddle', () => {
+  it('leaves a text that fits, and cuts the middle of one that does not', () => {
+    expect(truncateMiddle('index.ts', 8)).toBe('index.ts')
+    const cut = truncateMiddle('…/Markdown_Katex_Support_Test.0.snap', 20)
+    expect(cut).toHaveLength(20)
+    expect(cut.startsWith('…/Markdow')).toBe(true)
+    expect(cut.endsWith('st.0.snap')).toBe(true)
   })
 })

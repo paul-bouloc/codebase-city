@@ -66,5 +66,5 @@ export function useTruncatedPath<T extends HTMLElement>(path: string) {
     return () => observer.disconnect()
   }, [])
 
-  return { ref, text: truncatePath(path, maxChars) }
+  return { ref, text: truncatePath(path, maxChars), maxChars }
 }

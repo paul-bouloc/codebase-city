@@ -29,3 +29,14 @@ export function truncatePath(path: string, maxChars: number): string {
 
   return candidates.find((candidate) => candidate.length <= maxChars) ?? candidates.at(-1) ?? name
 }
+
+// Fits a text into `maxChars` by cutting its middle, where a field cannot let CSS clip it:
+// `…/Markdown_Katex…expressions.0.snap`. The end, the file's extension, keeps a little more.
+export function truncateMiddle(text: string, maxChars: number): string {
+  if (text.length <= maxChars || maxChars < 3) {
+    return text
+  }
+  const kept = maxChars - ELLIPSIS.length
+  const end = Math.ceil(kept / 2)
+  return `${text.slice(0, kept - end)}${ELLIPSIS}${text.slice(text.length - end)}`
+}
