@@ -43,6 +43,8 @@ export interface Guide {
   steps: number
   /** What depends on the file asked about, while that answer is on show. */
   impact: Impact | null
+  /** The paths the camera frames for that answer: the file, then what depends on it. */
+  impactFrame: readonly string[] | null
 }
 
 /**
@@ -105,7 +107,7 @@ export function useGuide(
     engine?.setLeftInset(aside ? TOUR_INSET : 0)
   }, [engine, aside])
 
-  // What depends on the file asked about: kept in colour in the city, and framed beside the panel.
+  // What depends on the file asked about: kept in colour in the city.
   const impactFile =
     state.mode === 'impact' && state.file !== undefined ? index.fileAt(state.file) : undefined
   const impact = useMemo(
@@ -123,8 +125,13 @@ export function useGuide(
     const path = index.filePaths[impact.file] ?? ''
     const dependents = impact.dependents.map((file) => index.filePaths[file] ?? '')
     engine.showImpact({ path, dependents })
-    engine.frameAll([path, ...dependents])
   }, [engine, index, impact])
+  // What the camera frames for it, beside the panel: the screen frames it once the selection it
+  // reads from the address has moved the camera, if it did.
+  const impactFrame = useMemo(
+    () => impact && [impact.file, ...impact.dependents].map((file) => index.filePaths[file] ?? ''),
+    [index, impact],
+  )
 
   // Each step frames what it shows, beside the panel.
   useEffect(() => {
@@ -210,5 +217,6 @@ export function useGuide(
     shown,
     steps: steps.length,
     impact,
+    impactFrame,
   }
 }

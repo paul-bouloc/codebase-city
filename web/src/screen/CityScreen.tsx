@@ -204,6 +204,16 @@ function Screen({
   const screen = useRef<HTMLElement>(null)
   useViewInset(engine, screen, sheetShown)
 
+  // An answer frames what it shows beside the guide, once the selection of the address and the
+  // room its sheet takes are known: again when the sheet comes or goes.
+  const { impactFrame } = guide
+  // biome-ignore lint/correctness/useExhaustiveDependencies: again when the sheet's room changes
+  useEffect(() => {
+    if (impactFrame) {
+      engine?.frameAll(impactFrame)
+    }
+  }, [engine, impactFrame, sheetShown])
+
   const portOpen = port !== null
   const closeAbout = useCallback(() => setAboutOpen(false), [])
   const closeSheet = useCallback(() => setSheetOpen(false), [setSheetOpen])
