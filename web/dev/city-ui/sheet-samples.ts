@@ -128,6 +128,28 @@ export const FILE_CODE_TIMEOUT: FileSheetData = {
 }
 export const FILE_CODE_GONE: FileSheetData = { ...FILE, code: { status: 'error', cause: 'gone' } }
 
+// A test: its path tells its role, it has no rank and the analysis counts no total of dependents.
+export const TEST_FILE: FileSheetData = {
+  ...FILE,
+  path: 'src/vs/editor/test/common/model/textModel.test.ts',
+  lines: 1180,
+  complexity: 96,
+  complexityTop: undefined,
+  complexityRank: undefined,
+  repoFiles: undefined,
+  roles: [],
+  pathRole: 'test',
+  importers: 0,
+  dependents: undefined,
+  shownImporters: undefined,
+  imports: 14,
+  layer: undefined,
+  cycles: [],
+  headerComment: undefined,
+  importerList: [],
+  githubUrl: blob('src/vs/editor/test/common/model/textModel.test.ts'),
+}
+
 export const UNANALYZED_FILE: FileSheetData = {
   path: 'src/vs/workbench/contrib/terminal/common/scripts/shellIntegration.ps1',
   languageName: 'PowerShell',
@@ -137,7 +159,6 @@ export const UNANALYZED_FILE: FileSheetData = {
   sizeBytes: 8400,
   roles: [],
   importers: 0,
-  dependents: 0,
   imports: 0,
   cycles: [],
   importList: [],
