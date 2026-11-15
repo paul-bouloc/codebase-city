@@ -43,32 +43,44 @@ export type Route =
     }
 
 /**
- * The `choice`-th shortest path from `from` to `to` (taken round the paths counted), or why there
- * is none. The paths go in a fixed order, by the paths of their files from the end back.
+ * The ways from `from` to `to`, searched once: each call gives the `choice`-th shortest path
+ * (taken round the paths counted), or why there is none. The paths go in a fixed order, by the
+ * paths of their files from the end back.
  */
-export function routeOf(context: TourContext, from: number, to: number, choice = 0): Route {
+export function routeFinder(
+  context: TourContext,
+  from: number,
+  to: number,
+): (choice: number) => Route {
   const { index } = context
   const ahead = levels(index.imports, from, to)
-  const steps = ahead.level[to] ?? -1
-  if (steps < 0) {
+  if ((ahead.level[to] ?? -1) < 0) {
     const back = levels(index.imports, to, from).level[from] ?? -1
-    return {
+    const none: Route = {
       kind: 'none',
       from,
       to,
       reason: noRouteReason(context, from, to, ahead.reached),
       back: back < 0 ? null : back,
     }
+    return () => none
   }
 
   // How many shortest paths lead from `from` to each file on one, `COUNTED_PATHS + 1` at most.
   const { level } = ahead
   const { importers, filePaths } = index
   const ways = new Map<number, number>([[from, 1]])
-  const before = (file: number) =>
-    (importers[file] ?? [])
-      .filter((importer) => level[importer] === (level[file] ?? 0) - 1)
-      .sort((a, b) => (filePaths[a] ?? '').localeCompare(filePaths[b] ?? ''))
+  const sorted = new Map<number, number[]>()
+  const before = (file: number) => {
+    let found = sorted.get(file)
+    if (!found) {
+      found = (importers[file] ?? [])
+        .filter((importer) => level[importer] === (level[file] ?? 0) - 1)
+        .sort((a, b) => (filePaths[a] ?? '').localeCompare(filePaths[b] ?? ''))
+      sorted.set(file, found)
+    }
+    return found
+  }
   const waysTo = (file: number): number => {
     const known = ways.get(file)
     if (known !== undefined) {
@@ -82,28 +94,35 @@ export function routeOf(context: TourContext, from: number, to: number, choice =
     return count
   }
   const paths = waysTo(to)
+  const counted = Math.min(paths, COUNTED_PATHS)
 
   // From the end back, the file before is the one whose own paths hold the one asked for.
-  const counted = Math.min(paths, COUNTED_PATHS)
-  const shown = ((choice % counted) + counted) % counted
-  let left = shown
-  const files = [to]
-  for (let file = to; file !== from; ) {
-    const next = before(file).find((importer) => {
-      const through = waysTo(importer)
-      if (left < through) {
-        return true
+  return (choice) => {
+    const shown = ((choice % counted) + counted) % counted
+    let left = shown
+    const files = [to]
+    for (let file = to; file !== from; ) {
+      const next = before(file).find((importer) => {
+        const through = waysTo(importer)
+        if (left < through) {
+          return true
+        }
+        left -= through
+        return false
+      })
+      if (next === undefined) {
+        break
       }
-      left -= through
-      return false
-    })
-    if (next === undefined) {
-      break
+      file = next
+      files.push(file)
     }
-    file = next
-    files.push(file)
+    return { kind: 'found', from, to, files: files.reverse(), paths, choice: shown }
   }
-  return { kind: 'found', from, to, files: files.reverse(), paths, choice: shown }
+}
+
+/** The `choice`-th shortest path from `from` to `to`, or why there is none (`routeFinder`). */
+export function routeOf(context: TourContext, from: number, to: number, choice = 0): Route {
+  return routeFinder(context, from, to)(choice)
 }
 
 /**

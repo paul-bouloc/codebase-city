@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { ResultIndex } from '../../result-index'
 import type { TourContext } from '../tour/tour-spans'
-import { COUNTED_PATHS, routeOf } from './route'
+import { COUNTED_PATHS, routeFinder, routeOf } from './route'
 
 /** A city of files whose imports, islands and layers are written by hand. */
 function city(
@@ -113,5 +113,13 @@ describe('routeOf', () => {
         reason: { kind: 'reaches', files: 2 },
       })
     })
+  })
+})
+
+describe('routeFinder', () => {
+  it('gives each shortest path from one search', () => {
+    const find = routeFinder(city([[1, 2], [3], [3], []]), 0, 3)
+    expect(find(0)).toMatchObject({ files: [0, 1, 3] })
+    expect(find(1)).toMatchObject({ files: [0, 2, 3] })
   })
 })
