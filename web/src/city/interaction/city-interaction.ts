@@ -350,6 +350,7 @@ export class CityInteraction {
       this.buildings.setHighlight(previous.index, selected ? Highlight.selected : Highlight.none)
     }
     this.highlighted = pointed
+    this.guide.setHovered(this.hoveredIsland())
     // A hovered hub rims its count, a port its badge (the open one keeps it rimmed); nothing of
     // the city stands out meanwhile.
     this.arcs.hoverLabel(pointed?.kind === 'hub' ? this.links.hubs.indexOf(pointed.hub) : null)

@@ -450,7 +450,10 @@ export class CityEngine {
     const selected = this.interaction?.getSelection()?.target ?? null
     // While the guide labels units, an island keeps its own label only under the pointer,
     // selected, or holding a unit's parcel.
-    const units = this.unitLabels.place(this.interaction?.guideCounts())
+    const units = this.unitLabels.place(
+      this.interaction?.guideCounts(),
+      this.interaction?.guide.litUnit ?? null,
+    )
     const hovered = this.interaction?.hoveredIsland() ?? null
     this.areaLabels.setQuiet(
       this.unitLabels.active
