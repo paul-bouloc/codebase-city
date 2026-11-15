@@ -63,6 +63,35 @@ export function flightRadius({ radius, height, folder }: Extent): number {
   return folder ? radius + FRAME_MARGIN : Math.max(BLOCK_RADIUS, height + radius)
 }
 
+/**
+ * The sphere that frames several files and folders together: around all their extents, each
+ * with the room a flight to it alone would give. Null for none.
+ */
+export function unionSphere(extents: readonly Extent[]): { centre: Vec3; radius: number } | null {
+  const [first] = extents
+  if (first === undefined) {
+    return null
+  }
+  if (extents.length === 1) {
+    return { centre: first.centre, radius: flightRadius(first) }
+  }
+  const xs = extents.flatMap(({ centre: [x], radius }) => [x - radius, x + radius])
+  const zs = extents.flatMap(({ centre: [, , z], radius }) => [z - radius, z + radius])
+  const centre: Vec3 = [
+    (Math.min(...xs) + Math.max(...xs)) / 2,
+    0,
+    (Math.min(...zs) + Math.max(...zs)) / 2,
+  ]
+  const radius = Math.max(
+    ...extents.map(
+      (extent) =>
+        Math.hypot(extent.centre[0] - centre[0], extent.centre[2] - centre[2]) +
+        Math.max(extent.radius + FRAME_MARGIN, extent.folder ? 0 : extent.height),
+    ),
+  )
+  return { centre, radius }
+}
+
 /** The canvas, in CSS pixels, and the panels that cover its sides. */
 export interface Viewport {
   width: number

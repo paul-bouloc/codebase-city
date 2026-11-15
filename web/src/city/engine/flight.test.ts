@@ -15,6 +15,7 @@ import {
   orbitTilt,
   revealShift,
   turnAbout,
+  unionSphere,
   type Viewport,
 } from './flight'
 
@@ -61,6 +62,35 @@ describe('flightRadius', () => {
     expect(flightRadius({ centre: [0, 0, 0], radius: 30, height: 0, folder: true })).toBe(
       30 + FRAME_MARGIN,
     )
+  })
+})
+
+describe('unionSphere', () => {
+  const island = (x: number, z: number, radius: number): Extent => ({
+    centre: [x, 0, z],
+    radius,
+    height: 0,
+    folder: true,
+  })
+
+  it('frames one target as a flight to it would', () => {
+    const one = island(5, 5, 30)
+    expect(unionSphere([one])).toEqual({ centre: [5, 0, 5], radius: flightRadius(one) })
+    expect(unionSphere([])).toBeNull()
+  })
+
+  it('frames several around all of them, with room', () => {
+    const sphere = unionSphere([island(-50, 0, 10), island(50, 0, 20)])
+    expect(sphere?.centre).toEqual([5, 0, 0])
+    // The far side of the second island, 45 + 20 from the centre, and the margin
+    expect(sphere?.radius).toBe(45 + 20 + FRAME_MARGIN)
+  })
+
+  it('keeps a tall building in view', () => {
+    const tower: Extent = { centre: [40, 0, 0], radius: 1, height: 30, folder: false }
+    const sphere = unionSphere([island(-50, 0, 10), tower])
+    // The centre at x = -9.5: the tower 49.5 away, its roof 30 above
+    expect(sphere?.radius).toBe(49.5 + 30)
   })
 })
 
