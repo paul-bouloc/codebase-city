@@ -43,6 +43,20 @@ describe('nextGuide', () => {
     expect(nextGuide(OPEN, { kind: 'toggle' }, 9)).toEqual(at(0))
   })
 
+  it('answers what depends on a file, and goes back to the questions', () => {
+    const impact = nextGuide(OPEN, { kind: 'impact', file: 'src/a.ts' }, 9)
+    expect(impact).toEqual({ mode: 'impact', step: 0, playing: false, file: 'src/a.ts' })
+    expect(nextGuide(impact, { kind: 'impact', file: null }, 9)).toEqual({
+      mode: 'impact',
+      step: 0,
+      playing: false,
+    })
+    expect(nextGuide(impact, { kind: 'questions' }, 9)).toEqual(OPEN)
+    expect(nextGuide(at(2), { kind: 'questions' }, 9)).toEqual(at(2))
+    expect(nextGuide(impact, { kind: 'next' }, 9)).toBe(impact)
+    expect(nextGuide(impact, { kind: 'toggle' }, 9)).toEqual(at(0))
+  })
+
   it('advances when a step is up, only while playing, and stops on the last step', () => {
     expect(nextGuide(at(2), { kind: 'advance' }, 9)).toEqual(at(3))
     expect(nextGuide(at(2, false), { kind: 'advance' }, 9)).toEqual(at(2, false))

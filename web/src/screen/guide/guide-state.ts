@@ -1,7 +1,7 @@
-// What the guide shows: folded into its pill, open on its questions, or a step of the tour, which
-// plays on its own or waits.
+// What the guide shows: folded into its pill, open on its questions, a step of the tour, which
+// plays on its own or waits, or the answer to a question.
 
-export type GuideMode = 'folded' | 'open' | 'touring'
+export type GuideMode = 'folded' | 'open' | 'touring' | 'impact'
 
 export interface GuideState {
   mode: GuideMode
@@ -9,6 +9,8 @@ export interface GuideState {
   step: number
   /** The tour goes on to the next step on its own, while touring. */
   playing: boolean
+  /** The file whose impact is on show, by path; none while its field is empty. */
+  file?: string
 }
 
 export const FOLDED: GuideState = { mode: 'folded', step: 0, playing: false }
@@ -25,6 +27,10 @@ export type GuideAction =
   | { kind: 'toggle' }
   /** A step's time is up: the next one, or a pause on the last. */
   | { kind: 'advance' }
+  /** What depends on this file, or on none yet: its field is empty. */
+  | { kind: 'impact'; file: string | null }
+  /** From an answer back to the questions. */
+  | { kind: 'questions' }
 
 /** The guide after an action, the tour having `steps` steps; past the last one, it folds. */
 export function nextGuide(state: GuideState, action: GuideAction, steps: number): GuideState {
@@ -57,6 +63,12 @@ export function nextGuide(state: GuideState, action: GuideAction, steps: number)
       return state.step + 1 < steps
         ? { ...state, step: state.step + 1 }
         : { ...state, playing: false }
+    case 'impact':
+      return action.file === null
+        ? { mode: 'impact', step: 0, playing: false }
+        : { mode: 'impact', step: 0, playing: false, file: action.file }
+    case 'questions':
+      return state.mode === 'impact' ? { mode: 'open', step: 0, playing: false } : state
   }
 }
 
