@@ -20,11 +20,6 @@ describe('nextGuide', () => {
     expect(nextGuide(at(8), { kind: 'next' }, 9)).toEqual(FOLDED)
   })
 
-  it('goes straight to a step of the tour, and nowhere else', () => {
-    expect(nextGuide(FOLDED, { kind: 'go', step: 3 }, 9)).toEqual(at(3))
-    expect(nextGuide(FOLDED, { kind: 'go', step: 9 }, 9)).toEqual(FOLDED)
-  })
-
   it('moves nothing when no tour plays', () => {
     expect(nextGuide(FOLDED, { kind: 'next' }, 9)).toEqual(FOLDED)
     expect(nextGuide(FOLDED, { kind: 'start' }, 0)).toEqual(FOLDED)

@@ -16,7 +16,6 @@ export type GuideAction =
   | { kind: 'start' }
   | { kind: 'next' }
   | { kind: 'back' }
-  | { kind: 'go'; step: number }
 
 /** Seconds each step counts for in the tour's length. */
 export const STEP_SECONDS = 12
@@ -30,10 +29,6 @@ export function nextGuide(state: GuideState, action: GuideAction, steps: number)
       return FOLDED
     case 'start':
       return steps > 0 ? { mode: 'touring', step: 0 } : state
-    case 'go':
-      return action.step >= 0 && action.step < steps
-        ? { mode: 'touring', step: action.step }
-        : state
     case 'next':
       if (state.mode !== 'touring') {
         return state
