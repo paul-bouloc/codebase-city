@@ -66,3 +66,8 @@
   font-family: var(--font-family-mono);
   font-size: 0.86em;
 }
+
+/* A chip and the punctuation after it, on one line. */
+.together {
+  white-space: nowrap;
+}
