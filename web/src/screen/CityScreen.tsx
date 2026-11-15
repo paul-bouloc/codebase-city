@@ -130,7 +130,7 @@ function Screen({
 
   const guide = useGuide(engine, index, guideState, onGuideChange)
   const { dispatch: guideDispatch } = guide
-  // The user taking the camera, a chip or a search pauses the tour: it no longer flies away.
+  // The user taking the camera, or sending it somewhere, pauses the tour: it no longer flies away.
   const pauseTour = useCallback(() => guideDispatch({ kind: 'pause' }), [guideDispatch])
 
   useEffect(() => {
@@ -221,17 +221,22 @@ function Screen({
     foldGuide,
   )
 
+  // The user asks for a file or a folder (search, sheet, chip): the camera flies there.
+  const flyTo = (next: ScreenSelection) => {
+    pauseTour()
+    choose(next, FLY)
+  }
+
   const cameraAction = useCameraActions(engine)
   useDriveKeys(engine)
 
   // Flies to what was found and selects it.
   const search = useSearch(searchIndex, (hit) => {
-    pauseTour()
     if (hit.kind === 'symbol') {
-      choose({ kind: 'file', path: hit.file }, FLY)
+      flyTo({ kind: 'file', path: hit.file })
       openAtLine(hit.file, hit.line)
     } else {
-      choose({ kind: hit.kind === 'file' ? 'file' : 'dir', path: hit.path }, FLY)
+      flyTo({ kind: hit.kind === 'file' ? 'file' : 'dir', path: hit.path })
     }
   })
 
@@ -248,21 +253,19 @@ function Screen({
 
   // A chip of the tour selects what it names and flies there; the islands of a package it frames.
   const showTarget = (target: TourTarget) => {
-    if (target.kind !== 'next') {
-      pauseTour()
-    }
     switch (target.kind) {
       case 'file':
-        choose({ kind: 'file', path: target.path }, FLY)
+        flyTo({ kind: 'file', path: target.path })
         break
       case 'folder':
-        choose({ kind: 'dir', path: target.path }, FLY)
+        flyTo({ kind: 'dir', path: target.path })
         break
       case 'islands': {
         const [only] = target.folders
         if (only !== undefined && target.folders.length === 1) {
-          choose({ kind: 'dir', path: only }, FLY)
+          flyTo({ kind: 'dir', path: only })
         } else {
+          pauseTour()
           engine?.frameAll(target.folders)
         }
         break
@@ -277,6 +280,7 @@ function Screen({
     const file = selectedFile === null ? undefined : index.fileAt(selectedFile)
     const members = result.cycles.members.find((each) => file !== undefined && each.includes(file))
     if (members) {
+      pauseTour()
       engine?.frameFiles(members.map((member) => index.filePaths[member] ?? ''))
     }
   }
@@ -365,8 +369,8 @@ function Screen({
             open={sheetShown}
             file={shownSheet.file}
             onClose={closeSheet}
-            onOpenFolder={(path) => choose({ kind: 'dir', path }, FLY)}
-            onSelectFile={(path) => choose({ kind: 'file', path }, FLY)}
+            onOpenFolder={(path) => flyTo({ kind: 'dir', path })}
+            onSelectFile={(path) => flyTo({ kind: 'file', path })}
             onShowCycle={showCycle}
             onCopyPath={() => copy(shownSheet.file.path, TEXT.pathCopied)}
             onCopyLink={() =>
@@ -386,8 +390,8 @@ function Screen({
             open={sheetShown}
             folder={shownSheet.folder}
             onClose={closeSheet}
-            onOpenFolder={(path) => choose({ kind: 'dir', path }, FLY)}
-            onSelectFile={(path) => choose({ kind: 'file', path }, FLY)}
+            onOpenFolder={(path) => flyTo({ kind: 'dir', path })}
+            onSelectFile={(path) => flyTo({ kind: 'file', path })}
             onCopyLink={() =>
               copy(linkTo({ kind: 'dir', path: shownSheet.folder.path }), TEXT.linkCopied)
             }
