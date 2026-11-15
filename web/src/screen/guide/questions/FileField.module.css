@@ -1,0 +1,141 @@
+/* The "File" field of a question, on "City UI · 08": 44 px, the path in mono 13. */
+
+.box {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+}
+
+.label {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  color: var(--color-text-body);
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 44px;
+  padding: 0 var(--space-1) 0 var(--space-3);
+  border: var(--border-width-default) solid var(--color-border-field);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-default);
+  transition: border-color var(--duration-fast) var(--easing-standard);
+}
+
+.field:hover {
+  border-color: var(--color-border-field-hover);
+}
+
+.field:focus-within {
+  border-color: var(--state-focus);
+  outline: var(--border-width-focus) solid transparent;
+  box-shadow: var(--focus-ring);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-family: var(--font-family-mono);
+  font-size: 13px;
+}
+
+/* The field draws the focus. */
+.input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.input::placeholder {
+  color: var(--color-text-secondary);
+  font-family: var(--font-family-sans);
+}
+
+.clear {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.clear:hover {
+  background: var(--state-hover);
+  color: var(--color-text-primary);
+}
+
+/* The files found, over what follows the field. */
+.list {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  margin: var(--space-1) 0 0;
+  padding: var(--space-1);
+  border: var(--glass-border);
+  border-radius: var(--radius-md);
+  background: var(--glass-bg-fallback);
+  box-shadow: var(--shadow-md);
+  list-style: none;
+}
+
+.option {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 36px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.active {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-strong);
+}
+
+.optionIcon {
+  color: var(--color-text-secondary);
+}
+
+/* One line: the folder gives way from its start, the name stays whole. */
+.optionPath {
+  display: flex;
+  min-width: 0;
+  font-family: var(--font-family-mono);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.optionFolder {
+  overflow: hidden;
+  min-width: 0;
+  color: var(--color-text-secondary);
+  text-overflow: ellipsis;
+  direction: rtl;
+  unicode-bidi: plaintext;
+}
+
+.optionName {
+  flex: none;
+  font-weight: 600;
+}
