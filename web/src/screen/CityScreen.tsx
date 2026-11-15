@@ -53,6 +53,7 @@ const TEXT = {
 }
 
 const ABOUT_ID = 'city-about'
+const NO_NOTES: ReadonlyMap<string, string> = new Map()
 /** Moving from sheet to sheet, the camera follows. */
 const FLY = { fly: true }
 
@@ -323,7 +324,18 @@ function Screen({
   return (
     <main ref={screen} className={styles.screen}>
       <CityView layout={layout} showStats={showStats} onEngine={handleEngine} />
-      {guide.shown && <GuideLabels labels={guideLabels} notes={guide.shown.notes} />}
+      {(guide.shown || guide.impact) && (
+        <GuideLabels
+          labels={guideLabels}
+          notes={guide.shown?.notes ?? NO_NOTES}
+          impact={
+            guide.impact && {
+              path: index.filePaths[guide.impact.file] ?? '',
+              dependents: guide.impact.dependents.length,
+            }
+          }
+        />
+      )}
 
       <div className={styles.topBar}>
         <CityTopBar
