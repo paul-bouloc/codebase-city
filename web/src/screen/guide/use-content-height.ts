@@ -1,21 +1,26 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 
 /**
- * The height of what a box holds, followed as it changes: the box takes it, and a CSS transition
- * on its height eases it from one size to the next. Undefined until measured.
+ * The height of what a box holds, its borders added, followed as it changes: the box takes it,
+ * and a CSS transition on its height eases it from one size to the next. Undefined until
+ * measured.
  */
-export function useContentHeight<T extends HTMLElement>() {
-  const contentRef = useRef<T>(null)
+export function useContentHeight<B extends HTMLElement, C extends HTMLElement>() {
+  const boxRef = useRef<B>(null)
+  const contentRef = useRef<C>(null)
   const [height, setHeight] = useState<number | undefined>(undefined)
   useLayoutEffect(() => {
+    const box = boxRef.current
     const content = contentRef.current
-    if (!content) {
+    if (!box || !content) {
       return
     }
-    setHeight(content.offsetHeight)
-    const observer = new ResizeObserver(() => setHeight(content.offsetHeight))
+    // The box's borders, which a border-box height counts: it scrolls nothing
+    const measure = () => setHeight(content.offsetHeight + box.offsetHeight - box.clientHeight)
+    measure()
+    const observer = new ResizeObserver(measure)
     observer.observe(content)
     return () => observer.disconnect()
   }, [])
-  return { contentRef, height }
+  return { boxRef, contentRef, height }
 }

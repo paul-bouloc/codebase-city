@@ -47,7 +47,7 @@ export const TourPanel = forwardRef<HTMLHeadingElement, TourPanelProps>(function
 ) {
   const last = step === steps - 1
   // The panel eases from the height of one step to the next.
-  const { contentRef, height } = useContentHeight<HTMLDivElement>()
+  const { boxRef, contentRef, height } = useContentHeight<HTMLDivElement, HTMLDivElement>()
   // Back goes with the first step: the focus it had goes on to Next.
   const nextRef = useRef<HTMLButtonElement>(null)
   const back = () => {
@@ -57,7 +57,7 @@ export const TourPanel = forwardRef<HTMLHeadingElement, TourPanelProps>(function
     onBack()
   }
   return (
-    <Glass as="section" className={styles.panel} style={{ height }} aria-label="Guide">
+    <Glass ref={boxRef} as="section" className={styles.panel} style={{ height }} aria-label="Guide">
       <div ref={contentRef} className={styles.content}>
         <div className={styles.head}>
           <h2 ref={titleRef} tabIndex={-1} className={styles.step}>
