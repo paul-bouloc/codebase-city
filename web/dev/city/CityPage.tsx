@@ -56,7 +56,8 @@ const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve))
  * `?variants`.
  * `?look=x,y,distance[,azimuth,polar]` points the camera at a board point, for close captures.
  * `?select=path` selects the file or folder of that path once the city loads; `?port=path` opens
- * the port of that island; `?step=kind` shows that step of the tour (`entryPoints`, `cycles`…).
+ * the port of that island; `?step=kind` shows that step of the tour (`entryPoints`, `cycles`…);
+ * `?impact=path` answers what depends on that file, selected.
  * `?stats` shows the frame stats, and with them the drawing of every frame (on by default for a
  * synthetic city, `?stats=off` hides them); without, the city draws only when something changes,
  * as in the product.
@@ -100,6 +101,11 @@ export function CityPage() {
       params.set('step', kind)
     } else {
       params.delete('step')
+    }
+    if (next.mode === 'impact' && next.file !== undefined) {
+      params.set('impact', next.file)
+    } else {
+      params.delete('impact')
     }
     window.history.replaceState(null, '', `?${params}${window.location.hash}`)
   }
@@ -157,11 +163,23 @@ export function CityPage() {
       if (request !== latest.current) {
         return
       }
-      // It opens on the step `?step` names, if its tour has it: in the same render as the city.
-      const kind = new URLSearchParams(window.location.search).get('step')
+      // It opens on the step `?step` names, if its tour has it, or on the impact of the file
+      // `?impact` names, which the fragment selects: in the same render as the city.
+      const params = new URLSearchParams(window.location.search)
+      const kind = params.get('step')
+      const impact = params.get('impact')
       const step = decoded.tour.steps.findIndex((each) => each.kind === kind)
+      if (impact && step < 0) {
+        window.history.replaceState(null, '', `?${params}#file=${impact}`)
+      }
       setResult(decoded)
-      setGuide(step >= 0 ? { mode: 'touring', step, playing: false } : FOLDED)
+      setGuide(
+        step >= 0
+          ? { mode: 'touring', step, playing: false }
+          : impact
+            ? { mode: 'impact', step: 0, playing: false, file: impact }
+            : FOLDED,
+      )
       setError(null)
     } catch (cause) {
       if (request === latest.current) {
