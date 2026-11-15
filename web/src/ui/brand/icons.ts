@@ -1,4 +1,5 @@
 import {
+  ArrowDownUp,
   ArrowLeft,
   ArrowRight,
   Box,
@@ -44,6 +45,7 @@ import {
   Play,
   RefreshCw,
   RotateCw,
+  Route,
   Scaling,
   Search,
   Server,
@@ -95,6 +97,7 @@ export const LUCIDE_ICONS = {
   wrench: Wrench,
   buildings: BuildingComplex,
   grip: GripVertical,
+  swap: ArrowDownUp,
 
   // Feedback
   info: Info,
@@ -126,6 +129,7 @@ export const LUCIDE_ICONS = {
   'scale-footprint': Scaling,
   canal: WavesHorizontal,
   guide: MapPin,
+  route: Route,
 
   // Administration and privacy
   dashboard: LayoutDashboard,
