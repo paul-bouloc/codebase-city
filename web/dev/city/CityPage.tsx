@@ -245,8 +245,9 @@ export function CityPage() {
           result={result}
           guide={guide}
           onGuideChange={changeGuide}
-          // The tour that starts on its own would cover every capture: only with `?first`.
-          firstTour={query.has('first')}
+          // The tour that starts on its own would cover every capture: only with `?first`, and
+          // never over the step `?step` opens.
+          firstTour={query.has('first') && !query.has('step')}
           showStats={showStats}
           onEngine={setEngine}
         />
