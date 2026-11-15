@@ -2,7 +2,7 @@ import type { ExtraFerries } from '../flows/extra-ferries'
 import { FolderLinkMarks, folderWays } from '../flows/folder-link-marks'
 import { PORT_ROWS, portLabels, portRows } from '../flows/port-links'
 import { ArcLayer } from '../render/arc-mesh'
-import type { Ferry, Port } from '../waterways/links'
+import type { Ferry, Pair, Port } from '../waterways/links'
 import type { CityLayout } from '../world/layout'
 
 /** A link of an open port, as its card lists it. */
@@ -42,6 +42,8 @@ export class OpenPort {
   private at: Port | null = null
   private list: PortList | null = null
   private lines: PortLine[] = []
+  /** The ports with a badge: those that still gather a link not sailed out. */
+  private badged: readonly Port[]
 
   constructor(
     private readonly layout: CityLayout,
@@ -51,7 +53,22 @@ export class OpenPort {
   ) {
     this.links = new FolderLinkMarks(pixelRatio)
     this.badges = new ArcLayer(pixelRatio)
+    this.badged = ports
     this.badges.show({ lines: [], dots: [], stems: [], labels: portLabels(ports) })
+  }
+
+  /** The ports whose badges show, in their order: those that still gather a link. */
+  get shown(): readonly Port[] {
+    return this.badged
+  }
+
+  /**
+   * These links sail out of their ports for the while: their badges count them no more, and a
+   * port left with none loses its badge. The open port must be closed first.
+   */
+  sailOut(out: ReadonlySet<Pair>): void {
+    this.badged = this.ports.filter((port) => port.pairs.some((pair) => !out.has(pair)))
+    this.badges.show({ lines: [], dots: [], stems: [], labels: portLabels(this.badged, out) })
   }
 
   /** The port open, if any. */
@@ -61,7 +78,7 @@ export class OpenPort {
 
   /** Whether this port can open: one of the city's, with its links able to sail out. */
   canOpen(port: Port): boolean {
-    return this.extra !== undefined && this.ports.includes(port)
+    return this.extra !== undefined && this.badged.includes(port)
   }
 
   /** Opens a port, opened at this point of the page; the one open must be closed first. */
