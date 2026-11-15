@@ -77,8 +77,20 @@ describe('nextGuide', () => {
     expect(nextGuide(route, { kind: 'questions' }, 9)).toEqual(OPEN)
   })
 
+  it('answers where the cycles are, one of them on show', () => {
+    const cycles = nextGuide(OPEN, { kind: 'cycles', cycle: 2 }, 9)
+    expect(cycles).toEqual({ mode: 'cycles', step: 0, playing: false, cycle: 2 })
+    expect(nextGuide(cycles, { kind: 'cycles', cycle: 0 }, 9)).toEqual({ ...cycles, cycle: 0 })
+    expect(nextGuide(OPEN, { kind: 'cycles', cycle: null }, 9)).toEqual({
+      mode: 'cycles',
+      step: 0,
+      playing: false,
+    })
+    expect(nextGuide(cycles, { kind: 'questions' }, 9)).toEqual(OPEN)
+  })
+
   it('tells an answer from the other modes', () => {
-    expect(['impact', 'route'].every((mode) => isAnswer(mode as GuideMode))).toBe(true)
+    expect(['impact', 'route', 'cycles'].every((mode) => isAnswer(mode as GuideMode))).toBe(true)
     expect(['folded', 'open', 'touring'].some((mode) => isAnswer(mode as GuideMode))).toBe(false)
   })
 

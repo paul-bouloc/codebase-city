@@ -1,7 +1,7 @@
 // What the guide shows: folded into its pill, open on its questions, a step of the tour, which
 // plays on its own or waits, or the answer to a question.
 
-export type GuideMode = 'folded' | 'open' | 'touring' | 'impact' | 'route'
+export type GuideMode = 'folded' | 'open' | 'touring' | 'impact' | 'route' | 'cycles'
 
 export interface GuideState {
   mode: GuideMode
@@ -16,6 +16,8 @@ export interface GuideState {
   to?: string
   /** Which of the route's shortest paths is on show, from 0. */
   path?: number
+  /** The cycle on show, by its place in the list of cycles, the biggest first; none in a city without. */
+  cycle?: number
 }
 
 export const FOLDED: GuideState = { mode: 'folded', step: 0, playing: false }
@@ -38,6 +40,8 @@ export type GuideAction =
   | { kind: 'route'; from: string | null; to: string | null }
   /** The route's next shortest path. */
   | { kind: 'next-path' }
+  /** The cycles of the city, this one on show; none in a city without. */
+  | { kind: 'cycles'; cycle: number | null }
   /** From an answer back to the questions. */
   | { kind: 'questions' }
 
@@ -89,6 +93,10 @@ export function nextGuide(state: GuideState, action: GuideAction, steps: number)
     }
     case 'next-path':
       return state.mode === 'route' ? { ...state, path: (state.path ?? 0) + 1 } : state
+    case 'cycles':
+      return action.cycle === null
+        ? { mode: 'cycles', step: 0, playing: false }
+        : { mode: 'cycles', step: 0, playing: false, cycle: action.cycle }
     case 'questions':
       return isAnswer(state.mode) ? { mode: 'open', step: 0, playing: false } : state
   }
@@ -96,7 +104,7 @@ export function nextGuide(state: GuideState, action: GuideAction, steps: number)
 
 /** Whether the guide shows the answer to a question. */
 export function isAnswer(mode: GuideMode): boolean {
-  return mode === 'impact' || mode === 'route'
+  return mode === 'impact' || mode === 'route' || mode === 'cycles'
 }
 
 /** "9 steps · about 2 min", from each step's seconds: rounded to the minute, never under one. */
