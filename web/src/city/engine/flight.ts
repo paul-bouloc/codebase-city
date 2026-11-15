@@ -63,20 +63,39 @@ export function flightRadius({ radius, height, folder }: Extent): number {
   return folder ? radius + FRAME_MARGIN : Math.max(BLOCK_RADIUS, height + radius)
 }
 
-/** The canvas, in CSS pixels, and the panel that covers its right side. */
+/** The canvas, in CSS pixels, and the panels that cover its sides. */
 export interface Viewport {
   width: number
   height: number
   /** Pixels a panel covers on the right of the canvas; 0 for none. */
   inset: number
+  /** Pixels a panel covers on the left of the canvas; 0 for none. */
+  left: number
   /** Vertical field of view, in degrees. */
   fov: number
 }
 
-/** The part of the canvas a panel leaves free, in pixels from its left edge. */
-export function freeWidth({ width, inset }: Viewport): number {
-  const free = width - Math.max(inset, 0)
-  return free < width * MIN_FREE_SHARE ? width : free
+/**
+ * The part of the canvas the panels leave free, in pixels: where it starts from the left edge,
+ * and its width. Too narrow, the left panel is ignored, then both.
+ */
+function freeSpan({ width, inset, left }: Viewport): { start: number; free: number } {
+  const right = Math.max(inset, 0)
+  const both = width - right - Math.max(left, 0)
+  if (both >= width * MIN_FREE_SHARE) {
+    return { start: Math.max(left, 0), free: both }
+  }
+  return { start: 0, free: width - right < width * MIN_FREE_SHARE ? width : width - right }
+}
+
+/** The width of the part of the canvas the panels leave free, in pixels. */
+export function freeWidth(viewport: Viewport): number {
+  return freeSpan(viewport).free
+}
+
+/** Where that part starts, in pixels from the canvas's left edge. */
+export function freeStart(viewport: Viewport): number {
+  return freeSpan(viewport).start
 }
 
 /**
@@ -90,12 +109,13 @@ export function frameInView(
 ): { distance: number; shift: number } {
   const { width, height, fov } = viewport
   const free = freeWidth(viewport)
+  const start = freeStart(viewport)
   const tanV = Math.tan((fov * Math.PI) / 360)
   const tanH = (tanV * free) / height
   const distance = radius / Math.sin(Math.atan(Math.min(tanV, tanH)))
   // At that distance, a pixel spans this many u.
   const perPixel = (2 * distance * tanV) / height
-  return { distance, shift: ((width - free) / 2) * perPixel }
+  return { distance, shift: (width / 2 - start - free / 2) * perPixel }
 }
 
 /**
@@ -108,14 +128,16 @@ export function revealShift(left: number, right: number, viewport: Viewport): nu
   if (free === viewport.width) {
     return 0
   }
+  const start = freeStart(viewport)
+  const end = start + free
   const centre = (left + right) / 2
   // Only what the panel hides: a selection clear of it, or off screen, stays where it is.
-  if (right <= free || centre > viewport.width) {
+  if (right <= end || centre > viewport.width) {
     return 0
   }
-  const clear = right - free + REVEAL_MARGIN
-  const room = left - REVEAL_MARGIN
-  return clear <= room ? clear : Math.max(0, centre - free / 2)
+  const clear = right - end + REVEAL_MARGIN
+  const room = left - start - REVEAL_MARGIN
+  return clear <= room ? clear : Math.max(0, centre - start - free / 2)
 }
 
 /** After a flight, the camera goes round what it framed once in this many seconds. */

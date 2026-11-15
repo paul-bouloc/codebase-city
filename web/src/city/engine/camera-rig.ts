@@ -77,6 +77,8 @@ export class CameraRig {
   private framingDistance = 0
   // Pixels a panel covers on the right of the canvas: the camera frames and reveals left of them.
   private inset = 0
+  // Pixels a panel covers on the left of the canvas: the camera frames right of them.
+  private left = 0
   // Where the camera's target may go: between the sea and the highest plateau, around the city.
   private readonly boundary = new Box3()
   // What the camera goes round, from the moment it flies there until the next gesture,
@@ -139,6 +141,11 @@ export class CameraRig {
     return grew
   }
 
+  /** Sets the pixels a panel covers on the left of the canvas. */
+  setLeftInset(left: number): void {
+    this.left = left
+  }
+
   stopOrbit(): void {
     this.orbit = null
   }
@@ -156,6 +163,14 @@ export class CameraRig {
     this.stopOrbit()
     if (this.framing) {
       void this.controls.fitToSphere(this.framing, true)
+    }
+  }
+
+  /** Frames the whole city beside the panels, at the same heading and tilt, and goes round it. */
+  frameWhole(): void {
+    if (this.framing) {
+      const { x, y, z } = this.framing.center
+      this.frameSphere([x, y, z], this.framing.radius)
     }
   }
 
@@ -360,6 +375,7 @@ export class CameraRig {
       width: canvas.clientWidth,
       height: canvas.clientHeight,
       inset: this.inset,
+      left: this.left,
       fov: this.camera.fov,
     }
   }

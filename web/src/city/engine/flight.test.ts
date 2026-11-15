@@ -10,6 +10,7 @@ import {
   FRAME_MARGIN,
   flightRadius,
   frameInView,
+  freeStart,
   freeWidth,
   orbitTilt,
   revealShift,
@@ -21,7 +22,7 @@ const layout = cityFromResult(decodeResult(sample))
 const placed = placeBuildings(layout)
 const targets = cityTargets(layout)
 
-const SCREEN: Viewport = { width: 1440, height: 900, inset: 0, fov: 38 }
+const SCREEN: Viewport = { width: 1440, height: 900, inset: 0, left: 0, fov: 38 }
 const WITH_SHEET: Viewport = { ...SCREEN, inset: 444 }
 
 /** Where a point `distance` u in front of the camera and `side` u to its right lands, in px. */
@@ -90,13 +91,46 @@ describe('frameInView', () => {
   })
 
   it('stands back further when the free room is narrower than tall', () => {
-    const narrow: Viewport = { width: 1100, height: 900, inset: 444, fov: 38 }
+    const narrow: Viewport = { width: 1100, height: 900, inset: 444, left: 0, fov: 38 }
     const { distance, shift } = frameInView(10, narrow)
     // The sphere touches the free room's sides, 656 px wide.
     const halfAcross = Math.atan((Math.tan((19 * Math.PI) / 180) * 656) / 900)
     expect(distance).toBeCloseTo(10 / Math.sin(halfAcross))
     expect(distance).toBeGreaterThan(frameInView(10, SCREEN).distance)
     expect(onScreen(-shift, distance, narrow)).toBeCloseTo(656 / 2)
+  })
+})
+
+describe('a panel on the left', () => {
+  const WITH_GUIDE: Viewport = { ...SCREEN, left: 520 }
+  const BOTH: Viewport = { ...WITH_GUIDE, width: 1920, inset: 444 }
+
+  it('leaves the room right of it', () => {
+    expect(freeWidth(WITH_GUIDE)).toBe(920)
+    expect(freeStart(WITH_GUIDE)).toBe(520)
+    expect(freeWidth(BOTH)).toBe(956)
+  })
+
+  it('is ignored first when the room between two panels is too narrow', () => {
+    const narrow: Viewport = { ...WITH_GUIDE, inset: 444 }
+    expect(freeStart(narrow)).toBe(0)
+    expect(freeWidth(narrow)).toBe(996)
+  })
+
+  it('lands the centre in the middle of the room right of it', () => {
+    const { distance, shift } = frameInView(10, WITH_GUIDE)
+    expect(onScreen(-shift, distance, WITH_GUIDE)).toBeCloseTo(520 + 920 / 2)
+  })
+
+  it('lands it between two panels', () => {
+    const { distance, shift } = frameInView(10, BOTH)
+    expect(onScreen(-shift, distance, BOTH)).toBeCloseTo(520 + 956 / 2)
+  })
+
+  it('reveals a selection under the right panel no further left than the left one', () => {
+    expect(revealShift(1500, 1600, BOTH)).toBe(1600 - 1476 + 24)
+    // Too wide to clear: to the middle of the free part
+    expect(revealShift(600, 1600, BOTH)).toBe(1100 - 520 - 956 / 2)
   })
 })
 
