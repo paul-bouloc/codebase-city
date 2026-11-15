@@ -1,7 +1,7 @@
 // What the guide shows: folded into its pill, open on its questions, a step of the tour, which
 // plays on its own or waits, or the answer to a question.
 
-export type GuideMode = 'folded' | 'open' | 'touring' | 'impact'
+export type GuideMode = 'folded' | 'open' | 'touring' | 'impact' | 'route'
 
 export interface GuideState {
   mode: GuideMode
@@ -11,6 +11,11 @@ export interface GuideState {
   playing: boolean
   /** The file whose impact is on show, by path; none while its field is empty. */
   file?: string
+  /** The files a route goes from and to, by path; none while their field is empty. */
+  from?: string
+  to?: string
+  /** Which of the route's shortest paths is on show, from 0. */
+  path?: number
 }
 
 export const FOLDED: GuideState = { mode: 'folded', step: 0, playing: false }
@@ -29,6 +34,10 @@ export type GuideAction =
   | { kind: 'advance' }
   /** What depends on this file, or on none yet: its field is empty. */
   | { kind: 'impact'; file: string | null }
+  /** How a file reaches another; either field may be empty. */
+  | { kind: 'route'; from: string | null; to: string | null }
+  /** The route's next shortest path. */
+  | { kind: 'next-path' }
   /** From an answer back to the questions. */
   | { kind: 'questions' }
 
@@ -67,9 +76,27 @@ export function nextGuide(state: GuideState, action: GuideAction, steps: number)
       return action.file === null
         ? { mode: 'impact', step: 0, playing: false }
         : { mode: 'impact', step: 0, playing: false, file: action.file }
+    case 'route': {
+      // A file is never its own way: the field it ends at empties.
+      const to = action.to === action.from ? null : action.to
+      return {
+        mode: 'route',
+        step: 0,
+        playing: false,
+        ...(action.from === null ? {} : { from: action.from }),
+        ...(to === null ? {} : { to }),
+      }
+    }
+    case 'next-path':
+      return state.mode === 'route' ? { ...state, path: (state.path ?? 0) + 1 } : state
     case 'questions':
-      return state.mode === 'impact' ? { mode: 'open', step: 0, playing: false } : state
+      return isAnswer(state.mode) ? { mode: 'open', step: 0, playing: false } : state
   }
+}
+
+/** Whether the guide shows the answer to a question. */
+export function isAnswer(mode: GuideMode): boolean {
+  return mode === 'impact' || mode === 'route'
 }
 
 /** "9 steps · about 2 min", from each step's seconds: rounded to the minute, never under one. */

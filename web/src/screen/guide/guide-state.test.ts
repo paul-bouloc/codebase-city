@@ -57,6 +57,33 @@ describe('nextGuide', () => {
     expect(nextGuide(impact, { kind: 'toggle' }, 9)).toEqual(at(0))
   })
 
+  it('answers how a file reaches another, and goes round its shortest paths', () => {
+    const route = nextGuide(OPEN, { kind: 'route', from: 'a.ts', to: 'b.ts' }, 9)
+    expect(route).toEqual({ mode: 'route', step: 0, playing: false, from: 'a.ts', to: 'b.ts' })
+    expect(nextGuide(route, { kind: 'next-path' }, 9)).toEqual({ ...route, path: 1 })
+    expect(nextGuide(OPEN, { kind: 'next-path' }, 9)).toBe(OPEN)
+    expect(nextGuide(route, { kind: 'route', from: 'b.ts', to: 'a.ts' }, 9)).toEqual({
+      ...route,
+      from: 'b.ts',
+      to: 'a.ts',
+    })
+    expect(nextGuide(route, { kind: 'questions' }, 9)).toEqual(OPEN)
+  })
+
+  it('leaves a route without its end when both are the same file, or without either', () => {
+    expect(nextGuide(OPEN, { kind: 'route', from: 'a.ts', to: 'a.ts' }, 9)).toEqual({
+      mode: 'route',
+      step: 0,
+      playing: false,
+      from: 'a.ts',
+    })
+    expect(nextGuide(OPEN, { kind: 'route', from: null, to: null }, 9)).toEqual({
+      mode: 'route',
+      step: 0,
+      playing: false,
+    })
+  })
+
   it('advances when a step is up, only while playing, and stops on the last step', () => {
     expect(nextGuide(at(2), { kind: 'advance' }, 9)).toEqual(at(3))
     expect(nextGuide(at(2, false), { kind: 'advance' }, 9)).toEqual(at(2, false))
