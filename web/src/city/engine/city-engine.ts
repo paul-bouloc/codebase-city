@@ -3,7 +3,7 @@ import type { PlacedBuilding } from '../buildings/placed-buildings'
 import { BOAT_LENGTH, type DecorStats } from '../decor/decor-mesh'
 import type { Fleet } from '../decor/fleet'
 import { cityGuideView, type GuidePaths } from '../interaction/city-guide'
-import type { CityInteraction } from '../interaction/city-interaction'
+import type { AnswerLabel, CityInteraction } from '../interaction/city-interaction'
 import type { AreaLabelText, CameraView, CityItem, CityListeners } from '../interaction/city-items'
 import type { CityPicker, CityTarget } from '../interaction/picking'
 import type { CityTargets } from '../interaction/targets'
@@ -235,10 +235,13 @@ export class CityEngine {
   }
 
   /**
-   * Shows what depends on a file, by path: they keep their colours, the rest fades and the file
-   * gets a label, heard of by `guideLabels`. Null shows nothing; the camera stays.
+   * Shows the answer to a question of the guide, by path: what it keeps keeps its colours and the
+   * rest fades; the file it is about, or each stop of its route, gets a label, heard of by
+   * `guideLabels`. Null shows nothing; the camera stays.
    */
-  showImpact(impact: { path: string; dependents: readonly string[] } | null): void {
+  showAnswer(
+    answer: { kept: readonly string[]; labelled?: string; route?: readonly string[] } | null,
+  ): void {
     const { interaction, targets } = this
     if (!interaction || !targets) {
       return
@@ -247,14 +250,14 @@ export class CityEngine {
       const target = targets.at(path)
       return target?.kind === 'building' ? target.index : null
     }
-    const file = impact && building(impact.path)
-    interaction.showImpact(
-      impact && file !== null
-        ? {
-            building: file,
-            dependents: impact.dependents.flatMap((path) => building(path) ?? []),
-          }
-        : null,
+    const buildings = (paths: readonly string[]) => paths.flatMap((path) => building(path) ?? [])
+    const labelled = answer?.labelled === undefined ? null : building(answer.labelled)
+    interaction.showAnswer(
+      answer && {
+        kept: buildings(answer.kept),
+        ...(labelled === null ? {} : { labelled }),
+        ...(answer.route ? { route: buildings(answer.route) } : {}),
+      },
     )
     this.needsRender = true
   }
@@ -491,11 +494,14 @@ export class CityEngine {
 
   /** Tells the listeners where the guide's labels stand, when that changes. */
   private tellGuideLabels(): void {
-    const impact = this.interaction?.impactLabel()
-    const labelled = [...(this.interaction?.guide.labels() ?? []), ...(impact ? [impact] : [])]
-    const roofs = labelled.map(({ building, roof }) => ({
+    const labelled: AnswerLabel[] = [
+      ...(this.interaction?.guide.labels() ?? []),
+      ...(this.interaction?.answerLabels() ?? []),
+    ]
+    const roofs = labelled.map(({ building, roof, free }) => ({
       path: this.placed[building]?.file.path ?? '',
       roof,
+      free: free ?? false,
     }))
     const labels = this.guideLabels.place(roofs)
     if (labels) {

@@ -30,12 +30,27 @@ import { type KeptAreas, keptInAreas } from './kept-areas'
 import { OpenPort } from './open-port'
 import type { CityTarget } from './picking'
 import { CYCLE_RINGS, RingSet } from './rings'
+import { RouteMarks } from './route-marks'
 import { SelectedLinks } from './selected-links'
 
-/** What depends on a building, by building: they keep their colours while the rest fades. */
-export interface CityImpact {
+/**
+ * What the answer to one of the guide's questions shows, by building: what keeps its colours
+ * while the rest fades, a file labelled over its roof, and a route.
+ */
+export interface CityAnswer {
+  kept: readonly number[]
+  /** The file the answer is about, labelled: an impact's. */
+  labelled?: number
+  /** The files of a route, in import order: its ends in ink, Marine arcs from each to the next. */
+  route?: readonly number[]
+}
+
+/** A file an answer labels, and the point over its roof where its label stands. */
+export interface AnswerLabel {
   building: number
-  dependents: readonly number[]
+  roof: Vec3
+  /** Past the most labels at once: each stop of a route is numbered. */
+  free?: boolean
 }
 
 /**
@@ -53,7 +68,10 @@ export class CityInteraction {
   private readonly timing: HoverTiming<Pointed>
   private highlighted: Pointed | null = null
   private selected: CityTarget | null = null
-  private impact: { building: number; kept: ReadonlySet<number>; roof: Vec3 } | null = null
+  private routeFiles: readonly number[] | null = null
+  private answer: { kept: ReadonlySet<number>; label: AnswerLabel | null } | null = null
+  /** The route of the answer on show, if it has one. */
+  readonly route: RouteMarks
   private pointer = { x: 0, y: 0 }
   private carded: Pointed | null = null
   private readonly dim: DimFade
@@ -104,6 +122,7 @@ export class CityInteraction {
     this.portLinks = this.ports.links
     this.portBadges = this.ports.badges
     this.guide = new CityGuide(layout, shapes, buildings, pixelRatio)
+    this.route = new RouteMarks(buildings, pixelRatio)
     this.guideLinks = new GuideLinkWays(
       layout,
       flows,
@@ -123,6 +142,7 @@ export class CityInteraction {
       this.selectedArea.group,
       this.hoveredBuilding.group,
       this.selectedBuilding.group,
+      this.route.group,
       this.arcs.group,
     )
     this.timing = new HoverTiming<Pointed>(
@@ -180,6 +200,7 @@ export class CityInteraction {
     this.selectedBuilding.show(null)
     this.selectedArea.show(null, this.shapes)
     this.showLinks()
+    this.showRoute()
     if (target?.kind === 'building') {
       this.buildings.setHighlight(target.index, Highlight.selected)
       this.selectedBuilding.show(this.buildings.placed[target.index] ?? null)
@@ -194,37 +215,48 @@ export class CityInteraction {
   }
 
   /**
-   * Shows what depends on a file, or nothing: they keep their colours and the rest fades, over a
-   * selection's fading, and the selection's links make way for them.
+   * Shows the answer to a question, or nothing: what it keeps keeps its colours and the rest fades,
+   * over a selection's fading, and the selection's links make way for it.
    */
-  showImpact(impact: CityImpact | null): void {
-    if (!impact && !this.impact) {
+  showAnswer(answer: CityAnswer | null): void {
+    if (!answer && !this.answer) {
       return
     }
-    const placed = impact ? this.buildings.placed[impact.building] : undefined
-    if (impact && placed) {
-      const [x, y, z] = placed.position
-      this.impact = {
-        building: impact.building,
-        kept: new Set(impact.dependents),
-        roof: [x, y + roofHeight(placed.building), z],
+    const placed =
+      answer?.labelled === undefined ? undefined : this.buildings.placed[answer.labelled]
+    if (answer) {
+      const [x, y, z] = placed?.position ?? [0, 0, 0]
+      this.answer = {
+        kept: new Set(answer.kept),
+        label:
+          placed && answer.labelled !== undefined
+            ? { building: answer.labelled, roof: [x, y + roofHeight(placed.building), z] }
+            : null,
       }
     } else {
-      this.impact = null
+      this.answer = null
     }
+    this.routeFiles = answer?.route ?? null
     this.showLinks()
+    this.showRoute()
     this.fade()
-    this.redraw()
+    this.highlight(this.highlighted)
   }
 
-  /** The file whose impact is on show and the point over its roof where its label stands. */
-  impactLabel(): { building: number; roof: Vec3 } | null {
-    return this.impact
+  /** The files the answer on show labels: the file it is about, or each stop of its route. */
+  answerLabels(): readonly AnswerLabel[] {
+    return this.answer?.label ? [this.answer.label] : this.route.stops()
   }
 
-  /** The arcs, cycle and bridges of the selection, unless an impact is on show. */
+  /** The route of the answer on show; the selected building keeps its own mark. */
+  private showRoute(): void {
+    const selected = this.selected?.kind === 'building' ? this.selected.index : null
+    this.route.show(this.routeFiles, selected)
+  }
+
+  /** The arcs, cycle and bridges of the selection, unless an answer is on show. */
   private showLinks(): void {
-    const target = this.impact ? null : this.selected
+    const target = this.answer ? null : this.selected
     const cycle = target?.kind === 'building' ? this.flows.cycles.cycleOf.get(target.index) : null
     const onShow =
       cycle && target?.kind === 'building'
@@ -349,6 +381,7 @@ export class CityInteraction {
     this.folderLinks.dispose()
     this.ports.dispose()
     this.links.dispose()
+    this.route.dispose()
     this.arcs.dispose()
   }
 
@@ -403,9 +436,13 @@ export class CityInteraction {
     const target = pointed?.kind === 'hub' || pointed?.kind === 'port' ? null : pointed
     const selected = target && this.selected && sameTarget(target, this.selected)
     const building = target?.kind === 'building' && !selected ? target : null
-    // A linked building keeps its Marine or Sun mark, one put forward its Jade: they say more.
+    // A linked building keeps its Marine or Sun mark, one put forward its Jade, one on a route its
+    // own: they say more.
     const inked =
-      building && !this.links.isMarked(building.index) && !this.guide.has(building.index)
+      building &&
+      !this.links.isMarked(building.index) &&
+      !this.guide.has(building.index) &&
+      !this.route.has(building.index)
         ? building
         : null
     this.hoveredBuilding.show(inked ? (this.buildings.placed[inked.index] ?? null) : null)
@@ -446,14 +483,11 @@ export class CityInteraction {
     this.listeners().hover?.(pointed ? { ...this.item(pointed), pointer: this.pointer } : null)
   }
 
-  /** Fades what an impact leaves out, or else the selection, or else the guide, or nothing. */
+  /** Fades what an answer leaves out, or else the selection, or else the guide, or nothing. */
   private fade(): void {
-    const impact = this.impact
-    const kept: KeptAreas | null = impact
-      ? {
-          kept: (index) => index === impact.building || impact.kept.has(index),
-          trees: [1, 1, 0, 0],
-        }
+    const answer = this.answer
+    const kept: KeptAreas | null = answer
+      ? { kept: (index) => answer.kept.has(index), trees: [1, 1, 0, 0] }
       : this.selected
         ? this.keep(this.selected)
         : this.guide.kept()

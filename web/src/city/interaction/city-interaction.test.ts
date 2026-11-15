@@ -178,16 +178,37 @@ describe('CityInteraction', () => {
       imports: [{ from: { island: 0, lot: 0 }, to: { island: 1, lot: 0 }, upward: false }],
     })
     interaction.select({ kind: 'building', index: 2 })
-    interaction.showImpact({ building: 2, dependents: [1] })
+    interaction.showAnswer({ kept: [2, 1], labelled: 2 })
     expect(keptNow()).toEqual([false, true, true])
     expect(highlights[2]).toBe(Highlight.selected)
     expect(interaction.arcs.group.visible).toBe(false)
-    expect(interaction.impactLabel()?.building).toBe(2)
+    expect(interaction.answerLabels().map(({ building }) => building)).toEqual([2])
 
-    interaction.showImpact(null)
+    interaction.showAnswer(null)
     expect(keptNow()).toEqual([true, false, true])
     expect(interaction.arcs.group.visible).toBe(true)
-    expect(interaction.impactLabel()).toBeNull()
+    expect(interaction.answerLabels()).toEqual([])
+  })
+
+  it('draws a route over a selection, numbers each stop, and leaves the selected one its mark', () => {
+    const { interaction, keptNow } = setup()
+    interaction.select({ kind: 'building', index: 0 })
+    interaction.showAnswer({ kept: [0, 1, 2], route: [0, 1, 2] })
+    expect(keptNow()).toEqual([true, true, true])
+    expect(interaction.route.arcs.group.visible).toBe(true)
+    expect(interaction.route.has(1)).toBe(true)
+    // The ends and the middle, the selected end left to its own mark.
+    expect(interaction.route.group.children).toHaveLength(3)
+    expect(interaction.answerLabels().map(({ building, free }) => [building, free])).toEqual([
+      [0, true],
+      [1, true],
+      [2, true],
+    ])
+
+    interaction.showAnswer(null)
+    expect(interaction.route.arcs.group.visible).toBe(false)
+    expect(interaction.route.has(1)).toBe(false)
+    expect(interaction.route.group.children).toHaveLength(1)
   })
 
   it('rings the files of the cycle of a selected one, and keeps them', () => {

@@ -119,12 +119,12 @@ export function useGuide(
       return
     }
     if (!impact) {
-      engine.showImpact(null)
+      engine.showAnswer(null)
       return
     }
     const path = index.filePaths[impact.file] ?? ''
     const dependents = impact.dependents.map((file) => index.filePaths[file] ?? '')
-    engine.showImpact({ path, dependents })
+    engine.showAnswer({ kept: [path, ...dependents], labelled: path })
   }, [engine, index, impact])
   // What the camera frames for it, beside the panel: the screen frames it once the selection it
   // reads from the address has moved the camera, if it did.
