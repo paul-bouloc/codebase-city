@@ -36,3 +36,18 @@ export function isTourKeyTarget(target: EventTarget | null): boolean {
     target.closest('[data-guide]') !== null
   )
 }
+
+/**
+ * Space is the tour's, unless it presses a control with the focus (a button, a link): the guide's
+ * pill alone, `data-tour-space`, takes it to start the tour.
+ */
+export function isTourSpaceTarget(target: EventTarget | null): boolean {
+  if (!isTourKeyTarget(target)) {
+    return false
+  }
+  if (typeof HTMLElement === 'undefined' || !(target instanceof HTMLElement)) {
+    return true
+  }
+  const control = target.closest('button, a[href], [role="button"]')
+  return control === null || control.hasAttribute('data-tour-space')
+}

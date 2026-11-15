@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CityEngine } from '../../city/engine/city-engine'
 import type { GuidePaths } from '../../city/interaction/city-guide'
 import { guideView } from '../../guide/guide-view'
-import { isTourKeyTarget } from '../keys/screen-keys'
+import { isTourKeyTarget, isTourSpaceTarget } from '../keys/screen-keys'
 import type { ResultIndex } from '../result-index'
 import { guideFrame, guidePaths } from './guide-paths'
 import { FOLDED, type GuideAction, type GuideState, nextGuide, tourLength } from './guide-state'
@@ -130,34 +130,37 @@ export function useGuide(
     return () => window.clearTimeout(timer)
   }, [touring, state.step, state.playing, seconds, dispatch])
 
-  // ← and → go back and on, while touring; Space pauses or plays, and starts a tour when none is
-  // on: from the page, the city or the guide, whose buttons it does not press.
+  // ← and → go back and on, while touring, from the page, the city or the guide. Space pauses or
+  // plays, and starts a tour when none is on; a button with the focus is pressed by it instead.
   useEffect(() => {
+    const plain = (event: KeyboardEvent) =>
+      !event.defaultPrevented && !event.metaKey && !event.ctrlKey && !event.altKey
     // A city without a tour leaves Space alone.
-    const ours = (event: KeyboardEvent) =>
+    const space = (event: KeyboardEvent) =>
+      event.code === 'Space' &&
+      !event.shiftKey &&
       steps.length > 0 &&
-      !event.defaultPrevented &&
-      isTourKeyTarget(event.target) &&
-      !event.metaKey &&
-      !event.ctrlKey &&
-      !event.altKey
+      plain(event) &&
+      isTourSpaceTarget(event.target)
     const handleKey = (event: KeyboardEvent) => {
-      if (!ours(event)) {
-        return
-      }
-      if (event.code === 'Space' && !event.shiftKey) {
+      if (space(event)) {
         event.preventDefault()
         if (!event.repeat) {
           dispatch({ kind: 'toggle' })
         }
-      } else if (touring && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
+      } else if (
+        touring &&
+        (event.key === 'ArrowLeft' || event.key === 'ArrowRight') &&
+        plain(event) &&
+        isTourKeyTarget(event.target)
+      ) {
         event.preventDefault()
         dispatch({ kind: event.key === 'ArrowLeft' ? 'back' : 'next' })
       }
     }
-    // A button with the focus is pressed when Space comes up.
+    // The pill would be pressed when Space comes up: it starts the tour, it does not just open.
     const handleKeyUp = (event: KeyboardEvent) => {
-      if (event.code === 'Space' && !event.shiftKey && ours(event)) {
+      if (space(event)) {
         event.preventDefault()
       }
     }

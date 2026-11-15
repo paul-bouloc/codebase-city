@@ -28,6 +28,8 @@ export const GuidePill = forwardRef<HTMLButtonElement, GuidePillProps>(function 
       ref={ref}
       type="button"
       className={styles.pill}
+      // Space on the pill starts the tour (use-guide), as the key it shows says.
+      data-tour-space
       aria-expanded={false}
       aria-label={TEXT.open}
       onClick={onOpen}
