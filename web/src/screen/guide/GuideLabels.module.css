@@ -4,3 +4,10 @@
   transform: translate(-50%, calc(-100% - var(--space-1)));
   pointer-events: none;
 }
+
+/* A route's number, centred on where the pin's head would be. */
+.stop {
+  position: fixed;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}

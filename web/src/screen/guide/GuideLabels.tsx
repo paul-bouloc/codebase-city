@@ -13,12 +13,23 @@ interface GuideLabelsProps {
   notes: ReadonlyMap<string, string>
   /** The file whose impact is on show, and how many depend on it. */
   impact?: { path: string; dependents: number } | null
+  /** The files of the route on show, in order: each one's label is its number. */
+  route?: readonly string[] | null
 }
 
 // The labels of the guide over their roofs: "main.ts · entry point", "nls.ts · 6,213 dependents".
-export function GuideLabels({ labels, notes, impact }: GuideLabelsProps) {
+export function GuideLabels({ labels, notes, impact, route }: GuideLabelsProps) {
   return labels.map(({ path, x, y }) => {
     const name = path.slice(path.lastIndexOf('/') + 1)
+    const stop = route?.indexOf(path) ?? -1
+    if (route && stop >= 0) {
+      const end = stop === 0 || stop === route.length - 1
+      return (
+        <div key={path} className={styles.stop} style={{ left: x, top: y }} aria-hidden="true">
+          <CityMarker kind="route" step={stop + 1} end={end} />
+        </div>
+      )
+    }
     return (
       <div key={path} className={styles.label} style={{ left: x, top: y }} aria-hidden="true">
         {impact?.path === path ? (
