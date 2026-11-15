@@ -49,7 +49,7 @@ export function GuideDock({
   }, [state.mode])
 
   return (
-    <div ref={dock}>
+    <div ref={dock} data-guide>
       {state.mode === 'folded' && (
         <GuidePill ref={pill} onOpen={() => dispatch({ kind: 'open' })} />
       )}

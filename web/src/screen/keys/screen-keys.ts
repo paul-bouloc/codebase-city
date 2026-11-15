@@ -21,3 +21,18 @@ export function isSearchKey(
   }
   return event.key === '/' && !event.metaKey && !event.ctrlKey && !isTyping(event.target)
 }
+
+/**
+ * The tour's arrows come from the page, the city or the guide only: elsewhere (a code view, a
+ * toolbar) they scroll or move what has the focus.
+ */
+export function isTourKeyTarget(target: EventTarget | null): boolean {
+  if (typeof HTMLElement === 'undefined' || !(target instanceof HTMLElement)) {
+    return true
+  }
+  return (
+    target === document.body ||
+    target instanceof HTMLCanvasElement ||
+    target.closest('[data-guide]') !== null
+  )
+}

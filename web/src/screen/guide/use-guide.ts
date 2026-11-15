@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CityEngine } from '../../city/engine/city-engine'
 import type { GuidePaths } from '../../city/interaction/city-guide'
 import { guideView } from '../../guide/guide-view'
-import { isTyping } from '../keys/screen-keys'
+import { isTourKeyTarget } from '../keys/screen-keys'
 import type { ResultIndex } from '../result-index'
 import { guideFrame, guidePaths } from './guide-paths'
 import { FOLDED, type GuideAction, type GuideState, nextGuide, tourLength } from './guide-state'
@@ -93,7 +93,7 @@ export function useGuide(
     }
   }, [engine, frame])
 
-  // ← and → go back and on, unless one is typing.
+  // ← and → go back and on, from the page, the city or the guide.
   useEffect(() => {
     if (!touring) {
       return
@@ -101,7 +101,7 @@ export function useGuide(
     const handleKey = (event: KeyboardEvent) => {
       if (
         event.defaultPrevented ||
-        isTyping(event.target) ||
+        !isTourKeyTarget(event.target) ||
         event.metaKey ||
         event.ctrlKey ||
         event.altKey
