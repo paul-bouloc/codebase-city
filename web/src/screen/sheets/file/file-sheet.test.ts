@@ -20,10 +20,11 @@ describe('fileSheetData', () => {
       analyzed: true,
       lines: 120,
       complexity: 15,
-      // Eighth of the fourteen ranked files: the generated schema and the tests are left out.
+      // Eighth of the thirteen ranked files: the generated schema, the tests and the facade are
+      // left out.
       complexityRank: 8,
-      complexityTop: 58,
-      repoFiles: 14,
+      complexityTop: 62,
+      repoFiles: 13,
       importers: 4,
       dependents: 11,
       imports: 0,
@@ -83,8 +84,8 @@ describe('fileSheetData', () => {
     expect(file('src/core/utils.ts')).not.toHaveProperty('pathRole')
   })
 
-  it('ranks neither tests nor generated code, and keeps their complexity', () => {
-    for (const path of ['tests/store.test.ts', 'src/generated/schema.ts']) {
+  it('ranks neither tests, generated code nor facades, and keeps their complexity', () => {
+    for (const path of ['tests/store.test.ts', 'src/generated/schema.ts', 'src/core/index.ts']) {
       const sheet = file(path)
       expect(sheet).toHaveProperty('complexity')
       expect(sheet).not.toHaveProperty('complexityRank')
