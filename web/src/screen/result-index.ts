@@ -57,7 +57,7 @@ export interface ResultIndex {
   importers: readonly (readonly number[])[]
   /** Each file's roles, the strongest first. */
   roles: ReadonlyMap<number, readonly GraphRole[]>
-  /** Each ranked file's place by complexity, from 1; generated files are left out. */
+  /** Each ranked file's place by complexity, from 1: source files only, generated ones left out. */
   complexityRank: ReadonlyMap<number, number>
   /** How many files the complexity ranking holds. */
   rankedFiles: number
@@ -146,12 +146,12 @@ export function indexResult(result: AnalysisResult): ResultIndex {
     }
   })
 
-  // Generated files are left out of every ranking.
+  // Rankings only weigh the code the project ships: tests, fixtures and generated code stay out.
   const ranked = files.complexity
     .map((complexity, file) => ({ complexity, file }))
     .filter(
       (row): row is { complexity: number; file: number } =>
-        row.complexity !== null && !files.generated[row.file],
+        row.complexity !== null && !files.generated[row.file] && files.scope[row.file] === 'source',
     )
     .sort((a, b) => b.complexity - a.complexity || a.file - b.file)
   const complexityRank = new Map(ranked.map(({ file }, rank) => [file, rank + 1]))

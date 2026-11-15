@@ -20,10 +20,10 @@ describe('fileSheetData', () => {
       analyzed: true,
       lines: 120,
       complexity: 15,
-      // Eighth of the sixteen ranked files: the generated schema is left out.
+      // Eighth of the fourteen ranked files: the generated schema and the tests are left out.
       complexityRank: 8,
-      complexityTop: 50,
-      repoFiles: 16,
+      complexityTop: 58,
+      repoFiles: 14,
       importers: 4,
       dependents: 11,
       imports: 0,
@@ -74,6 +74,15 @@ describe('fileSheetData', () => {
       { role: 'foundation', reason: '11 files depend on it, directly or not.' },
     ])
     expect(file('src/core/index.ts')?.roles.map(({ role }) => role)).toEqual(['facade'])
+  })
+
+  it('ranks neither tests nor generated code, and keeps their complexity', () => {
+    for (const path of ['tests/store.test.ts', 'src/generated/schema.ts']) {
+      const sheet = file(path)
+      expect(sheet).toHaveProperty('complexity')
+      expect(sheet).not.toHaveProperty('complexityRank')
+      expect(sheet).not.toHaveProperty('repoFiles')
+    }
   })
 
   it('tells the size of the cycle a file is in', () => {
