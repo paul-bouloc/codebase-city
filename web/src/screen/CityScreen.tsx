@@ -207,6 +207,7 @@ function Screen({
   const closeSheet = useCallback(() => setSheetOpen(false), [setSheetOpen])
   const clearSelection = useCallback(() => choose(null), [choose])
   const foldGuide = useCallback(() => guideDispatch({ kind: 'fold' }), [guideDispatch])
+  const leaveAnswer = useCallback(() => guideDispatch({ kind: 'questions' }), [guideDispatch])
   useEscapeKey(
     engine,
     {
@@ -215,12 +216,35 @@ function Screen({
       sheetShown,
       hasSelection: selection !== null,
       guideOpen: guide.state.mode !== 'folded',
+      answerOpen: guide.state.mode === 'impact',
     },
     closeAbout,
     closeSheet,
     clearSelection,
     foldGuide,
+    leaveAnswer,
   )
+
+  // What depends on a file: the file asked about is the selection. Another selection, or none,
+  // ends the answer; an emptied field leaves the selection be.
+  const impactFile = guide.state.mode === 'impact' ? (guide.state.file ?? null) : null
+  const askImpact = (path: string | null) => {
+    guideDispatch({ kind: 'impact', file: path })
+    if (path !== null && selectedFile !== path) {
+      choose({ kind: 'file', path })
+    }
+  }
+  const selectionPath = selection?.path ?? null
+  const shownSelection = useRef(selectionPath)
+  useEffect(() => {
+    if (shownSelection.current === selectionPath) {
+      return
+    }
+    shownSelection.current = selectionPath
+    if (impactFile !== null && selectionPath !== impactFile) {
+      guideDispatch({ kind: 'questions' })
+    }
+  }, [selectionPath, impactFile, guideDispatch])
 
   // The user asks for a file or a folder (search, sheet, chip): the camera flies there.
   const flyTo = (next: ScreenSelection) => {
@@ -383,6 +407,7 @@ function Screen({
               }
             }}
             onOpenCode={openCode}
+            onShowImpact={() => askImpact(shownSheet.file.path)}
             openLine={openLine?.path === shownSheet.file.path ? openLine : undefined}
           />
         )}
@@ -409,6 +434,10 @@ function Screen({
           steps={guide.steps}
           repoName={result.repo.name}
           onChip={showTarget}
+          impact={guide.impact}
+          searchIndex={searchIndex}
+          onAskImpact={() => askImpact(selectedFile)}
+          onImpactFile={askImpact}
         />
       </div>
 

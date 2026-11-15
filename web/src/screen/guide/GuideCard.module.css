@@ -154,6 +154,92 @@
   color: var(--meaning-guide-soft);
 }
 
+/* The questions: a 52 px row each, the line under its title drawn on hover. */
+.questions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+}
+
+.eyebrow {
+  margin: 0;
+  font: var(--eyebrow-mono);
+  letter-spacing: var(--eyebrow-mono-tracking);
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.questionList {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.question {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 52px;
+  padding: var(--space-1-5) var(--space-2);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.question:hover,
+.question:focus-visible {
+  background: var(--state-hover);
+}
+
+.questionTile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  background: var(--meaning-guide-soft);
+  color: var(--meaning-guide-text);
+}
+
+.questionWords {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.questionTitle {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+
+.questionSubtitle {
+  display: none;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--color-text-secondary);
+}
+
+.question:hover .questionSubtitle,
+.question:focus-visible .questionSubtitle {
+  display: block;
+}
+
+/* A chevron pointing right: the down one, turned. */
+.questionChevron {
+  transform: rotate(-90deg);
+  color: var(--color-text-secondary);
+}
+
 /* The pill and the card rise from the guide's corner, as a floating panel enters. */
 @keyframes guide-in {
   from {

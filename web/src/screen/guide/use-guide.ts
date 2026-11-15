@@ -6,6 +6,7 @@ import { isTourKeyTarget, isTourSpaceTarget } from '../keys/screen-keys'
 import type { ResultIndex } from '../result-index'
 import { guideFrame, guidePaths } from './guide-paths'
 import { FOLDED, type GuideAction, type GuideState, nextGuide, tourLength } from './guide-state'
+import { type Impact, impactIslandNames, impactOf } from './questions/impact'
 import { type TourContext, type TourText, tourContext } from './tour/tour-spans'
 import { tourNote, tourText } from './tour/tour-text'
 import {
@@ -18,7 +19,10 @@ import {
   stepSeconds,
 } from './tour-clock'
 
-/** Pixels the tour's panel keeps clear on the left of the city: the camera frames right of them. */
+/**
+ * Pixels the tour's panel, or an answer's, keeps clear on the left of the city: the camera frames
+ * right of them.
+ */
 const TOUR_INSET = 520
 
 /** A step of the guide's tour on show: what it puts forward, and its labels' notes by path. */
@@ -37,6 +41,8 @@ export interface Guide {
   /** What the city shows of it. */
   shown: ScreenGuide | null
   steps: number
+  /** What depends on the file asked about, while that answer is on show. */
+  impact: Impact | null
 }
 
 /**
@@ -94,9 +100,32 @@ export function useGuide(
   }, [step, index, context])
 
   const touring = state.mode === 'touring'
+  const aside = touring || state.mode === 'impact'
   useEffect(() => {
-    engine?.setLeftInset(touring ? TOUR_INSET : 0)
-  }, [engine, touring])
+    engine?.setLeftInset(aside ? TOUR_INSET : 0)
+  }, [engine, aside])
+
+  // What depends on the file asked about: kept in colour in the city, and framed beside the panel.
+  const islandNames = useMemo(() => impactIslandNames(index), [index])
+  const impactFile =
+    state.mode === 'impact' && state.file !== undefined ? index.fileAt(state.file) : undefined
+  const impact = useMemo(
+    () => (impactFile === undefined ? null : impactOf(index, islandNames, impactFile)),
+    [index, islandNames, impactFile],
+  )
+  useEffect(() => {
+    if (!engine) {
+      return
+    }
+    if (!impact) {
+      engine.showImpact(null)
+      return
+    }
+    const path = index.filePaths[impact.file] ?? ''
+    const dependents = impact.dependents.map((file) => index.filePaths[file] ?? '')
+    engine.showImpact({ path, dependents })
+    engine.frameAll([path, ...dependents])
+  }, [engine, index, impact])
 
   // Each step frames what it shows, beside the panel.
   useEffect(() => {
@@ -181,5 +210,6 @@ export function useGuide(
     text,
     shown,
     steps: steps.length,
+    impact,
   }
 }

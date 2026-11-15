@@ -1,6 +1,7 @@
 import { forwardRef } from 'react'
 import { Kbd } from '../../ui/actions/Kbd'
 import { Icon } from '../../ui/brand/Icon'
+import type { IconName } from '../../ui/brand/icons'
 import { Glass } from '../parts/Glass'
 import styles from './GuideCard.module.css'
 
@@ -8,19 +9,31 @@ const TEXT = {
   open: 'Open the guide',
   collapse: 'Collapse the guide',
   title: 'Guide',
-  pill: 'Take a tour of the city',
+  pill: 'Take the tour or ask a question',
+  pillNoTour: 'Ask a question',
   subtitle: 'Only facts measured in the code',
   tour: 'Take the tour',
   key: 'Space',
+  questions: 'Questions',
+}
+
+/** A question the guide answers: its title, and the line under it shown on hover. */
+export interface GuideQuestion {
+  title: string
+  subtitle: string
+  icon: IconName
+  onAsk: () => void
 }
 
 interface GuidePillProps {
+  /** The city has a tour to take. */
+  tour: boolean
   onOpen: () => void
 }
 
 /** The guide folded: a pill at the bottom left, which opens it. */
 export const GuidePill = forwardRef<HTMLButtonElement, GuidePillProps>(function GuidePill(
-  { onOpen },
+  { tour, onOpen },
   ref,
 ) {
   return (
@@ -39,9 +52,9 @@ export const GuidePill = forwardRef<HTMLButtonElement, GuidePillProps>(function 
       </span>
       <span className={styles.words}>
         <span className={styles.pillTitle}>{TEXT.title}</span>
-        <span className={styles.pillHint}>{TEXT.pill}</span>
+        <span className={styles.pillHint}>{tour ? TEXT.pill : TEXT.pillNoTour}</span>
       </span>
-      <Kbd>{TEXT.key}</Kbd>
+      {tour && <Kbd>{TEXT.key}</Kbd>}
       <Icon name="chevron-up" size={16} />
     </button>
   )
@@ -50,13 +63,14 @@ export const GuidePill = forwardRef<HTMLButtonElement, GuidePillProps>(function 
 interface GuideCardProps {
   /** "9 steps · about 2 min", or null when the city has no tour. */
   length: string | null
+  questions: readonly GuideQuestion[]
   onStart: () => void
   onCollapse: () => void
 }
 
-/** The guide open: what it is, and the way into the tour. */
+/** The guide open: what it is, the way into the tour, and the questions it answers. */
 export const GuideCard = forwardRef<HTMLHeadingElement, GuideCardProps>(function GuideCard(
-  { length, onStart, onCollapse },
+  { length, questions, onStart, onCollapse },
   titleRef,
 ) {
   return (
@@ -92,6 +106,27 @@ export const GuideCard = forwardRef<HTMLHeadingElement, GuideCardProps>(function
             <Kbd tone="inverse">{TEXT.key}</Kbd>
           </span>
         </button>
+      )}
+      {questions.length > 0 && (
+        <div className={styles.questions}>
+          <h3 className={styles.eyebrow}>{TEXT.questions}</h3>
+          <ul className={styles.questionList}>
+            {questions.map((question) => (
+              <li key={question.title}>
+                <button type="button" className={styles.question} onClick={question.onAsk}>
+                  <span className={styles.questionTile}>
+                    <Icon name={question.icon} size={16} />
+                  </span>
+                  <span className={styles.questionWords}>
+                    <span className={styles.questionTitle}>{question.title}</span>
+                    <span className={styles.questionSubtitle}>{question.subtitle}</span>
+                  </span>
+                  <Icon name="chevron-down" size={16} className={styles.questionChevron} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </Glass>
   )
