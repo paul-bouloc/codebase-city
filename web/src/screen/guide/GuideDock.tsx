@@ -4,6 +4,8 @@ import { GuideCard, GuidePill, type GuideQuestion } from './GuideCard'
 import type { GuideAction, GuideMode, GuideState } from './guide-state'
 import { IMPACT_QUESTION, ImpactPanel } from './questions/ImpactPanel'
 import type { Impact } from './questions/impact'
+import { ROUTE_QUESTION, RoutePanel } from './questions/RoutePanel'
+import type { Route } from './questions/route'
 import { TourPanel } from './TourPanel'
 import type { TourTarget, TourText } from './tour/tour-spans'
 
@@ -22,6 +24,16 @@ interface GuideDockProps {
   onAskImpact: () => void
   /** A file chosen, or the field emptied, in the impact answer. */
   onImpactFile: (path: string | null) => void
+  /** How a file reaches another, once both are chosen. */
+  route: Route | null
+  /** Every file's path, by file. */
+  filePaths: readonly string[]
+  /** "How does A reach B?" asked from the questions. */
+  onAskRoute: () => void
+  /** A file of a route chosen, or its field emptied. */
+  onRouteFiles: (from: string | null, to: string | null) => void
+  /** A stop of the route chosen. */
+  onRouteStop: (path: string) => void
 }
 
 /**
@@ -40,10 +52,16 @@ export function GuideDock({
   searchIndex,
   onAskImpact,
   onImpactFile,
+  route,
+  filePaths,
+  onAskRoute,
+  onRouteFiles,
+  onRouteStop,
 }: GuideDockProps) {
   const dock = useRef<HTMLDivElement>(null)
   const pill = useRef<HTMLButtonElement>(null)
   const title = useRef<HTMLHeadingElement>(null)
+  const routeTo = useRef<HTMLInputElement>(null)
   const shownMode = useRef<GuideMode>(state.mode)
 
   // Only a change of mode moves the focus: a guide mounted touring (development) leaves it alone.
@@ -57,13 +75,17 @@ export function GuideDock({
       if (active === null || active === document.body || dock.current?.contains(active)) {
         pill.current?.focus()
       }
+    } else if (state.mode === 'route' && state.from !== undefined && state.to === undefined) {
+      // A route from a file asks where to: its other field takes the focus.
+      routeTo.current?.focus({ preventScroll: true })
     } else {
       title.current?.focus({ preventScroll: true })
     }
-  }, [state.mode])
+  }, [state.mode, state.from, state.to])
 
   const questions: GuideQuestion[] = [
     { ...IMPACT_QUESTION, icon: 'foundation', onAsk: onAskImpact },
+    { ...ROUTE_QUESTION, icon: 'route', onAsk: onAskRoute },
   ]
 
   return (
@@ -87,6 +109,23 @@ export function GuideDock({
           impact={impact}
           searchIndex={searchIndex}
           onChoose={onImpactFile}
+          onBack={() => dispatch({ kind: 'questions' })}
+          onClear={() => dispatch({ kind: 'questions' })}
+          onCollapse={() => dispatch({ kind: 'fold' })}
+        />
+      )}
+      {state.mode === 'route' && (
+        <RoutePanel
+          ref={title}
+          from={state.from ?? null}
+          to={state.to ?? null}
+          route={route}
+          filePaths={filePaths}
+          searchIndex={searchIndex}
+          toRef={routeTo}
+          onChange={onRouteFiles}
+          onNextPath={() => dispatch({ kind: 'next-path' })}
+          onStop={onRouteStop}
           onBack={() => dispatch({ kind: 'questions' })}
           onClear={() => dispatch({ kind: 'questions' })}
           onCollapse={() => dispatch({ kind: 'fold' })}
