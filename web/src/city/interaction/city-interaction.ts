@@ -12,8 +12,9 @@ import type { Fading } from '../render/dimming'
 import type { IslandShape } from '../terrain/island-shape'
 import type { Port } from '../waterways/links'
 import type { CityLayout } from '../world/layout'
+import type { Vec3 } from '../world/units'
 import { type Area, AreaMark, areaOf, HOVERED_AREA, SELECTED_AREA } from './area-marks'
-import { BuildingMark, HOVERED_MARK, SELECTED_MARK } from './building-marks'
+import { BuildingMark, HOVERED_MARK, roofHeight, SELECTED_MARK } from './building-marks'
 import { CityGuide, type CityGuideView } from './city-guide'
 import {
   type CityFlows,
@@ -31,6 +32,12 @@ import type { CityTarget } from './picking'
 import { CYCLE_RINGS, RingSet } from './rings'
 import { SelectedLinks } from './selected-links'
 
+/** What depends on a building, by building: they keep their colours while the rest fades. */
+export interface CityImpact {
+  building: number
+  dependents: readonly number[]
+}
+
 /**
  * Hover and selection in one city: which building or folder stands out, its marks, and how the
  * rest fades. It draws in `overlay`; the engine feeds it what the pointer meets.
@@ -46,6 +53,7 @@ export class CityInteraction {
   private readonly timing: HoverTiming<Pointed>
   private highlighted: Pointed | null = null
   private selected: CityTarget | null = null
+  private impact: { building: number; kept: ReadonlySet<number>; roof: Vec3 } | null = null
   private pointer = { x: 0, y: 0 }
   private carded: Pointed | null = null
   private readonly dim: DimFade
@@ -171,6 +179,49 @@ export class CityInteraction {
     this.guideLinks.setHidden(target !== null)
     this.selectedBuilding.show(null)
     this.selectedArea.show(null, this.shapes)
+    this.showLinks()
+    if (target?.kind === 'building') {
+      this.buildings.setHighlight(target.index, Highlight.selected)
+      this.selectedBuilding.show(this.buildings.placed[target.index] ?? null)
+    } else if (target) {
+      this.selectedArea.show(this.area(target), this.shapes)
+    }
+    // A hovered mark under the selected one would draw twice.
+    this.highlight(this.highlighted)
+    this.fade()
+    this.listeners().select?.(target ? this.item(target) : null)
+    this.redraw()
+  }
+
+  /**
+   * Shows what depends on a file, or nothing: they keep their colours and the rest fades, over a
+   * selection's fading, and the selection's links make way for them.
+   */
+  showImpact(impact: CityImpact | null): void {
+    const placed = impact ? this.buildings.placed[impact.building] : undefined
+    if (impact && placed) {
+      const [x, y, z] = placed.position
+      this.impact = {
+        building: impact.building,
+        kept: new Set(impact.dependents),
+        roof: [x, y + roofHeight(placed.building), z],
+      }
+    } else {
+      this.impact = null
+    }
+    this.showLinks()
+    this.fade()
+    this.redraw()
+  }
+
+  /** The file whose impact is on show and the point over its roof where its label stands. */
+  impactLabel(): { building: number; roof: Vec3 } | null {
+    return this.impact
+  }
+
+  /** The arcs, cycle and bridges of the selection, unless an impact is on show. */
+  private showLinks(): void {
+    const target = this.impact ? null : this.selected
     const cycle = target?.kind === 'building' ? this.flows.cycles.cycleOf.get(target.index) : null
     const onShow =
       cycle && target?.kind === 'building'
@@ -181,18 +232,7 @@ export class CityInteraction {
       onShow?.members.flatMap((member) => this.buildings.placed[member] ?? []) ?? [],
     )
     this.showCycleWays()
-    if (target?.kind === 'building') {
-      this.buildings.setHighlight(target.index, Highlight.selected)
-      this.selectedBuilding.show(this.buildings.placed[target.index] ?? null)
-    } else if (target) {
-      this.selectedArea.show(this.area(target), this.shapes)
-    }
     this.showFolderLinks(target)
-    // A hovered mark under the selected one would draw twice.
-    this.highlight(this.highlighted)
-    this.fade()
-    this.listeners().select?.(target ? this.item(target) : null)
-    this.redraw()
   }
 
   /** The island under the pointer, or the one the building or folder under it stands on. */
@@ -403,9 +443,17 @@ export class CityInteraction {
     this.listeners().hover?.(pointed ? { ...this.item(pointed), pointer: this.pointer } : null)
   }
 
-  /** Fades what the selection leaves out, or else what the guide does, or nothing. */
+  /** Fades what an impact leaves out, or else the selection, or else the guide, or nothing. */
   private fade(): void {
-    const kept = this.selected ? this.keep(this.selected) : this.guide.kept()
+    const impact = this.impact
+    const kept: KeptAreas | null = impact
+      ? {
+          kept: (index) => index === impact.building || impact.kept.has(index),
+          trees: [1, 1, 0, 0],
+        }
+      : this.selected
+        ? this.keep(this.selected)
+        : this.guide.kept()
     if (!kept) {
       this.dim.toward(0)
       return

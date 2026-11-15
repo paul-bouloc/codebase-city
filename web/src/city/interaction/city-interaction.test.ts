@@ -171,6 +171,25 @@ describe('CityInteraction', () => {
     expect(interaction.arcs.group.visible).toBe(false)
   })
 
+  it('keeps what depends on a file over its selection, without its arcs, then gives them back', () => {
+    // `a/main.ts` imports `b/util.ts`
+    const { interaction, keptNow, highlights } = setup({
+      ...LAYOUT,
+      imports: [{ from: { island: 0, lot: 0 }, to: { island: 1, lot: 0 }, upward: false }],
+    })
+    interaction.select({ kind: 'building', index: 2 })
+    interaction.showImpact({ building: 2, dependents: [1] })
+    expect(keptNow()).toEqual([false, true, true])
+    expect(highlights[2]).toBe(Highlight.selected)
+    expect(interaction.arcs.group.visible).toBe(false)
+    expect(interaction.impactLabel()?.building).toBe(2)
+
+    interaction.showImpact(null)
+    expect(keptNow()).toEqual([true, false, true])
+    expect(interaction.arcs.group.visible).toBe(true)
+    expect(interaction.impactLabel()).toBeNull()
+  })
+
   it('rings the files of the cycle of a selected one, and keeps them', () => {
     // The cycle's badge is drawn on a canvas, which the tests have none of.
     vi.stubGlobal('document', { createElement: () => ({ getContext: () => null }) })
