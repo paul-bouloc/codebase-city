@@ -4,7 +4,13 @@ import sample from '../data/generated/sample-result.json'
 import { indexResult, pathRoleOf } from './result-index'
 
 const index = indexResult(decodeResult(sample))
-const role = (path: string) => pathRoleOf(index.result, index.fileAt(path) ?? -1)
+const role = (path: string) => {
+  const file = index.fileAt(path)
+  if (file === undefined) {
+    throw new Error(`${path} is not in the sample`)
+  }
+  return pathRoleOf(index.result, file)
+}
 
 describe('pathRoleOf', () => {
   it('reads generated code first, then tests and config from the scope', () => {

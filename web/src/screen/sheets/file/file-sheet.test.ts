@@ -99,9 +99,11 @@ describe('fileSheetData', () => {
     expect(file('src/generated/schema.ts')).not.toHaveProperty('dependents')
     // A total below the direct importers (tests among them, a facade seen through) is dropped.
     const json = structuredClone(sample) as unknown as AnalysisResult
-    json.files.dependents[8] = 3
+    const utils = index.fileAt('src/core/utils.ts') ?? -1
+    expect(utils).toBeGreaterThanOrEqual(0)
+    json.files.dependents[utils] = 3
     expect(file('src/core/utils.ts', indexResult(json))).not.toHaveProperty('dependents')
-    json.files.dependents[8] = 4
+    json.files.dependents[utils] = 4
     expect(file('src/core/utils.ts', indexResult(json))).toMatchObject({ dependents: 4 })
   })
 
