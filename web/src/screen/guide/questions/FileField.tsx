@@ -117,6 +117,8 @@ export function FileField({ label, value, searchIndex, onChoose }: FileFieldProp
             onClick={() => {
               onChoose(null)
               inputRef.current?.focus()
+              // The focus started an edit from the file just cleared: the field is empty now.
+              setQuery('')
             }}
           >
             <Icon name="close" size={16} />
