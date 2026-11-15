@@ -72,10 +72,19 @@ export function impactOf(index: ResultIndex, names: readonly string[], file: num
       counts[island] = (counts[island] ?? 0) + 1
     }
   }
-  // The most dependents first: an island without any only takes a row left free.
+  // The most dependents first: an island without any only takes a row left free, the largest
+  // first.
+  const sizes = names.map(() => 0)
+  for (let each = 0; each < index.filePaths.length; each++) {
+    const island = index.islandOfFile(each)
+    if (island !== null && island < sizes.length) {
+      sizes[island] = (sizes[island] ?? 0) + 1
+    }
+  }
   const rows = names
-    .map((name, island) => ({ name, count: counts[island] ?? 0 }))
-    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+    .map((name, island) => ({ name, count: counts[island] ?? 0, size: sizes[island] ?? 0 }))
+    .sort((a, b) => b.count - a.count || b.size - a.size || a.name.localeCompare(b.name))
+    .map(({ name, count }) => ({ name, count }))
   const islands = rows.slice(0, ISLAND_ROWS)
   const rest = rows.slice(ISLAND_ROWS).filter((row) => row.count > 0)
   return {

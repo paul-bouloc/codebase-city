@@ -45,12 +45,12 @@ describe('impactOf', () => {
     expect(impact.direct).toBe(1)
   })
 
-  it('finds nothing for a file nothing imports', () => {
+  it('finds nothing for a file nothing imports, and lists the largest island first', () => {
     const impact = impactOf(chain, ['a', 'b'], 5)
     expect(impact.dependents).toEqual([])
     expect(impact.islands).toEqual([
-      { name: 'a', count: 0 },
       { name: 'b', count: 0 },
+      { name: 'a', count: 0 },
     ])
   })
 
