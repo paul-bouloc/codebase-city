@@ -10,6 +10,7 @@ import { type TourContext, type TourText, tourContext } from './tour/tour-spans'
 import { tourNote, tourText } from './tour/tour-text'
 import {
   clockDue,
+  clockSpent,
   pauseClock,
   resumeClock,
   type StepClock,
@@ -115,8 +116,11 @@ export function useGuide(
       return
     }
     const now = performance.now()
+    // The last step, its time run out, plays again from the start.
     const kept =
-      clock.current?.step === state.step && clock.current.seconds === seconds
+      clock.current?.step === state.step &&
+      clock.current.seconds === seconds &&
+      !clockSpent(clock.current.clock)
         ? clock.current.clock
         : null
     const fresh = kept ?? startClock(seconds[state.step] ?? 0, now)

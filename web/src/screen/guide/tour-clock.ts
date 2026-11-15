@@ -52,6 +52,11 @@ export function resumeClock(clock: StepClock, now: number): StepClock {
   return clock.since === null ? { left: clock.left, since: now } : clock
 }
 
+/** A stopped clock with nothing left: the step's time ran out, and playing again starts it over. */
+export function clockSpent(clock: StepClock): boolean {
+  return clock.since === null && clock.left <= 0
+}
+
 /** When the step's time is up, or null while the clock is stopped. */
 export function clockDue(clock: StepClock): number | null {
   return clock.since === null ? null : clock.since + clock.left

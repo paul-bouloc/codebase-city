@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { StepText } from './tour/tour-spans'
 import {
   clockDue,
+  clockSpent,
   MAX_STEP_SECONDS,
   MIN_STEP_SECONDS,
   pauseClock,
@@ -60,6 +61,12 @@ describe('the step clock', () => {
     const paused = pauseClock(startClock(12, 0), 20_000)
     expect(paused.left).toBe(0)
     expect(clockDue(resumeClock(paused, 30_000))).toBe(30_000)
+  })
+
+  it('is spent once stopped with nothing left, not while it runs', () => {
+    expect(clockSpent(pauseClock(startClock(12, 0), 20_000))).toBe(true)
+    expect(clockSpent(pauseClock(startClock(12, 0), 5000))).toBe(false)
+    expect(clockSpent(startClock(12, 0))).toBe(false)
   })
 
   it('leaves a stopped clock stopped, and a running one running', () => {
