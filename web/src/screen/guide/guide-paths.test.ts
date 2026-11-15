@@ -71,7 +71,7 @@ describe('guidePaths', () => {
       {
         from: ['src/ui', 'src/api'],
         to: ['src/core'],
-        label: { files: '2 files', typeOnly: '1 types only' },
+        label: { files: '2 files', typeOnly: '1 type only' },
       },
     ])
   })

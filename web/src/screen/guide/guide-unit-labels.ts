@@ -114,7 +114,10 @@ export function shortName(name: string, most: number): string {
 export function guideLinkLabel(link: GuideLink): GuideLinkLabel {
   return {
     files: filesCount(link.files),
-    typeOnly: link.typeOnly > 0 ? `${exactCount(link.typeOnly)} types only` : null,
+    typeOnly:
+      link.typeOnly > 0
+        ? `${exactCount(link.typeOnly)} ${link.typeOnly === 1 ? 'type' : 'types'} only`
+        : null,
   }
 }
 

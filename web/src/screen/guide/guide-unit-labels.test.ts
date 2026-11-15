@@ -137,5 +137,6 @@ describe('guideLinkLabel', () => {
       files: '1 file',
       typeOnly: null,
     })
+    expect(guideLinkLabel({ from: 0, to: 1, files: 2, typeOnly: 1 }).typeOnly).toBe('1 type only')
   })
 })
