@@ -1,0 +1,217 @@
+/* "How does A reach B?", on "City UI · 09". */
+
+/* The two fields, and the 40 px swap button on their right. */
+.fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.fieldStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.swap {
+  width: 40px;
+  height: 40px;
+}
+
+.hint {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--color-text-body);
+}
+
+.summary {
+  margin: 0 0 var(--space-2);
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--color-text-primary);
+}
+
+.steps {
+  font-weight: 700;
+}
+
+.which {
+  color: var(--color-text-secondary);
+}
+
+.stops {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A stop: its disc on a Marine line that runs to the next one. */
+.stop {
+  position: relative;
+}
+
+.stop:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  top: 28px;
+  bottom: -4px;
+  left: calc(var(--space-2) + 11px);
+  width: 2px;
+  background: var(--meaning-outgoing);
+  opacity: 0.5;
+}
+
+.stopLink {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-2-5);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.stopLink:hover,
+.stopLink:focus-visible {
+  background: var(--state-hover);
+}
+
+.disc {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-full);
+  color: var(--color-text-inverse);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.end {
+  background: var(--color-surface-inverse);
+}
+
+.middle {
+  background: var(--meaning-outgoing);
+}
+
+.stopWords {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.stopName {
+  overflow: hidden;
+  font-family: var(--font-family-mono);
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* The folder gives way from its start. */
+.stopFolder {
+  overflow: hidden;
+  font-family: var(--font-family-mono);
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+  color: var(--color-text-secondary);
+  text-overflow: ellipsis;
+  direction: rtl;
+}
+
+.stopFolderText {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+.imports {
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 600;
+  color: var(--meaning-outgoing);
+}
+
+.none {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: var(--space-2);
+  padding: var(--space-3) 14px;
+  border: var(--border-width-default) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-sunken);
+}
+
+.noneIcon {
+  color: var(--color-text-secondary);
+}
+
+.noneWords {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.noneLead {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.name {
+  font-family: var(--font-family-mono);
+  font-size: 13px;
+}
+
+.noneWhy {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--color-text-body);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+/* A new route fades in. */
+.fade {
+  animation: said-in var(--duration-base) var(--easing-enter) both;
+}
+
+@keyframes said-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade {
+    animation: none;
+  }
+}
