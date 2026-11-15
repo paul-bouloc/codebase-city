@@ -18,7 +18,7 @@ import { CityPointer } from './city-pointer'
 import { buildCity } from './city-scene'
 import { CitySun, SHADOW_MARGIN } from './city-sun'
 import { type Drive, STILL } from './drive'
-import { extentOf, FRAME_MARGIN, flightRadius } from './flight'
+import { extentOf, FRAME_MARGIN, flightRadius, unionSphere } from './flight'
 import { FrameCounter, type FrameStats, type LinkStats, NO_LINKS } from './frame-stats'
 import { GuideLabels } from './guide-labels'
 import { LABEL_FONTS, LabelPills } from './label-pills'
@@ -165,6 +165,32 @@ export class CityEngine {
   setViewInset(right: number): void {
     if (this.rig.setInset(right)) {
       this.revealSelection()
+    }
+  }
+
+  /** Pixels a panel covers on the left of the canvas, 0 for none: flights frame right of it. */
+  setLeftInset(left: number): void {
+    this.rig.setLeftInset(left)
+  }
+
+  /**
+   * Frames these files and folders together, each with the room a flight to it gives, or the
+   * whole city when none is found; selects nothing.
+   */
+  frameAll(paths: readonly string[]): void {
+    const { layout, targets } = this
+    if (!layout || !targets) {
+      return
+    }
+    const extents = paths.flatMap((path) => {
+      const target = targets.at(path)
+      return (target && extentOf(target, layout, this.placed)) || []
+    })
+    const sphere = unionSphere(extents)
+    if (sphere) {
+      this.rig.frameSphere(sphere.centre, sphere.radius)
+    } else {
+      this.rig.frameWhole()
     }
   }
 
