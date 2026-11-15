@@ -13,7 +13,7 @@ import { type LabelArea, labelAreas } from './label-placement'
 /** A unit on this many islands or fewer gets a leader to each: past them, to its largest alone. */
 const MAX_LEADERS = 4
 /** A label stands this many CSS pixels over its anchor. */
-export const LABEL_LIFT = 24
+const LABEL_LIFT = 24
 
 type Target = LabelArea['target']
 
