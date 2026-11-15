@@ -17,23 +17,29 @@ const KEY = tourSeenKey('nestjs', 'nest')
 describe('startsFirstTour', () => {
   it('starts the tour the first time a city is seen, and never again', () => {
     const storage = memory()
-    expect(startsFirstTour(storage, KEY, '')).toBe(true)
+    expect(startsFirstTour(storage, KEY, '', 8)).toBe(true)
     expect(storage.items.get(KEY)).toBe('1')
-    expect(startsFirstTour(storage, KEY, '')).toBe(false)
+    expect(startsFirstTour(storage, KEY, '', 8)).toBe(false)
   })
 
   it('counts each city apart', () => {
     const storage = memory()
-    startsFirstTour(storage, KEY, '')
-    expect(startsFirstTour(storage, tourSeenKey('microsoft', 'vscode'), '')).toBe(true)
+    startsFirstTour(storage, KEY, '', 8)
+    expect(startsFirstTour(storage, tourSeenKey('microsoft', 'vscode'), '', 8)).toBe(true)
   })
 
   it('starts none when the link points at a file or a folder, and keeps it unseen', () => {
     const storage = memory()
-    expect(startsFirstTour(storage, KEY, '#file=src/main.ts')).toBe(false)
-    expect(startsFirstTour(storage, KEY, '#dir=packages/core')).toBe(false)
+    expect(startsFirstTour(storage, KEY, '#file=src/main.ts', 8)).toBe(false)
+    expect(startsFirstTour(storage, KEY, '#dir=packages/core', 8)).toBe(false)
     expect(storage.items.size).toBe(0)
-    expect(startsFirstTour(storage, KEY, '#something-else')).toBe(true)
+    expect(startsFirstTour(storage, KEY, '#something-else', 8)).toBe(true)
+  })
+
+  it('starts none for a city without a tour, and keeps it unseen', () => {
+    const storage = memory()
+    expect(startsFirstTour(storage, KEY, '', 0)).toBe(false)
+    expect(storage.items.size).toBe(0)
   })
 
   it('starts none when the storage is missing or throws', () => {
@@ -45,7 +51,7 @@ describe('startsFirstTour', () => {
         throw new Error('blocked')
       },
     }
-    expect(startsFirstTour(null, KEY, '')).toBe(false)
-    expect(startsFirstTour(throwing, KEY, '')).toBe(false)
+    expect(startsFirstTour(null, KEY, '', 8)).toBe(false)
+    expect(startsFirstTour(throwing, KEY, '', 8)).toBe(false)
   })
 })

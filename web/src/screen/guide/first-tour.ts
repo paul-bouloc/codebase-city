@@ -14,11 +14,17 @@ export function tourSeenKey(owner: string, name: string): string {
 }
 
 /**
- * Whether the tour starts on its own, and the city noted as seen if so. Storage that throws (site
- * data blocked) starts no tour: it could never remember it did.
+ * Whether the tour of `steps` steps starts on its own, and the city noted as seen if so. A city
+ * without a tour stays unseen, for the tour a later analysis may give it. Storage that throws
+ * (site data blocked) starts no tour: it could never remember it did.
  */
-export function startsFirstTour(storage: TourStorage | null, key: string, hash: string): boolean {
-  if (storage === null || selectionOfHash(hash) !== null) {
+export function startsFirstTour(
+  storage: TourStorage | null,
+  key: string,
+  hash: string,
+  steps: number,
+): boolean {
+  if (steps === 0 || storage === null || selectionOfHash(hash) !== null) {
     return false
   }
   try {

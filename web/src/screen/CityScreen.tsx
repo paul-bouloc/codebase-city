@@ -153,10 +153,11 @@ function Screen({
       return
     }
     askedFor.current = seenKey
-    if (startsFirstTour(localTourStorage(), seenKey, window.location.hash)) {
+    const steps = result.tour.steps.length
+    if (startsFirstTour(localTourStorage(), seenKey, window.location.hash, steps)) {
       guideDispatch({ kind: 'start' })
     }
-  }, [firstTour, engine, seenKey, guideDispatch])
+  }, [firstTour, engine, seenKey, result, guideDispatch])
 
   useEffect(() => {
     engine?.showGuide(guide.shown?.paths ?? null)
