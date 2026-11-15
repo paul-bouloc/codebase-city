@@ -124,6 +124,25 @@ describe('FileSheet', () => {
     expect(html).not.toContain('Show impact')
   })
 
+  it('offers each question it is given on its own', () => {
+    const html = renderToStaticMarkup(
+      <FileSheet
+        open
+        file={FILE}
+        onClose={noop}
+        onOpenFolder={noop}
+        onSelectFile={noop}
+        onShowCycle={noop}
+        onCopyPath={noop}
+        onCopyLink={noop}
+        onRetryCode={noop}
+        onShowImpact={noop}
+      />,
+    )
+    expect(html).toMatch(/<footer[^>]*>.*Show impact/)
+    expect(html).not.toContain('Find a path to…')
+  })
+
   it('leaves out the size of an unanalyzed file when it is unknown', () => {
     const html = render({ ...FILE, analyzed: false, languageName: 'JSON', language: 'other' })
     expect(html).not.toContain('Size')
