@@ -14,7 +14,7 @@ import {
   tourLength,
 } from './guide-state'
 import { type Impact, impactOf } from './questions/impact'
-import { type Route, routeOf } from './questions/route'
+import { type Route, routeFinder } from './questions/route'
 import { type TourContext, type TourText, tourContext } from './tour/tour-spans'
 import { tourNote, tourText } from './tour/tour-text'
 import {
@@ -133,13 +133,15 @@ export function useGuide(
   const routeTo =
     state.mode === 'route' && state.to !== undefined ? index.fileAt(state.to) : undefined
   const routeChoice = state.mode === 'route' ? (state.path ?? 0) : 0
-  const route = useMemo(
+  // Searched once for its two files; the next shortest path only walks back along it.
+  const findRoute = useMemo(
     () =>
       routeFrom === undefined || routeTo === undefined || routeFrom === routeTo
         ? null
-        : routeOf(context, routeFrom, routeTo, routeChoice),
-    [context, routeFrom, routeTo, routeChoice],
+        : routeFinder(context, routeFrom, routeTo),
+    [context, routeFrom, routeTo],
   )
+  const route = useMemo(() => findRoute?.(routeChoice) ?? null, [findRoute, routeChoice])
 
   // What the answer keeps in colour in the city, and what the camera frames of it, beside the
   // panel: the screen frames it once the selection it reads from the address has moved the
