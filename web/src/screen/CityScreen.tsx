@@ -494,7 +494,9 @@ function Screen({
           filePaths={index.filePaths}
           onAskRoute={() => askRoute(analyzedSelection, null)}
           onRouteFiles={askRoute}
-          onRouteStop={(path) => flyTo({ kind: 'file', path })}
+          // The route is framed already, and framed again beside the sheet that opens: no
+          // flight of its own.
+          onRouteStop={(path) => choose({ kind: 'file', path })}
         />
       </div>
 
