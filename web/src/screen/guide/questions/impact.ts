@@ -1,14 +1,10 @@
-import { islandNames } from '../../labels/area-label-texts'
-import type { ResultIndex } from '../../result-index'
+import type { TourContext } from '../tour/tour-spans'
 
 // What depends on a file: every file that imports it, directly or through other files, as the
 // city draws its imports (tests and type imports included, a facade like any other file).
 
 /** At most this many rows of islands; past them, one more row sums the rest. */
 export const ISLAND_ROWS = 6
-
-/** The root island's folder, named after the repository. */
-const ROOT = '/'
 
 export interface ImpactIsland {
   name: string
@@ -31,15 +27,9 @@ export interface Impact {
   otherIslands: { islands: number; count: number } | null
 }
 
-/** Each island's name, as its label says it: the root island bears the repository's name. */
-export function impactIslandNames(index: ResultIndex): string[] {
-  const paths = index.result.islands.dir.map((dir) => index.folderPaths[dir] ?? ROOT)
-  const names = islandNames(paths)
-  return paths.map((path, at) => (path === ROOT ? index.result.repo.name : (names[at] ?? path)))
-}
-
-/** The impact of a change to `file`, its islands named by `names`. */
-export function impactOf(index: ResultIndex, names: readonly string[], file: number): Impact {
+/** The impact of a change to `file`, its islands named and sized as the tour has them. */
+export function impactOf(context: TourContext, file: number): Impact {
+  const { index, islandNames: names, islandFiles: sizes } = context
   const { importers } = index
   const seen = new Uint8Array(index.filePaths.length)
   seen[file] = 1
@@ -74,13 +64,6 @@ export function impactOf(index: ResultIndex, names: readonly string[], file: num
   }
   // The most dependents first: an island without any only takes a row left free, the largest
   // first.
-  const sizes = names.map(() => 0)
-  for (let each = 0; each < index.filePaths.length; each++) {
-    const island = index.islandOfFile(each)
-    if (island !== null && island < sizes.length) {
-      sizes[island] = (sizes[island] ?? 0) + 1
-    }
-  }
   const rows = names
     .map((name, island) => ({ name, count: counts[island] ?? 0, size: sizes[island] ?? 0 }))
     .sort((a, b) => b.count - a.count || b.size - a.size || a.name.localeCompare(b.name))

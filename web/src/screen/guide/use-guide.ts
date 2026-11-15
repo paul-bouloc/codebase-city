@@ -6,7 +6,7 @@ import { isTourKeyTarget, isTourSpaceTarget } from '../keys/screen-keys'
 import type { ResultIndex } from '../result-index'
 import { guideFrame, guidePaths } from './guide-paths'
 import { FOLDED, type GuideAction, type GuideState, nextGuide, tourLength } from './guide-state'
-import { type Impact, impactIslandNames, impactOf } from './questions/impact'
+import { type Impact, impactOf } from './questions/impact'
 import { type TourContext, type TourText, tourContext } from './tour/tour-spans'
 import { tourNote, tourText } from './tour/tour-text'
 import {
@@ -106,12 +106,11 @@ export function useGuide(
   }, [engine, aside])
 
   // What depends on the file asked about: kept in colour in the city, and framed beside the panel.
-  const islandNames = useMemo(() => impactIslandNames(index), [index])
   const impactFile =
     state.mode === 'impact' && state.file !== undefined ? index.fileAt(state.file) : undefined
   const impact = useMemo(
-    () => (impactFile === undefined ? null : impactOf(index, islandNames, impactFile)),
-    [index, islandNames, impactFile],
+    () => (impactFile === undefined ? null : impactOf(context, impactFile)),
+    [context, impactFile],
   )
   useEffect(() => {
     if (!engine) {

@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { decodeResult } from '../../../data/decode-result'
 import sample from '../../../data/generated/sample-result.json'
 import { indexResult, type ResultIndex } from '../../result-index'
-import { ISLAND_ROWS, impactIslandNames, impactOf } from './impact'
+import { type TourContext, tourContext } from '../tour/tour-spans'
+import { ISLAND_ROWS, impactOf as impactIn } from './impact'
 
 /** A city of files whose importers, islands and scopes are written by hand. */
 function city(
@@ -16,6 +17,19 @@ function city(
     islandOfFile: (file: number) => island[file] ?? null,
     result: { files: { scope } },
   } as unknown as ResultIndex
+}
+
+/** The impact of `file` in a hand-written city, its islands named `names`. */
+function impactOf(index: ResultIndex, names: string[], file: number) {
+  const islandFiles = names.map(() => 0)
+  index.filePaths.forEach((_, each) => {
+    const at = index.islandOfFile(each)
+    if (at !== null) {
+      islandFiles[at] = (islandFiles[at] ?? 0) + 1
+    }
+  })
+  const context: TourContext = { index, islandNames: names, islandFiles }
+  return impactIn(context, file)
 }
 
 describe('impactOf', () => {
@@ -76,19 +90,11 @@ describe('impactOf', () => {
 
 describe('impact on the sample', () => {
   const index = indexResult(decodeResult(sample))
-  const names = impactIslandNames(index)
-
-  it('names the root island after the repository', () => {
-    expect(names).toHaveLength(index.result.islands.dir.length)
-    const root = index.result.islands.dir.findIndex((dir) => index.folderPaths[dir] === '/')
-    if (root >= 0) {
-      expect(names[root]).toBe(index.result.repo.name)
-    }
-  })
+  const context = tourContext(index)
 
   it('counts as direct the files the sheet says import it', () => {
     index.filePaths.forEach((_, file) => {
-      const impact = impactOf(index, names, file)
+      const impact = impactIn(context, file)
       expect(impact.direct).toBe(index.importers[file]?.length)
       const onIslands = impact.islands.reduce((sum, row) => sum + row.count, 0)
       expect(onIslands + (impact.otherIslands?.count ?? 0)).toBeLessThanOrEqual(
