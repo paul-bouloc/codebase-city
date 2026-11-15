@@ -138,3 +138,12 @@
   flex: none;
   font-weight: 600;
 }
+
+.nothing {
+  margin: 0;
+  padding: var(--space-1) var(--space-1) 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}

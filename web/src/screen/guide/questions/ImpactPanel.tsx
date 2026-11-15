@@ -1,6 +1,8 @@
 import { forwardRef } from 'react'
+import { ANALYZED_LANGUAGES } from '../../../city/world/from-result'
 import { Button } from '../../../ui/actions/Button'
 import { exactCount } from '../../../ui/display/count-format'
+import type { FileHit } from '../../search/search-data'
 import type { SearchIndex } from '../../search/search-index'
 import { FileField } from './FileField'
 import styles from './ImpactPanel.module.css'
@@ -20,6 +22,9 @@ const TEXT = {
   clear: 'Clear',
   choose: 'Choose a file to see every file that depends on it.',
 }
+
+/** Only an analyzed file's imports are known: the field offers no other. */
+const analyzed = (hit: FileHit) => ANALYZED_LANGUAGES.has(hit.languageName)
 
 interface ImpactPanelProps {
   /** The file asked about, by path; none while the field is empty. */
@@ -49,7 +54,13 @@ export const ImpactPanel = forwardRef<HTMLHeadingElement, ImpactPanelProps>(func
       onBack={onBack}
       onCollapse={onCollapse}
     >
-      <FileField label={TEXT.field} value={file} searchIndex={searchIndex} onChoose={onChoose} />
+      <FileField
+        label={TEXT.field}
+        value={file}
+        searchIndex={searchIndex}
+        offers={analyzed}
+        onChoose={onChoose}
+      />
       <div aria-live="polite">
         {!text && <p className={styles.hint}>{TEXT.choose}</p>}
         {text?.none && <p className={styles.none}>{text.none}</p>}

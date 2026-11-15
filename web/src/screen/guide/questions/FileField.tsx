@@ -1,5 +1,6 @@
 import { type KeyboardEvent, useId, useMemo, useRef, useState } from 'react'
 import { Icon } from '../../../ui/brand/Icon'
+import { truncateMiddle } from '../../../ui/display/truncate-path'
 import { useTruncatedPath } from '../../../ui/display/use-truncated-path'
 import type { FileHit } from '../../search/search-data'
 import { normalizeQuery, type SearchIndex } from '../../search/search-index'
@@ -8,16 +9,21 @@ import styles from './FileField.module.css'
 const TEXT = {
   clear: 'Clear',
   placeholder: 'Search a file',
+  nothing: (query: string) => `No analyzed file matches “${query}”.`,
 }
 
-/** The files the list offers: the search's best ones, files alone. */
-const LIMITS = { files: 8, folders: 0, symbols: 0 }
+/** The files the list offers, at most. */
+const SHOWN = 8
+/** The search's best files, more than shown: some may not be offered. */
+const LIMITS = { files: 40, folders: 0, symbols: 0 }
 
 interface FileFieldProps {
   label: string
   /** The file chosen, by path; none while the field is empty. */
   value: string | null
   searchIndex: SearchIndex
+  /** The files the field offers among those the search finds; all if absent. */
+  offers?: (hit: FileHit) => boolean
   onChoose: (path: string | null) => void
 }
 
@@ -25,20 +31,26 @@ interface FileFieldProps {
  * A field to choose a file in: it shows the file chosen, its path cut from the start; typed in,
  * it lists the files the search finds.
  */
-export function FileField({ label, value, searchIndex, onChoose }: FileFieldProps) {
+export function FileField({ label, value, searchIndex, offers, onChoose }: FileFieldProps) {
   const id = useId()
   const listboxId = `${id}-files`
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [query, setQuery] = useState<string | null>(null)
   const [active, setActive] = useState(0)
   const editing = query !== null
-  const { ref: fitRef, text: fitted } = useTruncatedPath<HTMLInputElement>(value ?? '')
+  const { ref: fitRef, text: path, maxChars } = useTruncatedPath<HTMLInputElement>(value ?? '')
+  // A name too long for the field loses its middle: the input cannot clip it with CSS.
+  const fitted = truncateMiddle(path, maxChars)
+  const typed = query !== null && normalizeQuery(query) !== ''
   const hits = useMemo<FileHit[]>(
     () =>
       query !== null && normalizeQuery(query) !== ''
-        ? searchIndex.search(query, LIMITS).files.hits
+        ? searchIndex
+            .search(query, LIMITS)
+            .files.hits.filter((hit) => !offers || offers(hit))
+            .slice(0, SHOWN)
         : [],
-    [query, searchIndex],
+    [query, searchIndex, offers],
   )
   const expanded = editing && hits.length > 0
   const shown = Math.min(active, Math.max(0, hits.length - 1))
@@ -125,6 +137,11 @@ export function FileField({ label, value, searchIndex, onChoose }: FileFieldProp
           </button>
         )}
       </div>
+      {editing && typed && hits.length === 0 && (
+        <p className={styles.nothing} role="status">
+          {TEXT.nothing(query ?? '')}
+        </p>
+      )}
       {expanded && (
         <div id={listboxId} role="listbox" aria-label={label} className={styles.list}>
           {hits.map((hit, at) => (

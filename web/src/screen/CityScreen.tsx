@@ -20,6 +20,7 @@ import { localTourStorage, startsFirstTour, tourSeenKey } from './guide/first-to
 import { GuideDock } from './guide/GuideDock'
 import { GuideLabels } from './guide/GuideLabels'
 import type { GuideState } from './guide/guide-state'
+import { analyzedFile } from './guide/questions/impact'
 import type { TourTarget } from './guide/tour/tour-spans'
 import { useGuide } from './guide/use-guide'
 import { useDriveKeys } from './keys/use-drive-keys'
@@ -448,7 +449,11 @@ function Screen({
           onChip={showTarget}
           impact={guide.impact}
           searchIndex={searchIndex}
-          onAskImpact={() => askImpact(selectedFile)}
+          onAskImpact={() =>
+            askImpact(
+              selectedFile !== null && analyzedFile(index, selectedFile) ? selectedFile : null,
+            )
+          }
           onImpactFile={askImpact}
         />
       </div>

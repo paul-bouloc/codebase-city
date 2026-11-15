@@ -3,6 +3,7 @@
 .hint,
 .none {
   margin: 0;
+  overflow-wrap: anywhere;
   font-size: 13px;
   line-height: 18px;
   color: var(--color-text-body);

@@ -3,7 +3,7 @@ import { decodeResult } from '../../../data/decode-result'
 import sample from '../../../data/generated/sample-result.json'
 import { indexResult, type ResultIndex } from '../../result-index'
 import { type TourContext, tourContext } from '../tour/tour-spans'
-import { ISLAND_ROWS, impactOf as impactIn } from './impact'
+import { analyzedFile, ISLAND_ROWS, impactOf as impactIn } from './impact'
 
 /** A city of files whose importers, islands and scopes are written by hand. */
 function city(
@@ -101,5 +101,15 @@ describe('impact on the sample', () => {
         impact.dependents.length,
       )
     })
+  })
+})
+
+describe('analyzedFile', () => {
+  const index = indexResult(decodeResult(sample))
+
+  it('takes code of an analyzed language, not a manifest nor a path it does not know', () => {
+    expect(analyzedFile(index, 'src/core/utils.ts')).toBe(true)
+    expect(analyzedFile(index, 'package.json')).toBe(false)
+    expect(analyzedFile(index, 'nowhere.ts')).toBe(false)
   })
 })

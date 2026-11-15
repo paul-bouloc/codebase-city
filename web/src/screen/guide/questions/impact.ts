@@ -1,3 +1,5 @@
+import { ANALYZED_LANGUAGES } from '../../../city/world/from-result'
+import type { ResultIndex } from '../../result-index'
 import type { TourContext } from '../tour/tour-spans'
 
 // What depends on a file: every file that imports it, directly or through other files, as the
@@ -82,4 +84,11 @@ export function impactOf(context: TourContext, file: number): Impact {
         ? { islands: rest.length, count: rest.reduce((sum, row) => sum + row.count, 0) }
         : null,
   }
+}
+
+/** Whether the file of this path was analyzed: only its imports are known, so only it is asked about. */
+export function analyzedFile(index: ResultIndex, path: string): boolean {
+  const file = index.fileAt(path)
+  const { files, languages } = index.result
+  return file !== undefined && ANALYZED_LANGUAGES.has(languages[files.language[file] ?? 0] ?? '')
 }
