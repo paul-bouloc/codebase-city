@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { COUNTED_PATHS } from './route'
-import { noRouteText, routeSummary } from './route-text'
+import { distinctNames, noRouteText, routeSummary } from './route-text'
 
 describe('routeSummary', () => {
   it('counts the steps and the files, and which path of several', () => {
@@ -49,5 +49,20 @@ describe('noRouteText', () => {
     expect(noRouteText({ kind: 'reaches', files: 1 }, 'a.ts', 'b.ts', null)).toBe(
       'a.ts reaches 1 file; b.ts isn’t one of them. Neither depends on the other.',
     )
+  })
+})
+
+describe('distinctNames', () => {
+  it('keeps the names when they differ', () => {
+    expect(distinctNames('src/a/strings.ts', 'src/b/async.ts')).toEqual(['strings.ts', 'async.ts'])
+  })
+
+  it('keeps as much of the paths as tells two names apart', () => {
+    expect(distinctNames('packages/common/index.ts', 'packages/core/index.ts')).toEqual([
+      'common/index.ts',
+      'core/index.ts',
+    ])
+    expect(distinctNames('a/x/index.ts', 'b/x/index.ts')).toEqual(['a/x/index.ts', 'b/x/index.ts'])
+    expect(distinctNames('index.ts', 'lib/index.ts')).toEqual(['index.ts', 'lib/index.ts'])
   })
 })

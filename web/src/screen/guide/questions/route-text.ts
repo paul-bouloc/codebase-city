@@ -54,3 +54,19 @@ export function noRouteText(
 export function routeLabel(from: string, to: string): string {
   return `Path from ${from} to ${to}`
 }
+
+/**
+ * What two files are called side by side: their names, or, when those are the same, the ends of
+ * their paths that tell them apart ("common/index.ts" and "core/index.ts").
+ */
+export function distinctNames(a: string, b: string): [string, string] {
+  const [aParts, bParts] = [a.split('/'), b.split('/')]
+  const longest = Math.max(aParts.length, bParts.length)
+  for (let kept = 1; kept < longest; kept++) {
+    const [aEnd, bEnd] = [aParts.slice(-kept).join('/'), bParts.slice(-kept).join('/')]
+    if (aEnd !== bEnd) {
+      return [aEnd, bEnd]
+    }
+  }
+  return [a, b]
+}
