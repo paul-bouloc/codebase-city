@@ -165,7 +165,10 @@ export class UnitLabels {
     }
     found.sort((a, b) => b.depth - a.depth)
     this.shown = found.map(({ target, placed }) => ({ target, box: placed.box }))
-    return found.map(({ placed }, order) => ({ ...placed, order }))
+    return found.map(({ placed }, order) => {
+      placed.order = order
+      return placed
+    })
   }
 
   /** The island or folder whose label is at this point of the canvas, the nearest drawn on top. */
