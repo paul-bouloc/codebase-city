@@ -104,7 +104,28 @@ appImports: number,
 /**
  * One to three libraries that apps of different units import.
  */
-shared: Array<SharedLibrary>, } | { "kind": "layers", 
+shared: Array<SharedLibrary>, } | { "kind": "consumers", 
+/**
+ * One to three folders at the top of the repository, the one with
+ * the most imports first.
+ */
+folders: Array<Consumer>, 
+/**
+ * The package they import the most.
+ */
+package: number, } | { "kind": "insidePackage", 
+/**
+ * A row of [`Packages`].
+ */
+package: number, 
+/**
+ * Its largest folders, one to three, the first first.
+ */
+dirs: Array<number>, 
+/**
+ * Code files of each.
+ */
+files: Array<number>, } | { "kind": "layers", 
 /**
  * Imports to an island of a lower layer.
  */
@@ -136,28 +157,7 @@ examples: Array<number>,
  * Test files that import one of their examples: the examples are
  * tested.
  */
-tests: number, } | { "kind": "consumers", 
-/**
- * One to three folders at the top of the repository, the one with
- * the most imports first.
- */
-folders: Array<Consumer>, 
-/**
- * The package they import the most.
- */
-package: number, } | { "kind": "insidePackage", 
-/**
- * A row of [`Packages`].
- */
-package: number, 
-/**
- * Its largest folders, one to three, the first first.
- */
-dirs: Array<number>, 
-/**
- * Code files of each.
- */
-files: Array<number>, } | { "kind": "cycles", 
+tests: number, } | { "kind": "cycles", 
 /**
  * A row of [`Cycles`].
  */

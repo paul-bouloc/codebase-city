@@ -696,6 +696,26 @@ pub enum TourStep {
         /// One to three libraries that apps of different units import.
         shared: Vec<SharedLibrary>,
     },
+    /// In a monorepo of libraries, the folders outside the packages whose
+    /// examples and tests import them.
+    Consumers {
+        /// One to three folders at the top of the repository, the one with
+        /// the most imports first.
+        folders: Vec<Consumer>,
+        /// The package they import the most.
+        package: u32,
+    },
+    /// Inside the package that stands for the monorepo: the app that holds
+    /// most of the apps' code, or the main library of a monorepo of
+    /// libraries.
+    InsidePackage {
+        /// A row of [`Packages`].
+        package: u32,
+        /// Its largest folders, one to three, the first first.
+        dirs: Vec<u32>,
+        /// Code files of each.
+        files: Vec<u32>,
+    },
     /// The layers of the islands, read from [`Islands::layer`], and how the
     /// production imports between islands in layers follow them:
     /// [`Links::production`] and [`Links::production_upward`]. Shown when at
@@ -725,26 +745,6 @@ pub enum TourStep {
         /// Test files that import one of their examples: the examples are
         /// tested.
         tests: u32,
-    },
-    /// In a monorepo of libraries, the folders outside the packages whose
-    /// examples and tests import them.
-    Consumers {
-        /// One to three folders at the top of the repository, the one with
-        /// the most imports first.
-        folders: Vec<Consumer>,
-        /// The package they import the most.
-        package: u32,
-    },
-    /// Inside the package that stands for the monorepo: the app that holds
-    /// most of the apps' code, or the main library of a monorepo of
-    /// libraries.
-    InsidePackage {
-        /// A row of [`Packages`].
-        package: u32,
-        /// Its largest folders, one to three, the first first.
-        dirs: Vec<u32>,
-        /// Code files of each.
-        files: Vec<u32>,
     },
     /// The largest loop of imports.
     Cycles {

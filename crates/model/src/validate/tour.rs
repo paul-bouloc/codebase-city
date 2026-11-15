@@ -23,10 +23,10 @@ fn rank(step: &TourStep) -> u8 {
         TourStep::OtherApps { .. } => 6,
         TourStep::Libraries { .. } => 7,
         TourStep::AppLinks { .. } => 8,
-        TourStep::Layers { .. } => 9,
-        TourStep::ExamplesAndTests { .. } => 10,
-        TourStep::Consumers { .. } => 11,
-        TourStep::InsidePackage { .. } => 12,
+        TourStep::Consumers { .. } => 9,
+        TourStep::InsidePackage { .. } => 10,
+        TourStep::Layers { .. } => 11,
+        TourStep::ExamplesAndTests { .. } => 12,
         TourStep::Cycles { .. } => 13,
         TourStep::ComplexAreas { .. } => 14,
         TourStep::Rest { .. } => 15,
@@ -402,7 +402,7 @@ mod tests {
             }],
         );
         r.tour.steps.insert(
-            3,
+            2,
             TourStep::InsidePackage {
                 package: 0,
                 dirs: vec![1],
@@ -511,7 +511,7 @@ mod tests {
         );
         assert_eq!(
             invalid(|r| {
-                if let TourStep::Layers { worst_link, .. } = step(r, 9) {
+                if let TourStep::Layers { worst_link, .. } = step(r, 11) {
                     *worst_link = Some(1);
                 }
             }),
@@ -744,7 +744,7 @@ mod tests {
         );
         assert_eq!(
             invalid_monorepo(|r| {
-                if let TourStep::InsidePackage { dirs, .. } = &mut r.tour.steps[3] {
+                if let TourStep::InsidePackage { dirs, .. } = &mut r.tour.steps[2] {
                     dirs[0] = 2;
                 }
             }),
@@ -773,8 +773,8 @@ mod tests {
         monorepo(&mut r);
         library(&mut r, 100);
         r.tour.steps[1] = TourStep::OtherApps { apps: vec![1] };
-        assert_eq!(r.validate(), Err(InvalidResult::TourPackageKind { row: 3 }));
-        if let TourStep::InsidePackage { package, .. } = &mut r.tour.steps[3] {
+        assert_eq!(r.validate(), Err(InvalidResult::TourPackageKind { row: 2 }));
+        if let TourStep::InsidePackage { package, .. } = &mut r.tour.steps[2] {
             *package = 0;
         }
         assert_eq!(r.validate(), Ok(()));
@@ -787,7 +787,7 @@ mod tests {
         r.packages.kind[0] = PackageKind::Library;
         r.tour.steps.remove(1);
         assert_eq!(r.validate(), Ok(()));
-        if let TourStep::InsidePackage { package, .. } = &mut r.tour.steps[2] {
+        if let TourStep::InsidePackage { package, .. } = &mut r.tour.steps[1] {
             *package = 1;
         }
         assert_eq!(
@@ -846,11 +846,11 @@ mod tests {
         );
         assert_eq!(
             invalid_monorepo(|r| {
-                if let TourStep::InsidePackage { files, .. } = &mut r.tour.steps[3] {
+                if let TourStep::InsidePackage { files, .. } = &mut r.tour.steps[2] {
                     files.push(1);
                 }
             }),
-            InvalidResult::TourCount { row: 3 }
+            InvalidResult::TourCount { row: 2 }
         );
         assert_eq!(
             invalid_monorepo(|r| {
