@@ -17,6 +17,10 @@ const TEXT = {
   back: 'Back',
   next: 'Next',
   done: 'Done',
+  pause: 'Pause the tour',
+  resume: 'Resume the tour',
+  pauseTitle: 'Pause · Space',
+  playTitle: 'Play · Space',
   backTitle: 'Previous step · ←',
   nextTitle: 'Next step · →',
 }
@@ -34,6 +38,9 @@ interface TourPanelProps {
   step: number
   steps: number
   repoName: string
+  /** The tour goes on to the next step on its own. */
+  playing: boolean
+  onPlayPause: () => void
   onBack: () => void
   /** Next, or Done on the last step. */
   onNext: () => void
@@ -43,7 +50,7 @@ interface TourPanelProps {
 
 /** A step of the tour: where it stands, what it says, what to look at closer, and the way on. */
 export const TourPanel = forwardRef<HTMLHeadingElement, TourPanelProps>(function TourPanel(
-  { text, step, steps, repoName, onBack, onNext, onSkip, onChip },
+  { text, step, steps, repoName, playing, onPlayPause, onBack, onNext, onSkip, onChip },
   titleRef,
 ) {
   const last = step === steps - 1
@@ -131,6 +138,13 @@ export const TourPanel = forwardRef<HTMLHeadingElement, TourPanelProps>(function
               {TEXT.back}
             </Button>
           )}
+          <Button
+            iconOnly
+            icon={playing ? 'pause' : 'play'}
+            label={playing ? TEXT.pause : TEXT.resume}
+            title={playing ? TEXT.pauseTitle : TEXT.playTitle}
+            onClick={onPlayPause}
+          />
           <span className={styles.spacer} />
           <Button
             ref={nextRef}
