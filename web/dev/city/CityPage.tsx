@@ -59,7 +59,7 @@ const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve))
  * `?select=path` selects the file or folder of that path once the city loads; `?port=path` opens
  * the port of that island; `?step=kind` shows that step of the tour (`entryPoints`, `cycles`…);
  * `?impact=path` answers what depends on that file, selected; `?route=a,b` how file `a` reaches
- * file `b`.
+ * file `b`; `?cycle=n` where the cycles are, the n-th biggest on show (from 1).
  * `?stats` shows the frame stats, and with them the drawing of every frame (on by default for a
  * synthetic city, `?stats=off` hides them); without, the city draws only when something changes,
  * as in the product.
@@ -113,6 +113,11 @@ export function CityPage() {
       params.set('route', `${next.from ?? ''},${next.to ?? ''}`)
     } else {
       params.delete('route')
+    }
+    if (next.mode === 'cycles') {
+      params.set('cycle', String((next.cycle ?? -1) + 1))
+    } else {
+      params.delete('cycle')
     }
     window.history.replaceState(null, '', `?${params}${window.location.hash}`)
   }
@@ -177,6 +182,7 @@ export function CityPage() {
       const impact = params.get('impact')
       const [from = '', to = ''] = params.get('route')?.split(',') ?? []
       const route = params.has('route')
+      const cycle = Number(params.get('cycle') ?? 0) - 1
       const step = decoded.tour.steps.findIndex((each) => each.kind === kind)
       if (impact && step < 0) {
         window.history.replaceState(null, '', `?${params}${hashOf({ kind: 'file', path: impact })}`)
@@ -189,7 +195,9 @@ export function CityPage() {
             ? { mode: 'impact', step: 0, playing: false, file: impact }
             : route
               ? nextGuide(FOLDED, { kind: 'route', from: from || null, to: to || null }, 0)
-              : FOLDED,
+              : params.has('cycle')
+                ? nextGuide(FOLDED, { kind: 'cycles', cycle: cycle >= 0 ? cycle : null }, 0)
+                : FOLDED,
       )
       setError(null)
     } catch (cause) {
