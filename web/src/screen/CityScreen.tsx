@@ -19,7 +19,7 @@ import { githubTreeUrl } from './github-links'
 import { localTourStorage, startsFirstTour, tourSeenKey } from './guide/first-tour'
 import { GuideDock } from './guide/GuideDock'
 import { GuideLabels } from './guide/GuideLabels'
-import type { GuideState } from './guide/guide-state'
+import { type GuideState, isAnswer } from './guide/guide-state'
 import { analyzedFile } from './guide/questions/impact'
 import type { TourTarget } from './guide/tour/tour-spans'
 import { useGuide } from './guide/use-guide'
@@ -206,13 +206,13 @@ function Screen({
 
   // An answer frames what it shows beside the guide, once the selection of the address and the
   // room its sheet takes are known: again when the sheet comes or goes.
-  const { impactFrame } = guide
+  const { answerFrame } = guide
   // biome-ignore lint/correctness/useExhaustiveDependencies: again when the sheet's room changes
   useEffect(() => {
-    if (impactFrame) {
-      engine?.frameAll(impactFrame)
+    if (answerFrame) {
+      engine?.frameAll(answerFrame)
     }
-  }, [engine, impactFrame, sheetShown])
+  }, [engine, answerFrame, sheetShown])
 
   const portOpen = port !== null
   const closeAbout = useCallback(() => setAboutOpen(false), [])
@@ -228,7 +228,7 @@ function Screen({
       sheetShown,
       hasSelection: selection !== null,
       guideOpen: guide.state.mode !== 'folded',
-      answerOpen: guide.state.mode === 'impact',
+      answerOpen: isAnswer(guide.state.mode),
     },
     closeAbout,
     closeSheet,
@@ -237,26 +237,53 @@ function Screen({
     leaveAnswer,
   )
 
-  // What depends on a file: the file asked about is the selection. Another selection, or none,
-  // ends the answer; an emptied field leaves the selection be.
-  const impactFile = guide.state.mode === 'impact' ? (guide.state.file ?? null) : null
+  // What depends on a file: the file asked about is the selection.
   const askImpact = (path: string | null) => {
     guideDispatch({ kind: 'impact', file: path })
     if (path !== null && selectedFile !== path) {
       choose({ kind: 'file', path })
     }
   }
+  // How a file reaches another: the selection stays where it is.
+  const askRoute = (from: string | null, to: string | null) =>
+    guideDispatch({ kind: 'route', from, to })
+  const analyzedSelection =
+    selectedFile !== null && analyzedFile(index, selectedFile) ? selectedFile : null
+
+  // Another selection, or none, ends an answer: a file other than the one an impact is about, or
+  // than those of a route. An empty answer leaves the selection be.
+  const { state: guideNow, route } = guide
+  const answerKeeps = (path: string | null) => {
+    switch (guideNow.mode) {
+      case 'impact':
+        return guideNow.file === undefined || path === guideNow.file
+      case 'route': {
+        const { from, to } = guideNow
+        if (from === undefined && to === undefined) {
+          return true
+        }
+        const stops = route?.kind === 'found' ? route.files : []
+        return (
+          path !== null &&
+          (path === from || path === to || stops.some((file) => index.filePaths[file] === path))
+        )
+      }
+      default:
+        return true
+    }
+  }
   const selectionPath = selection?.path ?? null
   const shownSelection = useRef(selectionPath)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only a change of selection is heard
   useEffect(() => {
     if (shownSelection.current === selectionPath) {
       return
     }
     shownSelection.current = selectionPath
-    if (impactFile !== null && selectionPath !== impactFile) {
+    if (!answerKeeps(selectionPath)) {
       guideDispatch({ kind: 'questions' })
     }
-  }, [selectionPath, impactFile, guideDispatch])
+  }, [selectionPath, guideDispatch])
 
   // The user asks for a file or a folder (search, sheet, chip): the camera flies there.
   const flyTo = (next: ScreenSelection) => {
@@ -335,7 +362,7 @@ function Screen({
   return (
     <main ref={screen} className={styles.screen}>
       <CityView layout={layout} showStats={showStats} onEngine={handleEngine} />
-      {(guide.shown || guide.impact) && (
+      {(guide.shown || guide.impact || guide.route?.kind === 'found') && (
         <GuideLabels
           labels={guideLabels}
           notes={guide.shown?.notes ?? NO_NOTES}
@@ -345,6 +372,7 @@ function Screen({
               dependents: guide.impact.dependents.length,
             }
           }
+          route={guide.route?.kind === 'found' ? guide.answerFrame : null}
         />
       )}
 
@@ -431,6 +459,7 @@ function Screen({
             }}
             onOpenCode={openCode}
             onShowImpact={() => askImpact(shownSheet.file.path)}
+            onFindPath={() => askRoute(shownSheet.file.path, null)}
             openLine={openLine?.path === shownSheet.file.path ? openLine : undefined}
           />
         )}
@@ -459,12 +488,13 @@ function Screen({
           onChip={showTarget}
           impact={guide.impact}
           searchIndex={searchIndex}
-          onAskImpact={() =>
-            askImpact(
-              selectedFile !== null && analyzedFile(index, selectedFile) ? selectedFile : null,
-            )
-          }
+          onAskImpact={() => askImpact(analyzedSelection)}
           onImpactFile={askImpact}
+          route={guide.route}
+          filePaths={index.filePaths}
+          onAskRoute={() => askRoute(analyzedSelection, null)}
+          onRouteFiles={askRoute}
+          onRouteStop={(path) => flyTo({ kind: 'file', path })}
         />
       </div>
 
