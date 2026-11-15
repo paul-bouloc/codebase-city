@@ -1,15 +1,20 @@
 /* The answer to a question, 400 px at the guide's corner ("City UI · 08"). */
 
 .panel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3-5);
   width: 400px;
   max-width: calc(100vw - 2 * var(--space-3));
   box-sizing: border-box;
-  padding: var(--space-3-5) var(--space-4) var(--space-4);
+  overflow: hidden;
   transform-origin: bottom left;
   animation: answer-in var(--duration-slow) var(--easing-enter) both;
+  transition: height var(--duration-base) var(--easing-standard);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3-5);
+  padding: var(--space-3-5) var(--space-4) var(--space-4);
 }
 
 .head {
@@ -70,5 +75,6 @@
 @media (prefers-reduced-motion: reduce) {
   .panel {
     animation: none;
+    transition: none;
   }
 }
