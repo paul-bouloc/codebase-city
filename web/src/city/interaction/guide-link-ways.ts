@@ -9,11 +9,10 @@ import type { CityFlows } from './city-items'
 import type { OpenPort } from './open-port'
 
 /** The count of a link of the guide, at the middle of its way. */
-export interface GuideLinkCount {
+export interface GuideLinkCount extends GuideLinkLabel {
   /** The same for the same link. */
   key: string
   anchor: Vec3
-  label: GuideLinkLabel
 }
 
 const NONE: readonly GuideLinkCount[] = []
@@ -59,7 +58,7 @@ export class GuideLinkWays {
         {
           key: `link\n${link.from.join(',')}\n${link.to}`,
           anchor: boardToThree(x, y, z),
-          label: link.label,
+          ...link.label,
         },
       ]
     })
