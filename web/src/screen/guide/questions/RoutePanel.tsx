@@ -8,7 +8,7 @@ import { FileField } from './FileField'
 import { QuestionPanel } from './QuestionPanel'
 import styles from './RoutePanel.module.css'
 import type { Route } from './route'
-import { noRouteText, routeLabel, routeSummary } from './route-text'
+import { distinctNames, noRouteText, routeLabel, routeSummary } from './route-text'
 
 export const ROUTE_QUESTION = {
   title: 'How does A reach B?',
@@ -165,7 +165,7 @@ function FoundRoute({
       </p>
       <ol
         className={styles.stops}
-        aria-label={routeLabel(nameOf(paths[0] ?? ''), nameOf(paths[last] ?? ''))}
+        aria-label={routeLabel(...distinctNames(paths[0] ?? '', paths[last] ?? ''))}
       >
         {paths.map((path, at) => {
           const name = nameOf(path)
@@ -212,9 +212,10 @@ function NoRoute({
   from: string
   to: string
 }) {
-  const [a, b] = [nameOf(from), nameOf(to)]
+  const [a, b] = distinctNames(from, to)
+  // The region around it reads it out already.
   return (
-    <div className={styles.none} role="status">
+    <div className={styles.none}>
       <Icon name="info" size={20} className={styles.noneIcon} />
       <div className={styles.noneWords}>
         <p className={styles.noneLead}>

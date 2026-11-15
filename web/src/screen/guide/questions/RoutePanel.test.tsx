@@ -64,9 +64,35 @@ describe('RoutePanel', () => {
       back: 2,
     }
     const html = panel(PATHS[2] ?? '', PATHS[0] ?? '', route)
-    expect(html).toContain('role="status"')
     expect(html).toMatch(/No path: .*async\.ts.* doesn’t depend on .*main\.ts/)
     expect(html).toContain('The other way round, main.ts reaches async.ts in 2 steps.')
     expect(html.match(/Swap A and B/g)?.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('tells apart two files of the same name', () => {
+    const route: Route = {
+      kind: 'none',
+      from: 0,
+      to: 1,
+      reason: { kind: 'reaches', files: 2 },
+      back: null,
+    }
+    const html = renderToStaticMarkup(
+      <RoutePanel
+        from="packages/common/index.ts"
+        to="packages/core/index.ts"
+        route={route}
+        filePaths={['packages/common/index.ts', 'packages/core/index.ts']}
+        searchIndex={{} as SearchIndex}
+        toRef={createRef()}
+        onChange={noop}
+        onNextPath={noop}
+        onStop={noop}
+        onBack={noop}
+        onClear={noop}
+        onCollapse={noop}
+      />,
+    )
+    expect(html).toMatch(/common\/index\.ts.* doesn’t depend on .*core\/index\.ts/)
   })
 })
