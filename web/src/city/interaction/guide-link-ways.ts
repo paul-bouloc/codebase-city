@@ -13,6 +13,8 @@ export interface GuideLinkCount extends GuideLinkLabel {
   /** The same for the same link. */
   key: string
   anchor: Vec3
+  /** Its place among the counts of the links that share its way, from the top. */
+  stack: number
 }
 
 const NONE: readonly GuideLinkCount[] = []
@@ -49,18 +51,12 @@ export class GuideLinkWays {
     const { bridges, ferries, unshown = [], ports = [], extra } = this.flows
     this.ways = guideWays(links, this.layout, { bridges, ferries, unshown, ports, extra })
     this.all = this.ways.flatMap((way) => {
-      const link = links[way.link]
-      if (!link) {
-        return []
-      }
       const [x, y, z] = alongPath(way.path, 0.5).at
-      return [
-        {
-          key: `link\n${link.from.join(',')}\n${link.to}`,
-          anchor: boardToThree(x, y, z),
-          ...link.label,
-        },
-      ]
+      const anchor = boardToThree(x, y, z)
+      return way.links.flatMap((index, stack) => {
+        const link = links[index]
+        return link ? [{ key: `link\n${index}`, anchor, stack, ...link.label }] : []
+      })
     })
     this.draw()
   }

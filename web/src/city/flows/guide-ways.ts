@@ -16,8 +16,8 @@ export interface GuideWayLink {
 
 /** The way of a link, in board coordinates (x, y on the sea, z up), from importer to imported. */
 export interface GuideWay {
-  /** Its link's index. */
-  link: number
+  /** The indexes of the links it carries: two links between the same islands share it. */
+  links: number[]
   kind: 'bridge' | 'ferry'
   path: Vec3[]
   /** The pair a port gathers, sailed out of it for the while. */
@@ -36,7 +36,10 @@ const OPENING = Math.PI / 4
 
 const key = (a: number, b: number) => `${Math.min(a, b)}/${Math.max(a, b)}`
 
-/** The ways of these links, in their order; none for a link the islands have no way between. */
+/**
+ * The ways of these links, in their order, one for each pair of islands from importer to
+ * imported; none for a link the islands have no way between.
+ */
 export function guideWays(
   links: readonly GuideWayLink[],
   layout: CityLayout,
@@ -51,40 +54,47 @@ export function guideWays(
   const bridges = new Map(city.bridges.map((bridge) => [key(bridge.a, bridge.b), bridge]))
   const ferries = new Map(city.ferries.map((ferry) => [key(ferry.a, ferry.b), ferry]))
   const unshown = new Map(city.unshown.map((pair) => [key(pair.a, pair.b), pair]))
-  return links.flatMap((link, index): GuideWay[] => {
+  const found = new Map<string, GuideWay>()
+  links.forEach((link, index) => {
     const from = nearestImporter(link, layout)
-    if (from === null) {
-      return []
+    const way = from === null ? undefined : found.get(`${from}>${link.to}`)
+    if (way) {
+      way.links.push(index)
+    } else if (from !== null) {
+      const made = wayOf(from, link.to, index)
+      if (made) {
+        found.set(`${from}>${link.to}`, made)
+      }
     }
-    const id = key(from, link.to)
+  })
+  return [...found.values()]
+
+  function wayOf(from: number, to: number, index: number): GuideWay | null {
+    const id = key(from, to)
     const bridge = bridges.get(id)
     if (bridge) {
       const path = deckLine(bridge, 0, BAND_RISE)
-      return [
-        {
-          link: index,
-          kind: 'bridge',
-          path: from === bridge.low ? path : path.reverse(),
-          fromPort: null,
-        },
-      ]
+      return {
+        links: [index],
+        kind: 'bridge',
+        path: from === bridge.low ? path : path.reverse(),
+        fromPort: null,
+      }
     }
     const pair = unshown.get(id)
     const port = pair && city.ports.find((each) => each.pairs.includes(pair))
     const ferry = ferries.get(id) ?? (pair && city.extra?.route(pair, port))
     if (!ferry) {
-      return []
+      return null
     }
     const path = ferry.path.map(({ x, y }): Vec3 => [x, y, FERRY_ALTITUDE])
-    return [
-      {
-        link: index,
-        kind: 'ferry',
-        path: from === ferry.a ? path : path.reverse(),
-        fromPort: port && pair ? pair : null,
-      },
-    ]
-  })
+    return {
+      links: [index],
+      kind: 'ferry',
+      path: from === ferry.a ? path : path.reverse(),
+      fromPort: port && pair ? pair : null,
+    }
+  }
 }
 
 /**

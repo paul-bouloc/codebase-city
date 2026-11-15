@@ -34,9 +34,14 @@ interface UnitLabel {
 export interface LinkCount {
   key: string
   anchor: Vec3
+  /** Its place among the counts that share its way, stacked down from the middle. */
+  stack: number
   files: string
   typeOnly: string | null
 }
+
+/** Between two counts stacked on a way, in CSS pixels. */
+const STACK_GAP = 4
 
 /** A label on show this frame: what a click on it selects, and its box on the canvas, in CSS px. */
 interface Shown {
@@ -110,7 +115,7 @@ export class UnitLabels {
       return []
     }
     const found: { target: Target | null; depth: number; placed: PlacedLabel }[] = []
-    const add = (label: UnitLabel, lift: number | null) => {
+    const add = (label: UnitLabel, lift: number | null, stack = 0) => {
       const anchor = this.onCanvas(label.anchor)
       if (!anchor) {
         return
@@ -122,7 +127,10 @@ export class UnitLabels {
         (text, font) => this.widthOf(text, font),
         label.kind,
       )
-      const top = lift === null ? anchor.y - height / 2 : anchor.y - lift - height
+      const top =
+        lift === null
+          ? anchor.y - height / 2 + stack * (height + STACK_GAP)
+          : anchor.y - lift - height
       const box = { x: anchor.x - width / 2, y: top, width, height }
       found.push({
         target: label.target,
@@ -161,6 +169,7 @@ export class UnitLabels {
           leads: [],
         },
         null,
+        count.stack,
       )
     }
     found.sort((a, b) => b.depth - a.depth)

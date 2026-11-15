@@ -60,13 +60,26 @@ describe('guide ways', () => {
       city,
       { ...NOTHING, bridges: [BRIDGE], ferries: [FERRY] },
     )
-    expect(ways.map((way) => [way.link, way.kind, way.fromPort])).toEqual([
-      [0, 'bridge', null],
-      [1, 'ferry', null],
+    expect(ways.map((way) => [way.links, way.kind, way.fromPort])).toEqual([
+      [[0], 'bridge', null],
+      [[1], 'ferry', null],
     ])
     // The bridge runs from island 0 to 1: reversed, from 1 to 0
     expect(ways[0]?.path[0]?.[0]).toBeGreaterThan(ways[0]?.path[1]?.[0] ?? 0)
     expect(ways[1]?.path.map((point) => point[0])).toEqual([30, 40])
+  })
+
+  it('carries two links between the same islands on one way', () => {
+    const city = layout([link(1, 0)])
+    const ways = guideWays(
+      [
+        { from: [1], to: 0 },
+        { from: [1, 2], to: 0 },
+      ],
+      city,
+      { ...NOTHING, bridges: [BRIDGE] },
+    )
+    expect(ways.map((way) => way.links)).toEqual([[0, 1]])
   })
 
   it('sails out a link a port gathers, and says so; none without a way', () => {

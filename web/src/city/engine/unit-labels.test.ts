@@ -73,7 +73,7 @@ describe('UnitLabels', () => {
     const { labels } = setup()
     labels.setUnits([{ islands: [1], parcel: null, label: label('web') }])
     const placed = labels.place([
-      { key: 'link', anchor: [0, 0, 0], files: '612 files', typeOnly: null },
+      { key: 'link', anchor: [0, 0, 0], stack: 0, files: '612 files', typeOnly: null },
     ])
     const found = placed.find((each) => each.guide === 'count')
     expect(found?.name).toBe('612 files')
@@ -83,6 +83,14 @@ describe('UnitLabels', () => {
     // Drawn in depth order with the units' labels
     expect(placed.map((each) => each.order)).toEqual([0, 1])
     expect(labels.at(found?.x ?? 0, found?.y ?? 0)).toBeNull()
+    // A second count on the same way stands under the first
+    const [first, second] = labels
+      .place([
+        { key: 'a', anchor: [0, 0, 0], stack: 0, files: '1 file', typeOnly: null },
+        { key: 'b', anchor: [0, 0, 0], stack: 1, files: '2 files', typeOnly: null },
+      ])
+      .filter((each) => each.guide === 'count')
+    expect(second?.box.y).toBeGreaterThan((first?.box.y ?? 0) + (first?.box.height ?? 0))
   })
 
   it('labels a package inside another by its parcel, and keeps its host island named', () => {
