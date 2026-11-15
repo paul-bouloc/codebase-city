@@ -1,5 +1,6 @@
 import { type PerspectiveCamera, Vector3 } from 'three'
 import type { CityGuideUnit } from '../interaction/city-guide'
+import type { GuideLinkCount } from '../interaction/guide-link-ways'
 import type { CityLayout } from '../world/layout'
 import type { Vec3 } from '../world/units'
 import { canvasMeasure } from './area-labels'
@@ -28,16 +29,6 @@ interface UnitLabel {
   /** Where it stands from, in three.js coordinates: the first of its leads. */
   anchor: Vec3
   leads: Vec3[]
-}
-
-/** The count of a link, at the middle of its way. */
-export interface LinkCount {
-  key: string
-  anchor: Vec3
-  /** Its place among the counts that share its way, stacked down from the middle. */
-  stack: number
-  files: string
-  typeOnly: string | null
 }
 
 /** Between two counts stacked on a way, in CSS pixels. */
@@ -103,7 +94,7 @@ export class UnitLabels {
    * unit's stands straight over its anchor, a link's count on the middle of its way. The `lit`
    * unit's leaders stand out.
    */
-  place(counts: readonly LinkCount[] = [], lit: number | null = null): PlacedLabel[] {
+  place(counts: readonly GuideLinkCount[] = [], lit: number | null = null): PlacedLabel[] {
     this.width = this.canvas.clientWidth
     this.height = this.canvas.clientHeight
     if (
