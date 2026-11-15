@@ -166,6 +166,12 @@ describe('tourText', () => {
     expect(text.closer.map((chip) => plain(chip.spans))).toEqual(['`package.json` declares them'])
   })
 
+  it('makes no chip of a row that points nowhere', () => {
+    const of = result()
+    const text = textOf(of, { kind: 'complexAreas', files: [5, 999], complexity: 100 })
+    expect(text.closer).toEqual([])
+  })
+
   it('gives the mark over a roof its measure', () => {
     const of = result()
     const context = tourContext(indexResult(of))

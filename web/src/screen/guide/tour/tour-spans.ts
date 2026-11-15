@@ -68,21 +68,28 @@ export function tourContext(index: ResultIndex): TourContext {
   return { index, islandNames: names, islandFiles }
 }
 
+/** A file's chip; a file the result does not have is no chip, and flies nowhere. */
 export function fileSpan(context: TourContext, file: number): TourSpan {
-  return { kind: 'file', path: context.index.filePaths[file] ?? '' }
+  const path = context.index.filePaths[file]
+  return path === undefined ? '' : { kind: 'file', path }
 }
 
+/** A folder's chip, the root's included; a folder the result does not have is none. */
 export function folderSpan(context: TourContext, dir: number): TourSpan {
-  return { kind: 'folder', path: context.index.folderPaths[dir] ?? '/' }
+  const path = context.index.folderPaths[dir]
+  return path === undefined ? '' : { kind: 'folder', path }
 }
 
-/** A file, or a Go package's folder, as a ranking's row points at it. */
+/** A file, or a Go package's folder, as a ranking's row points at it; none for neither. */
 export function targetSpan(
   context: TourContext,
   file: number | null,
   dir: number | null,
 ): TourSpan {
-  return file !== null ? fileSpan(context, file) : folderSpan(context, dir ?? 0)
+  if (file !== null) {
+    return fileSpan(context, file)
+  }
+  return dir === null ? '' : folderSpan(context, dir)
 }
 
 export function islandSpan(context: TourContext, island: number): IslandSpan {
