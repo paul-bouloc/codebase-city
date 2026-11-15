@@ -103,6 +103,30 @@ describe('the ways between islands', () => {
     expect(hovers.at(-1)).toMatchObject({ path: 'island-0', port: { links: 2 } })
   })
 
+  it('leaves out of its badge, its card and its lines a link the guide sails out', () => {
+    const { interaction, links, ports, hovers } = setup()
+    const port = links.ports[0]
+    if (!port) {
+      throw new Error('no port')
+    }
+    // island-5 imports island-0: a guide link out of the port
+    interaction.showGuide({
+      buildings: [],
+      pinned: [],
+      labelled: [],
+      areas: [],
+      units: [],
+      links: [{ from: [5], to: 0, label: { files: '2 files', typeOnly: null } }],
+      fade: 'none',
+      cycle: null,
+    })
+    interaction.point({ kind: 'port', port }, { x: 5, y: 5 })
+    vi.advanceTimersByTime(1000)
+    expect(hovers.at(-1)).toMatchObject({ port: { links: 1 } })
+    interaction.openPort(port, null)
+    expect(ports.at(-1)?.links.map((link) => link.path)).toEqual(['island-6'])
+  })
+
   it('lists its links on a click and sails them out, each the way it goes', () => {
     const { interaction, links, ports } = setup()
     const port = links.ports[0]

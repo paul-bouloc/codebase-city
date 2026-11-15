@@ -44,6 +44,8 @@ export class OpenPort {
   private lines: PortLine[] = []
   /** The ports with a badge: those that still gather a link not sailed out. */
   private badged: readonly Port[]
+  /** The links sailed out of their ports for the while. */
+  private out: ReadonlySet<Pair> = new Set()
 
   constructor(
     private readonly layout: CityLayout,
@@ -67,8 +69,14 @@ export class OpenPort {
    * port left with none loses its badge. The open port must be closed first.
    */
   sailOut(out: ReadonlySet<Pair>): void {
+    this.out = out
     this.badged = this.ports.filter((port) => port.pairs.some((pair) => !out.has(pair)))
     this.badges.show({ lines: [], dots: [], stems: [], labels: portLabels(this.badged, out) })
+  }
+
+  /** The links a port gathers, less those sailed out for the while. */
+  gathered(port: Port): Pair[] {
+    return port.pairs.filter((pair) => !this.out.has(pair))
   }
 
   /** The port open, if any. */
@@ -84,10 +92,12 @@ export class OpenPort {
   /** Opens a port, opened at this point of the page; the one open must be closed first. */
   open(port: Port, pointer: { x: number; y: number } | null): PortList {
     const { extra } = this
-    const rows = portRows(port, this.layout.links ?? [])
+    // Its card and its lines leave out the links sailed out for the while: they show already.
+    const pairs = this.gathered(port)
+    const rows = portRows({ ...port, pairs }, this.layout.links ?? [])
     this.at = port
     this.lines = rows.map((row, at) => {
-      const pair = port.pairs[at]
+      const pair = pairs[at]
       return {
         outgoing: row.outgoing,
         incoming: row.incoming,

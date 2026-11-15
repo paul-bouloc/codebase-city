@@ -396,7 +396,7 @@ export class CityInteraction {
       this.listeners().hover?.({
         ...this.item({ kind: 'island', island: port.island }),
         pointer: this.pointer,
-        port: { links: port.pairs.length },
+        port: { links: this.ports.gathered(port).length },
       })
       return
     }
