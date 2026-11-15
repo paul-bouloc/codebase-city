@@ -107,17 +107,21 @@ export function useGuide(
   }, [engine, frame])
 
   // A playing step goes on to the next when its time is up; a pause keeps what was left of it.
-  const clock = useRef<{ step: number; clock: StepClock } | null>(null)
+  // Another city's step of the same rank starts its own clock.
+  const clock = useRef<{ seconds: readonly number[]; step: number; clock: StepClock } | null>(null)
   useEffect(() => {
     if (!touring) {
       clock.current = null
       return
     }
     const now = performance.now()
-    const kept = clock.current?.step === state.step ? clock.current.clock : null
+    const kept =
+      clock.current?.step === state.step && clock.current.seconds === seconds
+        ? clock.current.clock
+        : null
     const fresh = kept ?? startClock(seconds[state.step] ?? 0, now)
     const next = state.playing ? resumeClock(fresh, now) : pauseClock(fresh, now)
-    clock.current = { step: state.step, clock: next }
+    clock.current = { seconds, step: state.step, clock: next }
     const due = clockDue(next)
     if (due === null) {
       return
