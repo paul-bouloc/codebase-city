@@ -71,6 +71,9 @@ describe('GuideLabels', () => {
       'f5.ts',
     ])
     expect(labels.place(roofs)).toBeNull()
+    // A route's numbers are all placed, past the six others.
+    const stops = roofs.map((roof) => ({ ...roof, path: `stop-${roof.path}`, free: true }))
+    expect(labels.place([...roofs, ...stops])).toHaveLength(14)
     // Far off to the side, and behind the camera.
     expect(
       labels.place([

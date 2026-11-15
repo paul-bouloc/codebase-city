@@ -4,7 +4,7 @@ import { PIN_FOOT, PIN_HEAD_RADIUS, pinStemLength } from '../interaction/pin'
 import type { Vec3 } from '../world/units'
 
 // Where the guide's labels stand on the page: just over the head of their roof's pin, at most
-// six, those whose pin is out of view left out.
+// six besides a route's numbers, those whose pin is out of view left out.
 
 /** No more labels than this at once: the first ones win. */
 const MAX_LABELS = 6
@@ -19,21 +19,28 @@ export class GuideLabels {
   ) {}
 
   /** The labels over these roofs, or null when they stand where they last stood. */
-  place(roofs: readonly { path: string; roof: Vec3 }[]): readonly GuideLabel[] | null {
+  place(
+    roofs: readonly { path: string; roof: Vec3; free?: boolean }[],
+  ): readonly GuideLabel[] | null {
     const { canvas } = this
     const width = canvas.clientWidth
     const height = canvas.clientHeight
     const box = roofs.length > 0 ? canvas.getBoundingClientRect() : null
     const labels: GuideLabel[] = []
-    for (const { path, roof } of roofs) {
-      if (labels.length === MAX_LABELS || !box) {
+    let counted = 0
+    for (const { path, roof, free = false } of roofs) {
+      if (!box) {
         break
+      }
+      if (!free && counted === MAX_LABELS) {
+        continue
       }
       const head = this.headOnCanvas(roof)
       if (!head || head.x < 0 || head.x > width || head.y < 0 || head.y > height) {
         continue
       }
       const y = head.y - PIN_HEAD_RADIUS
+      counted += free ? 0 : 1
       labels.push({ path, x: Math.round(box.left + head.x), y: Math.round(box.top + y) })
     }
     if (sameLabels(labels, this.last)) {
