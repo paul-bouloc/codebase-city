@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CityEngine } from '../../city/engine/city-engine'
 import type { GuidePaths } from '../../city/interaction/city-guide'
 import { guideView } from '../../guide/guide-view'
@@ -45,15 +45,19 @@ export function useGuide(
   const steps = index.result.tour.steps
   const context = useMemo<TourContext>(() => tourContext(index), [index])
 
+  // Actions in a row, faster than renders (a key held down), each start from the one before.
+  const latest = useRef(state)
+  latest.current = state
   const dispatch = useCallback(
     (action: GuideAction) => {
-      const next = nextGuide(state, action, steps.length)
-      if (next !== state) {
+      const next = nextGuide(latest.current, action, steps.length)
+      if (next !== latest.current) {
+        latest.current = next
         setOwn(next)
         onChange?.(next)
       }
     },
-    [state, steps.length, onChange],
+    [steps.length, onChange],
   )
 
   const step = state.mode === 'touring' ? (steps[state.step] ?? null) : null
