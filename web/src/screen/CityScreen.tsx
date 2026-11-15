@@ -124,6 +124,11 @@ function Screen({
     [onEngine],
   )
 
+  const guide = useGuide(engine, index, guideState, onGuideChange)
+  const { dispatch: guideDispatch } = guide
+  // The user taking the camera, a chip or a search pauses the tour: it no longer flies away.
+  const pauseTour = useCallback(() => guideDispatch({ kind: 'pause' }), [guideDispatch])
+
   useEffect(() => {
     engine?.setListeners({
       hover: setHover,
@@ -131,10 +136,10 @@ function Screen({
       view: setView,
       select: selectFromCity,
       guideLabels: setGuideLabels,
+      gesture: pauseTour,
     })
-  }, [engine, selectFromCity])
+  }, [engine, selectFromCity, pauseTour])
 
-  const guide = useGuide(engine, index, guideState, onGuideChange)
   useEffect(() => {
     engine?.showGuide(guide.shown?.paths ?? null)
   }, [engine, guide.shown])
@@ -182,7 +187,6 @@ function Screen({
   const closeAbout = useCallback(() => setAboutOpen(false), [])
   const closeSheet = useCallback(() => setSheetOpen(false), [setSheetOpen])
   const clearSelection = useCallback(() => choose(null), [choose])
-  const { dispatch: guideDispatch } = guide
   const foldGuide = useCallback(() => guideDispatch({ kind: 'fold' }), [guideDispatch])
   useEscapeKey(
     engine,
@@ -204,6 +208,7 @@ function Screen({
 
   // Flies to what was found and selects it.
   const search = useSearch(searchIndex, (hit) => {
+    pauseTour()
     if (hit.kind === 'symbol') {
       choose({ kind: 'file', path: hit.file }, FLY)
       openAtLine(hit.file, hit.line)
@@ -225,6 +230,9 @@ function Screen({
 
   // A chip of the tour selects what it names and flies there; the islands of a package it frames.
   const showTarget = (target: TourTarget) => {
+    if (target.kind !== 'next') {
+      pauseTour()
+    }
     switch (target.kind) {
       case 'file':
         choose({ kind: 'file', path: target.path }, FLY)
