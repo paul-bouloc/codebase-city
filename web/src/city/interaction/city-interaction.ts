@@ -23,6 +23,7 @@ import {
   sameTarget,
 } from './city-items'
 import { DimFade } from './dim-fade'
+import { type GuideLinkCount, GuideLinkWays } from './guide-link-ways'
 import { HoverTiming } from './hover-timing'
 import { type KeptAreas, keptInAreas } from './kept-areas'
 import { OpenPort } from './open-port'
@@ -61,6 +62,8 @@ export class CityInteraction {
   private readonly ports: OpenPort
   /** What a step of the guide's tour puts forward. */
   readonly guide: CityGuide
+  /** The links between the units of packages a step shows. */
+  private readonly guideLinks: GuideLinkWays
 
   constructor(
     private readonly layout: CityLayout,
@@ -93,8 +96,16 @@ export class CityInteraction {
     this.portLinks = this.ports.links
     this.portBadges = this.ports.badges
     this.guide = new CityGuide(layout, shapes, buildings, pixelRatio)
+    this.guideLinks = new GuideLinkWays(
+      layout,
+      flows,
+      this.ports,
+      () => this.closePort(),
+      pixelRatio,
+    )
     this.overlay.add(
       this.guide.group,
+      this.guideLinks.group,
       this.folderLinks.group,
       this.portLinks.group,
       this.portBadges.group,
@@ -156,6 +167,8 @@ export class CityInteraction {
     }
     this.selected = target
     this.guide.setSelected(target?.kind === 'building' ? target.index : null)
+    // A selection's links take the place of the guide's while it lasts.
+    this.guideLinks.setHidden(target !== null)
     this.selectedBuilding.show(null)
     this.selectedArea.show(null, this.shapes)
     const cycle = target?.kind === 'building' ? this.flows.cycles.cycleOf.get(target.index) : null
@@ -200,6 +213,7 @@ export class CityInteraction {
    */
   showGuide(view: CityGuideView | null): void {
     this.guide.show(view)
+    this.guideLinks.show(view?.links ?? [])
     this.fade()
     // A hovered building put forward loses its ink: the guide's Jade says more.
     this.highlight(this.highlighted)
@@ -223,7 +237,12 @@ export class CityInteraction {
 
   /** The ports whose badges the pointer can rest on and click. */
   getPorts(): readonly Port[] {
-    return this.ports.ports
+    return this.ports.shown
+  }
+
+  /** The counts of the guide's links on show, at the middle of their ways. */
+  guideCounts(): readonly GuideLinkCount[] {
+    return this.guideLinks.counts()
   }
 
   /** The port open, if any. */
@@ -277,6 +296,7 @@ export class CityInteraction {
     this.timing.clear()
     this.closePort()
     this.guide.dispose()
+    this.guideLinks.dispose()
     this.hoveredBuilding.dispose()
     this.selectedBuilding.dispose()
     this.hoveredArea.dispose()
@@ -316,7 +336,7 @@ export class CityInteraction {
     const { extra, unshown = [] } = this.flows
     const extras =
       target.kind === 'island' && extra
-        ? islandExtras(target.island, unshown, extra, this.getPorts())
+        ? islandExtras(target.island, unshown, extra, this.ports.ports)
         : []
     this.folderLinks.show(
       folderWays(target.island, flows, this.flows.bridges, [...this.flows.ferries, ...extras]),
