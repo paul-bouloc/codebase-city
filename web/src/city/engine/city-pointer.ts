@@ -25,7 +25,8 @@ export interface PointerHost {
   interaction(): CityInteraction | null
   picker(): CityPicker | null
   cameraMoving(): boolean
-  stopOrbit(): void
+  /** The user takes the camera: it stops going round. */
+  takeCamera(): void
   select(target: CityTarget | null): void
   fly(target: CityTarget): void
   /** The island or folder whose label is at this point of the canvas, in CSS pixels. */
@@ -72,7 +73,7 @@ export class CityPointer {
         this.hover()
       }
     }
-    const stop = () => this.host.stopOrbit()
+    const stop = () => this.host.takeCamera()
     const leave = () => {
       this.pointer = null
       this.showPointerOn(false)
@@ -80,7 +81,7 @@ export class CityPointer {
     }
     const down = (event: PointerEvent) => {
       // Any press on the city takes the camera back: it stops going round.
-      this.host.stopOrbit()
+      this.host.takeCamera()
       this.pressedAt = event.button === 0 ? { x: event.clientX, y: event.clientY } : null
     }
     const up = (event: PointerEvent) => {

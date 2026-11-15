@@ -70,6 +70,8 @@ export interface CityListeners {
   view?(view: CameraView): void
   /** Where the labels of the guide's step stand on the page, each time that changes. */
   guideLabels?(labels: readonly GuideLabel[]): void
+  /** The user takes the camera: a press on the city, the wheel, a key or a button that moves it. */
+  gesture?(): void
 }
 
 /** A label of the guide over a roof: the file, and where its foot stands on the page. */

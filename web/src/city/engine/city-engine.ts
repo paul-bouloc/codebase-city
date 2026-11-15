@@ -103,7 +103,7 @@ export class CityEngine {
       interaction: () => this.interaction,
       picker: () => this.picker,
       cameraMoving: () => this.cameraMoving,
-      stopOrbit: () => this.rig.stopOrbit(),
+      takeCamera: () => this.takeCamera(),
       select: (target) => this.select(target),
       fly: (target) => this.fly(target),
       labelAt: (x, y) => this.unitLabels.at(x, y) ?? this.areaLabels.at(x, y),
@@ -143,9 +143,15 @@ export class CityEngine {
   /** Moves the camera as the keys held down say, until told otherwise. */
   setDrive(drive: Drive): void {
     if (drive.right !== 0 || drive.forward !== 0 || drive.turn !== 0) {
-      this.rig.stopOrbit()
+      this.takeCamera()
     }
     this.drive = drive
+  }
+
+  /** The user takes the camera: it stops going round, and the listeners hear of it. */
+  private takeCamera(): void {
+    this.rig.stopOrbit()
+    this.listeners.gesture?.()
   }
 
   /**
@@ -245,21 +251,25 @@ export class CityEngine {
 
   /** Comes closer (1) or pulls back (-1) by a button's step, around the same target. */
   zoom(direction: 1 | -1): void {
+    this.takeCamera()
     this.rig.zoom(direction)
   }
 
   /** Frames the whole city again, at the same heading and tilt. */
   recenter(): void {
+    this.takeCamera()
     this.rig.recenter()
   }
 
   /** Looks straight down, or back at the tilt it left. */
   toggleTopView(): void {
+    this.takeCamera()
     this.rig.toggleTopView()
   }
 
   /** Turns to face north, the shorter way. */
   faceNorth(): void {
+    this.takeCamera()
     this.rig.faceNorth()
   }
 
