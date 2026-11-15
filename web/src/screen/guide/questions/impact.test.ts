@@ -67,11 +67,7 @@ describe('impactOf', () => {
     for (let at = 1; at < islands; at++) {
       importers.push([])
     }
-    const impact = impactOf(
-      city(importers, [islands - 1, ...names.map((_, at) => at)]),
-      names,
-      0,
-    )
+    const impact = impactOf(city(importers, [islands - 1, ...names.map((_, at) => at)]), names, 0)
     expect(impact.islands).toHaveLength(ISLAND_ROWS)
     expect(impact.islands.every((row) => row.count === 1)).toBe(true)
     expect(impact.otherIslands).toEqual({ islands: 1, count: 1 })
