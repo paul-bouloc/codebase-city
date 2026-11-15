@@ -1,4 +1,4 @@
-import { forwardRef, type RefObject } from 'react'
+import { forwardRef, type RefObject, useCallback } from 'react'
 import { ANALYZED_LANGUAGES } from '../../../city/world/from-result'
 import { Button } from '../../../ui/actions/Button'
 import { Icon } from '../../../ui/brand/Icon'
@@ -71,6 +71,8 @@ export const RoutePanel = forwardRef<HTMLHeadingElement, RoutePanelProps>(functi
   titleRef,
 ) {
   const swap = () => onChange(to, from)
+  // A file is never its own way; kept from render to render, the field's search with it.
+  const offersTo = useCallback((hit: FileHit) => analyzed(hit) && hit.path !== from, [from])
   return (
     <QuestionPanel
       ref={titleRef}
@@ -92,8 +94,7 @@ export const RoutePanel = forwardRef<HTMLHeadingElement, RoutePanelProps>(functi
             label={TEXT.to}
             value={to}
             searchIndex={searchIndex}
-            // A file is never its own way.
-            offers={(hit) => analyzed(hit) && hit.path !== from}
+            offers={offersTo}
             onChoose={(path) => onChange(from, path)}
             inputRef={toRef}
           />
