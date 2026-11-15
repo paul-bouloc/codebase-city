@@ -43,6 +43,7 @@ describe('guideView', () => {
         labelled: [],
         folders: [],
         units: [],
+        links: [],
         dim: 'none',
         cycle: null,
       })
@@ -57,6 +58,7 @@ describe('guideView', () => {
       labelled: [2],
       folders: [],
       units: [],
+      links: [],
       dim: 'all',
       cycle: null,
     })
@@ -78,6 +80,7 @@ describe('guideView', () => {
       // `src/core`
       folders: [2],
       units: [],
+      links: [],
       dim: 'others',
       cycle: null,
     })
@@ -135,7 +138,13 @@ describe('guideView', () => {
         appImports: 0,
         shared: [{ library: 2, apps: [0, 1], files: [2, 2], typeOnly: [0, 0] }],
       }),
-    ).toMatchObject(ringed([2, 3, 4]))
+    ).toMatchObject({
+      ...ringed([2, 3, 4]),
+      links: [
+        { from: 0, to: 2, files: 2, typeOnly: 0 },
+        { from: 1, to: 2, files: 2, typeOnly: 0 },
+      ],
+    })
     expect(
       guideView(monorepo, { kind: 'insidePackage', package: 0, dirs: [5], files: [3] }),
     ).toMatchObject(ringed([5]))

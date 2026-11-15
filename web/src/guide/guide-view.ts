@@ -1,6 +1,7 @@
 import type { AnalysisResult } from '../data/generated/AnalysisResult'
 import type { Ranked } from '../data/generated/Ranked'
 import type { TourStep } from '../data/generated/TourStep'
+import { type GuideLink, guideLinks } from './guide-links'
 import { type GuideUnit, guideUnits, unitFolders } from './guide-units'
 
 // What the city shows of a step of the tour: the files it puts forward, the folders it rings,
@@ -21,6 +22,8 @@ export interface GuideView {
   folders: number[]
   /** The packages shown, unit by unit, the largest first. */
   units: GuideUnit[]
+  /** The links between those units. */
+  links: GuideLink[]
   dim: GuideDim
   /** A row of `cycles`, drawn as a loop. */
   cycle: number | null
@@ -32,6 +35,7 @@ const NOTHING: GuideView = {
   labelled: [],
   folders: [],
   units: [],
+  links: [],
   dim: 'none',
   cycle: null,
 }
@@ -64,7 +68,7 @@ export function guideView(result: AnalysisResult, step: TourStep): GuideView {
     case 'libraries':
     case 'appLinks': {
       const units = guideUnits(result, step)
-      return { ...ringed(unitFolders(units)), units }
+      return { ...ringed(unitFolders(units)), units, links: guideLinks(step, units) }
     }
     case 'examplesAndTests':
       return ringed(step.folders)
