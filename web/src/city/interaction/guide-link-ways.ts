@@ -1,7 +1,7 @@
 import type { Group } from 'three'
 import { GuideWayMarks } from '../flows/guide-way-marks'
 import { alongPath, type GuideWay, guideWays } from '../flows/guide-ways'
-import type { Pair } from '../waterways/links'
+import type { Pair, Port } from '../waterways/links'
 import type { CityLayout } from '../world/layout'
 import { boardToThree, type Vec3 } from '../world/units'
 import type { CityGuideLink, GuideLinkLabel } from './city-guide'
@@ -35,7 +35,7 @@ export class GuideLinkWays {
     private readonly layout: CityLayout,
     private readonly flows: CityFlows,
     private readonly ports: OpenPort,
-    /** Closes the open port, its card with it: one whose links sail out may lose its badge. */
+    /** Closes the open port, its card with it, when one of its links sails out or comes back. */
     private readonly closePort: () => void,
     pixelRatio: number,
   ) {
@@ -84,9 +84,20 @@ export class GuideLinkWays {
     const out = new Set<Pair>(ways.flatMap((way) => (way.fromPort ? [way.fromPort] : [])))
     const same = out.size === this.out.size && [...out].every((pair) => this.out.has(pair))
     if (!same) {
-      this.closePort()
+      if (portChanges(this.ports.port, this.out, out)) {
+        this.closePort()
+      }
       this.out = out
       this.ports.sailOut(out)
     }
   }
+}
+
+/** Whether a link of this port sails out or comes back between these two sets of links out. */
+export function portChanges(
+  port: Port | null,
+  before: ReadonlySet<Pair>,
+  after: ReadonlySet<Pair>,
+): boolean {
+  return port?.pairs.some((pair) => before.has(pair) !== after.has(pair)) ?? false
 }
