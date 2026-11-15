@@ -11,6 +11,7 @@ import { CityScreen } from '../../src/screen/CityScreen'
 import { CityView } from '../../src/screen/CityView'
 import { FOLDED, type GuideState } from '../../src/screen/guide/guide-state'
 import { useDriveKeys } from '../../src/screen/keys/use-drive-keys'
+import { hashOf } from '../../src/screen/selection/selection-hash'
 import { PortCard } from '../../src/screen/tooltips/PortCard'
 import { Button } from '../../src/ui/actions/Button'
 import { archetypeGallery } from './archetype-gallery'
@@ -170,7 +171,7 @@ export function CityPage() {
       const impact = params.get('impact')
       const step = decoded.tour.steps.findIndex((each) => each.kind === kind)
       if (impact && step < 0) {
-        window.history.replaceState(null, '', `?${params}#file=${impact}`)
+        window.history.replaceState(null, '', `?${params}${hashOf({ kind: 'file', path: impact })}`)
       }
       setResult(decoded)
       setGuide(
