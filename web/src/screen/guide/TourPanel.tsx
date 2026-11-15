@@ -1,4 +1,4 @@
-import { forwardRef, useRef } from 'react'
+import { forwardRef, useEffect, useRef } from 'react'
 import { Button } from '../../ui/actions/Button'
 import { Icon } from '../../ui/brand/Icon'
 import type { IconName } from '../../ui/brand/icons'
@@ -64,6 +64,21 @@ export const TourPanel = forwardRef<HTMLHeadingElement, TourPanelProps>(function
     }
     onBack()
   }
+  // A step that plays on removes its chips, and the focus one had: it goes to the step's title.
+  // Where the focus was is read as the new step renders, while the old chips are still there.
+  const shownStep = useRef(step)
+  const focusWasIn = useRef(false)
+  if (shownStep.current !== step) {
+    shownStep.current = step
+    focusWasIn.current = boxRef.current?.contains(document.activeElement) ?? false
+  }
+  useEffect(() => {
+    const box = boxRef.current
+    if (focusWasIn.current && box && !box.contains(document.activeElement)) {
+      focusWasIn.current = false
+      box.querySelector<HTMLElement>('h2')?.focus({ preventScroll: true })
+    }
+  })
   return (
     <Glass
       ref={boxRef}
