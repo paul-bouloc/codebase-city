@@ -30,9 +30,8 @@ describe('nextGuide', () => {
     expect(nextGuide(FOLDED, { kind: 'advance' }, 9)).toEqual(FOLDED)
   })
 
-  it('pauses and plays on the same step', () => {
+  it('pauses on the same step', () => {
     expect(nextGuide(at(2), { kind: 'pause' }, 9)).toEqual(at(2, false))
-    expect(nextGuide(at(2, false), { kind: 'play' }, 9)).toEqual(at(2))
     const paused = at(2, false)
     expect(nextGuide(paused, { kind: 'pause' }, 9)).toBe(paused)
   })

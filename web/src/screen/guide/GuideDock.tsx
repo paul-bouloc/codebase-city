@@ -69,7 +69,7 @@ export function GuideDock({
           steps={steps}
           repoName={repoName}
           playing={state.playing}
-          onPlayPause={() => dispatch({ kind: state.playing ? 'pause' : 'play' })}
+          onPlayPause={() => dispatch({ kind: 'toggle' })}
           onBack={() => dispatch({ kind: 'back' })}
           onNext={() => dispatch({ kind: 'next' })}
           onSkip={() => dispatch({ kind: 'fold' })}

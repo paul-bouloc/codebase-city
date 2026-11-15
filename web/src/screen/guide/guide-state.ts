@@ -20,9 +20,8 @@ export type GuideAction =
   | { kind: 'start' }
   | { kind: 'next' }
   | { kind: 'back' }
-  | { kind: 'play' }
   | { kind: 'pause' }
-  /** Space: pauses or plays the tour, or starts it when none is on. */
+  /** Space, or the Play/Pause button: pauses or plays the tour, or starts it when none is on. */
   | { kind: 'toggle' }
   /** A step's time is up: the next one, or a pause on the last. */
   | { kind: 'advance' }
@@ -44,11 +43,8 @@ export function nextGuide(state: GuideState, action: GuideAction, steps: number)
       return state.step + 1 < steps ? { ...state, step: state.step + 1 } : FOLDED
     case 'back':
       return touring && state.step > 0 ? { ...state, step: state.step - 1 } : state
-    case 'play':
-    case 'pause': {
-      const playing = action.kind === 'play'
-      return touring && state.playing !== playing ? { ...state, playing } : state
-    }
+    case 'pause':
+      return touring && state.playing ? { ...state, playing: false } : state
     case 'toggle':
       return touring
         ? { ...state, playing: !state.playing }
