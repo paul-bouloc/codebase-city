@@ -89,11 +89,6 @@ export function CityPage() {
   const [remounting, setRemounting] = useState(false)
   const [engine, setEngine] = useState<CityEngine | null>(null)
   const [guide, setGuide] = useState<GuideState>(FOLDED)
-  // A result opens on the step `?step` names, if its tour has it.
-  useEffect(() => {
-    const step = result?.tour.steps.findIndex((each) => each.kind === query.get('step')) ?? -1
-    setGuide(step >= 0 ? { mode: 'touring', step } : FOLDED)
-  }, [result, query])
   const stepKind = guide.mode === 'touring' ? (result?.tour.steps[guide.step]?.kind ?? '') : ''
 
   // The step on show goes in the address, for a reload to come back to it.
@@ -162,7 +157,11 @@ export function CityPage() {
       if (request !== latest.current) {
         return
       }
+      // It opens on the step `?step` names, if its tour has it: in the same render as the city.
+      const kind = new URLSearchParams(window.location.search).get('step')
+      const step = decoded.tour.steps.findIndex((each) => each.kind === kind)
       setResult(decoded)
+      setGuide(step >= 0 ? { mode: 'touring', step } : FOLDED)
       setError(null)
     } catch (cause) {
       if (request === latest.current) {
