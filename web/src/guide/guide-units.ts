@@ -71,6 +71,11 @@ export function guideUnits(result: AnalysisResult, step: TourStep): GuideUnit[] 
     .sort((a, b) => b.codeFiles - a.codeFiles)
 }
 
+/** The unit of one package, by its row; null for a row out of the table. */
+export function packageUnit(result: AnalysisResult, row: number): GuideUnit | null {
+  return unitOf(result, packageOfDirs(result), row, null)
+}
+
 /** The folders the units stand on, in order, each once. */
 export function unitFolders(units: readonly GuideUnit[]): number[] {
   return [...new Set(units.flatMap((unit) => unit.folders))]
