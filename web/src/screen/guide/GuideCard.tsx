@@ -1,4 +1,5 @@
 import { forwardRef } from 'react'
+import { Kbd } from '../../ui/actions/Kbd'
 import { Icon } from '../../ui/brand/Icon'
 import { Glass } from '../parts/Glass'
 import styles from './GuideCard.module.css'
@@ -10,6 +11,7 @@ const TEXT = {
   pill: 'Take a tour of the city',
   subtitle: 'Only facts measured in the code',
   tour: 'Take the tour',
+  key: 'Space',
 }
 
 interface GuidePillProps {
@@ -37,6 +39,7 @@ export const GuidePill = forwardRef<HTMLButtonElement, GuidePillProps>(function 
         <span className={styles.pillTitle}>{TEXT.title}</span>
         <span className={styles.pillHint}>{TEXT.pill}</span>
       </span>
+      <Kbd>{TEXT.key}</Kbd>
       <Icon name="chevron-up" size={16} />
     </button>
   )
@@ -82,7 +85,10 @@ export const GuideCard = forwardRef<HTMLHeadingElement, GuideCardProps>(function
             <Icon name="play" size={16} />
             {TEXT.tour}
           </span>
-          <span className={styles.length}>{length}</span>
+          <span className={styles.startEnd}>
+            <span className={styles.length}>{length}</span>
+            <Kbd tone="inverse">{TEXT.key}</Kbd>
+          </span>
         </button>
       )}
     </Glass>
