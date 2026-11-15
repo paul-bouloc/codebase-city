@@ -46,9 +46,9 @@ const CYCLE: Cycle = { members: [0, 1], loop: [0, 1], next: new Map([[0, [1]]]) 
 function setup() {
   const buildings = createBuildings(LAYOUT, 1, createFading())
   const guide = new CityGuide(LAYOUT, islandShapes(LAYOUT), buildings, 1)
-  // The rings of small islands, the ties, the cycle's rings and its arcs are always there;
-  // marks come and go.
-  const marks = () => guide.group.children.length - 4
+  // The rings of small islands, the ties and those lit up, the cycle's rings and its arcs are
+  // always there; marks come and go.
+  const marks = () => guide.group.children.length - 5
   return { guide, marks }
 }
 
@@ -148,6 +148,35 @@ describe('CityGuide', () => {
     expect(drawn()).toBe(outlines)
     guide.show(null)
     expect(drawn()).toBe(0)
+    guide.dispose()
+  })
+
+  it('lights up the ties of the unit of several islands under the pointer, and no other', () => {
+    const { guide } = setup()
+    const view = {
+      buildings: [],
+      pinned: [],
+      labelled: [],
+      areas: [],
+      links: [],
+      fade: 'others' as const,
+      cycle: null,
+    }
+    guide.show({
+      ...view,
+      units: [
+        { islands: [0], parcel: null, label: null },
+        { islands: [0, 1], parcel: null, label: null },
+      ],
+    })
+    guide.setHovered(1)
+    expect(guide.litUnit).toBe(1)
+    guide.setHovered(null)
+    expect(guide.litUnit).toBeNull()
+    // A unit of one island has no ties to light
+    guide.show({ ...view, units: [{ islands: [0], parcel: null, label: null }] })
+    guide.setHovered(0)
+    expect(guide.litUnit).toBeNull()
     guide.dispose()
   })
 

@@ -170,6 +170,9 @@ export class CityGuide {
   private readonly areaMarks: AreaMark[] = []
   private readonly cycleRings: RingSet
   private readonly ties: GuideTies
+  /** The ties of the unit under the pointer, over the others. */
+  private readonly litTies: GuideTies
+  private lit: number | null = null
   private readonly rings: GuideRings
 
   constructor(
@@ -181,8 +184,15 @@ export class CityGuide {
     this.arcs = new ArcLayer(pixelRatio)
     this.cycleRings = new RingSet(CYCLE_RINGS, pixelRatio)
     this.ties = new GuideTies(pixelRatio)
+    this.litTies = new GuideTies(pixelRatio, true)
     this.rings = new GuideRings(pixelRatio)
-    this.group.add(this.rings.group, this.ties.group, this.cycleRings.group, this.arcs.group)
+    this.group.add(
+      this.rings.group,
+      this.ties.group,
+      this.litTies.group,
+      this.cycleRings.group,
+      this.arcs.group,
+    )
   }
 
   get shown(): CityGuideView | null {
@@ -209,6 +219,8 @@ export class CityGuide {
     const marked = units.filter((unit) => unit.islands.length <= MAX_MARKED_ISLANDS)
     this.rings.show(plateaux(marked.flatMap((unit) => unit.islands)))
     this.ties.show(marked.flatMap((unit) => guideTies(plateaux(unit.islands))))
+    this.lit = null
+    this.litTies.show([])
     const { placed } = this.buildings
     const cycle = view?.cycle ?? null
     this.cycleRings.show(cycle?.members.flatMap((member) => placed[member] ?? []) ?? [])
@@ -223,6 +235,37 @@ export class CityGuide {
         : null,
     )
     this.markBuildings()
+  }
+
+  /**
+   * The island under the pointer, if any: the unit of several islands it is one of lights up, its
+   * ties and its leaders.
+   */
+  setHovered(island: number | null): void {
+    const units = this.view?.units ?? []
+    const at =
+      island === null
+        ? -1
+        : units.findIndex(
+            (unit) =>
+              unit.islands.length > 1 &&
+              unit.islands.length <= MAX_MARKED_ISLANDS &&
+              unit.islands.includes(island),
+          )
+    const lit = at < 0 ? null : at
+    if (lit === this.lit) {
+      return
+    }
+    this.lit = lit
+    const islands = lit === null ? [] : (units[lit]?.islands ?? [])
+    this.litTies.show(
+      guideTies(islands.flatMap((each) => this.layout.islands[each]?.plateau ?? [])),
+    )
+  }
+
+  /** The unit lit up under the pointer, by its index among those on show. */
+  get litUnit(): number | null {
+    return this.lit
   }
 
   /** The selected building, if any: its own marks stand in place of the guide's. */
@@ -265,6 +308,7 @@ export class CityGuide {
     this.show(null)
     this.rings.dispose()
     this.ties.dispose()
+    this.litTies.dispose()
     this.cycleRings.dispose()
     this.arcs.dispose()
   }
