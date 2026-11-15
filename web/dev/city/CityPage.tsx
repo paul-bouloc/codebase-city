@@ -9,7 +9,7 @@ import { decodeResult } from '../../src/data/decode-result'
 import type { AnalysisResult } from '../../src/data/generated/AnalysisResult'
 import { CityScreen } from '../../src/screen/CityScreen'
 import { CityView } from '../../src/screen/CityView'
-import { FOLDED, type GuideState } from '../../src/screen/guide/guide-state'
+import { FOLDED, type GuideState, nextGuide } from '../../src/screen/guide/guide-state'
 import { useDriveKeys } from '../../src/screen/keys/use-drive-keys'
 import { hashOf } from '../../src/screen/selection/selection-hash'
 import { PortCard } from '../../src/screen/tooltips/PortCard'
@@ -58,7 +58,8 @@ const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve))
  * `?look=x,y,distance[,azimuth,polar]` points the camera at a board point, for close captures.
  * `?select=path` selects the file or folder of that path once the city loads; `?port=path` opens
  * the port of that island; `?step=kind` shows that step of the tour (`entryPoints`, `cycles`…);
- * `?impact=path` answers what depends on that file, selected.
+ * `?impact=path` answers what depends on that file, selected; `?route=a,b` how file `a` reaches
+ * file `b`.
  * `?stats` shows the frame stats, and with them the drawing of every frame (on by default for a
  * synthetic city, `?stats=off` hides them); without, the city draws only when something changes,
  * as in the product.
@@ -107,6 +108,11 @@ export function CityPage() {
       params.set('impact', next.file)
     } else {
       params.delete('impact')
+    }
+    if (next.mode === 'route') {
+      params.set('route', `${next.from ?? ''},${next.to ?? ''}`)
+    } else {
+      params.delete('route')
     }
     window.history.replaceState(null, '', `?${params}${window.location.hash}`)
   }
@@ -169,6 +175,8 @@ export function CityPage() {
       const params = new URLSearchParams(window.location.search)
       const kind = params.get('step')
       const impact = params.get('impact')
+      const [from = '', to = ''] = params.get('route')?.split(',') ?? []
+      const route = params.has('route')
       const step = decoded.tour.steps.findIndex((each) => each.kind === kind)
       if (impact && step < 0) {
         window.history.replaceState(null, '', `?${params}${hashOf({ kind: 'file', path: impact })}`)
@@ -179,7 +187,9 @@ export function CityPage() {
           ? { mode: 'touring', step, playing: false }
           : impact
             ? { mode: 'impact', step: 0, playing: false, file: impact }
-            : FOLDED,
+            : route
+              ? nextGuide(FOLDED, { kind: 'route', from: from || null, to: to || null }, 0)
+              : FOLDED,
       )
       setError(null)
     } catch (cause) {
