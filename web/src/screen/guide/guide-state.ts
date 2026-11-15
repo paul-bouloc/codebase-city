@@ -18,7 +18,7 @@ export type GuideAction =
   | { kind: 'back' }
   | { kind: 'go'; step: number }
 
-/** Seconds a step of the tour lasts, at least, when it plays on its own. */
+/** Seconds each step counts for in the tour's length. */
 export const STEP_SECONDS = 12
 
 /** The guide after an action, the tour having `steps` steps; past the last one, it folds. */
