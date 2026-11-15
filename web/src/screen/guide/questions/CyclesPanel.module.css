@@ -47,14 +47,11 @@
   color: inherit;
   font: inherit;
   text-align: left;
-}
-
-button.cycle {
   cursor: pointer;
 }
 
-button.cycle:hover,
-button.cycle:focus-visible {
+.cycle:hover,
+.cycle:focus-visible {
   background: var(--state-hover);
 }
 
@@ -93,19 +90,16 @@ button.cycle:focus-visible {
 .chosen {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
   gap: var(--space-1-5);
-  padding: var(--space-2);
-  border-color: var(--color-border-default);
+  padding-bottom: var(--space-2);
+  border: var(--border-width-default) solid var(--color-border-default);
+  border-radius: var(--radius-md);
   background: var(--color-bg-sunken);
   animation: opened var(--duration-base) var(--easing-enter) both;
 }
 
-.head {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: var(--space-2-5);
+.chosen .cycle {
+  border: 0;
 }
 
 .chosen .badge {
@@ -116,7 +110,7 @@ button.cycle:focus-visible {
 
 .files {
   margin: 0;
-  padding: 0 0 0 calc(34px + var(--space-2-5));
+  padding: 0 var(--space-2) 0 calc(var(--space-2) + 34px + var(--space-2-5));
   font-family: var(--font-family-mono);
   font-size: 12px;
   line-height: 16px;
@@ -145,7 +139,7 @@ button.cycle:focus-visible {
 
 .more {
   margin: 0;
-  padding-left: calc(34px + var(--space-2-5));
+  padding: 0 var(--space-2) 0 calc(var(--space-2) + 34px + var(--space-2-5));
   font-size: 12px;
   line-height: 16px;
   color: var(--color-text-secondary);

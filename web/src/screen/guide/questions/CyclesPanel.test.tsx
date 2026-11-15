@@ -42,19 +42,18 @@ describe('CyclesPanel', () => {
   it('sums the cycles up and opens the one on show on the files of its loop', () => {
     const html = panel([cycle(0, 26), cycle(1, 2)], 0)
     expect(html).toMatch(/<strong[^>]*>2 cycles<\/strong> involving 28 files · biggest first/)
-    expect(html).toContain('aria-label="Cycle of 26 files, a0 ↔ b"')
-    expect(html).toContain('aria-current="true"')
+    expect(html).toMatch(/aria-expanded="true" aria-label="Cycle of 26 files, a0 ↔ b"/)
+    expect(html).toMatch(/aria-expanded="false" aria-label="Cycle of 2 files, a1 ↔ b"/)
     expect(html).toMatch(/one\.ts.*two\.ts/)
     expect(html).toContain('and 24 more · shown in the city')
-    // The other cycle is a button, and a cycle no bigger than its loop has nothing more.
-    expect(html).toContain('<button type="button" class="')
+    // A cycle no bigger than its loop has nothing more.
     expect(html.match(/more · shown in the city/g)).toHaveLength(1)
   })
 
   it('shows the first six, then offers them all, unless the one on show is further down', () => {
     const many = Array.from({ length: 9 }, (_, row) => cycle(row, 12 - row))
     // A row of the list, not a file of the open cycle.
-    const rows = (html: string) => html.match(/<li><(button|section)[^>]*class="[^"]*cycle/g)
+    const rows = (html: string) => html.match(/aria-expanded="\w+" aria-label="Cycle of/g)
     const first = panel(many, 0)
     expect(rows(first)).toHaveLength(6)
     expect(first).toContain('Show all 9')

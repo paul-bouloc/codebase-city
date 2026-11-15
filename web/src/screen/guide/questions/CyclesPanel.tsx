@@ -68,18 +68,19 @@ export const CyclesPanel = forwardRef<HTMLHeadingElement, CyclesPanelProps>(func
           </p>
           <ul className={styles.list} aria-label={TEXT.list}>
             {shown.map((cycle, at) => (
-              <li key={cycle.row}>
-                {at === chosen ? (
-                  <ChosenCycle cycle={cycle} filePaths={filePaths} onFile={onFile} />
-                ) : (
-                  <button
-                    type="button"
-                    className={styles.cycle}
-                    aria-label={cycleLabel(cycle.members.length, cycle.folders)}
-                    onClick={() => onChoose(at)}
-                  >
-                    <CycleHead cycle={cycle} />
-                  </button>
+              // A row keeps its button open or not: the focus stays on it when it opens.
+              <li key={cycle.row} className={at === chosen ? styles.chosen : undefined}>
+                <button
+                  type="button"
+                  className={styles.cycle}
+                  aria-expanded={at === chosen}
+                  aria-label={cycleLabel(cycle.members.length, cycle.folders)}
+                  onClick={() => onChoose(at)}
+                >
+                  <CycleHead cycle={cycle} />
+                </button>
+                {at === chosen && (
+                  <CycleFiles cycle={cycle} filePaths={filePaths} onFile={onFile} />
                 )}
               </li>
             ))}
@@ -111,7 +112,7 @@ function CycleHead({ cycle }: { cycle: CycleRow }) {
 }
 
 /** The cycle on show, open: the files of its loop in import order, then how many more. */
-function ChosenCycle({
+function CycleFiles({
   cycle,
   filePaths,
   onFile,
@@ -122,12 +123,8 @@ function ChosenCycle({
 }) {
   const loop = cycle.loop.map((file) => filePaths[file] ?? '')
   const more = cycle.members.length - loop.length
-  const label = cycleLabel(cycle.members.length, cycle.folders)
   return (
-    <section className={`${styles.cycle} ${styles.chosen}`} aria-label={label} aria-current="true">
-      <div className={styles.head}>
-        <CycleHead cycle={cycle} />
-      </div>
+    <>
       <ol className={styles.files}>
         {loop.map((path) => (
           <li key={path}>
@@ -138,6 +135,6 @@ function ChosenCycle({
         ))}
       </ol>
       {more > 0 && <p className={styles.more}>{cycleMore(more)}</p>}
-    </section>
+    </>
   )
 }
