@@ -13,6 +13,7 @@ import {
   nextGuide,
   tourLength,
 } from './guide-state'
+import { type CycleList, type CycleRow, cycleList } from './questions/cycles'
 import { type Impact, impactOf } from './questions/impact'
 import { type Route, routeFinder } from './questions/route'
 import { type TourContext, type TourText, tourContext } from './tour/tour-spans'
@@ -53,9 +54,13 @@ export interface Guide {
   impact: Impact | null
   /** How a file reaches another, while that answer is on show with both files chosen. */
   route: Route | null
+  /** The city's cycles, the biggest first. */
+  cycles: CycleList
+  /** The cycle on show, while that answer is. */
+  cycle: CycleRow | null
   /**
-   * The paths the camera frames for the answer on show: the file, then what depends on it, or
-   * the files of a route.
+   * The paths the camera frames for the answer on show: the file, then what depends on it, the
+   * files of a route, or those of a cycle.
    */
   answerFrame: readonly string[] | null
 }
@@ -142,6 +147,12 @@ export function useGuide(
     [context, routeFrom, routeTo],
   )
   const route = useMemo(() => findRoute?.(routeChoice) ?? null, [findRoute, routeChoice])
+  // The cycles, listed once per city; the one chosen is drawn in the city.
+  const cycles = useMemo(() => cycleList(context), [context])
+  const cycle =
+    state.mode === 'cycles' && state.cycle !== undefined
+      ? (cycles.cycles[state.cycle] ?? null)
+      : null
 
   // What the answer keeps in colour in the city, and what the camera frames of it, beside the
   // panel: the screen frames it once the selection it reads from the address has moved the
@@ -156,8 +167,12 @@ export function useGuide(
       const files = paths(route.files)
       return { kept: files, route: files }
     }
+    if (cycle) {
+      const members = paths(cycle.members)
+      return { kept: members, cycle: { members, loop: paths(cycle.loop) } }
+    }
     return null
-  }, [index, impact, route])
+  }, [index, impact, route, cycle])
   useEffect(() => {
     engine?.showAnswer(answer)
   }, [engine, answer])
@@ -248,6 +263,8 @@ export function useGuide(
     steps: steps.length,
     impact,
     route,
+    cycles,
+    cycle,
     answerFrame,
   }
 }
