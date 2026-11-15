@@ -10,8 +10,6 @@ export interface ImpactText {
   none: string | null
   /** "41% of the repository · 1,880 directly, 4,333 through other files · 58 tests." */
   detail: string | null
-  /** "6,213 dependents", on the file's label in the city. */
-  dependents: number
 }
 
 const files = (count: number) => `${exactCount(count)} ${count === 1 ? 'file' : 'files'}`
@@ -19,7 +17,7 @@ const files = (count: number) => `${exactCount(count)} ${count === 1 ? 'file' : 
 export function impactText(impact: Impact, name: string): ImpactText {
   const total = impact.dependents.length
   if (total === 0) {
-    return { lead: null, none: `No file depends on ${name}.`, detail: null, dependents: 0 }
+    return { lead: null, none: `No file depends on ${name}.`, detail: null }
   }
   const share = percent(total / Math.max(1, impact.files))
   const indirect = total - impact.direct
@@ -31,7 +29,6 @@ export function impactText(impact: Impact, name: string): ImpactText {
     lead: `${files(total)} ${total === 1 ? 'depends' : 'depend'} on`,
     none: null,
     detail: `${share} of the repository · ${exactCount(impact.direct)} directly, ${exactCount(indirect)} through other files${tests}.`,
-    dependents: total,
   }
 }
 

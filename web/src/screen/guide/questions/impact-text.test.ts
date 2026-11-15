@@ -18,7 +18,6 @@ describe('impactText', () => {
       lead: '410 files depend on',
       none: null,
       detail: '41% of the repository · 120 directly, 290 through other files.',
-      dependents: 410,
     })
   })
 
@@ -33,7 +32,6 @@ describe('impactText', () => {
       lead: null,
       none: 'No file depends on main.ts.',
       detail: null,
-      dependents: 0,
     })
   })
 })
