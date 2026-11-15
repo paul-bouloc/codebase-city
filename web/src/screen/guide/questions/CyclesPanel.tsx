@@ -1,4 +1,4 @@
-import { forwardRef, useState } from 'react'
+import { forwardRef, useEffect, useRef, useState } from 'react'
 import { exactCount } from '../../../ui/display/count-format'
 import styles from './CyclesPanel.module.css'
 import { type CycleList, type CycleRow, SHOWN_CYCLES } from './cycles'
@@ -46,10 +46,23 @@ export const CyclesPanel = forwardRef<HTMLHeadingElement, CyclesPanelProps>(func
   titleRef,
 ) {
   const [all, setAll] = useState(false)
+  // A cycle chosen past the first rows shows them all, for it to be seen; they stay shown.
+  if (!all && (chosen ?? 0) >= SHOWN_CYCLES) {
+    setAll(true)
+  }
   const count = cycles.cycles.length
-  // A cycle chosen past the first rows shows them all, for it to be seen.
-  const shown =
-    all || (chosen ?? 0) >= SHOWN_CYCLES ? cycles.cycles : cycles.cycles.slice(0, SHOWN_CYCLES)
+  const shown = all ? cycles.cycles : cycles.cycles.slice(0, SHOWN_CYCLES)
+  // "Show all" goes as it is pressed: the focus goes on to the first row it brought.
+  const list = useRef<HTMLUListElement>(null)
+  const [opened, setOpened] = useState(false)
+  useEffect(() => {
+    if (opened) {
+      setOpened(false)
+      list.current
+        ?.querySelectorAll<HTMLButtonElement>(':scope > li > button')
+        [SHOWN_CYCLES]?.focus()
+    }
+  }, [opened])
   const summary = cyclesSummary(count, cycles.files)
   return (
     <QuestionPanel
@@ -67,7 +80,7 @@ export const CyclesPanel = forwardRef<HTMLHeadingElement, CyclesPanelProps>(func
             <strong className={styles.count}>{summary.cycles}</strong>
             {summary.rest}
           </p>
-          <ul className={styles.list} aria-label={TEXT.list}>
+          <ul ref={list} className={styles.list} aria-label={TEXT.list}>
             {shown.map((cycle, at) => (
               // A row keeps its button open or not: the focus stays on it when it opens.
               <li key={cycle.row} className={at === chosen ? styles.chosen : undefined}>
@@ -87,7 +100,14 @@ export const CyclesPanel = forwardRef<HTMLHeadingElement, CyclesPanelProps>(func
             ))}
           </ul>
           {shown.length < count && (
-            <button type="button" className={styles.all} onClick={() => setAll(true)}>
+            <button
+              type="button"
+              className={styles.all}
+              onClick={() => {
+                setAll(true)
+                setOpened(true)
+              }}
+            >
               {showAllCycles(count)}
             </button>
           )}
