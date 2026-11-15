@@ -18,7 +18,7 @@ import { CityPointer } from './city-pointer'
 import { buildCity } from './city-scene'
 import { CitySun, SHADOW_MARGIN } from './city-sun'
 import { type Drive, STILL } from './drive'
-import { extentOf, FRAME_MARGIN, flightRadius, unionSphere } from './flight'
+import { extentOf, flightRadius, unionSphere } from './flight'
 import { FrameCounter, type FrameStats, type LinkStats, NO_LINKS } from './frame-stats'
 import { GuideLabels } from './guide-labels'
 import { LABEL_FONTS, LabelPills } from './label-pills'
@@ -316,20 +316,6 @@ export class CityEngine {
   faceNorth(): void {
     this.takeCamera()
     this.rig.faceNorth()
-  }
-
-  /** Frames the lots of these files, at the same heading and tilt. */
-  frameFiles(paths: readonly string[]): void {
-    const points = paths.flatMap((path) => this.targets?.lotOf(path) ?? [])
-    if (points.length === 0) {
-      return
-    }
-    const xs = points.map(({ x }) => x)
-    const ys = points.map(({ y }) => y)
-    const [minX, maxX] = [Math.min(...xs), Math.max(...xs)]
-    const [minY, maxY] = [Math.min(...ys), Math.max(...ys)]
-    const centre = boardToThree((minX + maxX) / 2, (minY + maxY) / 2, 0)
-    this.rig.frameSphere(centre, Math.hypot(maxX - minX, maxY - minY) / 2 + FRAME_MARGIN)
   }
 
   /** Flies to a file's building and its block, or to a folder whole, at the same heading and tilt. */

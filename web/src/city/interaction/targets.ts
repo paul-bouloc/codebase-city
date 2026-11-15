@@ -1,17 +1,14 @@
-import type { CityLayout, Point } from '../world/layout'
+import type { CityLayout } from '../world/layout'
 import type { CityTarget } from './picking'
 
 /** The places of a city by the path of their file or folder. */
 export interface CityTargets {
   /** The building of a file, the island or the parcel of a folder; null for no such path. */
   at(path: string): CityTarget | null
-  /** Where a file's lot stands on the board; null for no such file. */
-  lotOf(path: string): Point | null
 }
 
 export function cityTargets(layout: CityLayout): CityTargets {
   const targets = new Map<string, CityTarget>()
-  const lots = new Map<string, Point>()
   // Buildings are numbered across islands, in the order of their lots.
   let index = 0
   layout.islands.forEach((island, at) => {
@@ -25,13 +22,11 @@ export function cityTargets(layout: CityLayout): CityTargets {
       const path = lot.file.path
       if (path) {
         targets.set(path, { kind: 'building', index })
-        lots.set(path, { x: lot.x, y: lot.y })
       }
       index++
     }
   })
   return {
     at: (path) => targets.get(path) ?? null,
-    lotOf: (path) => lots.get(path) ?? null,
   }
 }
