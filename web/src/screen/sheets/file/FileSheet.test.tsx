@@ -62,6 +62,13 @@ describe('FileSheet', () => {
     expect(tabLabels(html)).toEqual(['Imports', 'Imported by', 'Symbols', 'Code'])
   })
 
+  it('names a path role without "likely", after the inferred roles', () => {
+    const html = render({ ...FILE, pathRole: 'test' })
+    expect(html.indexOf('Conductor')).toBeLessThan(html.indexOf('>Test<'))
+    expect(html).not.toContain('Test · likely')
+    expect(render(FILE)).not.toContain('>Test<')
+  })
+
   it('keeps only the code for an unanalyzed file, with no analysis actions', () => {
     const html = render({
       ...FILE,

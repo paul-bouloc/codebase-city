@@ -14,6 +14,7 @@ export function FileBadges({ file }: FileBadgesProps) {
       {file.roles.map(({ role, reason }) => (
         <RoleBadge key={role} fileRole={role} reason={reason} />
       ))}
+      {file.pathRole && <Badge kind="role" fileRole={file.pathRole} />}
     </>
   )
 }

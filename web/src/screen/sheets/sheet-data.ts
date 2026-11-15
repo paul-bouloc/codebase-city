@@ -1,4 +1,4 @@
-import type { FileRole, Language } from '../../data/file-kinds'
+import type { FileRole, Language, PathRole } from '../../data/file-kinds'
 
 // What the sheets and the About panel show. The city screen reads them from the analysis result
 // (`app/`); the format does not carry folders' READMEs yet.
@@ -43,6 +43,8 @@ export interface FileSheetData {
   complexityRank?: number
   repoFiles?: number
   roles: readonly InferredRole[]
+  // Generated code, a test or a config, as its path tells: shown after the inferred roles.
+  pathRole?: PathRole
   importers: number
   // All files that depend on it, directly or not.
   dependents: number

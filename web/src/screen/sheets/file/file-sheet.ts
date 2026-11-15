@@ -3,7 +3,13 @@ import { ANALYZED_LANGUAGES } from '../../../city/world/from-result'
 import type { EntryReason } from '../../../data/generated/EntryReason'
 import { exactCount } from '../../../ui/display/count-format'
 import { githubBlobUrl } from '../../github-links'
-import { type GraphRole, languageOf, type ResultIndex, topPercent } from '../../result-index'
+import {
+  type GraphRole,
+  languageOf,
+  pathRoleOf,
+  type ResultIndex,
+  topPercent,
+} from '../../result-index'
 import type { CodeState, FileSheetData, FileSymbol, InferredRole, RankedFile } from '../sheet-data'
 
 // A file's sheet, read from the analysis result. Its code comes from GitHub, apart.
@@ -111,6 +117,7 @@ export function fileSheetData(
     role: role.role,
     reason: roleReason(role, dependencies),
   }))
+  const pathRole = pathRoleOf(result, file)
 
   return {
     path,
@@ -127,6 +134,7 @@ export function fileSheetData(
         }
       : {}),
     roles,
+    ...(pathRole !== null ? { pathRole } : {}),
     importers: importers.length,
     dependents: table.dependents[file] ?? importers.length,
     // The city draws the nearest importers' arcs one by one, and groups the rest by island.

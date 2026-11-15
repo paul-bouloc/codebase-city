@@ -76,6 +76,13 @@ describe('fileSheetData', () => {
     expect(file('src/core/index.ts')?.roles.map(({ role }) => role)).toEqual(['facade'])
   })
 
+  it('tells generated code, tests and configs from their path', () => {
+    expect(file('src/generated/schema.ts')?.pathRole).toBe('generated')
+    expect(file('tests/store.test.ts')?.pathRole).toBe('test')
+    expect(file('package.json')?.pathRole).toBe('config')
+    expect(file('src/core/utils.ts')).not.toHaveProperty('pathRole')
+  })
+
   it('ranks neither tests nor generated code, and keeps their complexity', () => {
     for (const path of ['tests/store.test.ts', 'src/generated/schema.ts']) {
       const sheet = file(path)
