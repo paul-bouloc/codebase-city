@@ -3,7 +3,7 @@ import { decodeResult } from '../../data/decode-result'
 import sample from '../../data/generated/sample-result.json'
 import { guideView } from '../../guide/guide-view'
 import { indexResult } from '../result-index'
-import { guidePaths } from './guide-paths'
+import { guideFrame, guidePaths } from './guide-paths'
 
 const index = indexResult(decodeResult(sample))
 const steps = index.result.tour.steps
@@ -74,5 +74,29 @@ describe('guidePaths', () => {
         label: { files: '2 files', typeOnly: '1 type only' },
       },
     ])
+  })
+})
+
+describe('guideFrame', () => {
+  const frame = (kind: string) => {
+    const step = steps.find((each) => each.kind === kind)
+    return step ? guideFrame(guideView(index.result, step), index) : null
+  }
+
+  it('frames the whole city for the overview', () => {
+    expect(frame('overview')).toEqual([])
+  })
+
+  it('frames the pinned files and the ringed island together', () => {
+    expect(frame('foundations')).toEqual([
+      'src/core/utils.ts',
+      'src/core/types.ts',
+      'src/core/events.ts',
+      'src/core',
+    ])
+  })
+
+  it('frames every file of the loop', () => {
+    expect(frame('cycles')).toEqual(['src/core/store.ts', 'src/core/events.ts'])
   })
 })
