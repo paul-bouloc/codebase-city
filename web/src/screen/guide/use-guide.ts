@@ -41,8 +41,10 @@ export function useGuide(
   onChange?: (state: GuideState) => void,
 ): Guide {
   const [own, setOwn] = useState<GuideState>(FOLDED)
-  const state = controlled ?? own
   const steps = index.result.tour.steps
+  // A step the tour does not have (another city) folds the guide.
+  const kept = controlled ?? own
+  const state = kept.mode === 'touring' && kept.step >= steps.length ? FOLDED : kept
   const context = useMemo<TourContext>(() => tourContext(index), [index])
 
   // Actions in a row, faster than renders (a key held down), each start from the one before.
