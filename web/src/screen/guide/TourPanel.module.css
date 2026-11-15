@@ -1,12 +1,44 @@
-/* The panel of the tour, 420 px, on the "City UI · Tour" and "Tour panel · monorepo" boards. */
+/*
+ * The panel of the tour, 420 px, on the "City UI · Tour" and "Tour panel · monorepo" boards. It
+ * rises from the guide's corner as a floating panel enters, and eases to each step's height.
+ */
 .panel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3-5);
   width: 420px;
   max-width: calc(100vw - 2 * var(--space-3));
   box-sizing: border-box;
+  overflow: hidden;
+  transform-origin: bottom left;
+  animation: guide-in var(--duration-slow) var(--easing-enter) both;
+  transition: height var(--duration-base) var(--easing-standard);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3-5);
   padding: var(--space-3-5) var(--space-4) var(--space-4);
+}
+
+/* What a step says, and its chips: a new step fades in. */
+.said {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3-5);
+  animation: said-in var(--duration-base) var(--easing-enter) both;
+}
+
+@keyframes guide-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+@keyframes said-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
 }
 
 .head {
@@ -136,6 +168,12 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .panel,
+  .said {
+    animation: none;
+  }
+
+  .panel,
   .dot {
     transition: none;
   }
