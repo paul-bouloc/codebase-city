@@ -244,9 +244,15 @@ function Screen({
       choose({ kind: 'file', path })
     }
   }
-  // How a file reaches another: the selection stays where it is.
+  // How a file reaches another: the selection stays where it is. Asked from a file, the field it
+  // goes to takes the focus.
   const askRoute = (from: string | null, to: string | null) =>
     guideDispatch({ kind: 'route', from, to })
+  const [routeAsked, setRouteAsked] = useState(0)
+  const askRouteFrom = (from: string | null) => {
+    askRoute(from, null)
+    setRouteAsked((asked) => asked + 1)
+  }
   const analyzedSelection =
     selectedFile !== null && analyzedFile(index, selectedFile) ? selectedFile : null
 
@@ -459,7 +465,7 @@ function Screen({
             }}
             onOpenCode={openCode}
             onShowImpact={() => askImpact(shownSheet.file.path)}
-            onFindPath={() => askRoute(shownSheet.file.path, null)}
+            onFindPath={() => askRouteFrom(shownSheet.file.path)}
             openLine={openLine?.path === shownSheet.file.path ? openLine : undefined}
           />
         )}
@@ -492,10 +498,11 @@ function Screen({
           onImpactFile={askImpact}
           route={guide.route}
           filePaths={index.filePaths}
-          onAskRoute={() => askRoute(analyzedSelection, null)}
+          onAskRoute={() => askRouteFrom(analyzedSelection)}
           onRouteFiles={askRoute}
           // The route is framed already, and framed again beside the sheet that opens: no
           // flight of its own.
+          routeAsked={routeAsked}
           onRouteStop={(path) => choose({ kind: 'file', path })}
         />
       </div>

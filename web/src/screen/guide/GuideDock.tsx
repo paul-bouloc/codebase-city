@@ -34,6 +34,8 @@ interface GuideDockProps {
   onRouteFiles: (from: string | null, to: string | null) => void
   /** A stop of the route chosen. */
   onRouteStop: (path: string) => void
+  /** Grows each time the route is asked from a file: the focus goes to the field it goes to. */
+  routeAsked: number
 }
 
 /**
@@ -57,6 +59,7 @@ export function GuideDock({
   onAskRoute,
   onRouteFiles,
   onRouteStop,
+  routeAsked,
 }: GuideDockProps) {
   const dock = useRef<HTMLDivElement>(null)
   const pill = useRef<HTMLButtonElement>(null)
@@ -75,13 +78,24 @@ export function GuideDock({
       if (active === null || active === document.body || dock.current?.contains(active)) {
         pill.current?.focus()
       }
-    } else if (state.mode === 'route' && state.from !== undefined && state.to === undefined) {
-      // A route from a file asks where to: its other field takes the focus.
-      routeTo.current?.focus({ preventScroll: true })
     } else {
       title.current?.focus({ preventScroll: true })
     }
-  }, [state.mode, state.from, state.to])
+  }, [state.mode])
+
+  // A route asked from a file asks where to: its other field takes the focus, the answer open
+  // already or not. After the effect above, which gives it to the title first.
+  const askedRoute = useRef(routeAsked)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only a new request is heard
+  useEffect(() => {
+    if (askedRoute.current === routeAsked) {
+      return
+    }
+    askedRoute.current = routeAsked
+    if (state.mode === 'route' && state.from !== undefined && state.to === undefined) {
+      routeTo.current?.focus({ preventScroll: true })
+    }
+  }, [routeAsked])
 
   const questions: GuideQuestion[] = [
     { ...IMPACT_QUESTION, icon: 'foundation', onAsk: onAskImpact },
