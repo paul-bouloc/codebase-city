@@ -6,6 +6,14 @@ import { isTourKeyTarget } from '../keys/screen-keys'
 import type { ResultIndex } from '../result-index'
 import { guideFrame, guidePaths } from './guide-paths'
 import { FOLDED, type GuideAction, type GuideState, nextGuide, tourLength } from './guide-state'
+import {
+  clockDue,
+  pauseClock,
+  resumeClock,
+  type StepClock,
+  startClock,
+  stepSeconds,
+} from './tour-clock'
 import { type TourContext, type TourText, tourContext } from './tour/tour-spans'
 import { tourNote, tourText } from './tour/tour-text'
 
@@ -46,6 +54,11 @@ export function useGuide(
   const kept = controlled ?? own
   const state = kept.mode === 'touring' && kept.step >= steps.length ? FOLDED : kept
   const context = useMemo<TourContext>(() => tourContext(index), [index])
+  // How long each step stays on show when the tour plays.
+  const seconds = useMemo(
+    () => steps.map((step) => stepSeconds(tourText(context, step))),
+    [steps, context],
+  )
 
   // Actions in a row, faster than renders (a key held down), each start from the one before.
   const latest = useRef(state)
@@ -93,34 +106,67 @@ export function useGuide(
     }
   }, [engine, frame])
 
-  // ← and → go back and on, from the page, the city or the guide.
+  // A playing step goes on to the next when its time is up; a pause keeps what was left of it.
+  const clock = useRef<{ step: number; clock: StepClock } | null>(null)
   useEffect(() => {
     if (!touring) {
+      clock.current = null
       return
     }
+    const now = performance.now()
+    const kept = clock.current?.step === state.step ? clock.current.clock : null
+    const fresh = kept ?? startClock(seconds[state.step] ?? 0, now)
+    const next = state.playing ? resumeClock(fresh, now) : pauseClock(fresh, now)
+    clock.current = { step: state.step, clock: next }
+    const due = clockDue(next)
+    if (due === null) {
+      return
+    }
+    const timer = window.setTimeout(() => dispatch({ kind: 'advance' }), Math.max(0, due - now))
+    return () => window.clearTimeout(timer)
+  }, [touring, state.step, state.playing, seconds, dispatch])
+
+  // ← and → go back and on, while touring; Space pauses or plays, and starts a tour when none is
+  // on: from the page, the city or the guide, whose buttons it does not press.
+  useEffect(() => {
+    const ours = (event: KeyboardEvent) =>
+      !event.defaultPrevented &&
+      isTourKeyTarget(event.target) &&
+      !event.metaKey &&
+      !event.ctrlKey &&
+      !event.altKey
     const handleKey = (event: KeyboardEvent) => {
-      if (
-        event.defaultPrevented ||
-        !isTourKeyTarget(event.target) ||
-        event.metaKey ||
-        event.ctrlKey ||
-        event.altKey
-      ) {
+      if (!ours(event)) {
         return
       }
-      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      if (event.code === 'Space' && !event.shiftKey) {
+        event.preventDefault()
+        if (!event.repeat && steps.length > 0) {
+          dispatch({ kind: 'toggle' })
+        }
+      } else if (touring && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
         event.preventDefault()
         dispatch({ kind: event.key === 'ArrowLeft' ? 'back' : 'next' })
       }
     }
+    // A button with the focus is pressed when Space comes up.
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (event.code === 'Space' && !event.shiftKey && ours(event)) {
+        event.preventDefault()
+      }
+    }
     window.addEventListener('keydown', handleKey)
-    return () => window.removeEventListener('keydown', handleKey)
-  }, [touring, dispatch])
+    window.addEventListener('keyup', handleKeyUp)
+    return () => {
+      window.removeEventListener('keydown', handleKey)
+      window.removeEventListener('keyup', handleKeyUp)
+    }
+  }, [touring, dispatch, steps.length])
 
   return {
     state,
     dispatch,
-    length: steps.length > 0 ? tourLength(steps.length) : null,
+    length: seconds.length > 0 ? tourLength(seconds) : null,
     text,
     shown,
     steps: steps.length,

@@ -106,7 +106,7 @@ export function CityPage() {
 
   function chooseStep(kind: string) {
     const step = result?.tour.steps.findIndex((each) => each.kind === kind) ?? -1
-    changeGuide(step >= 0 ? { mode: 'touring', step } : FOLDED)
+    changeGuide(step >= 0 ? { mode: 'touring', step, playing: false } : FOLDED)
   }
 
   // After the city loads (the view's effect runs first), the camera goes where `?look` says.
@@ -161,7 +161,7 @@ export function CityPage() {
       const kind = new URLSearchParams(window.location.search).get('step')
       const step = decoded.tour.steps.findIndex((each) => each.kind === kind)
       setResult(decoded)
-      setGuide(step >= 0 ? { mode: 'touring', step } : FOLDED)
+      setGuide(step >= 0 ? { mode: 'touring', step, playing: false } : FOLDED)
       setError(null)
     } catch (cause) {
       if (request === latest.current) {
