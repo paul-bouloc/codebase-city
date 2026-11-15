@@ -1,6 +1,10 @@
 import type { GuideLabel } from '../../city/interaction/city-items'
+import { truncateMiddle } from '../../ui/display/truncate-path'
 import { CityMarker } from '../tooltips/CityMarker'
 import styles from './GuideLabels.module.css'
+
+/** The most characters of a file's name on the label of its impact: a long one loses its middle. */
+const IMPACT_NAME = 32
 
 interface GuideLabelsProps {
   /** Where each label's foot stands on the page, as the city tells it. */
@@ -18,7 +22,11 @@ export function GuideLabels({ labels, notes, impact }: GuideLabelsProps) {
     return (
       <div key={path} className={styles.label} style={{ left: x, top: y }} aria-hidden="true">
         {impact?.path === path ? (
-          <CityMarker kind="impact" name={name} dependents={impact.dependents} />
+          <CityMarker
+            kind="impact"
+            name={truncateMiddle(name, IMPACT_NAME)}
+            dependents={impact.dependents}
+          />
         ) : (
           <CityMarker kind="guide" name={name} note={notes.get(path) ?? ''} />
         )}
