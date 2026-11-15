@@ -283,10 +283,10 @@ function Screen({
       }
       case 'cycles':
         // A cycle needs no selection: only a file outside it ends the answer.
-        return (
-          path === null ||
-          (guide.cycle?.members.some((file) => index.filePaths[file] === path) ?? true)
-        )
+        if (path === null || !guide.cycle) {
+          return true
+        }
+        return guide.cycle.members.includes(index.fileAt(path) ?? -1)
       default:
         return true
     }
