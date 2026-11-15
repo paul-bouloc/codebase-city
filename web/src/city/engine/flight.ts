@@ -9,6 +9,8 @@ const BLOCK_RADIUS = 10
 export const FRAME_MARGIN = 3
 /** Narrower than this share of the canvas, the room left of a panel is ignored. */
 const MIN_FREE_SHARE = 0.4
+/** Between two panels, narrower than this share. */
+const MIN_BETWEEN_SHARE = 0.3
 /** Room kept between a revealed selection and the panel, or the canvas's left edge, in px. */
 const REVEAL_MARGIN = 24
 
@@ -106,13 +108,18 @@ export interface Viewport {
 
 /**
  * The part of the canvas the panels leave free, in pixels: where it starts from the left edge,
- * and its width. Too narrow, the left panel is ignored, then both.
+ * and its width. Between two panels it may be narrower than beside one; too narrow, the right
+ * panel is ignored and the left one (the tour) stays clear, then both are.
  */
 function freeSpan({ width, inset, left }: Viewport): { start: number; free: number } {
   const right = Math.max(inset, 0)
-  const both = width - right - Math.max(left, 0)
-  if (both >= width * MIN_FREE_SHARE) {
-    return { start: Math.max(left, 0), free: both }
+  const start = Math.max(left, 0)
+  const both = width - right - start
+  if (both >= width * (right > 0 && start > 0 ? MIN_BETWEEN_SHARE : MIN_FREE_SHARE)) {
+    return { start, free: both }
+  }
+  if (start > 0 && width - start >= width * MIN_FREE_SHARE) {
+    return { start, free: width - start }
   }
   return { start: 0, free: width - right < width * MIN_FREE_SHARE ? width : width - right }
 }

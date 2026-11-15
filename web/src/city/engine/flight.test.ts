@@ -141,10 +141,18 @@ describe('a panel on the left', () => {
     expect(freeWidth(BOTH)).toBe(956)
   })
 
-  it('is ignored first when the room between two panels is too narrow', () => {
-    const narrow: Viewport = { ...WITH_GUIDE, inset: 444 }
-    expect(freeStart(narrow)).toBe(0)
-    expect(freeWidth(narrow)).toBe(996)
+  it('leaves the room between it and a sheet on a laptop screen', () => {
+    const laptop: Viewport = { ...WITH_GUIDE, inset: 444 }
+    expect(freeStart(laptop)).toBe(520)
+    expect(freeWidth(laptop)).toBe(476)
+  })
+
+  it('stays clear when the room between two panels is too narrow: the right one is ignored', () => {
+    const narrow: Viewport = { ...WITH_GUIDE, width: 1100, inset: 444 }
+    expect(freeStart(narrow)).toBe(520)
+    expect(freeWidth(narrow)).toBe(580)
+    // Too narrow even alone: both are
+    expect(freeWidth({ ...narrow, width: 700 })).toBe(700)
   })
 
   it('lands the centre in the middle of the room right of it', () => {
