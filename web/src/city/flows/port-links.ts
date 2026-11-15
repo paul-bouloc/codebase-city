@@ -1,6 +1,6 @@
 import { type ArcLabel, LABEL_HEIGHT, LABEL_LIFT } from '../render/arc-label'
 import { FERRY_LINE } from '../render/palette'
-import type { Port } from '../waterways/links'
+import type { Pair, Port } from '../waterways/links'
 import { tipOf } from '../waterways/quays'
 import type { IslandLink } from '../world/layout'
 import { boardToThree, srgb, type Vec3 } from '../world/units'
@@ -34,12 +34,15 @@ export function portBadgeAt(port: Port): Vec3 {
   return boardToThree(tip.x, tip.y, BADGE_RISE)
 }
 
-/** The badges of the ports, in their order: a count over each, rimmed in Harbor once hovered. */
-export function portLabels(ports: readonly Port[]): ArcLabel[] {
+/**
+ * The badges of the ports, in their order: a count over each, rimmed in Harbor once hovered. The
+ * links sailed `out` for the while are not counted.
+ */
+export function portLabels(ports: readonly Port[], out: ReadonlySet<Pair> = new Set()): ArcLabel[] {
   const colour = srgb(FERRY_LINE)
   return ports.map((port) => ({
     position: portBadgeAt(port),
-    text: `+${port.pairs.length}`,
+    text: `+${port.pairs.filter((pair) => !out.has(pair)).length}`,
     colour,
   }))
 }

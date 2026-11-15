@@ -15,6 +15,8 @@ describe('port links', () => {
   it('counts a port’s links on a badge over the end of its quay', () => {
     const [label] = portLabels([PORT])
     expect(label?.text).toBe('+2')
+    // Less those sailed out for the while
+    expect(portLabels([PORT], new Set(PORT.pairs.slice(0, 1)))[0]?.text).toBe('+1')
     // Board (7, 20) is three.js (7, rise, −20).
     expect(portBadgeAt(PORT)[0]).toBeCloseTo(7)
     expect(portBadgeAt(PORT)[2]).toBeCloseTo(-20)
