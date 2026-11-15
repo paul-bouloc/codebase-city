@@ -1,4 +1,4 @@
-import { forwardRef } from 'react'
+import { forwardRef, useRef } from 'react'
 import { Button } from '../../ui/actions/Button'
 import { Icon } from '../../ui/brand/Icon'
 import type { IconName } from '../../ui/brand/icons'
@@ -48,6 +48,14 @@ export const TourPanel = forwardRef<HTMLHeadingElement, TourPanelProps>(function
   const last = step === steps - 1
   // The panel eases from the height of one step to the next.
   const { contentRef, height } = useContentHeight<HTMLDivElement>()
+  // Back goes with the first step: the focus it had goes on to Next.
+  const nextRef = useRef<HTMLButtonElement>(null)
+  const back = () => {
+    if (step === 1) {
+      nextRef.current?.focus()
+    }
+    onBack()
+  }
   return (
     <Glass as="section" className={styles.panel} style={{ height }} aria-label="Guide">
       <div ref={contentRef} className={styles.content}>
@@ -112,12 +120,17 @@ export const TourPanel = forwardRef<HTMLHeadingElement, TourPanelProps>(function
         </div>
         <div className={styles.commands}>
           {step > 0 && (
-            <Button icon="arrow-left" onClick={onBack} title={TEXT.backTitle}>
+            <Button icon="arrow-left" onClick={back} title={TEXT.backTitle}>
               {TEXT.back}
             </Button>
           )}
           <span className={styles.spacer} />
-          <Button variant="guide" onClick={onNext} title={last ? undefined : TEXT.nextTitle}>
+          <Button
+            ref={nextRef}
+            variant="guide"
+            onClick={onNext}
+            title={last ? undefined : TEXT.nextTitle}
+          >
             {last ? TEXT.done : TEXT.next}
             {!last && <Icon name="arrow-right" size={16} />}
           </Button>
