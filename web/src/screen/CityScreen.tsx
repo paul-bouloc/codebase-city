@@ -144,10 +144,16 @@ function Screen({
     })
   }, [engine, selectFromCity, pauseTour])
 
-  // The first time this browser sees the city, once it is there, the tour starts.
+  // The first time this browser sees the city, once it is there, the tour starts; asked once per
+  // city, from the link it opened with, not after a selection is cleared.
   const seenKey = tourSeenKey(result.repo.owner, result.repo.name)
+  const askedFor = useRef<string | null>(null)
   useEffect(() => {
-    if (firstTour && engine && startsFirstTour(localTourStorage(), seenKey, window.location.hash)) {
+    if (!firstTour || !engine || askedFor.current === seenKey) {
+      return
+    }
+    askedFor.current = seenKey
+    if (startsFirstTour(localTourStorage(), seenKey, window.location.hash)) {
       guideDispatch({ kind: 'start' })
     }
   }, [firstTour, engine, seenKey, guideDispatch])
