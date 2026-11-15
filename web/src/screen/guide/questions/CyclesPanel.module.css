@@ -1,0 +1,185 @@
+/* "Where are the cycles?", on "City UI · 10". Red is on the badges alone: nothing reads as an
+   error. */
+
+.none {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--color-text-body);
+}
+
+.summary {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--color-text-primary);
+}
+
+.count {
+  font-weight: 700;
+}
+
+/* Every cycle, past the first rows, scrolls inside the panel. */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-height: min(50vh, 440px);
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+/* A cycle's row: its badge, then its folders. */
+.cycle {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2-5);
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 40px;
+  padding: var(--space-1) var(--space-2);
+  border: var(--border-width-default) solid transparent;
+  border-radius: var(--radius-md);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+button.cycle {
+  cursor: pointer;
+}
+
+button.cycle:hover,
+button.cycle:focus-visible {
+  background: var(--state-hover);
+}
+
+.badge {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  min-width: 34px;
+  height: 24px;
+  padding: 0 var(--space-1-5);
+  border: var(--border-width-default) solid var(--feedback-error-border);
+  border-radius: var(--radius-sm);
+  color: var(--meaning-upward-text);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The folders give way from their start. */
+.folders {
+  overflow: hidden;
+  font-family: var(--font-family-mono);
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  direction: rtl;
+}
+
+.foldersText {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+/* The cycle on show, open. */
+.chosen {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-1-5);
+  padding: var(--space-2);
+  border-color: var(--color-border-default);
+  background: var(--color-bg-sunken);
+  animation: opened var(--duration-base) var(--easing-enter) both;
+}
+
+.head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2-5);
+}
+
+.chosen .badge {
+  border-color: var(--meaning-upward-text);
+  background: var(--meaning-upward-text);
+  color: var(--color-text-inverse);
+}
+
+.files {
+  margin: 0;
+  padding: 0 0 0 calc(34px + var(--space-2-5));
+  font-family: var(--font-family-mono);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--color-text-secondary);
+}
+
+.file {
+  max-width: 100%;
+  overflow: hidden;
+  padding: var(--space-0-5) 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-primary);
+  font: inherit;
+  white-space: nowrap;
+  text-align: left;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  vertical-align: bottom;
+}
+
+.file:hover,
+.file:focus-visible {
+  text-decoration: underline;
+}
+
+.more {
+  margin: 0;
+  padding-left: calc(34px + var(--space-2-5));
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--color-text-secondary);
+}
+
+.all {
+  align-self: flex-start;
+  min-height: 36px;
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.all:hover,
+.all:focus-visible {
+  background: var(--state-hover);
+}
+
+@keyframes opened {
+  from {
+    opacity: 0.6;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chosen {
+    animation: none;
+  }
+}
