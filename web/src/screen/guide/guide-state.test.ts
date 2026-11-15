@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { FOLDED, type GuideState, nextGuide, tourLength } from './guide-state'
+import {
+  FOLDED,
+  type GuideMode,
+  type GuideState,
+  isAnswer,
+  nextGuide,
+  tourLength,
+} from './guide-state'
 
 const at = (step: number, playing = true): GuideState => ({ mode: 'touring', step, playing })
 const OPEN: GuideState = { mode: 'open', step: 0, playing: false }
@@ -68,6 +75,11 @@ describe('nextGuide', () => {
       to: 'a.ts',
     })
     expect(nextGuide(route, { kind: 'questions' }, 9)).toEqual(OPEN)
+  })
+
+  it('tells an answer from the other modes', () => {
+    expect(['impact', 'route'].every((mode) => isAnswer(mode as GuideMode))).toBe(true)
+    expect(['folded', 'open', 'touring'].some((mode) => isAnswer(mode as GuideMode))).toBe(false)
   })
 
   it('leaves a route without its end when both are the same file, or without either', () => {
