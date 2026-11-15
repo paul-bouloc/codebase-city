@@ -7,22 +7,28 @@ export interface EscapeState {
   aboutOpen: boolean
   sheetShown: boolean
   hasSelection: boolean
+  guideOpen: boolean
 }
 
-/** Esc that no panel took: closes the open panel first, then clears the selection. */
+/** Esc that no panel took: closes the open panel first, then clears the selection, then folds the guide. */
 export function useEscapeKey(
   engine: CityEngine | null,
-  { portOpen, aboutOpen, sheetShown, hasSelection }: EscapeState,
+  { portOpen, aboutOpen, sheetShown, hasSelection, guideOpen }: EscapeState,
   closeAbout: () => void,
   closeSheet: () => void,
   clearSelection: () => void,
+  foldGuide: () => void,
 ): void {
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || event.defaultPrevented) {
         return
       }
-      const target = escapeTarget({ panelOpen: portOpen || aboutOpen || sheetShown, hasSelection })
+      const target = escapeTarget({
+        panelOpen: portOpen || aboutOpen || sheetShown,
+        hasSelection,
+        guideOpen,
+      })
       if (target === 'panel') {
         if (portOpen) {
           engine?.closePort()
@@ -33,6 +39,8 @@ export function useEscapeKey(
         }
       } else if (target === 'selection') {
         clearSelection()
+      } else if (target === 'guide') {
+        foldGuide()
       }
     }
     window.addEventListener('keydown', handleKey)
@@ -43,8 +51,10 @@ export function useEscapeKey(
     aboutOpen,
     sheetShown,
     hasSelection,
+    guideOpen,
     closeAbout,
     closeSheet,
     clearSelection,
+    foldGuide,
   ])
 }

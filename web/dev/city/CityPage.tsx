@@ -7,13 +7,10 @@ import type { CityLayout } from '../../src/city/world/layout'
 import { syntheticCity, withCrossingCycles } from '../../src/city/world/synthetic'
 import { decodeResult } from '../../src/data/decode-result'
 import type { AnalysisResult } from '../../src/data/generated/AnalysisResult'
-import type { TourStep } from '../../src/data/generated/TourStep'
-import { guideView } from '../../src/guide/guide-view'
-import { CityScreen, type ScreenGuide } from '../../src/screen/CityScreen'
+import { CityScreen } from '../../src/screen/CityScreen'
 import { CityView } from '../../src/screen/CityView'
-import { guidePaths } from '../../src/screen/guide/guide-paths'
+import { FOLDED, type GuideState } from '../../src/screen/guide/guide-state'
 import { useDriveKeys } from '../../src/screen/keys/use-drive-keys'
-import { indexResult } from '../../src/screen/result-index'
 import { PortCard } from '../../src/screen/tooltips/PortCard'
 import { Button } from '../../src/ui/actions/Button'
 import { archetypeGallery } from './archetype-gallery'
@@ -27,24 +24,6 @@ const TEXT = {
   tools: 'Development',
   step: 'Tour step',
   noStep: 'None',
-}
-
-/** What a label says after its file's name, until the guide writes it. */
-function stepNote(result: AnalysisResult, step: TourStep): string {
-  switch (step.kind) {
-    case 'builtOn':
-      return `builds on ${step.externals.map((row) => result.externals.name[row]).join(', ')}`
-    case 'entryPoints':
-      return 'entry point'
-    case 'conductors':
-      return `pulls in ${result.roles.conductors.count[step.conductors[0] ?? 0]} files`
-    case 'foundations':
-      return `${result.roles.foundations.count[step.foundations[0] ?? 0]} dependents`
-    case 'complexAreas':
-      return `complexity ${result.files.complexity[step.files[0] ?? 0]}`
-    default:
-      return ''
-  }
 }
 
 const REMOUNTS = 10
@@ -109,32 +88,30 @@ export function CityPage() {
   const [mount, setMount] = useState(0)
   const [remounting, setRemounting] = useState(false)
   const [engine, setEngine] = useState<CityEngine | null>(null)
-  const [stepKind, setStepKind] = useState(query.get('step') ?? '')
-  const index = useMemo(() => (result ? indexResult(result) : null), [result])
-  const guide = useMemo<ScreenGuide | null>(() => {
-    const step = result?.tour.steps.find((each) => each.kind === stepKind)
-    if (!result || !index || !step) {
-      return null
+  const [guide, setGuide] = useState<GuideState>(FOLDED)
+  // A result opens on the step `?step` names, if its tour has it.
+  useEffect(() => {
+    const step = result?.tour.steps.findIndex((each) => each.kind === query.get('step')) ?? -1
+    setGuide(step >= 0 ? { mode: 'touring', step } : FOLDED)
+  }, [result, query])
+  const stepKind = guide.mode === 'touring' ? (result?.tour.steps[guide.step]?.kind ?? '') : ''
+
+  // The step on show goes in the address, for a reload to come back to it.
+  function changeGuide(next: GuideState) {
+    setGuide(next)
+    const kind = next.mode === 'touring' ? result?.tour.steps[next.step]?.kind : undefined
+    const params = new URLSearchParams(window.location.search)
+    if (kind) {
+      params.set('step', kind)
+    } else {
+      params.delete('step')
     }
-    const view = guideView(result, step)
-    const note = stepNote(result, step)
-    return {
-      paths: guidePaths(view, index),
-      notes: new Map(
-        view.labelled.flatMap((file) => index.filePaths[file] ?? []).map((path) => [path, note]),
-      ),
-    }
-  }, [result, index, stepKind])
+    window.history.replaceState(null, '', `?${params}${window.location.hash}`)
+  }
 
   function chooseStep(kind: string) {
-    setStepKind(kind)
-    const next = new URLSearchParams(window.location.search)
-    if (kind) {
-      next.set('step', kind)
-    } else {
-      next.delete('step')
-    }
-    window.history.replaceState(null, '', `?${next}${window.location.hash}`)
+    const step = result?.tour.steps.findIndex((each) => each.kind === kind) ?? -1
+    changeGuide(step >= 0 ? { mode: 'touring', step } : FOLDED)
   }
 
   // After the city loads (the view's effect runs first), the camera goes where `?look` says.
@@ -268,10 +245,10 @@ export function CityPage() {
           key={mount}
           result={result}
           guide={guide}
+          onGuideChange={changeGuide}
           showStats={showStats}
           onEngine={setEngine}
         />
-        {/* Where the guide will live: folded, it hides nothing of the screen. */}
         <details className={styles.screenTools}>
           <summary>{TEXT.tools}</summary>
           <div className={styles.screenToolsBody}>{tools}</div>

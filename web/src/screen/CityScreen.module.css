@@ -61,6 +61,13 @@
   bottom: var(--space-3);
 }
 
+/* The guide at the bottom left, under the toasts. */
+.guide {
+  position: absolute;
+  left: var(--space-3);
+  bottom: var(--space-3);
+}
+
 /* Under the repository button. */
 .about {
   position: absolute;

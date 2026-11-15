@@ -85,6 +85,7 @@ export function CityUiPage() {
       const target = escapeTarget({
         panelOpen: sheet || aboutOpen,
         hasSelection: selection !== null,
+        guideOpen: false,
       })
       if (target === 'panel') {
         setSheet(false)

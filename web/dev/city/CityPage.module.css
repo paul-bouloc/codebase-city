@@ -38,10 +38,12 @@
 }
 
 /* Over the city screen, where the guide will live. */
+/* At the bottom, in the middle: the guide has the left corner. */
 .screenTools {
   position: fixed;
   bottom: var(--space-3);
-  left: var(--space-3);
+  left: 50%;
+  transform: translateX(-50%);
   max-width: 28rem;
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-lg);

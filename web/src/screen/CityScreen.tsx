@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CityEngine } from '../city/engine/city-engine'
 import { cityCards } from '../city/interaction/city-cards'
-import type { GuidePaths } from '../city/interaction/city-guide'
 import type { CameraView, CityHover, GuideLabel } from '../city/interaction/city-items'
 import type { PortList } from '../city/interaction/open-port'
 import { cityFromResult } from '../city/world/from-result'
@@ -17,7 +16,11 @@ import { CameraControls } from './camera/CameraControls'
 import { MapScale } from './camera/MapScale'
 import { useCameraActions } from './camera/use-camera-actions'
 import { githubTreeUrl } from './github-links'
+import { GuideDock } from './guide/GuideDock'
 import { GuideLabels } from './guide/GuideLabels'
+import type { GuideState } from './guide/guide-state'
+import type { TourTarget } from './guide/tour/tour-spans'
+import { useGuide } from './guide/use-guide'
 import { useDriveKeys } from './keys/use-drive-keys'
 import { useEscapeKey } from './keys/use-escape-key'
 import { areaLabelTexts } from './labels/area-label-texts'
@@ -54,16 +57,11 @@ const FLY = { fly: true }
 
 type Sheet = { file: FileSheetData } | { folder: FolderSheetData }
 
-/** A step of the guide's tour on show: what it puts forward, and its labels' notes by path. */
-export interface ScreenGuide {
-  paths: GuidePaths
-  notes: ReadonlyMap<string, string>
-}
-
 interface CityScreenProps {
   result: AnalysisResult
-  /** The step of the guide's tour the city shows, if any. */
-  guide?: ScreenGuide | null
+  /** What the guide shows, when the caller keeps it (development); the screen's own otherwise. */
+  guide?: GuideState
+  onGuideChange?: (guide: GuideState) => void
   /** Where the logo leads. */
   homeHref?: string
   /** Draw every frame and show the frame rate (development). */
@@ -83,7 +81,8 @@ export function CityScreen(props: CityScreenProps) {
 
 function Screen({
   result,
-  guide = null,
+  guide: guideState,
+  onGuideChange,
   homeHref = '/',
   showStats = false,
   onEngine,
@@ -135,9 +134,10 @@ function Screen({
     })
   }, [engine, selectFromCity])
 
+  const guide = useGuide(engine, index, guideState, onGuideChange)
   useEffect(() => {
-    engine?.showGuide(guide?.paths ?? null)
-  }, [engine, guide])
+    engine?.showGuide(guide.shown?.paths ?? null)
+  }, [engine, guide.shown])
 
   useEffect(() => {
     engine?.setAreaLabels(labelTexts)
@@ -182,12 +182,21 @@ function Screen({
   const closeAbout = useCallback(() => setAboutOpen(false), [])
   const closeSheet = useCallback(() => setSheetOpen(false), [setSheetOpen])
   const clearSelection = useCallback(() => choose(null), [choose])
+  const { dispatch: guideDispatch } = guide
+  const foldGuide = useCallback(() => guideDispatch({ kind: 'fold' }), [guideDispatch])
   useEscapeKey(
     engine,
-    { portOpen, aboutOpen, sheetShown, hasSelection: selection !== null },
+    {
+      portOpen,
+      aboutOpen,
+      sheetShown,
+      hasSelection: selection !== null,
+      guideOpen: guide.state.mode !== 'folded',
+    },
     closeAbout,
     closeSheet,
     clearSelection,
+    foldGuide,
   )
 
   const cameraAction = useCameraActions(engine)
@@ -214,6 +223,30 @@ function Screen({
     return `${origin}${pathname}${search}${hashOf(next)}`
   }
 
+  // A chip of the tour selects what it names and flies there; the islands of a package it frames.
+  const showTarget = (target: TourTarget) => {
+    switch (target.kind) {
+      case 'file':
+        choose({ kind: 'file', path: target.path }, FLY)
+        break
+      case 'folder':
+        choose({ kind: 'dir', path: target.path }, FLY)
+        break
+      case 'islands': {
+        const [only] = target.folders
+        if (only !== undefined && target.folders.length === 1) {
+          choose({ kind: 'dir', path: only }, FLY)
+        } else {
+          engine?.frameAll(target.folders)
+        }
+        break
+      }
+      case 'next':
+        guide.dispatch({ kind: 'next' })
+        break
+    }
+  }
+
   const showCycle = () => {
     const file = selectedFile === null ? undefined : index.fileAt(selectedFile)
     const members = result.cycles.members.find((each) => file !== undefined && each.includes(file))
@@ -235,7 +268,7 @@ function Screen({
   return (
     <main ref={screen} className={styles.screen}>
       <CityView layout={layout} showStats={showStats} onEngine={handleEngine} />
-      {guide && <GuideLabels labels={guideLabels} notes={guide.notes} />}
+      {guide.shown && <GuideLabels labels={guideLabels} notes={guide.shown.notes} />}
 
       <div className={styles.topBar}>
         <CityTopBar
@@ -334,6 +367,18 @@ function Screen({
             }
           />
         )}
+      </div>
+
+      <div className={styles.guide}>
+        <GuideDock
+          state={guide.state}
+          dispatch={guide.dispatch}
+          length={guide.length}
+          text={guide.text}
+          steps={guide.steps}
+          repoName={result.repo.name}
+          onChip={showTarget}
+        />
       </div>
 
       <div className={styles.about}>
