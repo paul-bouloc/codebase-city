@@ -17,6 +17,7 @@ import {
   applicationsText,
   consumersText,
   insideText,
+  leadByApps,
   librariesText,
   otherAppsText,
 } from './tour-packages'
@@ -115,8 +116,4 @@ export function tourNote(context: TourContext, step: TourStep): string {
     default:
       return ''
   }
-}
-
-function leadByApps(context: TourContext): boolean {
-  return context.index.result.tour.steps.some((each) => each.kind === 'applications')
 }

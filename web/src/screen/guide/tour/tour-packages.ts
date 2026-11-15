@@ -77,8 +77,7 @@ export function otherAppsText(context: TourContext, step: Step<'otherApps'>): St
   const { result } = context.index
   const units = guideUnits(result, step)
   const all = step.apps.reduce((sum, row) => sum + (result.packages.codeFiles[row] ?? 0), 0)
-  const lead = result.tour.steps.some((each) => each.kind === 'applications')
-  const noun = lead ? 'smaller app' : 'app'
+  const noun = leadByApps(context) ? 'smaller app' : 'app'
   const named = units.slice(0, 2)
   // Units are the apps the city shows: one standing on every island has none
   const count = step.apps.length
@@ -202,4 +201,9 @@ export function insideText(context: TourContext, step: Step<'insidePackage'>): S
     closer.push(...chip([folderSpan(context, routes), ` · ${counted(count, 'route')}`]))
   }
   return { text, closer }
+}
+
+/** Whether the tour presents main apps: past them, the other apps are the smaller ones. */
+export function leadByApps(context: TourContext): boolean {
+  return context.index.result.tour.steps.some((each) => each.kind === 'applications')
 }
