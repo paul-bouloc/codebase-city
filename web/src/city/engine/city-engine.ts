@@ -252,11 +252,15 @@ export class CityEngine {
     }
     const buildings = (paths: readonly string[]) => paths.flatMap((path) => building(path) ?? [])
     const labelled = answer?.labelled === undefined ? null : building(answer.labelled)
+    // A route is drawn whole or not at all: a stop without a building would shift its ends,
+    // its arcs and its numbers.
+    const route = answer?.route && buildings(answer.route)
+    const whole = route && route.length === answer?.route?.length ? route : null
     interaction.showAnswer(
       answer && {
         kept: buildings(answer.kept),
         ...(labelled === null ? {} : { labelled }),
-        ...(answer.route ? { route: buildings(answer.route) } : {}),
+        ...(whole ? { route: whole } : {}),
       },
     )
     this.needsRender = true
