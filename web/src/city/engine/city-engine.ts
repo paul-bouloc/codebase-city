@@ -234,6 +234,31 @@ export class CityEngine {
     this.needsRender = true
   }
 
+  /**
+   * Shows what depends on a file, by path: they keep their colours, the rest fades and the file
+   * gets a label, heard of by `guideLabels`. Null shows nothing; the camera stays.
+   */
+  showImpact(impact: { path: string; dependents: readonly string[] } | null): void {
+    const { interaction, targets } = this
+    if (!interaction || !targets) {
+      return
+    }
+    const building = (path: string) => {
+      const target = targets.at(path)
+      return target?.kind === 'building' ? target.index : null
+    }
+    const file = impact && building(impact.path)
+    interaction.showImpact(
+      impact && file !== null
+        ? {
+            building: file,
+            dependents: impact.dependents.flatMap((path) => building(path) ?? []),
+          }
+        : null,
+    )
+    this.needsRender = true
+  }
+
   /** What the labels of islands and folders say, by path; a folder not in it gets none. */
   setAreaLabels(texts: ReadonlyMap<string, AreaLabelText>): void {
     this.areaLabels.setTexts(texts)
@@ -466,7 +491,9 @@ export class CityEngine {
 
   /** Tells the listeners where the guide's labels stand, when that changes. */
   private tellGuideLabels(): void {
-    const roofs = (this.interaction?.guide.labels() ?? []).map(({ building, roof }) => ({
+    const impact = this.interaction?.impactLabel()
+    const labelled = [...(this.interaction?.guide.labels() ?? []), ...(impact ? [impact] : [])]
+    const roofs = labelled.map(({ building, roof }) => ({
       path: this.placed[building]?.file.path ?? '',
       roof,
     }))
