@@ -1,4 +1,4 @@
-import { type KeyboardEvent, useId, useMemo, useRef, useState } from 'react'
+import { type KeyboardEvent, type RefObject, useId, useMemo, useRef, useState } from 'react'
 import { Icon } from '../../../ui/brand/Icon'
 import { truncateMiddle } from '../../../ui/display/truncate-path'
 import { useTruncatedPath } from '../../../ui/display/use-truncated-path'
@@ -25,13 +25,22 @@ interface FileFieldProps {
   /** The files the field offers among those the search finds; all if absent. */
   offers?: (hit: FileHit) => boolean
   onChoose: (path: string | null) => void
+  /** Kept on the input, for the focus to be put in it. */
+  inputRef?: RefObject<HTMLInputElement | null>
 }
 
 /**
  * A field to choose a file in: it shows the file chosen, its path cut from the start; typed in,
  * it lists the files the search finds.
  */
-export function FileField({ label, value, searchIndex, offers, onChoose }: FileFieldProps) {
+export function FileField({
+  label,
+  value,
+  searchIndex,
+  offers,
+  onChoose,
+  inputRef: outerRef,
+}: FileFieldProps) {
   const id = useId()
   const listboxId = `${id}-files`
   const inputRef = useRef<HTMLInputElement | null>(null)
@@ -58,6 +67,9 @@ export function FileField({ label, value, searchIndex, offers, onChoose }: FileF
   const setRefs = (element: HTMLInputElement | null) => {
     inputRef.current = element
     fitRef.current = element
+    if (outerRef) {
+      outerRef.current = element
+    }
   }
   const choose = (path: string) => {
     setQuery(null)
