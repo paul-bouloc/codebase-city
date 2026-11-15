@@ -5,8 +5,16 @@ import { guideView } from '../../guide/guide-view'
 import { isTourKeyTarget, isTourSpaceTarget } from '../keys/screen-keys'
 import type { ResultIndex } from '../result-index'
 import { guideFrame, guidePaths } from './guide-paths'
-import { FOLDED, type GuideAction, type GuideState, nextGuide, tourLength } from './guide-state'
+import {
+  FOLDED,
+  type GuideAction,
+  type GuideState,
+  isAnswer,
+  nextGuide,
+  tourLength,
+} from './guide-state'
 import { type Impact, impactOf } from './questions/impact'
+import { type Route, routeOf } from './questions/route'
 import { type TourContext, type TourText, tourContext } from './tour/tour-spans'
 import { tourNote, tourText } from './tour/tour-text'
 import {
@@ -43,8 +51,13 @@ export interface Guide {
   steps: number
   /** What depends on the file asked about, while that answer is on show. */
   impact: Impact | null
-  /** The paths the camera frames for that answer: the file, then what depends on it. */
-  impactFrame: readonly string[] | null
+  /** How a file reaches another, while that answer is on show with both files chosen. */
+  route: Route | null
+  /**
+   * The paths the camera frames for the answer on show: the file, then what depends on it, or
+   * the files of a route.
+   */
+  answerFrame: readonly string[] | null
 }
 
 /**
@@ -102,7 +115,7 @@ export function useGuide(
   }, [step, index, context])
 
   const touring = state.mode === 'touring'
-  const aside = touring || state.mode === 'impact'
+  const aside = touring || isAnswer(state.mode)
   useEffect(() => {
     engine?.setLeftInset(aside ? TOUR_INSET : 0)
   }, [engine, aside])
@@ -114,24 +127,39 @@ export function useGuide(
     () => (impactFile === undefined ? null : impactOf(context, impactFile)),
     [context, impactFile],
   )
-  useEffect(() => {
-    if (!engine) {
-      return
-    }
-    if (!impact) {
-      engine.showAnswer(null)
-      return
-    }
-    const path = index.filePaths[impact.file] ?? ''
-    const dependents = impact.dependents.map((file) => index.filePaths[file] ?? '')
-    engine.showAnswer({ kept: [path, ...dependents], labelled: path })
-  }, [engine, index, impact])
-  // What the camera frames for it, beside the panel: the screen frames it once the selection it
-  // reads from the address has moved the camera, if it did.
-  const impactFrame = useMemo(
-    () => impact && [impact.file, ...impact.dependents].map((file) => index.filePaths[file] ?? ''),
-    [index, impact],
+  // How a file reaches another: its path drawn in the city.
+  const routeFrom =
+    state.mode === 'route' && state.from !== undefined ? index.fileAt(state.from) : undefined
+  const routeTo =
+    state.mode === 'route' && state.to !== undefined ? index.fileAt(state.to) : undefined
+  const routeChoice = state.mode === 'route' ? (state.path ?? 0) : 0
+  const route = useMemo(
+    () =>
+      routeFrom === undefined || routeTo === undefined || routeFrom === routeTo
+        ? null
+        : routeOf(context, routeFrom, routeTo, routeChoice),
+    [context, routeFrom, routeTo, routeChoice],
   )
+
+  // What the answer keeps in colour in the city, and what the camera frames of it, beside the
+  // panel: the screen frames it once the selection it reads from the address has moved the
+  // camera, if it did. A route not found leaves the city as it is.
+  const answer = useMemo(() => {
+    const paths = (files: readonly number[]) => files.map((file) => index.filePaths[file] ?? '')
+    if (impact) {
+      const kept = paths([impact.file, ...impact.dependents])
+      return { kept, labelled: kept[0] ?? '' }
+    }
+    if (route?.kind === 'found') {
+      const files = paths(route.files)
+      return { kept: files, route: files }
+    }
+    return null
+  }, [index, impact, route])
+  useEffect(() => {
+    engine?.showAnswer(answer)
+  }, [engine, answer])
+  const answerFrame = answer?.kept ?? null
 
   // Each step frames what it shows, beside the panel.
   useEffect(() => {
@@ -217,6 +245,7 @@ export function useGuide(
     shown,
     steps: steps.length,
     impact,
-    impactFrame,
+    route,
+    answerFrame,
   }
 }
