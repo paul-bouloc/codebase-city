@@ -21,8 +21,11 @@ export type Measure = (text: string, font: string) => number
 /** Which way a label runs from its anchor on screen: out to the sea, or around it for a folder. */
 export type LabelLean = 'start' | 'end' | 'above' | 'below' | 'centre'
 
-/** A label of the guide's tour: figures over the name, the name alone, or a folder's. */
-export type GuideLabelKind = 'full' | 'short' | 'parcel'
+/**
+ * A label of the guide's tour: figures over the name, the name alone, a folder's, or the count of
+ * a link, the files that import types alone under it.
+ */
+export type GuideLabelKind = 'full' | 'short' | 'parcel' | 'count'
 
 /** A label the city shows this frame. Pixels are CSS pixels on the canvas. */
 export interface PlacedLabel {
@@ -61,11 +64,18 @@ const CAPTION = { font: '500 10px "JetBrains Mono", ui-monospace, monospace', he
 const PARCEL_NAME = { font: '400 11px "JetBrains Mono", ui-monospace, monospace', height: 14 }
 const GUIDE_TEXT = '#167A5C'
 const GUIDE_SHORT_NAME = { font: '600 13px "Space Grotesk", system-ui, sans-serif', height: 17 }
+const COUNT = { font: '600 12px "Space Grotesk", system-ui, sans-serif', height: 16 }
 /**
  * The fonts labels are written in. The page loads a font only once something uses it: these
  * are asked for, so that labels are not measured and drawn in a fallback for good.
  */
-export const LABEL_FONTS = [ISLAND_NAME.font, CAPTION.font, PARCEL_NAME.font, GUIDE_SHORT_NAME.font]
+export const LABEL_FONTS = [
+  ISLAND_NAME.font,
+  CAPTION.font,
+  PARCEL_NAME.font,
+  GUIDE_SHORT_NAME.font,
+  COUNT.font,
+]
 const ISLAND_PADDING = { across: 8, down: 4 }
 const PARCEL_PADDING = { across: 8, down: 3 }
 const RIM = { colour: INK, width: 1.5 }
@@ -103,6 +113,13 @@ const GUIDE_STYLES: Record<GuideLabelKind, PillStyle> = {
     rim: { colour: GUIDE, width: 1.5 },
     shadow: { colour: 'rgba(20, 70, 55, 0.16)', blur: 10, down: 4, margin: 14 },
   },
+  count: {
+    fill: GUIDE_FILL,
+    radius: 8,
+    padding: { across: 7, down: 3 },
+    rim: { colour: GUIDE, width: 1.5 },
+    shadow: { colour: 'rgba(20, 70, 55, 0.16)', blur: 8, down: 3, margin: 12 },
+  },
 }
 const LEADER: LeaderStyle = {
   colour: srgb(GUIDE),
@@ -123,6 +140,13 @@ function linesOf(
   caption: string | null,
   guide?: GuideLabelKind,
 ): PillLine[] {
+  if (guide === 'count') {
+    const lines: PillLine[] = [{ text: name, colour: GUIDE_TEXT, ...COUNT }]
+    if (caption !== null) {
+      lines.push({ text: caption, colour: SECONDARY, ...CAPTION })
+    }
+    return lines
+  }
   if (guide) {
     const lines: PillLine[] = []
     if (caption !== null) {
