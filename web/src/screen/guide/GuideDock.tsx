@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react'
 import type { SearchIndex } from '../search/search-index'
 import { GuideCard, GuidePill, type GuideQuestion } from './GuideCard'
 import type { GuideAction, GuideMode, GuideState } from './guide-state'
+import { CYCLES_QUESTION, CyclesPanel } from './questions/CyclesPanel'
+import type { CycleList } from './questions/cycles'
 import { IMPACT_QUESTION, ImpactPanel } from './questions/ImpactPanel'
 import type { Impact } from './questions/impact'
 import { ROUTE_QUESTION, RoutePanel } from './questions/RoutePanel'
@@ -36,6 +38,12 @@ interface GuideDockProps {
   onRouteStop: (path: string) => void
   /** Grows each time the route is asked from a file: the focus goes to the field it goes to. */
   routeAsked: number
+  /** The city's cycles, the biggest first. */
+  cycles: CycleList
+  /** "Where are the cycles?" asked from the questions. */
+  onAskCycles: () => void
+  /** A file of the cycle on show chosen. */
+  onCycleFile: (path: string) => void
 }
 
 /**
@@ -60,6 +68,9 @@ export function GuideDock({
   onRouteFiles,
   onRouteStop,
   routeAsked,
+  cycles,
+  onAskCycles,
+  onCycleFile,
 }: GuideDockProps) {
   const dock = useRef<HTMLDivElement>(null)
   const pill = useRef<HTMLButtonElement>(null)
@@ -100,6 +111,12 @@ export function GuideDock({
   const questions: GuideQuestion[] = [
     { ...IMPACT_QUESTION, icon: 'foundation', onAsk: onAskImpact },
     { ...ROUTE_QUESTION, icon: 'route', onAsk: onAskRoute },
+    {
+      title: CYCLES_QUESTION.title,
+      subtitle: CYCLES_QUESTION.subtitle(cycles.cycles.length),
+      icon: 'cycle',
+      onAsk: onAskCycles,
+    },
   ]
 
   return (
@@ -142,6 +159,18 @@ export function GuideDock({
           onStop={onRouteStop}
           onBack={() => dispatch({ kind: 'questions' })}
           onClear={() => dispatch({ kind: 'questions' })}
+          onCollapse={() => dispatch({ kind: 'fold' })}
+        />
+      )}
+      {state.mode === 'cycles' && (
+        <CyclesPanel
+          ref={title}
+          cycles={cycles}
+          chosen={state.cycle ?? null}
+          filePaths={filePaths}
+          onChoose={(cycle) => dispatch({ kind: 'cycles', cycle })}
+          onFile={onCycleFile}
+          onBack={() => dispatch({ kind: 'questions' })}
           onCollapse={() => dispatch({ kind: 'fold' })}
         />
       )}

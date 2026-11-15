@@ -20,6 +20,7 @@ import { localTourStorage, startsFirstTour, tourSeenKey } from './guide/first-to
 import { GuideDock } from './guide/GuideDock'
 import { GuideLabels } from './guide/GuideLabels'
 import { type GuideState, isAnswer } from './guide/guide-state'
+import { cycleOfFile } from './guide/questions/cycles'
 import { analyzedFile } from './guide/questions/impact'
 import type { TourTarget } from './guide/tour/tour-spans'
 import { useGuide } from './guide/use-guide'
@@ -253,6 +254,12 @@ function Screen({
     askRoute(from, null)
     setRouteAsked((asked) => asked + 1)
   }
+  // Where the cycles are: the selected file's, if it is in one, or else the biggest.
+  const askCycles = (file: string | null) => {
+    const at = file === null ? undefined : index.fileAt(file)
+    const cycle = at === undefined ? null : cycleOfFile(guide.cycles, at)
+    guideDispatch({ kind: 'cycles', cycle: cycle ?? (guide.cycles.cycles.length > 0 ? 0 : null) })
+  }
   const analyzedSelection =
     selectedFile !== null && analyzedFile(index, selectedFile) ? selectedFile : null
 
@@ -274,6 +281,12 @@ function Screen({
           (path === from || path === to || stops.some((file) => index.filePaths[file] === path))
         )
       }
+      case 'cycles':
+        // A cycle needs no selection: only a file outside it ends the answer.
+        return (
+          path === null ||
+          (guide.cycle?.members.some((file) => index.filePaths[file] === path) ?? true)
+        )
       default:
         return true
     }
@@ -346,14 +359,8 @@ function Screen({
     }
   }
 
-  const showCycle = () => {
-    const file = selectedFile === null ? undefined : index.fileAt(selectedFile)
-    const members = result.cycles.members.find((each) => file !== undefined && each.includes(file))
-    if (members) {
-      pauseTour()
-      engine?.frameFiles(members.map((member) => index.filePaths[member] ?? ''))
-    }
-  }
+  // The sheet's "show it": the answer on that file's cycle.
+  const showCycle = () => askCycles(selectedFile)
 
   // Cards keep out of the open sheet, wherever the CSS puts it: read at each render, which every
   // move of the pointer makes.
@@ -504,6 +511,10 @@ function Screen({
           // flight of its own.
           routeAsked={routeAsked}
           onRouteStop={(path) => choose({ kind: 'file', path })}
+          cycles={guide.cycles}
+          onAskCycles={() => askCycles(selectedFile)}
+          // Framed with its cycle already, like a stop of a route.
+          onCycleFile={(path) => choose({ kind: 'file', path })}
         />
       </div>
 
